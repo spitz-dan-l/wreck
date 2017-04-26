@@ -3,11 +3,18 @@ import {List, Set, Collection} from 'immutable';
 export type Partition = Set<number>;
 export type Edge = [number, number];
 
-export interface Dangle {
-    readonly partition: Partition,
-    readonly edges: List<Edge>,
-    readonly fixed_face: string,
-    readonly free_face: string
+export class Dangle {
+    readonly partition: Partition;
+    readonly edges: List<Edge>;
+    readonly fixed_face: string;
+    readonly free_face: string;
+
+    constructor(partition, edges, fixed_face, free_face) {
+        this.partition = partition;
+        this.edges = edges;
+        this.fixed_face = fixed_face;
+        this.free_face = free_face;
+    }
 }
 
 export type Point2 = [number, number];
@@ -73,24 +80,35 @@ export enum TapeEdge {
     cut = 2
 }
 
-export type EdgeState = {
-    cardboard: CardboardEdge,
-    tape: TapeEdge
-}
+export class EdgeState {
+    readonly cardboard: CardboardEdge;
+    readonly tape: TapeEdge;
 
-export function edge_state_cut(es: EdgeState): EdgeState{
-    let new_tape: TapeEdge;
-    if (es.tape == TapeEdge.taped) {
-        new_tape = TapeEdge.cut;
-    } else {
-        new_tape = es.tape
+    constructor (cardboard: CardboardEdge, tape: TapeEdge){
+        this.cardboard = cardboard;
+        this.tape = tape;
     }
 
-    return {cardboard: CardboardEdge.cut, tape: new_tape};
+    cut() {
+        let new_tape: TapeEdge;
+        if (this.tape == TapeEdge.taped) {
+            new_tape = TapeEdge.cut;
+        } else {
+            new_tape = this.tape
+        }
+
+        return new EdgeState(CardboardEdge.cut, new_tape);
+    }
+
+
+    apply_tape() {
+        return new EdgeState(this.cardboard, TapeEdge.taped);
+    }
 }
 
-export function edge_state_apply_tape(es: EdgeState): EdgeState {
-    return {cardboard: es.cardboard, tape: TapeEdge.taped};
+export enum EdgeOperation {
+    cut = 0,
+    tape = 1
 }
 
 export enum RendState {
@@ -123,6 +141,15 @@ export enum Face {
 }
 
 export let faces = [Face.n, Face.s, Face.e, Face.w, Face.t, Face.b];
+
+export enum Direction {
+    n = 0,
+    s = 1,
+    e = 2,
+    w = 3
+}
+
+export let directions = [Direction.n, Direction.s, Direction.e, Direction.w];
 
 export abstract class Item {
     abstract weight(): Weight;
