@@ -7,14 +7,14 @@ var buffer = require('vinyl-buffer');
 var watchify = require('watchify')
 var gutil = require("gulp-util");
 var paths = {
-    pages: ['src/*.html']
+    pages: ['src/html/*.html']
 };
 
 
 var watchedBrowserify = watchify(browserify({
-    basedir: '.',
+    basedir: 'src/typescript',
     debug: true,
-    entries: ['src/typescript/main.ts', 'src/typescript/datatypes.ts', 'src/typescript/box_geometry.ts'],
+    entries: ['box_geometry.ts', 'datatypes.ts'],
     cache: {},
     packageCache: {}
 }));
@@ -28,7 +28,7 @@ function bundle() {
     return watchedBrowserify
     .plugin(tsify)
     .transform('babelify', {
-        presets: ['es2015'],
+        presets: ['es2016'],
         extensions: ['.ts']
     })
     .bundle()

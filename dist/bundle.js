@@ -4981,6 +4981,8 @@
 },{}],2:[function(require,module,exports){
 "use strict";
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -5015,9 +5017,14 @@ function build_edge_quadrant_mappings() {
                 var q_edges = get_quadrant_edges(vs, x, y);
                 quadrant_2_edges = quadrant_2_edges.set(qs.get([x, y]), q_edges);
                 q_edges.forEach(function (qe) {
-                    edge_2_quadrants = edge_2_quadrants.update(qe, function (xs) {
-                        return xs.push(qs.get([x, y]));
-                    });
+                    var q = qs.get([x, y]);
+                    if (edge_2_quadrants.has(qe)) {
+                        edge_2_quadrants = edge_2_quadrants.update(qe, function (xs) {
+                            return xs.push(q);
+                        });
+                    } else {
+                        edge_2_quadrants = edge_2_quadrants.set(qe, immutable_1.List([q]));
+                    }
                 });
             };
 
@@ -5064,9 +5071,9 @@ function get_quadrant_edges(m, x, y) {
             var e1 = m.get([x + x1, y + y1]);
             var e2 = m.get([x + x2, y + y2]);
             if (e2 < e1) {
-                edges = edges.push([e2, e1]);
+                edges = edges.push(new datatypes_1.Edge(e2, e1));
             } else {
-                edges = edges.push([e1, e2]);
+                edges = edges.push(new datatypes_1.Edge(e1, e2));
             }
         }
     } catch (err) {
@@ -5115,7 +5122,7 @@ function get_quadrant_partition(quadrant, cut_edges) {
     return current_partition;
 }
 function range(x) {
-    var arr = void 0;
+    var arr = [];
     for (var i = 0; i < x; i++) {
         arr.push(i);
     }
@@ -5128,18 +5135,692 @@ function get_partitions(cut_edges) {
         var q = quadrants.first();
         quadrants = immutable_1.OrderedSet(quadrants.rest());
         var partition = get_quadrant_partition(q, cut_edges);
-        partitions.push(partition);
+        partitions = partitions.push(partition);
         quadrants = quadrants.subtract(partition);
     }
     return partitions;
 }
-function face_mesh_rotate(fm, degrees) {
-    return { vertices: fm.vertices.rotate(degrees), quadrants: fm.quadrants.rotate(degrees) };
-}
 
-var BoxMesh = function BoxMesh() {
-    _classCallCheck(this, BoxMesh);
-};
+var FaceMesh = function () {
+    function FaceMesh(vertices, quadrants) {
+        _classCallCheck(this, FaceMesh);
+
+        this.vertices = vertices;
+        this.quadrants = quadrants;
+    }
+
+    _createClass(FaceMesh, [{
+        key: "rotate",
+        value: function rotate(degrees) {
+            return new FaceMesh(this.vertices.rotate(degrees), this.quadrants.rotate(degrees));
+        }
+    }]);
+
+    return FaceMesh;
+}();
+
+exports.FaceMesh = FaceMesh;
+
+var BoxMesh = function () {
+    function BoxMesh(dimensions, face_meshes, cut_edges) {
+        _classCallCheck(this, BoxMesh);
+
+        this.dimensions = dimensions;
+        if (!face_meshes) {
+            face_meshes = immutable_1.Map();
+            var _iteratorNormalCompletion3 = true;
+            var _didIteratorError3 = false;
+            var _iteratorError3 = undefined;
+
+            try {
+                for (var _iterator3 = datatypes_1.faces[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                    var f = _step3.value;
+
+                    face_meshes = face_meshes.set(f, new FaceMesh(face_vertices.get(f), face_quadrants.get(f)));
+                }
+            } catch (err) {
+                _didIteratorError3 = true;
+                _iteratorError3 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                        _iterator3.return();
+                    }
+                } finally {
+                    if (_didIteratorError3) {
+                        throw _iteratorError3;
+                    }
+                }
+            }
+        }
+        this.face_meshes = face_meshes;
+        if (!cut_edges) {
+            cut_edges = immutable_1.List();
+        }
+        this.cut_edges = cut_edges;
+    }
+
+    _createClass(BoxMesh, [{
+        key: "update",
+        value: function update(dimensions, face_meshes, cut_edges) {
+            if (!dimensions) {
+                dimensions = this.dimensions;
+            }
+            if (!face_meshes) {
+                face_meshes = this.face_meshes;
+            }
+            if (!cut_edges) {
+                cut_edges = this.cut_edges;
+            }
+            return new BoxMesh(dimensions, face_meshes, cut_edges);
+        }
+    }, {
+        key: "cut",
+        value: function cut(face, start, end) {
+            return this.cut_or_tape(datatypes_1.EdgeOperation.cut, face, start, end);
+        }
+    }, {
+        key: "tape",
+        value: function tape(face, start, end) {
+            return this.cut_or_tape(datatypes_1.EdgeOperation.tape, face, start, end);
+        }
+    }, {
+        key: "cut_or_tape",
+        value: function cut_or_tape(operation, face, start, end) {
+            var _start = _slicedToArray(start, 2),
+                x1 = _start[0],
+                y1 = _start[1];
+
+            var _end = _slicedToArray(end, 2),
+                x2 = _end[0],
+                y2 = _end[1];
+
+            if (Math.abs(x2 - x1) + Math.abs(y2 - y1) != 1) {
+                throw "start and end points of cut/tape are not adjacent: " + start + " and " + end;
+            }
+            var f = this.face_meshes.get(face).vertices;
+            var fs = f.get(start);
+            var fe = f.get(end);
+            var new_edge = void 0;
+            if (fe < fs) {
+                new_edge = new datatypes_1.Edge(fe, fs);
+            } else {
+                new_edge = new datatypes_1.Edge(fs, fe);
+            }
+            var new_cut_edges = this.cut_edges;
+            if (operation == datatypes_1.EdgeOperation.cut && !new_cut_edges.contains(new_edge)) {
+                new_cut_edges = new_cut_edges.push(new_edge);
+            }
+            if (operation == datatypes_1.EdgeOperation.tape && new_cut_edges.contains(new_edge)) {
+                new_cut_edges = new_cut_edges.remove(new_cut_edges.indexOf(new_edge));
+            }
+            return this.update(undefined, undefined, new_cut_edges);
+        }
+    }, {
+        key: "get_rends",
+        value: function get_rends() {
+            return get_partitions(this.cut_edges);
+        }
+    }, {
+        key: "get_free_rends",
+        value: function get_free_rends() {
+            var _this = this;
+
+            return this.get_rends().filter(function (x) {
+                return !_this.is_partition_fixed(x);
+            });
+        }
+    }, {
+        key: "is_partition_fixed",
+        value: function is_partition_fixed(partition) {
+            var face_membership = this.get_partition_face_membership(partition);
+            return face_membership.get(datatypes_1.Face.b) > 0;
+        }
+    }, {
+        key: "get_partition_face_membership",
+        value: function get_partition_face_membership(partition) {
+            var _this2 = this;
+
+            var face_membership = immutable_1.Map();
+            var _iteratorNormalCompletion4 = true;
+            var _didIteratorError4 = false;
+            var _iteratorError4 = undefined;
+
+            try {
+                var _loop3 = function _loop3() {
+                    var f = _step4.value;
+
+                    var total = 0;
+                    var quadrants = _this2.face_meshes.get(f).quadrants;
+                    partition.forEach(function (q) {
+                        if (quadrants.contains(q)) {
+                            total += 1;
+                        }
+                    });
+                    face_membership = face_membership.set(f, total);
+                };
+
+                for (var _iterator4 = datatypes_1.faces[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                    _loop3();
+                }
+            } catch (err) {
+                _didIteratorError4 = true;
+                _iteratorError4 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion4 && _iterator4.return) {
+                        _iterator4.return();
+                    }
+                } finally {
+                    if (_didIteratorError4) {
+                        throw _iteratorError4;
+                    }
+                }
+            }
+
+            return face_membership;
+        }
+    }, {
+        key: "get_quadrant_face",
+        value: function get_quadrant_face(quadrant) {
+            var _iteratorNormalCompletion5 = true;
+            var _didIteratorError5 = false;
+            var _iteratorError5 = undefined;
+
+            try {
+                for (var _iterator5 = datatypes_1.faces[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+                    var f = _step5.value;
+
+                    if (this.face_meshes.get(f).quadrants.contains(quadrant)) {
+                        return f;
+                    }
+                }
+            } catch (err) {
+                _didIteratorError5 = true;
+                _iteratorError5 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion5 && _iterator5.return) {
+                        _iterator5.return();
+                    }
+                } finally {
+                    if (_didIteratorError5) {
+                        throw _iteratorError5;
+                    }
+                }
+            }
+        }
+    }, {
+        key: "get_dangles",
+        value: function get_dangles() {
+            var _this3 = this;
+
+            var rends = this.get_rends();
+            var fixed_rends = rends.filter(function (x) {
+                return _this3.is_partition_fixed(x);
+            });
+            var dangles = immutable_1.List();
+            var inner_this = this;
+            this.get_box_edges().forEach(function (_ref) {
+                var _dangles;
+
+                var _ref2 = _slicedToArray(_ref, 2),
+                    e1 = _ref2[0],
+                    e2 = _ref2[1];
+
+                var e_2_q_2_f = immutable_1.Map();
+                var _arr2 = [e1, e2];
+
+                var _loop4 = function _loop4() {
+                    var e = _arr2[_i2];
+                    var inner_map = immutable_1.Map();
+                    edge_2_quadrants.get(e).forEach(function (q) {
+                        inner_map = inner_map.set(q, inner_this.get_quadrant_face(q));
+                    });
+                    e_2_q_2_f = e_2_q_2_f.set(e, inner_map);
+                };
+
+                for (var _i2 = 0; _i2 < _arr2.length; _i2++) {
+                    _loop4();
+                }
+                var edge_dangles = immutable_1.List();
+                var _arr3 = [[e1, e2], [e1], [e2]];
+
+                var _loop5 = function _loop5() {
+                    var _inner_this$cut_edges;
+
+                    var es = _arr3[_i3];
+                    var new_cut_edges = (_inner_this$cut_edges = inner_this.cut_edges).push.apply(_inner_this$cut_edges, _toConsumableArray(es));
+                    var new_partitions = get_partitions(new_cut_edges);
+                    if (new_partitions.size != rends.size) {
+                        new_partitions.forEach(function (np) {
+                            if (rends.contains(np)) {
+                                return;
+                            }
+                            if (inner_this.is_partition_fixed(np)) {
+                                return;
+                            }
+                            var any_intersections = false;
+                            fixed_rends.forEach(function (fixed_rend) {
+                                if (np.intersect(fixed_rend).size > 0) {
+                                    any_intersections = true;
+                                }
+                            });
+                            if (!any_intersections) {
+                                return;
+                            }
+                            var any_dangle_matches = false;
+                            edge_dangles.forEach(function (ed) {
+                                if (immutable_1.is(np, ed.partition)) {
+                                    any_dangle_matches = true;
+                                    return;
+                                }
+                            });
+                            if (any_dangle_matches) {
+                                return;
+                            }
+                            var q_2_fs = immutable_1.List();
+                            var _iteratorNormalCompletion6 = true;
+                            var _didIteratorError6 = false;
+                            var _iteratorError6 = undefined;
+
+                            try {
+                                for (var _iterator6 = es[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+                                    var e = _step6.value;
+
+                                    q_2_fs = q_2_fs.push(e_2_q_2_f.get(e));
+                                }
+                            } catch (err) {
+                                _didIteratorError6 = true;
+                                _iteratorError6 = err;
+                            } finally {
+                                try {
+                                    if (!_iteratorNormalCompletion6 && _iterator6.return) {
+                                        _iterator6.return();
+                                    }
+                                } finally {
+                                    if (_didIteratorError6) {
+                                        throw _iteratorError6;
+                                    }
+                                }
+                            }
+
+                            var fixed_fs = immutable_1.List();
+                            var dangle_fs = immutable_1.List();
+                            q_2_fs.forEach(function (q_2_f) {
+                                q_2_f.entrySeq().forEach(function (_ref3) {
+                                    var _ref4 = _slicedToArray(_ref3, 2),
+                                        q = _ref4[0],
+                                        f = _ref4[1];
+
+                                    if (np.contains(q)) {
+                                        dangle_fs = dangle_fs.push(f);
+                                    } else {
+                                        fixed_fs = fixed_fs.push(f);
+                                    }
+                                });
+                            });
+                            if (fixed_fs.toSet().size != 1 || dangle_fs.toSet().size != 1) {
+                                return;
+                            }
+                            edge_dangles = edge_dangles.push(new datatypes_1.Dangle(np, es, fixed_fs.get(0), dangle_fs.get(0)));
+                        });
+                    }
+                };
+
+                for (var _i3 = 0; _i3 < _arr3.length; _i3++) {
+                    _loop5();
+                }
+                dangles = (_dangles = dangles).push.apply(_dangles, _toConsumableArray(edge_dangles.toArray()));
+            });
+            dangles = immutable_1.List(dangles.sortBy(function (x) {
+                return x.partition.size;
+            }));
+            var final_dangles = immutable_1.List();
+            var _iteratorNormalCompletion7 = true;
+            var _didIteratorError7 = false;
+            var _iteratorError7 = undefined;
+
+            try {
+                var _loop6 = function _loop6() {
+                    var i = _step7.value;
+
+                    var p = dangles.get(i).partition;
+                    var any_supersets = false;
+                    dangles.skip(i + 1).forEach(function (d) {
+                        if (p.isSubset(d.partition)) {
+                            any_supersets = true;
+                        }
+                    });
+                    if (!any_supersets) {
+                        final_dangles = final_dangles.push(dangles.get(i));
+                    }
+                };
+
+                for (var _iterator7 = range(dangles.size)[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+                    _loop6();
+                }
+            } catch (err) {
+                _didIteratorError7 = true;
+                _iteratorError7 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion7 && _iterator7.return) {
+                        _iterator7.return();
+                    }
+                } finally {
+                    if (_didIteratorError7) {
+                        throw _iteratorError7;
+                    }
+                }
+            }
+
+            return final_dangles;
+        }
+    }, {
+        key: "get_box_edges",
+        value: function get_box_edges() {
+            var edges = immutable_1.List();
+            var t_b_edge_coords = [[[0, 0], [0, 1], [0, 2]], [[0, 0], [1, 0], [2, 0]], [[2, 0], [2, 1], [2, 2]], [[0, 2], [1, 2], [2, 2]]];
+            var _arr4 = [datatypes_1.Face.t, datatypes_1.Face.b];
+            for (var _i4 = 0; _i4 < _arr4.length; _i4++) {
+                var f = _arr4[_i4];
+                var m = this.face_meshes.get(f).vertices;
+                var _iteratorNormalCompletion8 = true;
+                var _didIteratorError8 = false;
+                var _iteratorError8 = undefined;
+
+                try {
+                    for (var _iterator8 = t_b_edge_coords[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+                        var _step8$value = _slicedToArray(_step8.value, 3),
+                            p1 = _step8$value[0],
+                            p2 = _step8$value[1],
+                            p3 = _step8$value[2];
+
+                        var v1 = m.get(p1);
+                        var v2 = m.get(p2);
+                        var v3 = m.get(p3);
+                        var e1 = void 0;
+                        if (v2 < v1) {
+                            e1 = new datatypes_1.Edge(v2, v1);
+                        } else {
+                            e1 = new datatypes_1.Edge(v1, v2);
+                        }
+                        var e2 = void 0;
+                        if (v3 < v2) {
+                            e2 = new datatypes_1.Edge(v3, v2);
+                        } else {
+                            e2 = new datatypes_1.Edge(v2, v3);
+                        }
+                        edges = edges.push([e1, e2]);
+                    }
+                } catch (err) {
+                    _didIteratorError8 = true;
+                    _iteratorError8 = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion8 && _iterator8.return) {
+                            _iterator8.return();
+                        }
+                    } finally {
+                        if (_didIteratorError8) {
+                            throw _iteratorError8;
+                        }
+                    }
+                }
+            }
+            var _arr5 = [datatypes_1.Face.n, datatypes_1.Face.e, datatypes_1.Face.s, datatypes_1.Face.w];
+            for (var _i5 = 0; _i5 < _arr5.length; _i5++) {
+                var _f = _arr5[_i5];
+                var _m = this.face_meshes.get(_f).vertices;
+                var _v = _m.get([0, 0]);
+                var _v2 = _m.get([0, 1]);
+                var _v3 = _m.get([0, 2]);
+                var _e = void 0;
+                if (_v2 < _v) {
+                    _e = new datatypes_1.Edge(_v2, _v);
+                } else {
+                    _e = new datatypes_1.Edge(_v, _v2);
+                }
+                var _e2 = void 0;
+                if (_v3 < _v2) {
+                    _e2 = new datatypes_1.Edge(_v3, _v2);
+                } else {
+                    _e2 = new datatypes_1.Edge(_v2, _v3);
+                }
+                edges = edges.push([_e, _e2]);
+            }
+            return edges;
+        }
+    }, {
+        key: "rotate_y",
+        value: function rotate_y(degrees) {
+            //validate degrees somehow
+            if (degrees == 0 || degrees == 360) {
+                return this;
+            }
+            var new_faces = rotate_y_faces(this.face_meshes, degrees);
+            if (degrees = 180) {
+                return this.update(undefined, new_faces);
+            } else {
+                var _dimensions = _slicedToArray(this.dimensions, 3),
+                    _x = _dimensions[0],
+                    _y = _dimensions[1],
+                    z = _dimensions[2];
+
+                return this.update([z, _y, _x], new_faces);
+            }
+        }
+    }, {
+        key: "roll",
+        value: function roll(direction) {
+            var _dimensions2 = _slicedToArray(this.dimensions, 3),
+                x = _dimensions2[0],
+                y = _dimensions2[1],
+                z = _dimensions2[2];
+
+            var new_x = void 0,
+                new_y = void 0,
+                new_z = void 0;
+            if (direction == datatypes_1.Direction.n || direction == datatypes_1.Direction.s) {
+                new_x = x;
+                new_y = y;
+                new_z = z;
+            } else {
+                new_x = y;
+                new_y = x;
+                new_z = z;
+            }
+            var new_faces = roll_faces(this.face_meshes, direction);
+            return this.update([new_x, new_y, new_z], new_faces);
+        }
+    }, {
+        key: "description",
+        value: function description() {
+            var face_descr = immutable_1.Map([[datatypes_1.Face.t, 'top'], [datatypes_1.Face.b, 'bottom'], [datatypes_1.Face.n, 'back'], [datatypes_1.Face.e, 'right'], [datatypes_1.Face.s, 'front'], [datatypes_1.Face.w, 'left']]);
+
+            var _dimensions3 = _slicedToArray(this.dimensions, 3),
+                x = _dimensions3[0],
+                y = _dimensions3[1],
+                z = _dimensions3[2];
+
+            var result = "The box's dimensions measure " + x + " by " + y + " by " + z;
+            var rends = this.get_free_rends();
+            var inner_this = this;
+            rends.forEach(function (fr) {
+                var face_membership = inner_this.get_partition_face_membership(fr);
+                var faces_present = [];
+                var _iteratorNormalCompletion9 = true;
+                var _didIteratorError9 = false;
+                var _iteratorError9 = undefined;
+
+                try {
+                    for (var _iterator9 = datatypes_1.faces[Symbol.iterator](), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
+                        var f = _step9.value;
+
+                        if (face_membership.get(f) > 0) {
+                            faces_present.push(f);
+                        }
+                    }
+                } catch (err) {
+                    _didIteratorError9 = true;
+                    _iteratorError9 = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion9 && _iterator9.return) {
+                            _iterator9.return();
+                        }
+                    } finally {
+                        if (_didIteratorError9) {
+                            throw _iteratorError9;
+                        }
+                    }
+                }
+
+                var faces_text = void 0;
+                if (faces_present.length == 1) {
+                    faces_text = face_descr.get(faces_present[0]) + ' face';
+                } else {
+                    faces_text = faces_present.slice(0, -1).map(function (f) {
+                        return face_descr.get(f);
+                    }).join(', ');
+                    faces_text += " and " + face_descr.get(faces_present[faces_present.length - 1]) + " faces";
+                }
+                result += "\nA portion of the box's " + faces_text + " has been rended free; it lies on the floor off to the side.";
+            });
+            var dangles = this.get_dangles();
+            dangles.forEach(function (d) {
+                var face_membership = inner_this.get_partition_face_membership(d.partition);
+                var faces_present = [];
+                var _iteratorNormalCompletion10 = true;
+                var _didIteratorError10 = false;
+                var _iteratorError10 = undefined;
+
+                try {
+                    for (var _iterator10 = datatypes_1.faces[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
+                        var f = _step10.value;
+
+                        if (face_membership.get(f) > 0) {
+                            faces_present.push(f);
+                        }
+                    }
+                } catch (err) {
+                    _didIteratorError10 = true;
+                    _iteratorError10 = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion10 && _iterator10.return) {
+                            _iterator10.return();
+                        }
+                    } finally {
+                        if (_didIteratorError10) {
+                            throw _iteratorError10;
+                        }
+                    }
+                }
+
+                var faces_text = void 0;
+                if (faces_present.length == 1) {
+                    faces_text = face_descr.get(faces_present[0]) + ' face';
+                } else {
+                    faces_text = faces_present.slice(0, -1).map(function (f) {
+                        return face_descr.get(f);
+                    }).join(', ');
+                    faces_text += " and " + face_descr.get(faces_present[faces_present.length - 1]) + " faces";
+                }
+                result += "\nA portion of the box's " + faces_text + " sits on a free hinge; from the " + face_descr.get(d.free_face) + " face it can be swung to the " + face_descr.get(d.fixed_face) + ".";
+            });
+            return result;
+        }
+    }]);
+
+    return BoxMesh;
+}();
+
+exports.BoxMesh = BoxMesh;
+function rotate_y_faces(fs, degrees) {
+    if (degrees == 0 || degrees == 360) {
+        return fs;
+    }
+    var shift = degrees / 90;
+    var face_cycle = [datatypes_1.Face.n, datatypes_1.Face.w, datatypes_1.Face.s, datatypes_1.Face.e, datatypes_1.Face.n, datatypes_1.Face.w, datatypes_1.Face.s, datatypes_1.Face.e];
+    var new_faces = immutable_1.Map();
+    var _arr6 = [datatypes_1.Face.n, datatypes_1.Face.e, datatypes_1.Face.s, datatypes_1.Face.w];
+    for (var _i6 = 0; _i6 < _arr6.length; _i6++) {
+        var f = _arr6[_i6];
+        var ind = face_cycle.indexOf(f);
+        new_faces = new_faces.set(f, fs.get(face_cycle[ind + shift]));
+    }
+    var _arr7 = [datatypes_1.Face.t, datatypes_1.Face.b];
+    for (var _i7 = 0; _i7 < _arr7.length; _i7++) {
+        var _f2 = _arr7[_i7];
+        new_faces = new_faces.set(_f2, fs.get(_f2).rotate(degrees));
+    }
+    return new_faces;
+}
+function roll_faces(fs, direction) {
+    var new_faces = immutable_1.Map();
+    if (direction == datatypes_1.Direction.n) {
+        new_faces = new_faces.withMutations(function (m) {
+            return m.set(datatypes_1.Face.n, fs.get(datatypes_1.Face.t).rotate(180)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.s)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.b)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.n).rotate(180)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.e).rotate(90)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.w).rotate(270));
+        });
+    } else if (direction == datatypes_1.Direction.s) {
+        new_faces = new_faces.withMutations(function (m) {
+            return m.set(datatypes_1.Face.s, fs.get(datatypes_1.Face.t)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.n).rotate(180)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.b)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.s).rotate(180)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.w).rotate(90));
+        });
+    } else if (direction == datatypes_1.Direction.e) {
+        new_faces = new_faces.withMutations(function (m) {
+            return m.set(datatypes_1.Face.e, fs.get(datatypes_1.Face.t).rotate(90)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.w).rotate(90)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.b).rotate(270)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.n).rotate(270)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.s).rotate(90));
+        });
+    } else if (direction == datatypes_1.Direction.w) {
+        new_faces = new_faces.withMutations(function (m) {
+            return m.set(datatypes_1.Face.w, fs.get(datatypes_1.Face.t).rotate(270)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.b).rotate(90)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.w).rotate(90)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.n).rotate(90)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.s).rotate(270));
+        });
+    }
+    return new_faces;
+}
+function test() {
+    var bm = new BoxMesh([2, 3, 4]);
+    var bm2 = bm.cut(datatypes_1.Face.t, [0, 0], [1, 0]).cut(datatypes_1.Face.t, [1, 0], [1, 1]).cut(datatypes_1.Face.t, [1, 1], [0, 1]).cut(datatypes_1.Face.t, [0, 1], [0, 0]);
+    var bm3 = bm2.cut(datatypes_1.Face.t, [0, 1], [0, 2]).cut(datatypes_1.Face.s, [0, 0], [0, 1]).cut(datatypes_1.Face.s, [0, 1], [1, 1]).cut(datatypes_1.Face.s, [1, 1], [1, 0]).cut(datatypes_1.Face.t, [1, 2], [1, 1]);
+    var bm4 = bm.cut(datatypes_1.Face.t, [0, 0], [1, 0]).roll(datatypes_1.Direction.s).cut(datatypes_1.Face.t, [0, 2], [0, 1]).cut(datatypes_1.Face.t, [0, 1], [1, 1]).cut(datatypes_1.Face.t, [1, 1], [1, 2]);
+    var bm5 = bm.cut(datatypes_1.Face.n, [0, 0], [1, 0]).cut(datatypes_1.Face.n, [1, 0], [2, 0]).cut(datatypes_1.Face.n, [2, 0], [2, 1]).cut(datatypes_1.Face.n, [2, 1], [1, 1]).cut(datatypes_1.Face.n, [1, 1], [0, 1]).cut(datatypes_1.Face.n, [1, 1], [1, 0]).cut(datatypes_1.Face.n, [0, 1], [0, 0]);
+    var bm6 = bm.cut(datatypes_1.Face.t, [0, 0], [0, 1]).cut(datatypes_1.Face.t, [0, 1], [1, 1]).cut(datatypes_1.Face.t, [1, 1], [1, 0]);
+    var bm7 = bm2.cut(datatypes_1.Face.t, [0, 1], [0, 2]).cut(datatypes_1.Face.t, [1, 1], [1, 2]);
+    var bm8 = bm.cut(datatypes_1.Face.t, [0, 0], [1, 0]).cut(datatypes_1.Face.t, [1, 0], [2, 0]).cut(datatypes_1.Face.t, [2, 0], [2, 1]).cut(datatypes_1.Face.t, [2, 1], [2, 2]).cut(datatypes_1.Face.t, [0, 2], [0, 1]).cut(datatypes_1.Face.t, [0, 1], [1, 1]).cut(datatypes_1.Face.t, [1, 1], [1, 2]).cut(datatypes_1.Face.s, [1, 0], [1, 1]).cut(datatypes_1.Face.s, [1, 1], [0, 1]).cut(datatypes_1.Face.w, [0, 0], [0, 1]).cut(datatypes_1.Face.w, [0, 1], [1, 1]).cut(datatypes_1.Face.w, [1, 1], [2, 1]);
+    var bms = [bm, bm2, bm3, bm4, bm5, bm6, bm7, bm8];
+    var _iteratorNormalCompletion11 = true;
+    var _didIteratorError11 = false;
+    var _iteratorError11 = undefined;
+
+    try {
+        for (var _iterator11 = range(bms.length)[Symbol.iterator](), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
+            var _i8 = _step11.value;
+
+            var b = bms[_i8];
+            console.log('Box #', _i8 + 1);
+            console.log();
+            console.log(b.description());
+            console.log();
+            console.log();
+        }
+    } catch (err) {
+        _didIteratorError11 = true;
+        _iteratorError11 = err;
+    } finally {
+        try {
+            if (!_iteratorNormalCompletion11 && _iterator11.return) {
+                _iterator11.return();
+            }
+        } finally {
+            if (_didIteratorError11) {
+                throw _iteratorError11;
+            }
+        }
+    }
+}
+exports.test = test;
+test();
 
 },{"./datatypes":3,"immutable":1}],3:[function(require,module,exports){
 "use strict";
@@ -5149,6 +5830,66 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var immutable_1 = require("immutable");
+
+var Edge = function () {
+    function Edge(start, end) {
+        _classCallCheck(this, Edge);
+
+        if (end < start) {
+            this.start = end;
+            this.end = start;
+        } else {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    _createClass(Edge, [{
+        key: "equals",
+        value: function equals(other) {
+            return this.start == other.start && this.end == other.end;
+        }
+    }, {
+        key: "hashCode",
+        value: function hashCode() {
+            return immutable_1.List([this.start, this.end]).hashCode();
+        }
+    }]);
+
+    return Edge;
+}();
+
+exports.Edge = Edge;
+var Face;
+(function (Face) {
+    Face[Face["n"] = 0] = "n";
+    Face[Face["s"] = 1] = "s";
+    Face[Face["e"] = 2] = "e";
+    Face[Face["w"] = 3] = "w";
+    Face[Face["t"] = 4] = "t";
+    Face[Face["b"] = 5] = "b";
+})(Face = exports.Face || (exports.Face = {}));
+exports.faces = [Face.n, Face.s, Face.e, Face.w, Face.t, Face.b];
+var Direction;
+(function (Direction) {
+    Direction[Direction["n"] = 0] = "n";
+    Direction[Direction["s"] = 1] = "s";
+    Direction[Direction["e"] = 2] = "e";
+    Direction[Direction["w"] = 3] = "w";
+})(Direction = exports.Direction || (exports.Direction = {}));
+exports.directions = [Direction.n, Direction.s, Direction.e, Direction.w];
+
+var Dangle = function Dangle(partition, edges, fixed_face, free_face) {
+    _classCallCheck(this, Dangle);
+
+    this.partition = partition;
+    this.edges = edges;
+    this.fixed_face = fixed_face;
+    this.free_face = free_face;
+};
+
+exports.Dangle = Dangle;
 
 var Matrix2 = function () {
     function Matrix2(data) {
@@ -5174,9 +5915,9 @@ var Matrix2 = function () {
             var dim_y = this.data.length;
             var m = this;
             for (var i = 0; i < n_rotations; i++) {
-                var new_data = void 0;
+                var new_data = [];
                 for (var y = 0; y < dim_y; y++) {
-                    var row = void 0;
+                    var row = [];
                     for (var x = 0; x < dim_x; x++) {
                         row.push(m.get([y, dim_x - 1 - x]));
                     }
@@ -5198,7 +5939,7 @@ var Matrix2 = function () {
                 for (var _iterator = this.data[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
                     var row = _step.value;
 
-                    if (value in row) {
+                    if (row.includes(value)) {
                         found = true;
                         break;
                     }
@@ -5237,20 +5978,42 @@ var TapeEdge;
     TapeEdge[TapeEdge["taped"] = 1] = "taped";
     TapeEdge[TapeEdge["cut"] = 2] = "cut";
 })(TapeEdge = exports.TapeEdge || (exports.TapeEdge = {}));
-function edge_state_cut(es) {
-    var new_tape = void 0;
-    if (es.tape == TapeEdge.taped) {
-        new_tape = TapeEdge.cut;
-    } else {
-        new_tape = es.tape;
+
+var EdgeState = function () {
+    function EdgeState(cardboard, tape) {
+        _classCallCheck(this, EdgeState);
+
+        this.cardboard = cardboard;
+        this.tape = tape;
     }
-    return { cardboard: CardboardEdge.cut, tape: new_tape };
-}
-exports.edge_state_cut = edge_state_cut;
-function edge_state_apply_tape(es) {
-    return { cardboard: es.cardboard, tape: TapeEdge.taped };
-}
-exports.edge_state_apply_tape = edge_state_apply_tape;
+
+    _createClass(EdgeState, [{
+        key: "cut",
+        value: function cut() {
+            var new_tape = void 0;
+            if (this.tape == TapeEdge.taped) {
+                new_tape = TapeEdge.cut;
+            } else {
+                new_tape = this.tape;
+            }
+            return new EdgeState(CardboardEdge.cut, new_tape);
+        }
+    }, {
+        key: "apply_tape",
+        value: function apply_tape() {
+            return new EdgeState(this.cardboard, TapeEdge.taped);
+        }
+    }]);
+
+    return EdgeState;
+}();
+
+exports.EdgeState = EdgeState;
+var EdgeOperation;
+(function (EdgeOperation) {
+    EdgeOperation[EdgeOperation["cut"] = 0] = "cut";
+    EdgeOperation[EdgeOperation["tape"] = 1] = "tape";
+})(EdgeOperation = exports.EdgeOperation || (exports.EdgeOperation = {}));
 var RendState;
 (function (RendState) {
     RendState[RendState["closed"] = 0] = "closed";
@@ -5271,16 +6034,6 @@ var Weight;
     Weight[Weight["heavy"] = 4] = "heavy";
     Weight[Weight["very_heavy"] = 5] = "very_heavy";
 })(Weight = exports.Weight || (exports.Weight = {}));
-var Face;
-(function (Face) {
-    Face[Face["n"] = 0] = "n";
-    Face[Face["s"] = 1] = "s";
-    Face[Face["e"] = 2] = "e";
-    Face[Face["w"] = 3] = "w";
-    Face[Face["t"] = 4] = "t";
-    Face[Face["b"] = 5] = "b";
-})(Face = exports.Face || (exports.Face = {}));
-exports.faces = [Face.n, Face.s, Face.e, Face.w, Face.t, Face.b];
 
 var Item = function () {
     function Item() {
@@ -5299,29 +6052,6 @@ var Item = function () {
 
 exports.Item = Item;
 
-},{}],4:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-function sayHello(name) {
-    return "Hellosgewrg from " + name;
-}
-exports.sayHello = sayHello;
-
-},{}],5:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-var greet_1 = require("./greet");
-var immutable_1 = require("immutable");
-function showHello(divName, name) {
-    var elt = document.getElementById(divName);
-    var map1;
-    map1 = immutable_1.Map({ a: 1, b: 2, c: 3 });
-    elt.innerText = greet_1.sayHello(name) + map1.get('b');
-}
-showHello("greeting", "TypeScript");
-
-},{"./greet":4,"immutable":1}]},{},[5,3,2])
+},{"immutable":1}]},{},[2,3])
 
 //# sourceMappingURL=bundle.js.map

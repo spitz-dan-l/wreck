@@ -1,13 +1,55 @@
-import {List, Set, Collection} from 'immutable';
+import {List, Set, Collection, } from 'immutable';
 
 export type Partition = Set<number>;
-export type Edge = [number, number];
+
+export class Edge {
+    readonly start: number;
+    readonly end: number;
+
+    constructor(start, end){
+        if (end < start){
+            this.start = end;
+            this.end = start;
+        } else {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    equals(other:Edge){
+        return (this.start == other.start && this.end == other.end);
+    }
+
+    hashCode() {
+        return List<number>([this.start, this.end]).hashCode();
+    }
+}
+
+export enum Face {
+    n = 0,
+    s = 1,
+    e = 2,
+    w = 3,
+    t = 4,
+    b = 5
+}
+
+export let faces = [Face.n, Face.s, Face.e, Face.w, Face.t, Face.b];
+
+export enum Direction {
+    n = 0,
+    s = 1,
+    e = 2,
+    w = 3
+}
+
+export let directions = [Direction.n, Direction.s, Direction.e, Direction.w];
 
 export class Dangle {
     readonly partition: Partition;
     readonly edges: List<Edge>;
-    readonly fixed_face: string;
-    readonly free_face: string;
+    readonly fixed_face: Face;
+    readonly free_face: Face;
 
     constructor(partition, edges, fixed_face, free_face) {
         this.partition = partition;
@@ -43,9 +85,9 @@ export class Matrix2 {
 
         let m: Matrix2 = this;
         for (let i = 0; i < n_rotations; i++){
-            let new_data: number[][];
+            let new_data: number[][] = [];
             for (let y = 0; y < dim_y; y++){
-                let row: number[];
+                let row: number[] = [];
                 for (let x = 0; x < dim_x; x++){
                     row.push(m.get([y, dim_x - 1 - x]));
                 }
@@ -59,7 +101,7 @@ export class Matrix2 {
     contains(value: number): boolean{
         let found = false;
         for (let row of this.data){
-            if (value in row){
+            if (row.includes(value)){
                 found = true;
                 break;
             }
@@ -130,26 +172,6 @@ export enum Weight {
     heavy = 4,
     very_heavy = 5
 }
-
-export enum Face {
-    n = 0,
-    s = 1,
-    e = 2,
-    w = 3,
-    t = 4,
-    b = 5
-}
-
-export let faces = [Face.n, Face.s, Face.e, Face.w, Face.t, Face.b];
-
-export enum Direction {
-    n = 0,
-    s = 1,
-    e = 2,
-    w = 3
-}
-
-export let directions = [Direction.n, Direction.s, Direction.e, Direction.w];
 
 export abstract class Item {
     abstract weight(): Weight;

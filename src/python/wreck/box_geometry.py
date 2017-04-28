@@ -501,7 +501,7 @@ class BoxMesh:
                 faces_text = ', '.join(face_descr[f] for f in faces[:-1]) + ' and {} faces'.format(face_descr[faces[-1]])
 
             result += "\nA portion of the box's {} sits on a free hinge; from the {} face it can be swung to the {}.".format(
-                faces_text, face_descr[d['free_face']], face_descr[d['fixed_face']])
+                faces_text, face_descr[d.free_face], face_descr[d.fixed_face])
 
         return result
 

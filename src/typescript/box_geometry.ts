@@ -61,7 +61,12 @@ function build_edge_quadrant_mappings(): [Map<number, List<Edge>>, Map<Edge, Lis
             let q_edges = get_quadrant_edges(vs, x, y);
             quadrant_2_edges = quadrant_2_edges.set(qs.get([x, y]), q_edges);
             q_edges.forEach(function (qe) {
-                edge_2_quadrants = edge_2_quadrants.update(qe, (xs) => xs.push(qs.get([x, y])));
+                let q = qs.get([x, y]);
+                if (edge_2_quadrants.has(qe)) {
+                    edge_2_quadrants = edge_2_quadrants.update(qe, (xs) => xs.push(q));
+                } else {
+                    edge_2_quadrants = edge_2_quadrants.set(qe, List<number>([q]));
+                }
             });
         }
     }
@@ -81,9 +86,9 @@ function get_quadrant_edges(m: Matrix2, x: number, y: number): List<Edge> {
         let e1 = m.get([x+x1, y+y1]);
         let e2 = m.get([x+x2, y+y2]);
         if (e2 < e1){
-            edges = edges.push([e2, e1]);
+            edges = edges.push(new Edge(e2, e1));
         } else {
-            edges = edges.push([e1, e2]);
+            edges = edges.push(new Edge(e1, e2));
         }
     }
     return edges;
@@ -113,7 +118,7 @@ function get_quadrant_partition(quadrant: number, cut_edges: List<Edge>) {
 }
 
 function range(x: number){
-    let arr: number[];
+    let arr: number[] = [];
     for (let i = 0; i < x; i++){
          arr.push(i);
     } 
@@ -126,13 +131,13 @@ function get_partitions(cut_edges: List<Edge>){
     while (quadrants.size > 0){
         let q = quadrants.first(); quadrants = OrderedSet(quadrants.rest());
         let partition = get_quadrant_partition(q, cut_edges);
-        partitions.push(partition);
+        partitions = partitions.push(partition);
         quadrants = quadrants.subtract(partition);
     }
     return partitions;
 }
 
-class FaceMesh {
+export class FaceMesh {
     readonly vertices: Matrix2;
     readonly quadrants: Matrix2;
 
@@ -146,7 +151,7 @@ class FaceMesh {
     }
 }
 
-class BoxMesh{
+export class BoxMesh{
     readonly dimensions: [number, number, number];
     readonly face_meshes: Map<Face, FaceMesh>;
     readonly cut_edges: List<Edge>;
@@ -205,11 +210,11 @@ class BoxMesh{
         let fs = f.get(start);
         let fe = f.get(end);
 
-        let new_edge;
+        let new_edge: Edge;
         if (fe < fs){
-            new_edge = [fe, fs];
+            new_edge = new Edge(fe, fs);
         } else {
-            new_edge = [fs, fe];
+            new_edge = new Edge(fs, fe);
         }
 
         let new_cut_edges = this.cut_edges;
@@ -229,7 +234,7 @@ class BoxMesh{
     }
 
     get_free_rends() {
-        return this.get_rends().filter(x => this.is_partition_fixed(x));
+        return this.get_rends().filter(x => !this.is_partition_fixed(x));
     }
 
     is_partition_fixed(partition: Set<number>) {
@@ -276,7 +281,7 @@ class BoxMesh{
                 edge_2_quadrants.get(e).forEach(function (q) {
                     inner_map = inner_map.set(q, inner_this.get_quadrant_face(q));
                 });
-                e_2_q_2_f.set(e, inner_map);
+                e_2_q_2_f = e_2_q_2_f.set(e, inner_map);
             }
 
             let edge_dangles = List<Dangle>();
@@ -387,16 +392,16 @@ class BoxMesh{
 
                 let e1: Edge;
                 if (v2 < v1) {
-                    e1 = [v2, v1];
+                    e1 = new Edge(v2, v1);
                 } else {
-                    e1 = [v1, v2];
+                    e1 = new Edge(v1, v2);
                 }
 
                 let e2: Edge;
                 if (v3 < v2) {
-                    e2 = [v3, v2];
+                    e2 = new Edge(v3, v2);
                 } else {
-                    e2 = [v2, v3];
+                    e2 = new Edge(v2, v3);
                 }
 
                 edges = edges.push([e1, e2]);
@@ -412,16 +417,16 @@ class BoxMesh{
 
             let e1: Edge;
             if (v2 < v1) {
-                e1 = [v2, v1];
+                e1 = new Edge(v2, v1);
             } else {
-                e1 = [v1, v2];
+                e1 = new Edge(v1, v2);
             }
 
             let e2: Edge;
             if (v3 < v2) {
-                e2 = [v3, v2]);
+                e2 = new Edge(v3, v2);
             } else {
-                e2 = [v2, v3];
+                e2 = new Edge(v2, v3);
             }
 
             edges = edges.push([e1, e2]);
@@ -477,9 +482,10 @@ class BoxMesh{
 
         let rends = this.get_free_rends();
         let inner_this = this;
+
         rends.forEach(function (fr) {
             let face_membership = inner_this.get_partition_face_membership(fr);
-            let faces_present = Face[];
+            let faces_present: Face[] =[];
             for (let f of faces){
                 if (face_membership.get(f) > 0) {
                     faces_present.push(f);
@@ -490,9 +496,36 @@ class BoxMesh{
             if (faces_present.length == 1) {
                 faces_text = face_descr.get(faces_present[0]) + ' face';
             } else {
-                faces_text = //join blarrrrgh
+                faces_text = faces_present.slice(0, -1).map(f => face_descr.get(f)).join(', ');
+                faces_text += ` and ${face_descr.get(faces_present[faces_present.length-1])} faces`;
             }
+
+            result += `\nA portion of the box's ${faces_text} has been rended free; it lies on the floor off to the side.`;
         });
+
+        let dangles = this.get_dangles();
+
+        dangles.forEach(function (d) {
+            let face_membership = inner_this.get_partition_face_membership(d.partition);
+            let faces_present: Face[] = [];
+            for (let f of faces){
+                if (face_membership.get(f) > 0) {
+                    faces_present.push(f);
+                }
+            }
+
+            let faces_text: string;
+            if (faces_present.length == 1) {
+                faces_text = face_descr.get(faces_present[0]) + ' face';
+            } else {
+                faces_text = faces_present.slice(0, -1).map(f => face_descr.get(f)).join(', ');
+                faces_text += ` and ${face_descr.get(faces_present[faces_present.length-1])} faces`;
+            }
+
+            result += `\nA portion of the box's ${faces_text} sits on a free hinge; from the ${face_descr.get(d.free_face)} face it can be swung to the ${face_descr.get(d.fixed_face)}.`;
+        });
+
+        return result;
     }
 }
 
@@ -561,3 +594,36 @@ function roll_faces(fs: Map<Face, FaceMesh>, direction: Direction){
 
     return new_faces;
 }
+
+
+export function test(){
+    let bm = new BoxMesh([2,3,4]);
+
+    let bm2 = bm.cut(Face.t, [0,0], [1,0]).cut(Face.t, [1,0], [1,1]).cut(Face.t, [1,1], [0,1]).cut(Face.t, [0,1], [0,0]);
+    let bm3 = bm2.cut(Face.t, [0,1], [0,2]).cut(Face.s, [0, 0], [0, 1]).cut(Face.s, [0,1], [1,1]).cut(Face.s, [1,1], [1,0]).cut(Face.t, [1, 2], [1,1])
+
+    let bm4 = bm.cut(Face.t, [0,0], [1,0]).roll(Direction.s).cut(Face.t, [0,2], [0,1]).cut(Face.t, [0,1], [1,1]).cut(Face.t, [1,1], [1,2]);
+
+    let bm5 = bm.cut(Face.n, [0,0], [1,0]).cut(Face.n, [1,0], [2,0]).cut(Face.n, [2,0], [2,1]).cut(Face.n, [2,1], [1,1]).cut(Face.n, [1,1], [0,1]).cut(Face.n, [1,1], [1, 0]).cut(Face.n, [0,1], [0,0]);
+
+    let bm6 = bm.cut(Face.t, [0,0], [0,1]).cut(Face.t, [0,1], [1,1]).cut(Face.t, [1,1], [1,0]);
+    let bm7 = bm2.cut(Face.t, [0,1], [0,2]).cut(Face.t, [1,1], [1,2]);
+
+    let bm8 = (bm.cut(Face.t, [0,0], [1,0]).cut(Face.t, [1,0], [2,0]).cut(Face.t, [2,0], [2,1]).cut(Face.t, [2,1], [2,2])
+             .cut(Face.t, [0,2], [0,1]).cut(Face.t, [0,1], [1,1]).cut(Face.t, [1,1], [1,2])
+             .cut(Face.s, [1,0], [1,1]).cut(Face.s, [1,1], [0,1])
+             .cut(Face.w, [0,0], [0,1]).cut(Face.w, [0,1], [1,1]).cut(Face.w, [1,1], [2,1]));
+
+    let bms: BoxMesh[] = [bm, bm2, bm3, bm4, bm5, bm6, bm7, bm8];
+    for (let i of range(bms.length)) {
+        let b = bms[i];
+
+        console.log('Box #', i+1);
+        console.log();
+        console.log(b.description());
+        console.log();
+        console.log();
+    }
+}
+
+test();
