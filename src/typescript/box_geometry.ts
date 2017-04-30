@@ -1,51 +1,51 @@
-import {Matrix2, Dangle, Face, Edge, Partition, faces, EdgeOperation, Point2, Direction} from './datatypes';
+import {Matrix2, make_matrix2, Dangle, Face, Edge, Partition, faces, EdgeOperation, Point2, Direction} from './datatypes';
 
 import {Map, List, Set, OrderedSet, is} from 'immutable';
 
 let face_vertices = Map<Face, Matrix2>([
-    [Face.t, new Matrix2([
+    [Face.t, make_matrix2([
         [0,  1,  2 ],
         [9,  25, 15],
         [16, 24, 22]])],
-    [Face.b, new Matrix2([
+    [Face.b, make_matrix2([
         [20, 19, 18],
         [13, 12, 11],
         [8,  7,  6 ]])],
-    [Face.n, new Matrix2([
+    [Face.n, make_matrix2([
         [2,  1,  0 ],
         [5,  4,  3 ],
         [8,  7,  6 ]])],
-    [Face.e, new Matrix2([
+    [Face.e, make_matrix2([
         [22, 15, 2 ],
         [21, 14, 5 ],
         [20, 13, 8 ]])],
-    [Face.s, new Matrix2([
+    [Face.s, make_matrix2([
         [16, 24, 22],
         [17, 23, 21],
         [18, 19, 20]])],
-    [Face.w, new Matrix2([
+    [Face.w, make_matrix2([
         [0,  9,  16],
         [3,  10, 17],
         [6,  11, 18]])]
 ]);
 
 let face_quadrants = Map<Face, Matrix2>([
-    [Face.t, new Matrix2([
+    [Face.t, make_matrix2([
         [0,  1 ],
         [2,  3 ]])],
-    [Face.b, new Matrix2([
+    [Face.b, make_matrix2([
         [4,  5 ],
         [6,  7 ]])],
-    [Face.n, new Matrix2([
+    [Face.n, make_matrix2([
         [8,  9 ],
         [10, 11]])],
-    [Face.e, new Matrix2([
+    [Face.e, make_matrix2([
         [12, 13],
         [14, 15]])],
-    [Face.s, new Matrix2([
+    [Face.s, make_matrix2([
         [16, 17],
         [18, 19]])],
-    [Face.w, new Matrix2([
+    [Face.w, make_matrix2([
         [20, 21],
         [22, 23]])],
 ]);
@@ -59,9 +59,9 @@ function build_edge_quadrant_mappings(): [Map<number, List<Edge>>, Map<Edge, Lis
         let qs = face_quadrants.get(f);
         for (let [x, y] of [[0,0], [1,0], [0,1], [1,1]]){
             let q_edges = get_quadrant_edges(vs, x, y);
-            quadrant_2_edges = quadrant_2_edges.set(qs.get([x, y]), q_edges);
+            quadrant_2_edges = quadrant_2_edges.set(qs.get(x, y), q_edges);
             q_edges.forEach(function (qe) {
-                let q = qs.get([x, y]);
+                let q = qs.get(x, y);
                 if (edge_2_quadrants.has(qe)) {
                     edge_2_quadrants = edge_2_quadrants.update(qe, (xs) => xs.push(q));
                 } else {
@@ -83,8 +83,8 @@ function get_quadrant_edges(m: Matrix2, x: number, y: number): List<Edge> {
     ];
     let edges = List<Edge>();
     for (let [x1, y1, x2, y2] of offsets){
-        let e1 = m.get([x+x1, y+y1]);
-        let e2 = m.get([x+x2, y+y2]);
+        let e1 = m.get(x+x1, y+y1);
+        let e2 = m.get(x+x2, y+y2);
         if (e2 < e1){
             edges = edges.push(new Edge(e2, e1));
         } else {
@@ -97,8 +97,8 @@ function get_quadrant_edges(m: Matrix2, x: number, y: number): List<Edge> {
 let [quadrant_2_edges, edge_2_quadrants] = build_edge_quadrant_mappings();
 
 function get_quadrant_partition(quadrant: number, cut_edges: List<Edge>) {
-    let current_partition = Set<number>([quadrant]);
-    let horizon = List<Edge>(quadrant_2_edges.get(quadrant));
+    let current_partition = Set<number>([quadrant]).asMutable();
+    let horizon = List<Edge>(quadrant_2_edges.get(quadrant)).asMutable();
 
     while (horizon.size > 0){
         let e = horizon.first(); horizon = horizon.shift();
@@ -109,12 +109,12 @@ function get_quadrant_partition(quadrant: number, cut_edges: List<Edge>) {
         let new_qs = next_qs.subtract(current_partition);
         if (new_qs.size > 0) {
             new_qs.forEach(function (q){
-                horizon = horizon.push(...quadrant_2_edges.get(q).toArray());
-                current_partition = current_partition.add(q);
+                horizon.push(...quadrant_2_edges.get(q).toArray());
+                current_partition.add(q);
             });
         }
     }
-    return current_partition;
+    return current_partition.asImmutable();
 }
 
 function range(x: number){
@@ -126,15 +126,15 @@ function range(x: number){
 }
 
 function get_partitions(cut_edges: List<Edge>){
-    let quadrants = OrderedSet<number>(range(24));
-    let partitions = List<Partition>();
+    let partitions = List<Partition>().asMutable();
+    let quadrants = Set<number>(range(24)).asMutable();
     while (quadrants.size > 0){
-        let q = quadrants.first(); quadrants = OrderedSet(quadrants.rest());
+        let q = quadrants.first(); quadrants.remove(q);
         let partition = get_quadrant_partition(q, cut_edges);
-        partitions = partitions.push(partition);
-        quadrants = quadrants.subtract(partition);
+        partitions.push(partition);
+        quadrants.subtract(partition);
     }
-    return partitions;
+    return partitions.asImmutable();
 }
 
 export class FaceMesh {
@@ -159,7 +159,7 @@ export class BoxMesh{
     constructor(dimensions: [number, number, number], face_meshes?: Map<Face, FaceMesh>, cut_edges?: List<Edge>){
         this.dimensions = dimensions;
         
-        if (!face_meshes) {
+        if (face_meshes === undefined) {
             face_meshes = Map<Face, FaceMesh>();
             for (let f of faces){
                 face_meshes = face_meshes.set(f,
@@ -168,22 +168,22 @@ export class BoxMesh{
         }
         this.face_meshes = face_meshes;
 
-        if (!cut_edges){
+        if (cut_edges === undefined){
             cut_edges = List<Edge>();
         }
         this.cut_edges = cut_edges;
     }
 
     update(dimensions?: [number, number, number], face_meshes?: Map<Face, FaceMesh>, cut_edges?: List<Edge>){
-        if (!dimensions){
+        if (dimensions === undefined){
             dimensions = this.dimensions;
         }
 
-        if (!face_meshes){
+        if (face_meshes === undefined){
             face_meshes = this.face_meshes;
         }
 
-        if (!cut_edges){
+        if (cut_edges === undefined){
             cut_edges = this.cut_edges;
         }
 
@@ -207,15 +207,10 @@ export class BoxMesh{
         }
 
         let f = this.face_meshes.get(face).vertices;
-        let fs = f.get(start);
-        let fe = f.get(end);
+        let fs = f.get(x1, y1);
+        let fe = f.get(x2, y2);
 
-        let new_edge: Edge;
-        if (fe < fs){
-            new_edge = new Edge(fe, fs);
-        } else {
-            new_edge = new Edge(fs, fe);
-        }
+        let new_edge = new Edge(fs, fe);
 
         let new_cut_edges = this.cut_edges;
         if (operation == EdgeOperation.cut && !new_cut_edges.contains(new_edge)) {
@@ -243,8 +238,7 @@ export class BoxMesh{
     }
 
     get_partition_face_membership(partition) {
-        let face_membership = Map<Face, number>();
-
+        let face_membership = Map<Face, number>().asMutable();
         for (let f of faces) {
             let total = 0;
             let quadrants = this.face_meshes.get(f).quadrants;
@@ -253,9 +247,9 @@ export class BoxMesh{
                     total += 1;
                 }
             });
-            face_membership = face_membership.set(f, total);
+            face_membership.set(f, total);
         }
-        return face_membership;
+        return face_membership.asImmutable();
     }
 
     get_quadrant_face(quadrant: number){
@@ -270,21 +264,22 @@ export class BoxMesh{
         let rends = this.get_rends();
         let fixed_rends = rends.filter(x => this.is_partition_fixed(x));
 
-        let dangles = List<Dangle>();
+        let dangles = List<Dangle>().asMutable();
         let inner_this = this;
 
         this.get_box_edges().forEach(function ([e1, e2]) {
-            let e_2_q_2_f = Map<Edge, Map<number, Face>>();
-
+            let e_2_q_2_f = Map<Edge, Map<number, Face>>().asMutable();
             for (let e of [e1, e2]){ //initialize e_2_q_2_f
-                let inner_map = Map<number, Face>();
+                let inner_map = Map<number, Face>().asMutable();
                 edge_2_quadrants.get(e).forEach(function (q) {
-                    inner_map = inner_map.set(q, inner_this.get_quadrant_face(q));
+                    inner_map.set(q, inner_this.get_quadrant_face(q));
                 });
-                e_2_q_2_f = e_2_q_2_f.set(e, inner_map);
+                 inner_map = inner_map.asImmutable()
+                e_2_q_2_f.set(e, inner_map);
             }
+            e_2_q_2_f = e_2_q_2_f.asImmutable();
 
-            let edge_dangles = List<Dangle>();
+            let edge_dangles = List<Dangle>().asMutable();
 
             for (let es of [[e1, e2], [e1], [e2]]) {
                 let new_cut_edges = inner_this.cut_edges.push(...es);
@@ -322,13 +317,14 @@ export class BoxMesh{
                             return;
                         }
 
-                        let q_2_fs = List<Map<number, Face>>();
+                        let q_2_fs = List<Map<number, Face>>().asMutable();
                         for (let e of es) {
-                            q_2_fs = q_2_fs.push(e_2_q_2_f.get(e));
+                            q_2_fs.push(e_2_q_2_f.get(e));
                         }
+                        q_2_fs = q_2_fs.asImmutable();
 
-                        let fixed_fs = List<Face>();
-                        let dangle_fs = List<Face>();
+                        let fixed_fs = List<Face>().asMutable();
+                        let dangle_fs = List<Face>().asMutable();
 
                         q_2_fs.forEach(function (q_2_f) {
                             q_2_f.entrySeq().forEach(function ([q, f]) {
@@ -339,23 +335,26 @@ export class BoxMesh{
                                 }
                             });
                         });
+                        fixed_fs = fixed_fs.asImmutable();
+                        dangle_fs = dangle_fs.asImmutable();
 
                         if (fixed_fs.toSet().size != 1 || dangle_fs.toSet().size != 1) {
                             return;
                         }
 
-                        edge_dangles = edge_dangles.push(new Dangle(
+                        edge_dangles.push(new Dangle(
                             np, es, fixed_fs.get(0), dangle_fs.get(0)));
                     });
                 }
             }
-            dangles = dangles.push(...edge_dangles.toArray());
+            edge_dangles = edge_dangles.asImmutable();
+            dangles.push(...edge_dangles.toArray());
         });
         dangles = List<Dangle>(dangles.sortBy(x => x.partition.size));
 
-        let final_dangles = List<Dangle>();
+        let final_dangles = List<Dangle>().asMutable();
 
-        for (let i of range(dangles.size)) {
+        for (let i = 0; i < dangles.size; i++) {
             let p = dangles.get(i).partition;
 
             let any_supersets = false;
@@ -365,9 +364,10 @@ export class BoxMesh{
                 }
             })
             if (!any_supersets) {
-                final_dangles = final_dangles.push(dangles.get(i));
+                final_dangles.push(dangles.get(i));
             }
         }
+        final_dangles = final_dangles.asImmutable();
 
         return final_dangles;
     }
@@ -385,24 +385,14 @@ export class BoxMesh{
         for (let f of [Face.t, Face.b]) {
             let m = this.face_meshes.get(f).vertices;
 
-            for (let [p1, p2, p3] of t_b_edge_coords) {
-                let v1 = m.get(p1);
-                let v2 = m.get(p2);
-                let v3 = m.get(p3);
+            for (let [[p1x, p1y], [p2x, p2y], [p3x, p3y]] of t_b_edge_coords) {
+                let v1 = m.get(p1x, p1y);
+                let v2 = m.get(p2x, p2y);
+                let v3 = m.get(p3x, p3y);
 
-                let e1: Edge;
-                if (v2 < v1) {
-                    e1 = new Edge(v2, v1);
-                } else {
-                    e1 = new Edge(v1, v2);
-                }
+                let e1 = new Edge(v1, v2);
 
-                let e2: Edge;
-                if (v3 < v2) {
-                    e2 = new Edge(v3, v2);
-                } else {
-                    e2 = new Edge(v2, v3);
-                }
+                let e2 = new Edge(v2, v3);
 
                 edges = edges.push([e1, e2]);
             }
@@ -411,23 +401,13 @@ export class BoxMesh{
         for (let f of [Face.n, Face.e, Face.s, Face.w]) {
             let m = this.face_meshes.get(f).vertices;
 
-            let v1 = m.get([0,0]);
-            let v2 = m.get([0,1]);
-            let v3 = m.get([0,2]);
+            let v1 = m.get(0,0);
+            let v2 = m.get(0,1);
+            let v3 = m.get(0,2);
 
-            let e1: Edge;
-            if (v2 < v1) {
-                e1 = new Edge(v2, v1);
-            } else {
-                e1 = new Edge(v1, v2);
-            }
+            let e1 = new Edge(v1, v2);
 
-            let e2: Edge;
-            if (v3 < v2) {
-                e2 = new Edge(v3, v2);
-            } else {
-                e2 = new Edge(v2, v3);
-            }
+            let e2 = new Edge(v2, v3);
 
             edges = edges.push([e1, e2]);
 
@@ -552,47 +532,43 @@ function rotate_y_faces(fs: Map<Face, FaceMesh>, degrees) {
 }
 
 function roll_faces(fs: Map<Face, FaceMesh>, direction: Direction){
-    let new_faces = Map<Face, FaceMesh>();
+    let new_faces = Map<Face, FaceMesh>().asMutable();
 
     if (direction == Direction.n) {
-        new_faces = new_faces.withMutations(m => m.set(
+        new_faces.set(
             Face.n, fs.get(Face.t).rotate(180)).set(
             Face.t, fs.get(Face.s)).set(
             Face.s, fs.get(Face.b)).set(
             Face.b, fs.get(Face.n).rotate(180)).set(
             Face.e, fs.get(Face.e).rotate(90)).set(
-            Face.w, fs.get(Face.w).rotate(270))
-        );
+            Face.w, fs.get(Face.w).rotate(270));
     } else if (direction == Direction.s) {
-        new_faces = new_faces.withMutations(m => m.set(
+        new_faces.set(
             Face.s, fs.get(Face.t)).set(
             Face.t, fs.get(Face.n).rotate(180)).set(
             Face.n, fs.get(Face.b)).set(
             Face.b, fs.get(Face.s).rotate(180)).set(
             Face.e, fs.get(Face.e).rotate(270)).set(
-            Face.w, fs.get(Face.w).rotate(90))
-        );
+            Face.w, fs.get(Face.w).rotate(90));
     } else if (direction == Direction.e) {
-        new_faces = new_faces.withMutations(m => m.set(
+        new_faces.set(
             Face.e, fs.get(Face.t).rotate(90)).set(
             Face.t, fs.get(Face.w).rotate(90)).set(
             Face.w, fs.get(Face.b).rotate(270)).set(
             Face.b, fs.get(Face.e).rotate(270)).set(
             Face.n, fs.get(Face.n).rotate(270)).set(
-            Face.s, fs.get(Face.s).rotate(90))
-        );
+            Face.s, fs.get(Face.s).rotate(90));
     } else if (direction == Direction.w) {
-        new_faces = new_faces.withMutations(m => m.set(
+        new_faces.set(
             Face.w, fs.get(Face.t).rotate(270)).set(
             Face.t, fs.get(Face.e).rotate(270)).set(
             Face.e, fs.get(Face.b).rotate(90)).set(
             Face.b, fs.get(Face.w).rotate(90)).set(
             Face.n, fs.get(Face.n).rotate(90)).set(
-            Face.s, fs.get(Face.s).rotate(270))
-        );
+            Face.s, fs.get(Face.s).rotate(270));
     }
 
-    return new_faces;
+    return new_faces.asImmutable();
 }
 
 
@@ -615,7 +591,7 @@ export function test(){
              .cut(Face.w, [0,0], [0,1]).cut(Face.w, [0,1], [1,1]).cut(Face.w, [1,1], [2,1]));
 
     let bms: BoxMesh[] = [bm, bm2, bm3, bm4, bm5, bm6, bm7, bm8];
-    for (let i of range(bms.length)) {
+    for (let i = 0; i < bms.length; i++) {
         let b = bms[i];
 
         console.log('Box #', i+1);

@@ -4992,8 +4992,8 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 Object.defineProperty(exports, "__esModule", { value: true });
 var datatypes_1 = require("./datatypes");
 var immutable_1 = require("immutable");
-var face_vertices = immutable_1.Map([[datatypes_1.Face.t, new datatypes_1.Matrix2([[0, 1, 2], [9, 25, 15], [16, 24, 22]])], [datatypes_1.Face.b, new datatypes_1.Matrix2([[20, 19, 18], [13, 12, 11], [8, 7, 6]])], [datatypes_1.Face.n, new datatypes_1.Matrix2([[2, 1, 0], [5, 4, 3], [8, 7, 6]])], [datatypes_1.Face.e, new datatypes_1.Matrix2([[22, 15, 2], [21, 14, 5], [20, 13, 8]])], [datatypes_1.Face.s, new datatypes_1.Matrix2([[16, 24, 22], [17, 23, 21], [18, 19, 20]])], [datatypes_1.Face.w, new datatypes_1.Matrix2([[0, 9, 16], [3, 10, 17], [6, 11, 18]])]]);
-var face_quadrants = immutable_1.Map([[datatypes_1.Face.t, new datatypes_1.Matrix2([[0, 1], [2, 3]])], [datatypes_1.Face.b, new datatypes_1.Matrix2([[4, 5], [6, 7]])], [datatypes_1.Face.n, new datatypes_1.Matrix2([[8, 9], [10, 11]])], [datatypes_1.Face.e, new datatypes_1.Matrix2([[12, 13], [14, 15]])], [datatypes_1.Face.s, new datatypes_1.Matrix2([[16, 17], [18, 19]])], [datatypes_1.Face.w, new datatypes_1.Matrix2([[20, 21], [22, 23]])]]);
+var face_vertices = immutable_1.Map([[datatypes_1.Face.t, datatypes_1.make_matrix2([[0, 1, 2], [9, 25, 15], [16, 24, 22]])], [datatypes_1.Face.b, datatypes_1.make_matrix2([[20, 19, 18], [13, 12, 11], [8, 7, 6]])], [datatypes_1.Face.n, datatypes_1.make_matrix2([[2, 1, 0], [5, 4, 3], [8, 7, 6]])], [datatypes_1.Face.e, datatypes_1.make_matrix2([[22, 15, 2], [21, 14, 5], [20, 13, 8]])], [datatypes_1.Face.s, datatypes_1.make_matrix2([[16, 24, 22], [17, 23, 21], [18, 19, 20]])], [datatypes_1.Face.w, datatypes_1.make_matrix2([[0, 9, 16], [3, 10, 17], [6, 11, 18]])]]);
+var face_quadrants = immutable_1.Map([[datatypes_1.Face.t, datatypes_1.make_matrix2([[0, 1], [2, 3]])], [datatypes_1.Face.b, datatypes_1.make_matrix2([[4, 5], [6, 7]])], [datatypes_1.Face.n, datatypes_1.make_matrix2([[8, 9], [10, 11]])], [datatypes_1.Face.e, datatypes_1.make_matrix2([[12, 13], [14, 15]])], [datatypes_1.Face.s, datatypes_1.make_matrix2([[16, 17], [18, 19]])], [datatypes_1.Face.w, datatypes_1.make_matrix2([[20, 21], [22, 23]])]]);
 function build_edge_quadrant_mappings() {
     var quadrant_2_edges = immutable_1.Map();
     var edge_2_quadrants = immutable_1.Map();
@@ -5015,9 +5015,9 @@ function build_edge_quadrant_mappings() {
                     y = _arr$_i[1];
 
                 var q_edges = get_quadrant_edges(vs, x, y);
-                quadrant_2_edges = quadrant_2_edges.set(qs.get([x, y]), q_edges);
+                quadrant_2_edges = quadrant_2_edges.set(qs.get(x, y), q_edges);
                 q_edges.forEach(function (qe) {
-                    var q = qs.get([x, y]);
+                    var q = qs.get(x, y);
                     if (edge_2_quadrants.has(qe)) {
                         edge_2_quadrants = edge_2_quadrants.update(qe, function (xs) {
                             return xs.push(q);
@@ -5068,8 +5068,8 @@ function get_quadrant_edges(m, x, y) {
                 x2 = _step2$value[2],
                 y2 = _step2$value[3];
 
-            var e1 = m.get([x + x1, y + y1]);
-            var e2 = m.get([x + x2, y + y2]);
+            var e1 = m.get(x + x1, y + y1);
+            var e2 = m.get(x + x2, y + y2);
             if (e2 < e1) {
                 edges = edges.push(new datatypes_1.Edge(e2, e1));
             } else {
@@ -5100,8 +5100,8 @@ var _build_edge_quadrant_ = build_edge_quadrant_mappings(),
     edge_2_quadrants = _build_edge_quadrant_2[1];
 
 function get_quadrant_partition(quadrant, cut_edges) {
-    var current_partition = immutable_1.Set([quadrant]);
-    var horizon = immutable_1.List(quadrant_2_edges.get(quadrant));
+    var current_partition = immutable_1.Set([quadrant]).asMutable();
+    var horizon = immutable_1.List(quadrant_2_edges.get(quadrant)).asMutable();
     while (horizon.size > 0) {
         var e = horizon.first();
         horizon = horizon.shift();
@@ -5114,12 +5114,12 @@ function get_quadrant_partition(quadrant, cut_edges) {
             new_qs.forEach(function (q) {
                 var _horizon;
 
-                horizon = (_horizon = horizon).push.apply(_horizon, _toConsumableArray(quadrant_2_edges.get(q).toArray()));
-                current_partition = current_partition.add(q);
+                (_horizon = horizon).push.apply(_horizon, _toConsumableArray(quadrant_2_edges.get(q).toArray()));
+                current_partition.add(q);
             });
         }
     }
-    return current_partition;
+    return current_partition.asImmutable();
 }
 function range(x) {
     var arr = [];
@@ -5129,16 +5129,16 @@ function range(x) {
     return arr;
 }
 function get_partitions(cut_edges) {
-    var quadrants = immutable_1.OrderedSet(range(24));
-    var partitions = immutable_1.List();
+    var partitions = immutable_1.List().asMutable();
+    var quadrants = immutable_1.Set(range(24)).asMutable();
     while (quadrants.size > 0) {
         var q = quadrants.first();
-        quadrants = immutable_1.OrderedSet(quadrants.rest());
+        quadrants.remove(q);
         var partition = get_quadrant_partition(q, cut_edges);
-        partitions = partitions.push(partition);
-        quadrants = quadrants.subtract(partition);
+        partitions.push(partition);
+        quadrants.subtract(partition);
     }
-    return partitions;
+    return partitions.asImmutable();
 }
 
 var FaceMesh = function () {
@@ -5166,7 +5166,7 @@ var BoxMesh = function () {
         _classCallCheck(this, BoxMesh);
 
         this.dimensions = dimensions;
-        if (!face_meshes) {
+        if (face_meshes === undefined) {
             face_meshes = immutable_1.Map();
             var _iteratorNormalCompletion3 = true;
             var _didIteratorError3 = false;
@@ -5194,7 +5194,7 @@ var BoxMesh = function () {
             }
         }
         this.face_meshes = face_meshes;
-        if (!cut_edges) {
+        if (cut_edges === undefined) {
             cut_edges = immutable_1.List();
         }
         this.cut_edges = cut_edges;
@@ -5203,13 +5203,13 @@ var BoxMesh = function () {
     _createClass(BoxMesh, [{
         key: "update",
         value: function update(dimensions, face_meshes, cut_edges) {
-            if (!dimensions) {
+            if (dimensions === undefined) {
                 dimensions = this.dimensions;
             }
-            if (!face_meshes) {
+            if (face_meshes === undefined) {
                 face_meshes = this.face_meshes;
             }
-            if (!cut_edges) {
+            if (cut_edges === undefined) {
                 cut_edges = this.cut_edges;
             }
             return new BoxMesh(dimensions, face_meshes, cut_edges);
@@ -5239,14 +5239,9 @@ var BoxMesh = function () {
                 throw "start and end points of cut/tape are not adjacent: " + start + " and " + end;
             }
             var f = this.face_meshes.get(face).vertices;
-            var fs = f.get(start);
-            var fe = f.get(end);
-            var new_edge = void 0;
-            if (fe < fs) {
-                new_edge = new datatypes_1.Edge(fe, fs);
-            } else {
-                new_edge = new datatypes_1.Edge(fs, fe);
-            }
+            var fs = f.get(x1, y1);
+            var fe = f.get(x2, y2);
+            var new_edge = new datatypes_1.Edge(fs, fe);
             var new_cut_edges = this.cut_edges;
             if (operation == datatypes_1.EdgeOperation.cut && !new_cut_edges.contains(new_edge)) {
                 new_cut_edges = new_cut_edges.push(new_edge);
@@ -5281,7 +5276,7 @@ var BoxMesh = function () {
         value: function get_partition_face_membership(partition) {
             var _this2 = this;
 
-            var face_membership = immutable_1.Map();
+            var face_membership = immutable_1.Map().asMutable();
             var _iteratorNormalCompletion4 = true;
             var _didIteratorError4 = false;
             var _iteratorError4 = undefined;
@@ -5297,7 +5292,7 @@ var BoxMesh = function () {
                             total += 1;
                         }
                     });
-                    face_membership = face_membership.set(f, total);
+                    face_membership.set(f, total);
                 };
 
                 for (var _iterator4 = datatypes_1.faces[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
@@ -5318,7 +5313,7 @@ var BoxMesh = function () {
                 }
             }
 
-            return face_membership;
+            return face_membership.asImmutable();
         }
     }, {
         key: "get_quadrant_face",
@@ -5359,7 +5354,7 @@ var BoxMesh = function () {
             var fixed_rends = rends.filter(function (x) {
                 return _this3.is_partition_fixed(x);
             });
-            var dangles = immutable_1.List();
+            var dangles = immutable_1.List().asMutable();
             var inner_this = this;
             this.get_box_edges().forEach(function (_ref) {
                 var _dangles;
@@ -5368,22 +5363,24 @@ var BoxMesh = function () {
                     e1 = _ref2[0],
                     e2 = _ref2[1];
 
-                var e_2_q_2_f = immutable_1.Map();
+                var e_2_q_2_f = immutable_1.Map().asMutable();
                 var _arr2 = [e1, e2];
 
                 var _loop4 = function _loop4() {
                     var e = _arr2[_i2];
-                    var inner_map = immutable_1.Map();
+                    var inner_map = immutable_1.Map().asMutable();
                     edge_2_quadrants.get(e).forEach(function (q) {
-                        inner_map = inner_map.set(q, inner_this.get_quadrant_face(q));
+                        inner_map.set(q, inner_this.get_quadrant_face(q));
                     });
-                    e_2_q_2_f = e_2_q_2_f.set(e, inner_map);
+                    inner_map = inner_map.asImmutable();
+                    e_2_q_2_f.set(e, inner_map);
                 };
 
                 for (var _i2 = 0; _i2 < _arr2.length; _i2++) {
                     _loop4();
                 }
-                var edge_dangles = immutable_1.List();
+                e_2_q_2_f = e_2_q_2_f.asImmutable();
+                var edge_dangles = immutable_1.List().asMutable();
                 var _arr3 = [[e1, e2], [e1], [e2]];
 
                 var _loop5 = function _loop5() {
@@ -5419,7 +5416,7 @@ var BoxMesh = function () {
                             if (any_dangle_matches) {
                                 return;
                             }
-                            var q_2_fs = immutable_1.List();
+                            var q_2_fs = immutable_1.List().asMutable();
                             var _iteratorNormalCompletion6 = true;
                             var _didIteratorError6 = false;
                             var _iteratorError6 = undefined;
@@ -5428,7 +5425,7 @@ var BoxMesh = function () {
                                 for (var _iterator6 = es[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
                                     var e = _step6.value;
 
-                                    q_2_fs = q_2_fs.push(e_2_q_2_f.get(e));
+                                    q_2_fs.push(e_2_q_2_f.get(e));
                                 }
                             } catch (err) {
                                 _didIteratorError6 = true;
@@ -5445,8 +5442,9 @@ var BoxMesh = function () {
                                 }
                             }
 
-                            var fixed_fs = immutable_1.List();
-                            var dangle_fs = immutable_1.List();
+                            q_2_fs = q_2_fs.asImmutable();
+                            var fixed_fs = immutable_1.List().asMutable();
+                            var dangle_fs = immutable_1.List().asMutable();
                             q_2_fs.forEach(function (q_2_f) {
                                 q_2_f.entrySeq().forEach(function (_ref3) {
                                     var _ref4 = _slicedToArray(_ref3, 2),
@@ -5460,10 +5458,12 @@ var BoxMesh = function () {
                                     }
                                 });
                             });
+                            fixed_fs = fixed_fs.asImmutable();
+                            dangle_fs = dangle_fs.asImmutable();
                             if (fixed_fs.toSet().size != 1 || dangle_fs.toSet().size != 1) {
                                 return;
                             }
-                            edge_dangles = edge_dangles.push(new datatypes_1.Dangle(np, es, fixed_fs.get(0), dangle_fs.get(0)));
+                            edge_dangles.push(new datatypes_1.Dangle(np, es, fixed_fs.get(0), dangle_fs.get(0)));
                         });
                     }
                 };
@@ -5471,50 +5471,31 @@ var BoxMesh = function () {
                 for (var _i3 = 0; _i3 < _arr3.length; _i3++) {
                     _loop5();
                 }
-                dangles = (_dangles = dangles).push.apply(_dangles, _toConsumableArray(edge_dangles.toArray()));
+                edge_dangles = edge_dangles.asImmutable();
+                (_dangles = dangles).push.apply(_dangles, _toConsumableArray(edge_dangles.toArray()));
             });
             dangles = immutable_1.List(dangles.sortBy(function (x) {
                 return x.partition.size;
             }));
-            var final_dangles = immutable_1.List();
-            var _iteratorNormalCompletion7 = true;
-            var _didIteratorError7 = false;
-            var _iteratorError7 = undefined;
+            var final_dangles = immutable_1.List().asMutable();
 
-            try {
-                var _loop6 = function _loop6() {
-                    var i = _step7.value;
-
-                    var p = dangles.get(i).partition;
-                    var any_supersets = false;
-                    dangles.skip(i + 1).forEach(function (d) {
-                        if (p.isSubset(d.partition)) {
-                            any_supersets = true;
-                        }
-                    });
-                    if (!any_supersets) {
-                        final_dangles = final_dangles.push(dangles.get(i));
+            var _loop6 = function _loop6(i) {
+                var p = dangles.get(i).partition;
+                var any_supersets = false;
+                dangles.skip(i + 1).forEach(function (d) {
+                    if (p.isSubset(d.partition)) {
+                        any_supersets = true;
                     }
-                };
-
-                for (var _iterator7 = range(dangles.size)[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-                    _loop6();
+                });
+                if (!any_supersets) {
+                    final_dangles.push(dangles.get(i));
                 }
-            } catch (err) {
-                _didIteratorError7 = true;
-                _iteratorError7 = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion7 && _iterator7.return) {
-                        _iterator7.return();
-                    }
-                } finally {
-                    if (_didIteratorError7) {
-                        throw _iteratorError7;
-                    }
-                }
+            };
+
+            for (var i = 0; i < dangles.size; i++) {
+                _loop6(i);
             }
-
+            final_dangles = final_dangles.asImmutable();
             return final_dangles;
         }
     }, {
@@ -5526,20 +5507,26 @@ var BoxMesh = function () {
             for (var _i4 = 0; _i4 < _arr4.length; _i4++) {
                 var f = _arr4[_i4];
                 var m = this.face_meshes.get(f).vertices;
-                var _iteratorNormalCompletion8 = true;
-                var _didIteratorError8 = false;
-                var _iteratorError8 = undefined;
+                var _iteratorNormalCompletion7 = true;
+                var _didIteratorError7 = false;
+                var _iteratorError7 = undefined;
 
                 try {
-                    for (var _iterator8 = t_b_edge_coords[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
-                        var _step8$value = _slicedToArray(_step8.value, 3),
-                            p1 = _step8$value[0],
-                            p2 = _step8$value[1],
-                            p3 = _step8$value[2];
+                    for (var _iterator7 = t_b_edge_coords[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+                        var _step7$value = _slicedToArray(_step7.value, 3),
+                            _step7$value$ = _slicedToArray(_step7$value[0], 2),
+                            p1x = _step7$value$[0],
+                            p1y = _step7$value$[1],
+                            _step7$value$2 = _slicedToArray(_step7$value[1], 2),
+                            p2x = _step7$value$2[0],
+                            p2y = _step7$value$2[1],
+                            _step7$value$3 = _slicedToArray(_step7$value[2], 2),
+                            p3x = _step7$value$3[0],
+                            p3y = _step7$value$3[1];
 
-                        var v1 = m.get(p1);
-                        var v2 = m.get(p2);
-                        var v3 = m.get(p3);
+                        var v1 = m.get(p1x, p1y);
+                        var v2 = m.get(p2x, p2y);
+                        var v3 = m.get(p3x, p3y);
                         var e1 = void 0;
                         if (v2 < v1) {
                             e1 = new datatypes_1.Edge(v2, v1);
@@ -5555,16 +5542,16 @@ var BoxMesh = function () {
                         edges = edges.push([e1, e2]);
                     }
                 } catch (err) {
-                    _didIteratorError8 = true;
-                    _iteratorError8 = err;
+                    _didIteratorError7 = true;
+                    _iteratorError7 = err;
                 } finally {
                     try {
-                        if (!_iteratorNormalCompletion8 && _iterator8.return) {
-                            _iterator8.return();
+                        if (!_iteratorNormalCompletion7 && _iterator7.return) {
+                            _iterator7.return();
                         }
                     } finally {
-                        if (_didIteratorError8) {
-                            throw _iteratorError8;
+                        if (_didIteratorError7) {
+                            throw _iteratorError7;
                         }
                     }
                 }
@@ -5573,9 +5560,9 @@ var BoxMesh = function () {
             for (var _i5 = 0; _i5 < _arr5.length; _i5++) {
                 var _f = _arr5[_i5];
                 var _m = this.face_meshes.get(_f).vertices;
-                var _v = _m.get([0, 0]);
-                var _v2 = _m.get([0, 1]);
-                var _v3 = _m.get([0, 2]);
+                var _v = _m.get(0, 0);
+                var _v2 = _m.get(0, 1);
+                var _v3 = _m.get(0, 2);
                 var _e = void 0;
                 if (_v2 < _v) {
                     _e = new datatypes_1.Edge(_v2, _v);
@@ -5650,6 +5637,48 @@ var BoxMesh = function () {
             rends.forEach(function (fr) {
                 var face_membership = inner_this.get_partition_face_membership(fr);
                 var faces_present = [];
+                var _iteratorNormalCompletion8 = true;
+                var _didIteratorError8 = false;
+                var _iteratorError8 = undefined;
+
+                try {
+                    for (var _iterator8 = datatypes_1.faces[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+                        var f = _step8.value;
+
+                        if (face_membership.get(f) > 0) {
+                            faces_present.push(f);
+                        }
+                    }
+                } catch (err) {
+                    _didIteratorError8 = true;
+                    _iteratorError8 = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion8 && _iterator8.return) {
+                            _iterator8.return();
+                        }
+                    } finally {
+                        if (_didIteratorError8) {
+                            throw _iteratorError8;
+                        }
+                    }
+                }
+
+                var faces_text = void 0;
+                if (faces_present.length == 1) {
+                    faces_text = face_descr.get(faces_present[0]) + ' face';
+                } else {
+                    faces_text = faces_present.slice(0, -1).map(function (f) {
+                        return face_descr.get(f);
+                    }).join(', ');
+                    faces_text += " and " + face_descr.get(faces_present[faces_present.length - 1]) + " faces";
+                }
+                result += "\nA portion of the box's " + faces_text + " has been rended free; it lies on the floor off to the side.";
+            });
+            var dangles = this.get_dangles();
+            dangles.forEach(function (d) {
+                var face_membership = inner_this.get_partition_face_membership(d.partition);
+                var faces_present = [];
                 var _iteratorNormalCompletion9 = true;
                 var _didIteratorError9 = false;
                 var _iteratorError9 = undefined;
@@ -5673,48 +5702,6 @@ var BoxMesh = function () {
                     } finally {
                         if (_didIteratorError9) {
                             throw _iteratorError9;
-                        }
-                    }
-                }
-
-                var faces_text = void 0;
-                if (faces_present.length == 1) {
-                    faces_text = face_descr.get(faces_present[0]) + ' face';
-                } else {
-                    faces_text = faces_present.slice(0, -1).map(function (f) {
-                        return face_descr.get(f);
-                    }).join(', ');
-                    faces_text += " and " + face_descr.get(faces_present[faces_present.length - 1]) + " faces";
-                }
-                result += "\nA portion of the box's " + faces_text + " has been rended free; it lies on the floor off to the side.";
-            });
-            var dangles = this.get_dangles();
-            dangles.forEach(function (d) {
-                var face_membership = inner_this.get_partition_face_membership(d.partition);
-                var faces_present = [];
-                var _iteratorNormalCompletion10 = true;
-                var _didIteratorError10 = false;
-                var _iteratorError10 = undefined;
-
-                try {
-                    for (var _iterator10 = datatypes_1.faces[Symbol.iterator](), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
-                        var f = _step10.value;
-
-                        if (face_membership.get(f) > 0) {
-                            faces_present.push(f);
-                        }
-                    }
-                } catch (err) {
-                    _didIteratorError10 = true;
-                    _iteratorError10 = err;
-                } finally {
-                    try {
-                        if (!_iteratorNormalCompletion10 && _iterator10.return) {
-                            _iterator10.return();
-                        }
-                    } finally {
-                        if (_didIteratorError10) {
-                            throw _iteratorError10;
                         }
                     }
                 }
@@ -5759,25 +5746,17 @@ function rotate_y_faces(fs, degrees) {
     return new_faces;
 }
 function roll_faces(fs, direction) {
-    var new_faces = immutable_1.Map();
+    var new_faces = immutable_1.Map().asMutable();
     if (direction == datatypes_1.Direction.n) {
-        new_faces = new_faces.withMutations(function (m) {
-            return m.set(datatypes_1.Face.n, fs.get(datatypes_1.Face.t).rotate(180)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.s)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.b)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.n).rotate(180)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.e).rotate(90)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.w).rotate(270));
-        });
+        new_faces.set(datatypes_1.Face.n, fs.get(datatypes_1.Face.t).rotate(180)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.s)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.b)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.n).rotate(180)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.e).rotate(90)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.w).rotate(270));
     } else if (direction == datatypes_1.Direction.s) {
-        new_faces = new_faces.withMutations(function (m) {
-            return m.set(datatypes_1.Face.s, fs.get(datatypes_1.Face.t)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.n).rotate(180)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.b)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.s).rotate(180)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.w).rotate(90));
-        });
+        new_faces.set(datatypes_1.Face.s, fs.get(datatypes_1.Face.t)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.n).rotate(180)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.b)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.s).rotate(180)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.w).rotate(90));
     } else if (direction == datatypes_1.Direction.e) {
-        new_faces = new_faces.withMutations(function (m) {
-            return m.set(datatypes_1.Face.e, fs.get(datatypes_1.Face.t).rotate(90)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.w).rotate(90)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.b).rotate(270)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.n).rotate(270)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.s).rotate(90));
-        });
+        new_faces.set(datatypes_1.Face.e, fs.get(datatypes_1.Face.t).rotate(90)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.w).rotate(90)).set(datatypes_1.Face.w, fs.get(datatypes_1.Face.b).rotate(270)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.n).rotate(270)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.s).rotate(90));
     } else if (direction == datatypes_1.Direction.w) {
-        new_faces = new_faces.withMutations(function (m) {
-            return m.set(datatypes_1.Face.w, fs.get(datatypes_1.Face.t).rotate(270)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.b).rotate(90)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.w).rotate(90)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.n).rotate(90)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.s).rotate(270));
-        });
+        new_faces.set(datatypes_1.Face.w, fs.get(datatypes_1.Face.t).rotate(270)).set(datatypes_1.Face.t, fs.get(datatypes_1.Face.e).rotate(270)).set(datatypes_1.Face.e, fs.get(datatypes_1.Face.b).rotate(90)).set(datatypes_1.Face.b, fs.get(datatypes_1.Face.w).rotate(90)).set(datatypes_1.Face.n, fs.get(datatypes_1.Face.n).rotate(90)).set(datatypes_1.Face.s, fs.get(datatypes_1.Face.s).rotate(270));
     }
-    return new_faces;
+    return new_faces.asImmutable();
 }
 function test() {
     var bm = new BoxMesh([2, 3, 4]);
@@ -5789,34 +5768,13 @@ function test() {
     var bm7 = bm2.cut(datatypes_1.Face.t, [0, 1], [0, 2]).cut(datatypes_1.Face.t, [1, 1], [1, 2]);
     var bm8 = bm.cut(datatypes_1.Face.t, [0, 0], [1, 0]).cut(datatypes_1.Face.t, [1, 0], [2, 0]).cut(datatypes_1.Face.t, [2, 0], [2, 1]).cut(datatypes_1.Face.t, [2, 1], [2, 2]).cut(datatypes_1.Face.t, [0, 2], [0, 1]).cut(datatypes_1.Face.t, [0, 1], [1, 1]).cut(datatypes_1.Face.t, [1, 1], [1, 2]).cut(datatypes_1.Face.s, [1, 0], [1, 1]).cut(datatypes_1.Face.s, [1, 1], [0, 1]).cut(datatypes_1.Face.w, [0, 0], [0, 1]).cut(datatypes_1.Face.w, [0, 1], [1, 1]).cut(datatypes_1.Face.w, [1, 1], [2, 1]);
     var bms = [bm, bm2, bm3, bm4, bm5, bm6, bm7, bm8];
-    var _iteratorNormalCompletion11 = true;
-    var _didIteratorError11 = false;
-    var _iteratorError11 = undefined;
-
-    try {
-        for (var _iterator11 = range(bms.length)[Symbol.iterator](), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
-            var _i8 = _step11.value;
-
-            var b = bms[_i8];
-            console.log('Box #', _i8 + 1);
-            console.log();
-            console.log(b.description());
-            console.log();
-            console.log();
-        }
-    } catch (err) {
-        _didIteratorError11 = true;
-        _iteratorError11 = err;
-    } finally {
-        try {
-            if (!_iteratorNormalCompletion11 && _iterator11.return) {
-                _iterator11.return();
-            }
-        } finally {
-            if (_didIteratorError11) {
-                throw _iteratorError11;
-            }
-        }
+    for (var i = 0; i < bms.length; i++) {
+        var b = bms[i];
+        console.log('Box #', i + 1);
+        console.log();
+        console.log(b.description());
+        console.log();
+        console.log();
     }
 }
 exports.test = test;
@@ -5830,7 +5788,6 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var immutable_1 = require("immutable");
 
 var Edge = function () {
     function Edge(start, end) {
@@ -5853,7 +5810,8 @@ var Edge = function () {
     }, {
         key: "hashCode",
         value: function hashCode() {
-            return immutable_1.List([this.start, this.end]).hashCode();
+            // fuck
+            return this.end << 16 ^ this.start;
         }
     }]);
 
@@ -5890,18 +5848,35 @@ var Dangle = function Dangle(partition, edges, fixed_face, free_face) {
 };
 
 exports.Dangle = Dangle;
+function make_matrix2(data_obj) {
+    var dim_y = data_obj.length;
+    var dim_x = data_obj[0].length;
+    var data = new Int16Array(data_obj.reduce(function (x, y) {
+        return x.concat(y);
+    }));
+    //complain if the total length is wrong
+    return new Matrix2(data, dim_x, dim_y);
+}
+exports.make_matrix2 = make_matrix2;
 
 var Matrix2 = function () {
-    function Matrix2(data) {
+    function Matrix2(data, dim_x, dim_y) {
         _classCallCheck(this, Matrix2);
 
         this.data = data;
+        this.dim_x = dim_x;
+        this.dim_y = dim_y;
     }
 
     _createClass(Matrix2, [{
         key: "get",
-        value: function get(pt) {
-            return this.data[pt[1]][pt[0]];
+        value: function get(x, y) {
+            return this.data[y * this.dim_x + x];
+        }
+    }, {
+        key: "set",
+        value: function set(x, y, value) {
+            this.data[y * this.dim_x + x] = value;
         }
     }, {
         key: "rotate",
@@ -5911,55 +5886,25 @@ var Matrix2 = function () {
                 return this;
             }
             var n_rotations = degrees / 90;
-            var dim_x = this.data[0].length;
-            var dim_y = this.data.length;
             var m = this;
+            var dim_x = this.dim_x;
+            var dim_y = this.dim_y;
             for (var i = 0; i < n_rotations; i++) {
-                var new_data = [];
+                var new_data = new Int16Array(dim_x * dim_y);
+                var new_mat2 = new Matrix2(new_data, dim_y, dim_x);
                 for (var y = 0; y < dim_y; y++) {
-                    var row = [];
                     for (var x = 0; x < dim_x; x++) {
-                        row.push(m.get([y, dim_x - 1 - x]));
+                        new_mat2.set(dim_y - 1 - y, x, m.get(x, y));
                     }
-                    new_data.push(row);
                 }
-                m = new Matrix2(new_data);
+                m = new_mat2;
             }
             return m;
         }
     }, {
         key: "contains",
         value: function contains(value) {
-            var found = false;
-            var _iteratorNormalCompletion = true;
-            var _didIteratorError = false;
-            var _iteratorError = undefined;
-
-            try {
-                for (var _iterator = this.data[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                    var row = _step.value;
-
-                    if (row.includes(value)) {
-                        found = true;
-                        break;
-                    }
-                }
-            } catch (err) {
-                _didIteratorError = true;
-                _iteratorError = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion && _iterator.return) {
-                        _iterator.return();
-                    }
-                } finally {
-                    if (_didIteratorError) {
-                        throw _iteratorError;
-                    }
-                }
-            }
-
-            return found;
+            return this.data.indexOf(value) !== -1;
         }
     }]);
 
@@ -6052,6 +5997,6 @@ var Item = function () {
 
 exports.Item = Item;
 
-},{"immutable":1}]},{},[2,3])
+},{}]},{},[2,3])
 
 //# sourceMappingURL=bundle.js.map

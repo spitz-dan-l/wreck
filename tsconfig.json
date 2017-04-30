@@ -4,6 +4,6 @@
     ],
     "compilerOptions": {
         "noImplicitAny": true,
-        "target": "es2016"
+        "target": "es2015"
     }
 }

@@ -14,7 +14,7 @@ var paths = {
 var watchedBrowserify = watchify(browserify({
     basedir: 'src/typescript',
     debug: true,
-    entries: ['box_geometry.ts', 'datatypes.ts'],
+    entries: ['box_geometry.ts', 'datatypes.ts', 'items.ts', 'world.ts', 'world_update_effects.ts'],
     cache: {},
     packageCache: {}
 }));
@@ -28,7 +28,7 @@ function bundle() {
     return watchedBrowserify
     .plugin(tsify)
     .transform('babelify', {
-        presets: ['es2016'],
+        presets: ['es2015'],
         extensions: ['.ts']
     })
     .bundle()

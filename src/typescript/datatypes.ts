@@ -1,4 +1,4 @@
-import {List, Set, Collection, } from 'immutable';
+import {List, Set, Collection} from 'immutable';
 
 export type Partition = Set<number>;
 
@@ -21,7 +21,8 @@ export class Edge {
     }
 
     hashCode() {
-        return List<number>([this.start, this.end]).hashCode();
+        // fuck
+        return ( this.end << 16 ) ^ this.start;
     }
 }
 
@@ -57,18 +58,49 @@ export class Dangle {
         this.fixed_face = fixed_face;
         this.free_face = free_face;
     }
+
+    equals(other: Dangle){
+        return (
+            this.partition.equals(other.partition)
+            && this.edges.equals(other.edges)
+            && this.fixed_face === other.fixed_face
+            && this.free_face === other.free_face);
+    }
+
+    hashCode() {
+        let faces_hash = (this.fixed_face << 16) ^ this.free_face; //fuck!
+        return this.partition.hashCode() + this.edges.hashCode() + faces_hash;
+    }
 }
 
 export type Point2 = [number, number];
 
+export function make_matrix2(data_obj: number[][]) {
+    let dim_y = data_obj.length;
+    let dim_x = data_obj[0].length;
+
+    let data = new Int16Array(data_obj.reduce((x, y) => x.concat(y)));
+    // TODO complain if the total length is wrong
+    return new Matrix2(data, dim_x, dim_y);
+}
+
 export class Matrix2 {
-    readonly data: number[][];
-    constructor (data: number[][]) {
+    readonly dim_x: number;
+    readonly dim_y: number;
+    readonly data: Int16Array;
+    
+    constructor (data: Int16Array, dim_x: number, dim_y: number) {
         this.data = data;
+        this.dim_x = dim_x;
+        this.dim_y = dim_y;
     }
 
-    get(pt: Point2): number {
-        return this.data[pt[1]][pt[0]];
+    get(x: number, y: number): number {
+        return this.data[y * this.dim_x + x];
+    }
+
+    set(x: number, y: number, value: number) {
+        this.data[y * this.dim_x + x] = value;
     }
 
     rotate(degrees: number): Matrix2 {
@@ -79,34 +111,24 @@ export class Matrix2 {
         }
 
         const n_rotations = degrees / 90;
-
-        const dim_x = this.data[0].length;
-        const dim_y = this.data.length;
-
         let m: Matrix2 = this;
+        const dim_x = this.dim_x;
+        const dim_y = this.dim_y;
         for (let i = 0; i < n_rotations; i++){
-            let new_data: number[][] = [];
+            let new_data = new Int16Array(dim_x * dim_y);
+            let new_mat2 = new Matrix2(new_data, dim_y, dim_x);
             for (let y = 0; y < dim_y; y++){
-                let row: number[] = [];
                 for (let x = 0; x < dim_x; x++){
-                    row.push(m.get([y, dim_x - 1 - x]));
+                    new_mat2.set(dim_y - 1 - y, x, m.get(x, y));
                 }
-                new_data.push(row);
             }
-            m = new Matrix2(new_data);
+            m = new_mat2;
         }
         return m
     }
 
     contains(value: number): boolean{
-        let found = false;
-        for (let row of this.data){
-            if (row.includes(value)){
-                found = true;
-                break;
-            }
-        }
-        return found;
+        return this.data.indexOf(value) !== -1;
     }
 }
 
@@ -155,6 +177,11 @@ export enum EdgeOperation {
 
 export enum RendState {
     closed = 0,
+    open = 1
+}
+
+export enum RendOperation {
+    close = 0,
     open = 1
 }
 
