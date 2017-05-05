@@ -1,4 +1,4 @@
-import {BoxMesh, FaceMesh} from './box_geometry';
+import {BoxMesh, edge_2_quadrants, FaceMesh} from './box_geometry';
 
 import {
     CardboardEdge,
@@ -9,12 +9,16 @@ import {
     Direction,
     directions,
     Edge,
+    EdgeOperation,
     EdgeState,
     Face,
     Item,
     Partition,
+    Point2,
     RendOperation,
     RendState,
+    RollDirection,
+    RotateYDirection,
     SpillageLevel,
     TapeEdge,
     Weight,
@@ -24,6 +28,8 @@ import {
 import {WorldUpdateEffects, with_world_update, world_update} from './world_update_effects';
 
 import {CityKey, Codex, Pinecone} from './items';
+
+import {capitalize, uncapitalize} from './text_tools';
 
 import {List, Map, Set} from 'immutable';
 
@@ -393,6 +399,128 @@ class Box {
         return new_box;
     }
 
+    cut(face: Face, start, end) {
+        return this.cut_or_tape(EdgeOperation.cut, face, start, end);
+    }
+
+    tape(face, start, end) {
+        return this.cut_or_tape(EdgeOperation.tape, face, start, end);
+    }
+
+    cut_or_tape(operation: EdgeOperation, face: Face, start: Point2, end: Point2) {
+        let effects = world_update.effects;
+        let inner_this = this;
+
+        if (face !== Face.s && face !== Face.t) {
+            throw new WorldUpdateError('cannot cut or tape sides other than top or front');
+        }
+
+        let [x1, y1] = start;
+        let [x2, y2] = end;
+        let v1 = this.box_mesh.face_meshes.get(face).vertices.get(x1, y1);
+        let v2 = this.box_mesh.face_meshes.get(face).vertices.get(x2, y2);
+
+        let edge = new Edge(v1, v2);
+
+        let quadrants = edge_2_quadrants.get(edge);
+
+        this.rend_state.forEach(function (state, r) {
+            if (state == RendState.open && quadrants.every(r.contains)) {
+                throw new WorldUpdateError('cannot cut or tape on an open rend');
+            }
+        });
+
+        this.dangle_state.forEach(function (state, d) {
+            if (state == RendState.open && quadrants.every(d.partition.contains)) {
+                throw new WorldUpdateError('cannot cut or tape on an open dangle');
+            }
+        });
+
+        let new_box_mesh: BoxMesh;
+        if (operation == EdgeOperation.cut) {
+            new_box_mesh = this.box_mesh.cut(face, start, end);
+        } else {
+            new_box_mesh = this.box_mesh.tape(face, start, end);
+        }
+
+        let new_rend_state = this.default_rend_state(new_box_mesh);
+        this.rend_state.forEach(function (state, r) {
+            if (new_rend_state.has(r)) {
+                new_rend_state = new_rend_state.set(r, state);
+            } else {
+                effects.repaired_rends = effects.repaired_rends.push(r);
+            }
+        });
+
+        new_rend_state.forEach(function (state, new_r) {
+            if (!inner_this.rend_state.has(new_r)) {
+                effects.new_rends = effects.new_rends.push(new_r);
+            }
+        });
+
+        let new_dangle_state = this.default_dangle_state(new_box_mesh);
+        this.dangle_state.forEach(function (state, d) {
+            if (new_dangle_state.has(d)) {
+                new_dangle_state = new_dangle_state.set(d, state);
+            } else {
+                effects.repaired_dangles = effects.repaired_dangles.push(d);
+            }
+        });
+
+        new_dangle_state.forEach(function (state, new_d) {
+            if (!inner_this.dangle_state.has(new_d)) {
+                effects.new_dangles = effects.new_dangles.push(new_d);
+            }
+        });
+
+        let new_edge_state = this.edge_state;
+        if (operation == EdgeOperation.cut) {
+            new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge).cut());
+        } else {
+            new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge).apply_tape());
+        }
+
+        return this.update({box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state});
+    }
+
+    take_next_item() {
+        let effects = world_update.effects;
+
+        if (this.contents.size == 0) {
+            throw new WorldUpdateError('cannot take an item from an empty box');
+        }
+
+        if (!self.appears_open()) {
+            throw new WorldUpdateError('cannot take an item from a box with no visible openings');
+        }
+
+        let new_contents = this.contents;
+        effects.taken_items = effects.taken_items.push(new_contents.first());
+        new_contents = new_contents.rest();
+
+        return this.update({contents: new_contents});
+    }
+
+    next_item() {
+        if (this.contents.size == 0) {
+            return null;
+        }
+        return this.contents.first();
+    }
+
+    appears_open() {
+        if (this.rend_state.some((state) => state == RendState.open)) {
+            return true;
+        }
+        if (this.dangle_state.some((state) => state == RendState.open)) {
+            return true;
+        }
+        return false;
+    }
+
+    appears_empty() {
+        return this.appears_open() && this.contents.size == 0;
+    }
 
     is_collapsed(){
         let open_faces = Map<Face, number>().asMutable();
@@ -423,3 +551,110 @@ class Box {
     }
 }
 
+interface SingleBoxWorldParams {
+    box?: Box,
+    taken_items?: List<Item>,
+    spilled_items?: List<Item>
+}
+
+class SingleBoxWorld {
+    readonly box: Box;
+    readonly taken_items: List<Item>;
+    readonly spilled_items: List<Item>;
+
+    constructor({box, taken_items, spilled_items}: SingleBoxWorldParams) {
+        if (box === undefined) {
+            box = new Box({});
+        }
+        this.box = box;
+
+        if (taken_items === undefined) {
+            taken_items = List<Item>();
+        }
+        this.taken_items = taken_items;
+
+        if (spilled_items === undefined) {
+            spilled_items = List<Item>();
+        }
+        this.spilled_items = spilled_items;
+    }
+
+    update({box, taken_items, spilled_items}: SingleBoxWorldParams) {
+        if (box === undefined) {
+            box = this.box;
+        }
+
+        if (taken_items === undefined) {
+            taken_items = this.taken_items;
+        }
+
+        if (spilled_items === undefined) {
+            spilled_items = this.spilled_items;
+        }
+
+        return new SingleBoxWorld({box, taken_items, spilled_items});
+    }
+
+    command_rotate_y_box(dir: RotateYDirection): [SingleBoxWorld, string] {
+        let degrees = dir == 'right' ? 90 : 270;
+        let new_box = this.box.rotate_y(degrees);
+        let new_world = this.update({box: new_box});
+
+        let message = `You turn the box 90 degrees to the ${dir}`;
+
+        return [new_world, message];
+    }
+
+    command_roll_box(cmd: RollDirection): [SingleBoxWorld, string] {
+        let inner_this = this;
+        return with_world_update(function (effects) {
+            let cmd_2_direction = Map<RollDirection, Direction>([
+                ['forward', Direction.n],
+                ['backward', Direction.s],
+                ['left', Direction.w],
+                ['right', Direction.e]
+            ]);
+
+            let direction = cmd_2_direction.get(cmd);
+            let new_box = inner_this.box.roll(direction);
+
+            let dir_msg = (cmd == 'left' || cmd == 'right') ? `over to the ${cmd}` : cmd;
+
+            let message: string;
+            let new_world: SingleBoxWorld;
+            if (effects.spillage_level == SpillageLevel.none) {
+                message = `You roll the box ${dir_msg}`;
+                new_world = inner_this.update({box: new_box});
+            } else {
+                let spill_msg = uncapitalize(inner_this.spill_message(new_box));
+                message = `As you roll the box ${dir_msg}, ${spill_msg}`;
+
+                new_world = inner_this.update({box: new_box, spilled_items: effects.spilled_items});
+            }
+
+            if (effects.box_collapsed) {
+                message += '\nThe added stress on the box causes it to collapse in on itself.';
+                if (effects.collapse_spilled_items.size > 0) {
+                    message += ' ';
+                    message += inner_this.item_spill_message(effects.collapse_spilled_items);
+                }
+            }
+
+            return [new_world, message];
+        });
+    }
+
+    item_spill_message(spilled_items: List<Item>){
+        let si = spilled_items;
+        let during_spill_msg: string;
+        let after_spill_msg: string;
+
+        if (si.size == 1) {
+            let item_msg = si.get(0).pre_gestalt();
+            during_spill_msg = `${capitalize(item_msg)} spills out before you.`;
+            after_spill_msg = `It's ${si.get(0).article()} ${si.get(0).name()} - ${si.get(0).post_gestalt()}.`;
+        } else {
+
+        }
+    }
+}

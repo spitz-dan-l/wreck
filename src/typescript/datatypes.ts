@@ -13,7 +13,7 @@ export class Edge {
     readonly start: number;
     readonly end: number;
 
-    constructor(start, end){
+    constructor(start: number, end: number){
         if (end < start){
             this.start = end;
             this.end = start;
@@ -262,3 +262,6 @@ export class WorldUpdateError extends WreckError {}
 // the command cannot be executed because it *cannot be interpreted*
 export class CommandError extends WreckError {}
 
+export type RotateYDirection = "left" | "right";
+
+export type RollDirection = "forward" | "backward" | "left" | "right";

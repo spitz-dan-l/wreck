@@ -105,7 +105,7 @@ function get_quadrant_edges(m: Matrix2, x: number, y: number): List<Edge> {
     return edges;
 }
 
-let [quadrant_2_edges, edge_2_quadrants] = build_edge_quadrant_mappings();
+export let [quadrant_2_edges, edge_2_quadrants] = build_edge_quadrant_mappings();
 
 function get_quadrant_partition(quadrant: number, cut_edges: List<Edge>) {
     let current_partition = Set<number>([quadrant]).asMutable();

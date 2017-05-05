@@ -5646,28 +5646,23 @@ function get_quadrant_edges(m, x, y) {
 
     return edges;
 }
-
-var _build_edge_quadrant_ = build_edge_quadrant_mappings(),
-    _build_edge_quadrant_2 = _slicedToArray(_build_edge_quadrant_, 2),
-    quadrant_2_edges = _build_edge_quadrant_2[0],
-    edge_2_quadrants = _build_edge_quadrant_2[1];
-
+_a = build_edge_quadrant_mappings(), exports.quadrant_2_edges = _a[0], exports.edge_2_quadrants = _a[1];
 function get_quadrant_partition(quadrant, cut_edges) {
     var current_partition = immutable_1.Set([quadrant]).asMutable();
-    var horizon = immutable_1.List(quadrant_2_edges.get(quadrant)).asMutable();
+    var horizon = immutable_1.List(exports.quadrant_2_edges.get(quadrant)).asMutable();
     while (horizon.size > 0) {
         var e = horizon.first();
         horizon = horizon.shift();
         if (cut_edges.contains(e)) {
             continue;
         }
-        var next_qs = immutable_1.Set(edge_2_quadrants.get(e));
+        var next_qs = immutable_1.Set(exports.edge_2_quadrants.get(e));
         var new_qs = next_qs.subtract(current_partition);
         if (new_qs.size > 0) {
             new_qs.forEach(function (q) {
                 var _horizon;
 
-                (_horizon = horizon).push.apply(_horizon, _toConsumableArray(quadrant_2_edges.get(q).toArray()));
+                (_horizon = horizon).push.apply(_horizon, _toConsumableArray(exports.quadrant_2_edges.get(q).toArray()));
                 current_partition.add(q);
             });
         }
@@ -5930,7 +5925,7 @@ var BoxMesh = function () {
                 var _loop4 = function _loop4() {
                     var e = _arr2[_i2];
                     var inner_map = immutable_1.Map().asMutable();
-                    edge_2_quadrants.get(e).forEach(function (q) {
+                    exports.edge_2_quadrants.get(e).forEach(function (q) {
                         inner_map.set(q, inner_this.get_quadrant_face(q));
                     });
                     inner_map = inner_map.asImmutable();
@@ -6320,6 +6315,7 @@ function test() {
 }
 exports.test = test;
 test();
+var _a;
 
 },{"./datatypes":3,"immutable":1}],3:[function(require,module,exports){
 "use strict";
@@ -6771,6 +6767,19 @@ exports.Pinecone = Pinecone;
 },{"./datatypes":3}],5:[function(require,module,exports){
 "use strict";
 
+Object.defineProperty(exports, "__esModule", { value: true });
+function uncapitalize(msg) {
+    return msg[0].toLowerCase() + msg.slice(1);
+}
+exports.uncapitalize = uncapitalize;
+function capitalize(msg) {
+    return msg[0].toUpperCase() + msg.slice(1);
+}
+exports.capitalize = capitalize;
+
+},{}],6:[function(require,module,exports){
+"use strict";
+
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -6783,6 +6792,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var box_geometry_1 = require("./box_geometry");
 var datatypes_1 = require("./datatypes");
 var world_update_effects_1 = require("./world_update_effects");
+var text_tools_1 = require("./text_tools");
 var immutable_1 = require("immutable");
 
 var Box = function () {
@@ -7171,6 +7181,130 @@ var Box = function () {
             return new_box;
         }
     }, {
+        key: "cut",
+        value: function cut(face, start, end) {
+            return this.cut_or_tape(datatypes_1.EdgeOperation.cut, face, start, end);
+        }
+    }, {
+        key: "tape",
+        value: function tape(face, start, end) {
+            return this.cut_or_tape(datatypes_1.EdgeOperation.tape, face, start, end);
+        }
+    }, {
+        key: "cut_or_tape",
+        value: function cut_or_tape(operation, face, start, end) {
+            var effects = world_update_effects_1.world_update.effects;
+            var inner_this = this;
+            if (face !== datatypes_1.Face.s && face !== datatypes_1.Face.t) {
+                throw new datatypes_1.WorldUpdateError('cannot cut or tape sides other than top or front');
+            }
+
+            var _start = _slicedToArray(start, 2),
+                x1 = _start[0],
+                y1 = _start[1];
+
+            var _end = _slicedToArray(end, 2),
+                x2 = _end[0],
+                y2 = _end[1];
+
+            var v1 = this.box_mesh.face_meshes.get(face).vertices.get(x1, y1);
+            var v2 = this.box_mesh.face_meshes.get(face).vertices.get(x2, y2);
+            var edge = new datatypes_1.Edge(v1, v2);
+            var quadrants = box_geometry_1.edge_2_quadrants.get(edge);
+            this.rend_state.forEach(function (state, r) {
+                if (state == datatypes_1.RendState.open && quadrants.every(r.contains)) {
+                    throw new datatypes_1.WorldUpdateError('cannot cut or tape on an open rend');
+                }
+            });
+            this.dangle_state.forEach(function (state, d) {
+                if (state == datatypes_1.RendState.open && quadrants.every(d.partition.contains)) {
+                    throw new datatypes_1.WorldUpdateError('cannot cut or tape on an open dangle');
+                }
+            });
+            var new_box_mesh = void 0;
+            if (operation == datatypes_1.EdgeOperation.cut) {
+                new_box_mesh = this.box_mesh.cut(face, start, end);
+            } else {
+                new_box_mesh = this.box_mesh.tape(face, start, end);
+            }
+            var new_rend_state = this.default_rend_state(new_box_mesh);
+            this.rend_state.forEach(function (state, r) {
+                if (new_rend_state.has(r)) {
+                    new_rend_state = new_rend_state.set(r, state);
+                } else {
+                    effects.repaired_rends = effects.repaired_rends.push(r);
+                }
+            });
+            new_rend_state.forEach(function (state, new_r) {
+                if (!inner_this.rend_state.has(new_r)) {
+                    effects.new_rends = effects.new_rends.push(new_r);
+                }
+            });
+            var new_dangle_state = this.default_dangle_state(new_box_mesh);
+            this.dangle_state.forEach(function (state, d) {
+                if (new_dangle_state.has(d)) {
+                    new_dangle_state = new_dangle_state.set(d, state);
+                } else {
+                    effects.repaired_dangles = effects.repaired_dangles.push(d);
+                }
+            });
+            new_dangle_state.forEach(function (state, new_d) {
+                if (!inner_this.dangle_state.has(new_d)) {
+                    effects.new_dangles = effects.new_dangles.push(new_d);
+                }
+            });
+            var new_edge_state = this.edge_state;
+            if (operation == datatypes_1.EdgeOperation.cut) {
+                new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge).cut());
+            } else {
+                new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge).apply_tape());
+            }
+            return this.update({ box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state });
+        }
+    }, {
+        key: "take_next_item",
+        value: function take_next_item() {
+            var effects = world_update_effects_1.world_update.effects;
+            if (this.contents.size == 0) {
+                throw new datatypes_1.WorldUpdateError('cannot take an item from an empty box');
+            }
+            if (!self.appears_open()) {
+                throw new datatypes_1.WorldUpdateError('cannot take an item from a box with no visible openings');
+            }
+            var new_contents = this.contents;
+            effects.taken_items = effects.taken_items.push(new_contents.first());
+            new_contents = new_contents.rest();
+            return this.update({ contents: new_contents });
+        }
+    }, {
+        key: "next_item",
+        value: function next_item() {
+            if (this.contents.size == 0) {
+                return null;
+            }
+            return this.contents.first();
+        }
+    }, {
+        key: "appears_open",
+        value: function appears_open() {
+            if (this.rend_state.some(function (state) {
+                return state == datatypes_1.RendState.open;
+            })) {
+                return true;
+            }
+            if (this.dangle_state.some(function (state) {
+                return state == datatypes_1.RendState.open;
+            })) {
+                return true;
+            }
+            return false;
+        }
+    }, {
+        key: "appears_empty",
+        value: function appears_empty() {
+            return this.appears_open() && this.contents.size == 0;
+        }
+    }, {
         key: "is_collapsed",
         value: function is_collapsed() {
             var open_faces = immutable_1.Map().asMutable();
@@ -7200,7 +7334,102 @@ var Box = function () {
     return Box;
 }();
 
-},{"./box_geometry":2,"./datatypes":3,"./world_update_effects":6,"immutable":1}],6:[function(require,module,exports){
+var SingleBoxWorld = function () {
+    function SingleBoxWorld(_ref3) {
+        var box = _ref3.box,
+            taken_items = _ref3.taken_items,
+            spilled_items = _ref3.spilled_items;
+
+        _classCallCheck(this, SingleBoxWorld);
+
+        if (box === undefined) {
+            box = new Box({});
+        }
+        this.box = box;
+        if (taken_items === undefined) {
+            taken_items = immutable_1.List();
+        }
+        this.taken_items = taken_items;
+        if (spilled_items === undefined) {
+            spilled_items = immutable_1.List();
+        }
+        this.spilled_items = spilled_items;
+    }
+
+    _createClass(SingleBoxWorld, [{
+        key: "update",
+        value: function update(_ref4) {
+            var box = _ref4.box,
+                taken_items = _ref4.taken_items,
+                spilled_items = _ref4.spilled_items;
+
+            if (box === undefined) {
+                box = this.box;
+            }
+            if (taken_items === undefined) {
+                taken_items = this.taken_items;
+            }
+            if (spilled_items === undefined) {
+                spilled_items = this.spilled_items;
+            }
+            return new SingleBoxWorld({ box: box, taken_items: taken_items, spilled_items: spilled_items });
+        }
+    }, {
+        key: "command_rotate_y_box",
+        value: function command_rotate_y_box(dir) {
+            var degrees = dir == 'right' ? 90 : 270;
+            var new_box = this.box.rotate_y(degrees);
+            var new_world = this.update({ box: new_box });
+            var message = "You turn the box 90 degrees to the " + dir;
+            return [new_world, message];
+        }
+    }, {
+        key: "command_roll_box",
+        value: function command_roll_box(cmd) {
+            var inner_this = this;
+            return world_update_effects_1.with_world_update(function (effects) {
+                var cmd_2_direction = immutable_1.Map([['forward', datatypes_1.Direction.n], ['backward', datatypes_1.Direction.s], ['left', datatypes_1.Direction.w], ['right', datatypes_1.Direction.e]]);
+                var direction = cmd_2_direction.get(cmd);
+                var new_box = inner_this.box.roll(direction);
+                var dir_msg = cmd == 'left' || cmd == 'right' ? "over to the " + cmd : cmd;
+                var message = void 0;
+                var new_world = void 0;
+                if (effects.spillage_level == datatypes_1.SpillageLevel.none) {
+                    message = "You roll the box " + dir_msg;
+                    new_world = inner_this.update({ box: new_box });
+                } else {
+                    var spill_msg = text_tools_1.uncapitalize(inner_this.spill_message(new_box));
+                    message = "As you roll the box " + dir_msg + ", " + spill_msg;
+                    new_world = inner_this.update({ box: new_box, spilled_items: effects.spilled_items });
+                }
+                if (effects.box_collapsed) {
+                    message += '\nThe added stress on the box causes it to collapse in on itself.';
+                    if (effects.collapse_spilled_items.size > 0) {
+                        message += ' ';
+                        message += inner_this.item_spill_message(effects.collapse_spilled_items);
+                    }
+                }
+                return [new_world, message];
+            });
+        }
+    }, {
+        key: "item_spill_message",
+        value: function item_spill_message(spilled_items) {
+            var si = spilled_items;
+            var during_spill_msg = void 0;
+            var after_spill_msg = void 0;
+            if (si.size == 1) {
+                var item_msg = si.get(0).pre_gestalt();
+                during_spill_msg = text_tools_1.capitalize(item_msg) + " spills out before you.";
+                after_spill_msg = "It's " + si.get(0).article() + " " + si.get(0).name() + " - " + si.get(0).post_gestalt() + ".";
+            } else {}
+        }
+    }]);
+
+    return SingleBoxWorld;
+}();
+
+},{"./box_geometry":2,"./datatypes":3,"./text_tools":5,"./world_update_effects":7,"immutable":1}],7:[function(require,module,exports){
 "use strict";
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -7231,14 +7460,13 @@ exports.world_update = {};
 function with_world_update(f) {
     //TODO validate: error if world_update.effects isn't null/undefined
     exports.world_update.effects = new WorldUpdateEffects();
-    f(exports.world_update.effects);
-    var result = exports.world_update.effects;
+    var result = f(exports.world_update.effects);
     exports.world_update.effects = undefined;
     return result;
 }
 exports.with_world_update = with_world_update;
 //TODO define world update exceptions
 
-},{"./datatypes":3,"immutable":1}]},{},[2,3,4,5,6])
+},{"./datatypes":3,"immutable":1}]},{},[2,3,4,6,7])
 
 //# sourceMappingURL=bundle.js.map
