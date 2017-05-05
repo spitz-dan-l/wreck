@@ -1,4 +1,11 @@
-import {List, Set, Collection} from 'immutable';
+import {
+    Collection,
+    hash,
+    isImmutable,
+    List,
+    Map,
+    Set
+} from 'immutable';
 
 export type Partition = Set<number>;
 
@@ -21,8 +28,9 @@ export class Edge {
     }
 
     hashCode() {
+        return hash(hash(this.start) + hash(this.end));
         // fuck
-        return ( this.end << 16 ) ^ this.start;
+        // return ( this.end << 16 ) ^ this.start;
     }
 }
 
@@ -68,8 +76,9 @@ export class Dangle {
     }
 
     hashCode() {
-        let faces_hash = (this.fixed_face << 16) ^ this.free_face; //fuck!
-        return this.partition.hashCode() + this.edges.hashCode() + faces_hash;
+        return hash(hash(this.partition) + hash(this.edges) + hash(this.fixed_face) + hash(this.free_face));
+        //let faces_hash = (this.fixed_face << 16) ^ this.free_face; //fuck!
+        //return this.partition.hashCode() + this.edges.hashCode() + faces_hash;
     }
 }
 
@@ -209,3 +218,47 @@ export abstract class Item {
         return 'a';
     }
 }
+
+
+export type Counter<T> = Map<T, number>;
+
+export function counter_add<T>(counter: Counter<T>, key: T, inc: number){
+    let cur_val = 0;
+    if (counter.has(key)){
+        cur_val = counter.get(key);
+    }
+    return counter.set(key, cur_val + inc);
+}
+
+export function counter_get<T>(counter: Counter<T>, key: T){
+    let cur_val = 0;
+    if (counter.has(key)){
+        cur_val = counter.get(key);
+    }
+    return cur_val;
+}
+
+export function counter_update<T>(counter1: Counter<T>, counter2: Counter<T>){
+    let switch_to_immutable = isImmutable(counter1);
+    let result = counter1.asMutable();
+
+    counter2.forEach(function (v, k){
+        counter_add(result, k, v);
+    });
+
+    if (switch_to_immutable) {
+        result = result.asImmutable();
+    }
+    return result;
+}
+
+export class WreckError extends Error {}
+
+// used to signal errors caused by trying to update world state in a way that breaks the reality of the world
+// so assumes that commands are already valid, the attempted update *could work* if the state were different
+export class WorldUpdateError extends WreckError {}
+
+// used to signal that a command/pseudo command is not specified legally
+// the command cannot be executed because it *cannot be interpreted*
+export class CommandError extends WreckError {}
+

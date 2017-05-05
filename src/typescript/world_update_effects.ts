@@ -3,7 +3,7 @@ import {Matrix2, make_matrix2, Dangle, Face, Edge, Partition, faces, EdgeOperati
 import {Map, List, Set, OrderedSet, is} from 'immutable';
 
 export class WorldUpdateEffects {
-    spill_directions = List<Direction>();
+    spill_faces = List<Face>();
     spilled_items = List<Item>();
     spilled_rends = Set<Partition>();
     spilled_dangles = Set<Dangle>();

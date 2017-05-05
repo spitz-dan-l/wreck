@@ -1,6 +1,17 @@
-import {Matrix2, make_matrix2, Dangle, Face, Edge, Partition, faces, EdgeOperation, Point2, Direction} from './datatypes';
+import {
+    Dangle,
+    Direction,
+    Edge,
+    EdgeOperation,
+    Face,
+    faces,
+    Matrix2,
+    make_matrix2,
+    Partition,
+    Point2,
+ } from './datatypes';
 
-import {Map, List, Set, OrderedSet, is} from 'immutable';
+import {is, List, Map, Set} from 'immutable';
 
 let face_vertices = Map<Face, Matrix2>([
     [Face.t, make_matrix2([
@@ -151,12 +162,18 @@ export class FaceMesh {
     }
 }
 
+interface BoxMeshParams {
+    dimensions?: [number, number, number],
+    face_meshes?: Map<Face, FaceMesh>,
+    cut_edges?: List<Edge>
+}
+
 export class BoxMesh{
     readonly dimensions: [number, number, number];
     readonly face_meshes: Map<Face, FaceMesh>;
     readonly cut_edges: List<Edge>;
 
-    constructor(dimensions: [number, number, number], face_meshes?: Map<Face, FaceMesh>, cut_edges?: List<Edge>){
+    constructor({dimensions, face_meshes, cut_edges}: BoxMeshParams){
         this.dimensions = dimensions;
         
         if (face_meshes === undefined) {
@@ -174,7 +191,7 @@ export class BoxMesh{
         this.cut_edges = cut_edges;
     }
 
-    update(dimensions?: [number, number, number], face_meshes?: Map<Face, FaceMesh>, cut_edges?: List<Edge>){
+    update({dimensions, face_meshes, cut_edges}: BoxMeshParams){
         if (dimensions === undefined){
             dimensions = this.dimensions;
         }
@@ -186,8 +203,7 @@ export class BoxMesh{
         if (cut_edges === undefined){
             cut_edges = this.cut_edges;
         }
-
-        return new BoxMesh(dimensions, face_meshes, cut_edges);
+        return new BoxMesh({dimensions, face_meshes, cut_edges});
     }
 
     cut(face: Face, start: Point2, end: Point2){
@@ -221,7 +237,7 @@ export class BoxMesh{
             new_cut_edges = new_cut_edges.remove(new_cut_edges.indexOf(new_edge));
         }
 
-        return this.update(undefined, undefined, new_cut_edges);
+        return this.update({cut_edges: new_cut_edges});
     }
 
     get_rends() {
@@ -425,10 +441,10 @@ export class BoxMesh{
         let new_faces = rotate_y_faces(this.face_meshes, degrees);
     
         if (degrees = 180) {
-            return this.update(undefined, new_faces);
+            return this.update({face_meshes: new_faces});
         } else {
             let [x, y, z] = this.dimensions;
-            return this.update([z, y, x], new_faces);
+            return this.update({dimensions: [z, y, x], face_meshes: new_faces});
         }
     }
 
@@ -443,7 +459,7 @@ export class BoxMesh{
 
         let new_faces = roll_faces(this.face_meshes, direction);
 
-        return this.update([new_x, new_y, new_z], new_faces);
+        return this.update({dimensions: [new_x, new_y, new_z], face_meshes: new_faces});
     }
 
     description(){
@@ -573,7 +589,7 @@ function roll_faces(fs: Map<Face, FaceMesh>, direction: Direction){
 
 
 export function test(){
-    let bm = new BoxMesh([2,3,4]);
+    let bm = new BoxMesh({dimensions: [2,3,4]});
 
     let bm2 = bm.cut(Face.t, [0,0], [1,0]).cut(Face.t, [1,0], [1,1]).cut(Face.t, [1,1], [0,1]).cut(Face.t, [0,1], [0,0]);
     let bm3 = bm2.cut(Face.t, [0,1], [0,2]).cut(Face.s, [0, 0], [0, 1]).cut(Face.s, [0,1], [1,1]).cut(Face.s, [1,1], [1,0]).cut(Face.t, [1, 2], [1,1])
