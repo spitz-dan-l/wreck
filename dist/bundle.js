@@ -6590,6 +6590,18 @@ function counter_update(counter1, counter2) {
     return result;
 }
 exports.counter_update = counter_update;
+function counter_order(counter) {
+    var include_zero = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+    var result = counter.sort();
+    if (!include_zero) {
+        result = result.filter(function (count) {
+            return count > 0;
+        });
+    }
+    return result.keySeq().toList().reverse();
+}
+exports.counter_order = counter_order;
 
 var WreckError = function (_Error) {
     _inherits(WreckError, _Error);
@@ -6768,6 +6780,8 @@ exports.Pinecone = Pinecone;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var datatypes_1 = require("./datatypes");
+var immutable_1 = require("immutable");
 function uncapitalize(msg) {
     return msg[0].toLowerCase() + msg.slice(1);
 }
@@ -6776,8 +6790,19 @@ function capitalize(msg) {
     return msg[0].toUpperCase() + msg.slice(1);
 }
 exports.capitalize = capitalize;
+function face_message(face_order, f_code_2_name) {
+    if (f_code_2_name === undefined) {
+        f_code_2_name = immutable_1.Map([[datatypes_1.Face.n, 'back'], [datatypes_1.Face.s, 'front'], [datatypes_1.Face.e, 'right'], [datatypes_1.Face.w, 'left'], [datatypes_1.Face.t, 'top'], [datatypes_1.Face.b, 'bottom']]);
+    }
+    if (face_order.size == 1) {
+        return f_code_2_name.get(face_order.first()) + ' face';
+    } else {
+        return face_order.butLast().map(f_code_2_name.get).join(', ') + ' and ' + f_code_2_name.get(face_order.last()) + ' faces';
+    }
+}
+exports.face_message = face_message;
 
-},{}],6:[function(require,module,exports){
+},{"./datatypes":3,"immutable":1}],6:[function(require,module,exports){
 "use strict";
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
@@ -7413,6 +7438,44 @@ var SingleBoxWorld = function () {
             });
         }
     }, {
+        key: "command_lift_box",
+        value: function command_lift_box() {
+            var inner_this = this;
+            return world_update_effects_1.with_world_update(function (effects) {
+                var new_box = inner_this.box.lift();
+                var msg = void 0;
+                var new_world = void 0;
+                if (effects.spillage_level == datatypes_1.SpillageLevel.none) {
+                    msg = 'You lift up the box in place.';
+                    new_world = inner_this.update({ box: new_box });
+                } else {
+                    var spill_msg = text_tools_1.uncapitalize(inner_this.spill_message(new_box));
+                    msg = 'As you start to lift up the box, ' + spill_msg;
+                    new_world = inner_this.update({ box: new_box, spilled_items: effects.spilled_items });
+                }
+                if (effects.spillage_level <= datatypes_1.SpillageLevel.heavy && !effects.box_collapsed) {
+                    var total_weight = new_box.contents.reduce(function (x, i) {
+                        return x + i.weight();
+                    }, 0);
+                    total_weight = Math.floor(total_weight / 2.9); //rule of thumb for translating "normal item weights" to "normal box weights"
+                    if (total_weight > datatypes_1.Weight.very_heavy) {
+                        total_weight = datatypes_1.Weight.very_heavy;
+                    }
+                    var weight_2_msg = immutable_1.Map([[datatypes_1.Weight.empty, 'so light as to be empty'], [datatypes_1.Weight.very_light, 'quite light'], [datatypes_1.Weight.light, 'light'], [datatypes_1.Weight.medium, 'medium'], [datatypes_1.Weight.heavy, 'somewhat heavy'], [datatypes_1.Weight.very_heavy, 'very heavy']]);
+                    var weight_msg = weight_2_msg.get(total_weight);
+                    var subject = effects.spillage_level == datatypes_1.SpillageLevel.none ? 'It' : 'The box';
+                    msg += "\n" + subject + " feels " + weight_msg + ". You set it back down.";
+                }
+                if (effects.box_collapsed) {
+                    msg += '\nThe added stress on the box causes it to collapse in on itself.';
+                    if (effects.collapse_spilled_items.size > 0) {
+                        msg += ' ' + inner_this.item_spill_message(effects.collapse_spilled_items);
+                    }
+                }
+                return [new_world, msg];
+            });
+        }
+    }, {
         key: "item_spill_message",
         value: function item_spill_message(spilled_items) {
             var si = spilled_items;
@@ -7422,7 +7485,55 @@ var SingleBoxWorld = function () {
                 var item_msg = si.get(0).pre_gestalt();
                 during_spill_msg = text_tools_1.capitalize(item_msg) + " spills out before you.";
                 after_spill_msg = "It's " + si.get(0).article() + " " + si.get(0).name() + " - " + si.get(0).post_gestalt() + ".";
-            } else {}
+            } else {
+                var _item_msg = si.butLast().map(function (i) {
+                    return i.pre_gestalt();
+                }).join(', ') + ' and ' + si.last().pre_gestalt();
+                during_spill_msg = text_tools_1.capitalize(_item_msg + " spill out before you.");
+                var after_msgs = si.map(function (i) {
+                    return i.article() + " " + i.name() + " - " + i.post_gestalt();
+                });
+                after_spill_msg = "It's " + after_msgs.butLast().join(', ') + ' and ' + after_msgs.last() + '.';
+            }
+            var spill_msg = during_spill_msg + ' ' + after_spill_msg;
+            return spill_msg;
+        }
+    }, {
+        key: "spill_message",
+        value: function spill_message(new_box) {
+            var effects = world_update_effects_1.world_update.effects;
+            var structural_dmg_msgs = immutable_1.List();
+            if (effects.spilled_rends.size > 0) {
+                var total_face_membership = immutable_1.Map();
+                effects.spilled_rends.forEach(function (sr) {
+                    var sr_mem = new_box.box_mesh.get_partition_face_membership(sr);
+                    total_face_membership = datatypes_1.counter_update(total_face_membership, sr_mem);
+                });
+                var sr_faces = datatypes_1.counter_order(total_face_membership);
+                var f_msg = text_tools_1.face_message(sr_faces);
+                var spilled_rends_msg = "free cardboard on the " + f_msg + " falls away";
+                structural_dmg_msgs = structural_dmg_msgs.push(spilled_rends_msg);
+            }
+            if (effects.spilled_dangles.size > 0) {
+                var _total_face_membership = immutable_1.Map();
+                effects.spilled_dangles.forEach(function (sd) {
+                    var sd_mem = new_box.box_mesh.get_partition_face_membership(sd);
+                    _total_face_membership = datatypes_1.counter_update(_total_face_membership, sd_mem);
+                });
+                var sd_faces = datatypes_1.counter_order(_total_face_membership);
+                var _f_msg = text_tools_1.face_message(sd_faces);
+                var spilled_dangles_msg = "dangling cardboard on the " + _f_msg + " swings open";
+                structural_dmg_msgs = structural_dmg_msgs.push(spilled_dangles_msg);
+            }
+            var spill_msg = this.item_spill_message(effects.spilled_items);
+            var result = void 0;
+            if (structural_dmg_msgs.size > 0) {
+                var structure_dmg_msg = structural_dmg_msgs.join(' and ');
+                result = structure_dmg_msg + ". " + spill_msg;
+            } else {
+                result = spill_msg;
+            }
+            return result;
         }
     }]);
 

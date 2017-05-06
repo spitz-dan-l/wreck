@@ -252,6 +252,14 @@ export function counter_update<T>(counter1: Counter<T>, counter2: Counter<T>){
     return result;
 }
 
+export function counter_order<T>(counter: Counter<T>, include_zero=false){
+    let result = counter.sort();
+    if (!include_zero) {
+        result = result.filter((count) => count > 0);
+    }
+    return result.keySeq().toList().reverse();
+}
+
 export class WreckError extends Error {}
 
 // used to signal errors caused by trying to update world state in a way that breaks the reality of the world

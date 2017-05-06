@@ -4,6 +4,7 @@ import {
     CardboardEdge,
     CommandError,
     Counter,
+    counter_order,
     counter_update,
     Dangle,
     Direction,
@@ -29,7 +30,7 @@ import {WorldUpdateEffects, with_world_update, world_update} from './world_updat
 
 import {CityKey, Codex, Pinecone} from './items';
 
-import {capitalize, uncapitalize} from './text_tools';
+import {capitalize, face_message, uncapitalize} from './text_tools';
 
 import {List, Map, Set} from 'immutable';
 
@@ -557,6 +558,8 @@ interface SingleBoxWorldParams {
     spilled_items?: List<Item>
 }
 
+type CommandResult = [SingleBoxWorld, string];
+
 class SingleBoxWorld {
     readonly box: Box;
     readonly taken_items: List<Item>;
@@ -595,7 +598,7 @@ class SingleBoxWorld {
         return new SingleBoxWorld({box, taken_items, spilled_items});
     }
 
-    command_rotate_y_box(dir: RotateYDirection): [SingleBoxWorld, string] {
+    command_rotate_y_box(dir: RotateYDirection): CommandResult {
         let degrees = dir == 'right' ? 90 : 270;
         let new_box = this.box.rotate_y(degrees);
         let new_world = this.update({box: new_box});
@@ -605,7 +608,7 @@ class SingleBoxWorld {
         return [new_world, message];
     }
 
-    command_roll_box(cmd: RollDirection): [SingleBoxWorld, string] {
+    command_roll_box(cmd: RollDirection): CommandResult {
         let inner_this = this;
         return with_world_update(function (effects) {
             let cmd_2_direction = Map<RollDirection, Direction>([
@@ -644,6 +647,53 @@ class SingleBoxWorld {
         });
     }
 
+    command_lift_box(): CommandResult {
+        let inner_this = this;
+        return with_world_update(function (effects) {
+            let new_box = inner_this.box.lift();
+
+            let msg: string;
+            let new_world: SingleBoxWorld;
+            if (effects.spillage_level == SpillageLevel.none) {
+                msg = 'You lift up the box in place.';
+                new_world = inner_this.update({box: new_box});
+            } else {
+                let spill_msg = uncapitalize(inner_this.spill_message(new_box));
+                msg = 'As you start to lift up the box, ' + spill_msg;
+                new_world = inner_this.update({box: new_box, spilled_items: effects.spilled_items});
+            }
+
+            if (effects.spillage_level <= SpillageLevel.heavy && !effects.box_collapsed) {
+                let total_weight = new_box.contents.reduce((x, i) => x + i.weight(), 0);
+                total_weight = Math.floor(total_weight / 2.9); //rule of thumb for translating "normal item weights" to "normal box weights"
+
+                if (total_weight > Weight.very_heavy) {
+                    total_weight = Weight.very_heavy;
+                }
+                let weight_2_msg = Map<Weight, string>([
+                    [Weight.empty, 'so light as to be empty'],
+                    [Weight.very_light, 'quite light'],
+                    [Weight.light, 'light'],
+                    [Weight.medium, 'medium'],
+                    [Weight.heavy, 'somewhat heavy'],
+                    [Weight.very_heavy, 'very heavy']
+                ]);
+                let weight_msg = weight_2_msg.get(total_weight);
+                let subject = effects.spillage_level == SpillageLevel.none ? 'It' : 'The box';
+                msg += `\n${subject} feels ${weight_msg}. You set it back down.`;
+            }
+
+            if (effects.box_collapsed) {
+                msg += '\nThe added stress on the box causes it to collapse in on itself.';
+                if (effects.collapse_spilled_items.size > 0) {
+                    msg += ' ' + inner_this.item_spill_message(effects.collapse_spilled_items);
+                }
+            }
+
+            return [new_world, msg];
+        });
+    }
+
     item_spill_message(spilled_items: List<Item>){
         let si = spilled_items;
         let during_spill_msg: string;
@@ -654,7 +704,55 @@ class SingleBoxWorld {
             during_spill_msg = `${capitalize(item_msg)} spills out before you.`;
             after_spill_msg = `It's ${si.get(0).article()} ${si.get(0).name()} - ${si.get(0).post_gestalt()}.`;
         } else {
+            let item_msg = si.butLast().map((i) => i.pre_gestalt()).join(', ') + ' and ' + si.last().pre_gestalt();
+            during_spill_msg = capitalize(`${item_msg} spill out before you.`);
 
+            let after_msgs = si.map((i) => `${i.article()} ${i.name()} - ${i.post_gestalt()}`);
+            after_spill_msg = "It's " + after_msgs.butLast().join(', ') + ' and ' + after_msgs.last() + '.';
         }
+
+        let spill_msg = during_spill_msg + ' ' + after_spill_msg;
+        return spill_msg;
+    }
+
+    spill_message(new_box: Box) {
+        let effects = world_update.effects;
+
+        let structural_dmg_msgs = List<string>();
+
+        if (effects.spilled_rends.size > 0) {
+            let total_face_membership = Map<Face, number>();
+            effects.spilled_rends.forEach(function (sr) {
+                let sr_mem = new_box.box_mesh.get_partition_face_membership(sr);
+                total_face_membership = counter_update(total_face_membership, sr_mem);
+            });
+            let sr_faces = counter_order(total_face_membership);
+            let f_msg = face_message(sr_faces);
+            let spilled_rends_msg = `free cardboard on the ${f_msg} falls away`;
+            structural_dmg_msgs = structural_dmg_msgs.push(spilled_rends_msg);
+        }
+
+        if (effects.spilled_dangles.size > 0) {
+            let total_face_membership = Map<Face, number>();
+            effects.spilled_dangles.forEach(function (sd) {
+                let sd_mem = new_box.box_mesh.get_partition_face_membership(sd);
+                total_face_membership = counter_update(total_face_membership, sd_mem);
+            });
+            let sd_faces = counter_order(total_face_membership);
+            let f_msg = face_message(sd_faces);
+            let spilled_dangles_msg = `dangling cardboard on the ${f_msg} swings open`;
+            structural_dmg_msgs = structural_dmg_msgs.push(spilled_dangles_msg);
+        }
+
+        let spill_msg = this.item_spill_message(effects.spilled_items);
+        let result: string;
+
+        if (structural_dmg_msgs.size > 0) {
+            let structure_dmg_msg = structural_dmg_msgs.join(' and ');
+            result = `${structure_dmg_msg}. ${spill_msg}`;
+        } else {
+            result = spill_msg;
+        }
+        return result;
     }
 }
