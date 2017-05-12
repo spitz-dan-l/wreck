@@ -771,7 +771,7 @@ class SingleBoxWorld:
             if len(world_update_effects.new_dangles) == 1:
                 new_dangles_message = 'A new section of cardboard on the {} can be swung freely on a hinge.'.format(face_msg)
             else:
-                new_dangles_message = '{} new sections of cardboard on the {} can be swung freely on a hinge'.format(len(face_order), face_msg)
+                new_dangles_message = '{} new sections of cardboard on the {} can be swung freely on a hinge.'.format(len(face_order), face_msg)
 
         message = cut_message
         if new_rends_message:

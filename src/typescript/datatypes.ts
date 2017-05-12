@@ -60,7 +60,7 @@ export class Dangle {
     readonly fixed_face: Face;
     readonly free_face: Face;
 
-    constructor(partition, edges, fixed_face, free_face) {
+    constructor(partition: Partition, edges: List<Edge>, fixed_face: Face, free_face: Face) {
         this.partition = partition;
         this.edges = edges;
         this.fixed_face = fixed_face;
@@ -157,8 +157,15 @@ export class EdgeState {
     readonly cardboard: CardboardEdge;
     readonly tape: TapeEdge;
 
-    constructor (cardboard: CardboardEdge, tape: TapeEdge){
+    constructor (cardboard?: CardboardEdge, tape?: TapeEdge){
+        if (cardboard === undefined) {
+            cardboard = CardboardEdge.intact;
+        }
         this.cardboard = cardboard;
+
+        if (tape === undefined) {
+            tape = TapeEdge.untaped;
+        }
         this.tape = tape;
     }
 
@@ -182,6 +189,11 @@ export class EdgeState {
 export enum EdgeOperation {
     cut = 0,
     tape = 1
+}
+
+export enum EdgeDirection {
+    horizontal = 0,
+    vertical = 1
 }
 
 export enum RendState {
@@ -260,6 +272,11 @@ export function counter_order<T>(counter: Counter<T>, include_zero=false){
     return result.keySeq().toList().reverse();
 }
 
+export enum RelativePosition {
+    left = 0, center = 1, right = 2,
+    top = 3, middle = 4, bottom = 5
+}
+
 export class WreckError extends Error {}
 
 // used to signal errors caused by trying to update world state in a way that breaks the reality of the world
@@ -269,7 +286,3 @@ export class WorldUpdateError extends WreckError {}
 // used to signal that a command/pseudo command is not specified legally
 // the command cannot be executed because it *cannot be interpreted*
 export class CommandError extends WreckError {}
-
-export type RotateYDirection = "left" | "right";
-
-export type RollDirection = "forward" | "backward" | "left" | "right";

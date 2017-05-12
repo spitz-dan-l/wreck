@@ -359,7 +359,7 @@ export class BoxMesh{
                         }
 
                         edge_dangles.push(new Dangle(
-                            np, es, fixed_fs.get(0), dangle_fs.get(0)));
+                            np, List<Edge>(es), fixed_fs.get(0), dangle_fs.get(0)));
                     });
                 }
             }
@@ -617,5 +617,3 @@ export function test(){
         console.log();
     }
 }
-
-test();

@@ -14,7 +14,7 @@ var paths = {
 var watchedBrowserify = watchify(browserify({
     basedir: 'src/typescript',
     debug: true,
-    entries: ['box_geometry.ts', 'datatypes.ts', 'items.ts', 'world.ts', 'world_update_effects.ts'],
+    entries: ['box_geometry.ts', 'commands.ts', 'datatypes.ts', 'items.ts', 'world.ts', 'world_update_effects.ts'],
     cache: {},
     packageCache: {}
 }));

@@ -6019,7 +6019,7 @@ var BoxMesh = function () {
                             if (fixed_fs.toSet().size != 1 || dangle_fs.toSet().size != 1) {
                                 return;
                             }
-                            edge_dangles.push(new datatypes_1.Dangle(np, es, fixed_fs.get(0), dangle_fs.get(0)));
+                            edge_dangles.push(new datatypes_1.Dangle(np, immutable_1.List(es), fixed_fs.get(0), dangle_fs.get(0)));
                         });
                     }
                 };
@@ -6314,10 +6314,23 @@ function test() {
     }
 }
 exports.test = test;
-test();
 var _a;
 
-},{"./datatypes":3,"immutable":1}],3:[function(require,module,exports){
+},{"./datatypes":4,"immutable":1}],3:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var immutable_1 = require("immutable");
+var datatypes_1 = require("./datatypes");
+exports.word_2_relative_position = immutable_1.Map([['left', datatypes_1.RelativePosition.left], ['center', datatypes_1.RelativePosition.center], ['right', datatypes_1.RelativePosition.right], ['top', datatypes_1.RelativePosition.top], ['middle', datatypes_1.RelativePosition.middle], ['bottom', datatypes_1.RelativePosition.bottom]]);
+exports.word_2_face = immutable_1.Map([['back', datatypes_1.Face.n], ['front', datatypes_1.Face.s], ['right', datatypes_1.Face.e], ['left', datatypes_1.Face.w], ['top', datatypes_1.Face.t], ['bottom', datatypes_1.Face.b]]);
+exports.word_2_rend_op = immutable_1.Map([['open', datatypes_1.RendOperation.open], ['close', datatypes_1.RendOperation.close]]);
+exports.word_2_edge_op = immutable_1.Map([['cut', datatypes_1.EdgeOperation.cut], ['tape', datatypes_1.EdgeOperation.tape]]);
+exports.word_2_edge_dir = immutable_1.Map([['horizontally', datatypes_1.EdgeDirection.horizontal], ['vertically', datatypes_1.EdgeDirection.vertical]]);
+exports.word_2_degrees = immutable_1.Map([['left', 270], ['right', 90]]);
+exports.word_2_dir = immutable_1.Map([['forward', datatypes_1.Direction.n], ['backward', datatypes_1.Direction.s], ['left', datatypes_1.Direction.w], ['right', datatypes_1.Direction.e]]);
+
+},{"./datatypes":4,"immutable":1}],4:[function(require,module,exports){
 "use strict";
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -6489,7 +6502,13 @@ var EdgeState = function () {
     function EdgeState(cardboard, tape) {
         _classCallCheck(this, EdgeState);
 
+        if (cardboard === undefined) {
+            cardboard = CardboardEdge.intact;
+        }
         this.cardboard = cardboard;
+        if (tape === undefined) {
+            tape = TapeEdge.untaped;
+        }
         this.tape = tape;
     }
 
@@ -6520,6 +6539,11 @@ var EdgeOperation;
     EdgeOperation[EdgeOperation["cut"] = 0] = "cut";
     EdgeOperation[EdgeOperation["tape"] = 1] = "tape";
 })(EdgeOperation = exports.EdgeOperation || (exports.EdgeOperation = {}));
+var EdgeDirection;
+(function (EdgeDirection) {
+    EdgeDirection[EdgeDirection["horizontal"] = 0] = "horizontal";
+    EdgeDirection[EdgeDirection["vertical"] = 1] = "vertical";
+})(EdgeDirection = exports.EdgeDirection || (exports.EdgeDirection = {}));
 var RendState;
 (function (RendState) {
     RendState[RendState["closed"] = 0] = "closed";
@@ -6602,6 +6626,15 @@ function counter_order(counter) {
     return result.keySeq().toList().reverse();
 }
 exports.counter_order = counter_order;
+var RelativePosition;
+(function (RelativePosition) {
+    RelativePosition[RelativePosition["left"] = 0] = "left";
+    RelativePosition[RelativePosition["center"] = 1] = "center";
+    RelativePosition[RelativePosition["right"] = 2] = "right";
+    RelativePosition[RelativePosition["top"] = 3] = "top";
+    RelativePosition[RelativePosition["middle"] = 4] = "middle";
+    RelativePosition[RelativePosition["bottom"] = 5] = "bottom";
+})(RelativePosition = exports.RelativePosition || (exports.RelativePosition = {}));
 
 var WreckError = function (_Error) {
     _inherits(WreckError, _Error);
@@ -6649,7 +6682,7 @@ var CommandError = function (_WreckError2) {
 
 exports.CommandError = CommandError;
 
-},{"immutable":1}],4:[function(require,module,exports){
+},{"immutable":1}],5:[function(require,module,exports){
 "use strict";
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -6776,7 +6809,7 @@ var Pinecone = function (_datatypes_1$Item3) {
 
 exports.Pinecone = Pinecone;
 
-},{"./datatypes":3}],5:[function(require,module,exports){
+},{"./datatypes":4}],6:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -6802,7 +6835,7 @@ function face_message(face_order, f_code_2_name) {
 }
 exports.face_message = face_message;
 
-},{"./datatypes":3,"immutable":1}],6:[function(require,module,exports){
+},{"./datatypes":4,"immutable":1}],7:[function(require,module,exports){
 "use strict";
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
@@ -6816,7 +6849,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 Object.defineProperty(exports, "__esModule", { value: true });
 var box_geometry_1 = require("./box_geometry");
 var datatypes_1 = require("./datatypes");
+var commands_1 = require("./commands");
 var world_update_effects_1 = require("./world_update_effects");
+var items_1 = require("./items");
 var text_tools_1 = require("./text_tools");
 var immutable_1 = require("immutable");
 
@@ -6831,7 +6866,7 @@ var Box = function () {
         _classCallCheck(this, Box);
 
         if (box_mesh === undefined) {
-            box_mesh = new box_geometry_1.BoxMesh([2, 2, 2]);
+            box_mesh = new box_geometry_1.BoxMesh({ dimensions: [2, 2, 2] });
         }
         this.box_mesh = box_mesh;
         if (rend_state === undefined) {
@@ -7280,9 +7315,9 @@ var Box = function () {
             });
             var new_edge_state = this.edge_state;
             if (operation == datatypes_1.EdgeOperation.cut) {
-                new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge).cut());
+                new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge, new datatypes_1.EdgeState()).cut());
             } else {
-                new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge).apply_tape());
+                new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge, new datatypes_1.EdgeState()).apply_tape());
             }
             return this.update({ box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state });
         }
@@ -7293,7 +7328,7 @@ var Box = function () {
             if (this.contents.size == 0) {
                 throw new datatypes_1.WorldUpdateError('cannot take an item from an empty box');
             }
-            if (!self.appears_open()) {
+            if (!this.appears_open()) {
                 throw new datatypes_1.WorldUpdateError('cannot take an item from a box with no visible openings');
             }
             var new_contents = this.contents;
@@ -7413,14 +7448,13 @@ var SingleBoxWorld = function () {
         value: function command_roll_box(cmd) {
             var inner_this = this;
             return world_update_effects_1.with_world_update(function (effects) {
-                var cmd_2_direction = immutable_1.Map([['forward', datatypes_1.Direction.n], ['backward', datatypes_1.Direction.s], ['left', datatypes_1.Direction.w], ['right', datatypes_1.Direction.e]]);
-                var direction = cmd_2_direction.get(cmd);
+                var direction = commands_1.word_2_dir.get(cmd);
                 var new_box = inner_this.box.roll(direction);
                 var dir_msg = cmd == 'left' || cmd == 'right' ? "over to the " + cmd : cmd;
                 var message = void 0;
                 var new_world = void 0;
                 if (effects.spillage_level == datatypes_1.SpillageLevel.none) {
-                    message = "You roll the box " + dir_msg;
+                    message = "You roll the box " + dir_msg + ".";
                     new_world = inner_this.update({ box: new_box });
                 } else {
                     var spill_msg = text_tools_1.uncapitalize(inner_this.spill_message(new_box));
@@ -7476,6 +7510,195 @@ var SingleBoxWorld = function () {
             });
         }
     }, {
+        key: "cut_or_tape_box",
+        value: function cut_or_tape_box(operation, face_w, dir, start_pos_a, start_pos_b, end_pos_b) {
+            var inner_this = this;
+            return world_update_effects_1.with_world_update(function (effects) {
+                var face = commands_1.word_2_face.get(face_w);
+                if (face !== datatypes_1.Face.t && face !== datatypes_1.Face.s) {
+                    throw new datatypes_1.CommandError("face must be either top or front. got " + face);
+                }
+                var dim_2_pos = [['left', 'center', 'right'], ['top', 'middle', 'bottom']];
+                var dim_a = void 0;
+                var dim_b = void 0;
+                if (dir == 'vertically') {
+                    dim_a = 0;
+                    dim_b = 1;
+                } else {
+                    dim_a = 1;
+                    dim_b = 0;
+                }
+                if (dim_2_pos[dim_a].indexOf(start_pos_a) == -1) {
+                    throw new datatypes_1.CommandError("invalid start_pos_a for " + dir + " " + operation + ": " + start_pos_a);
+                }
+                if (dim_2_pos[dim_b].indexOf(start_pos_b) == -1) {
+                    throw new datatypes_1.CommandError("invalid start_pos_b for " + dir + " " + operation + ": " + start_pos_b);
+                }
+                if (dim_2_pos[dim_b].indexOf(end_pos_b) == -1) {
+                    throw new datatypes_1.CommandError("invalid end_pos_b for " + dir + " " + operation + ": " + end_pos_b);
+                }
+                var pt1 = [null, null];
+                var pt2 = [null, null];
+                pt1[dim_a] = pt2[dim_a] = dim_2_pos[dim_a].indexOf(start_pos_a);
+                pt1[dim_b] = dim_2_pos[dim_b].indexOf(start_pos_b);
+                pt2[dim_b] = dim_2_pos[dim_b].indexOf(end_pos_b);
+                if (Math.abs(pt1[dim_b] - pt2[dim_b]) == 0) {
+                    throw new datatypes_1.CommandError('no change between start_pos_b and end_pos_b.');
+                }
+                var cut_points = void 0;
+                if (Math.abs(pt1[dim_b] - pt2[dim_b]) == 2) {
+                    var pt3 = [null, null];
+                    pt3[dim_a] = dim_2_pos[dim_a].indexOf(start_pos_a);
+                    pt3[dim_b] = 1;
+                    cut_points = [[pt1, pt3], [pt3, pt2]];
+                } else {
+                    cut_points = [[pt1, pt2]];
+                }
+                var cut_edge_states = immutable_1.List();
+                var new_box = inner_this.box;
+                cut_points.forEach(function (_ref5) {
+                    var _ref6 = _slicedToArray(_ref5, 2),
+                        p1 = _ref6[0],
+                        p2 = _ref6[1];
+
+                    var vertices = new_box.box_mesh.face_meshes.get(face).vertices;
+                    var v1 = vertices.get(p1[0], p1[1]);
+                    var v2 = vertices.get(p2[0], p2[1]);
+                    var edge = new datatypes_1.Edge(v1, v2);
+                    cut_edge_states = cut_edge_states.push(new_box.edge_state.get(edge, new datatypes_1.EdgeState()));
+                    new_box = new_box.cut_or_tape(commands_1.word_2_edge_op.get(operation), face, p1, p2);
+                });
+                effects.new_dangles.forEach(function (nd) {
+                    if (effects.new_rends.contains(nd.partition)) {
+                        effects.new_dangles = effects.new_dangles.remove(effects.new_dangles.indexOf(nd));
+                    }
+                });
+                effects.repaired_dangles.forEach(function (rd) {
+                    if (effects.new_rends.contains(rd.partition)) {
+                        effects.repaired_dangles = effects.repaired_dangles.remove(effects.repaired_dangles.indexOf(rd));
+                    }
+                });
+                var message = void 0;
+                if (operation == 'cut') {
+                    message = inner_this.cut_message(new_box, cut_edge_states, effects);
+                } else {
+                    message = inner_this.tape_message(new_box, cut_edge_states, effects);
+                }
+                return [inner_this.update({ box: new_box }), message];
+            });
+        }
+    }, {
+        key: "cut_message",
+        value: function cut_message(new_box, cut_edge_states, effects) {
+            var cut_message = void 0;
+            if (cut_edge_states.get(0).cardboard == datatypes_1.CardboardEdge.intact) {
+                cut_message = 'You slide your blade along the cardboard';
+                if (cut_edge_states.get(0).tape == datatypes_1.TapeEdge.taped) {
+                    cut_message += ' and tape';
+                }
+                cut_message += '.';
+            } else {
+                if (cut_edge_states.get(0).tape == datatypes_1.TapeEdge.taped) {
+                    cut_message = 'You draw your blade easily along the line. It slits open the thin layer of tape covering the gap in the cardboard.';
+                } else {
+                    cut_message = 'You slide your blade along the line, but nothing is there to resist it.';
+                }
+            }
+            if (cut_edge_states.size > 1) {
+                if (cut_edge_states.get(1).cardboard != cut_edge_states.get(0).cardboard) {
+                    if (cut_edge_states.get(1).cardboard == datatypes_1.CardboardEdge.intact) {
+                        cut_message += ' Halfway across, it catches on solid cardboard, and you pull it along the rest of the way.';
+                    } else {
+                        if (cut_edge_states.get(1).tape == datatypes_1.TapeEdge.taped) {
+                            cut_message += ' Halfway across, you reach a gap in the cardboard, and your blade slides easily along the thin layer of tape.';
+                        } else {
+                            cut_message += ' Halfway across, you reach a gap in the cardboard, and your blade is met with no further resistance.';
+                        }
+                    }
+                }
+            }
+            var message = cut_message;
+            if (effects.new_rends.size > 0) {
+                var total_face_membership = immutable_1.Map();
+                effects.new_rends.forEach(function (r) {
+                    var face_membership = new_box.box_mesh.get_partition_face_membership(r);
+                    total_face_membership = datatypes_1.counter_update(total_face_membership, face_membership);
+                });
+                var face_order = datatypes_1.counter_order(total_face_membership);
+                var face_msg = text_tools_1.face_message(face_order);
+                var new_rends_message = void 0;
+                if (effects.new_rends.size == 1) {
+                    new_rends_message = "A new section of cardboard comes free on the " + face_msg + ".";
+                } else {
+                    new_rends_message = face_order.size + " new sections of cardboard come free on the " + face_msg;
+                }
+                message += '\n' + new_rends_message;
+            }
+            if (effects.new_dangles.size > 0) {
+                var _total_face_membership = immutable_1.Map();
+                effects.new_dangles.forEach(function (d) {
+                    var face_membership = new_box.box_mesh.get_partition_face_membership(d.partition);
+                    _total_face_membership = datatypes_1.counter_update(_total_face_membership, face_membership);
+                });
+                var _face_order = datatypes_1.counter_order(_total_face_membership);
+                var _face_msg = text_tools_1.face_message(_face_order);
+                var _new_rends_message = void 0;
+                if (effects.new_dangles.size == 1) {
+                    _new_rends_message = "A new section of cardboard on the " + _face_msg + " can be swung freely on a hinge.";
+                } else {
+                    _new_rends_message = _face_order.size + " new sections of cardboard on the " + _face_msg + " can be swung freely on a hinge";
+                }
+                message += '\n' + _new_rends_message;
+            }
+            return message;
+        }
+    }, {
+        key: "tape_message",
+        value: function tape_message(new_box, cut_edge_states, effects) {
+            var tape_message = void 0;
+            if (cut_edge_states.some(function (ces) {
+                return ces.cardboard == datatypes_1.CardboardEdge.intact;
+            })) {
+                tape_message = 'You draw out a length of tape and fasten it to the cardboard.';
+            } else {
+                if (cut_edge_states.some(function (ces) {
+                    return ces.tape == datatypes_1.TapeEdge.taped;
+                })) {
+                    tape_message = 'You lay another length of tape over the cut edge.';
+                } else {
+                    tape_message = 'You seal the gap in the cardboard with a length of tape.';
+                }
+            }
+            var message = tape_message;
+            if (effects.repaired_dangles.size > 0) {
+                var total_face_membership = immutable_1.Map();
+                effects.repaired_dangles.forEach(function (d) {
+                    var face_membership = new_box.box_mesh.get_partition_face_membership(d.partition);
+                    total_face_membership = datatypes_1.counter_update(total_face_membership, face_membership);
+                });
+                var face_order = datatypes_1.counter_order(total_face_membership);
+                var face_msg = text_tools_1.face_message(face_order);
+                var repaired_dangles_message = void 0;
+                if (effects.new_rends.size == 1) {
+                    repaired_dangles_message = "A formerly freely-swinging section of cardboard on the " + face_msg + " can no longer swing on its hinge.";
+                } else {
+                    repaired_dangles_message = face_order.size + " formerly freely-swinging sections of cardboard on the " + face_msg + " can no longer swing on their hinges.";
+                }
+                message += '\n' + repaired_dangles_message;
+            }
+            return message;
+        }
+    }, {
+        key: "command_cut_box",
+        value: function command_cut_box(face_w, dir, start_pos_a, start_pos_b, end_pos_b) {
+            return this.cut_or_tape_box('cut', face_w, dir, start_pos_a, start_pos_b, end_pos_b);
+        }
+    }, {
+        key: "command_tape_box",
+        value: function command_tape_box(face_w, dir, start_pos_a, start_pos_b, end_pos_b) {
+            return this.cut_or_tape_box('tape', face_w, dir, start_pos_a, start_pos_b, end_pos_b);
+        }
+    }, {
         key: "item_spill_message",
         value: function item_spill_message(spilled_items) {
             var si = spilled_items;
@@ -7515,12 +7738,12 @@ var SingleBoxWorld = function () {
                 structural_dmg_msgs = structural_dmg_msgs.push(spilled_rends_msg);
             }
             if (effects.spilled_dangles.size > 0) {
-                var _total_face_membership = immutable_1.Map();
+                var _total_face_membership2 = immutable_1.Map();
                 effects.spilled_dangles.forEach(function (sd) {
                     var sd_mem = new_box.box_mesh.get_partition_face_membership(sd);
-                    _total_face_membership = datatypes_1.counter_update(_total_face_membership, sd_mem);
+                    _total_face_membership2 = datatypes_1.counter_update(_total_face_membership2, sd_mem);
                 });
-                var sd_faces = datatypes_1.counter_order(_total_face_membership);
+                var sd_faces = datatypes_1.counter_order(_total_face_membership2);
                 var _f_msg = text_tools_1.face_message(sd_faces);
                 var spilled_dangles_msg = "dangling cardboard on the " + _f_msg + " swings open";
                 structural_dmg_msgs = structural_dmg_msgs.push(spilled_dangles_msg);
@@ -7535,12 +7758,291 @@ var SingleBoxWorld = function () {
             }
             return result;
         }
+    }, {
+        key: "command_open_dangle",
+        value: function command_open_dangle(face) {
+            return this.open_or_close_dangle('open', face);
+        }
+    }, {
+        key: "command_close_dangle",
+        value: function command_close_dangle(face) {
+            return this.open_or_close_dangle('close', face);
+        }
+    }, {
+        key: "open_or_close_dangle",
+        value: function open_or_close_dangle(operation, face_w) {
+            var inner_this = this;
+            return world_update_effects_1.with_world_update(function (effects) {
+                var face = commands_1.word_2_face.get(face_w);
+                var applicable_dangles = inner_this.box.dangle_state.keySeq().filter(function (d) {
+                    return d.free_face == face;
+                });
+                var new_box = inner_this.box;
+                var updated = immutable_1.List();
+                applicable_dangles.forEach(function (d) {
+                    var err = false;
+                    try {
+                        new_box = new_box.open_or_close_dangle(commands_1.word_2_rend_op.get(operation), d);
+                    } catch (e) {
+                        err = true;
+                        if (!(e instanceof datatypes_1.WorldUpdateError)) {
+                            throw e;
+                        }
+                    }
+                    if (!err) {
+                        updated = updated.push(d);
+                    }
+                });
+                if (updated.size == 0) {
+                    throw new datatypes_1.WorldUpdateError("No dangles to " + operation + " on " + face + " face");
+                }
+                var swing_dir_msg = operation == 'close' ? 'in' : 'out';
+                var num_hinges = updated.map(function (d) {
+                    return d.fixed_face;
+                }).toSet().size;
+                var hinge_msg = void 0;
+                if (num_hinges == 1) {
+                    hinge_msg = 'hinge';
+                } else {
+                    hinge_msg = 'hinges';
+                }
+                var message = "You swing the cardboard on the " + datatypes_1.Face[face] + " of the box " + swing_dir_msg + " on its " + hinge_msg;
+                if (!inner_this.box.appears_open() && new_box.appears_open()) {
+                    message += '\nYou get a glimpse inside the box through the opening.';
+                    if (new_box.appears_empty()) {
+                        message += " It's empty.";
+                    } else {
+                        message += " You can see " + new_box.next_item().pre_gestalt() + " inside.";
+                    }
+                }
+                if (effects.box_collapsed) {
+                    message += '\nThe added stress on the box causes it to collapse in on itself.';
+                    if (effects.collapse_spilled_items.size > 0) {
+                        message += ' ' + inner_this.item_spill_message(effects.collapse_spilled_items);
+                    }
+                }
+                return [inner_this.update({ box: new_box }), message];
+            });
+        }
+    }, {
+        key: "command_open_rend",
+        value: function command_open_rend(face_w) {
+            return this.open_or_close_rend('open', face_w);
+        }
+    }, {
+        key: "command_close_rend",
+        value: function command_close_rend(face_w) {
+            return this.open_or_close_rend('close', face_w);
+        }
+    }, {
+        key: "open_or_close_rend",
+        value: function open_or_close_rend(operation, face_w) {
+            var inner_this = this;
+            return world_update_effects_1.with_world_update(function (effects) {
+                var face = commands_1.word_2_face.get(face_w);
+                var applicable_rends = immutable_1.List();
+                inner_this.box.rend_state.forEach(function (s, r) {
+                    var face_membership = inner_this.box.box_mesh.get_partition_face_membership(r);
+                    if (face_membership.get(face) > 0) {
+                        applicable_rends = applicable_rends.push(r);
+                    }
+                });
+                var new_box = inner_this.box;
+                var updated = immutable_1.List();
+                applicable_rends.forEach(function (r) {
+                    var err = false;
+                    try {
+                        new_box = new_box.open_or_close_rend(commands_1.word_2_rend_op.get(operation), r);
+                    } catch (e) {
+                        err = true;
+                        if (!(e instanceof datatypes_1.WorldUpdateError)) {
+                            throw e;
+                        }
+                    }
+                    if (!err) {
+                        updated = updated.push(r);
+                    }
+                });
+                if (updated.size == 0) {
+                    throw new datatypes_1.WorldUpdateError("No rends to " + operation + " on " + face + " face");
+                }
+                var total_face_membership = immutable_1.Map();
+                total_face_membership = updated.reduce(function (total, r) {
+                    return datatypes_1.counter_update(total, inner_this.box.box_mesh.get_partition_face_membership(r));
+                }, total_face_membership);
+                var face_msg = text_tools_1.face_message(datatypes_1.counter_order(total_face_membership));
+                var message = void 0;
+                if (operation == 'open') {
+                    message = "You remove the free cardboard from the " + face_msg + " and place it to the side.";
+                } else {
+                    "You replace the missing cardboard from the " + face_msg + ".";
+                }
+                if (!inner_this.box.appears_open() && new_box.appears_open()) {
+                    message += '\nYou get a glimpse inside the box through the opening.';
+                    if (new_box.appears_empty()) {
+                        message += " It's empty.";
+                    } else {
+                        message += " You can see " + new_box.next_item().pre_gestalt() + " inside.";
+                    }
+                }
+                if (effects.box_collapsed) {
+                    message += '\nThe added stress on the box causes it to collapse in on itself.';
+                    if (effects.collapse_spilled_items.size > 0) {
+                        message += ' ' + inner_this.item_spill_message(effects.collapse_spilled_items);
+                    }
+                }
+                return [inner_this.update({ box: new_box }), message];
+            });
+        }
+    }, {
+        key: "command_take_item_box",
+        value: function command_take_item_box() {
+            var inner_this = this;
+            return world_update_effects_1.with_world_update(function (effects) {
+                var new_box = inner_this.box.take_next_item();
+                var new_taken_items = inner_this.taken_items;
+                new_taken_items.push.apply(new_taken_items, _toConsumableArray(effects.taken_items.toArray()));
+                var item = effects.taken_items.get(0);
+                var message = "You reach in and take " + item.pre_gestalt() + ". It's " + item.post_gestalt() + "; " + item.article() + " " + item.name() + ".";
+                if (new_box.appears_empty()) {
+                    message += '\nThe box is empty now.';
+                } else {
+                    message += "\nYou can now see " + new_box.next_item().pre_gestalt() + " inside the box.";
+                }
+                return [inner_this.update({ box: new_box, taken_items: new_taken_items }), message];
+            });
+        }
     }]);
 
     return SingleBoxWorld;
 }();
 
-},{"./box_geometry":2,"./datatypes":3,"./text_tools":5,"./world_update_effects":7,"immutable":1}],7:[function(require,module,exports){
+var WorldDriver = function () {
+    function WorldDriver(initial_world) {
+        _classCallCheck(this, WorldDriver);
+
+        this.world = initial_world;
+    }
+
+    _createClass(WorldDriver, [{
+        key: "apply_command",
+        value: function apply_command(cmd_name) {
+            var cmd_method = void 0;
+            switch (cmd_name) {
+                case 'rotate_y_box':
+                    cmd_method = this.world.command_rotate_y_box;
+                    break;
+                case 'roll_box':
+                    cmd_method = this.world.command_roll_box;
+                    break;
+                case 'lift_box':
+                    cmd_method = this.world.command_lift_box;
+                    break;
+                case 'cut_box':
+                    cmd_method = this.world.command_cut_box;
+                    break;
+                case 'tape_box':
+                    cmd_method = this.world.command_tape_box;
+                    break;
+                case 'open_dangle':
+                    cmd_method = this.world.command_open_dangle;
+                    break;
+                case 'close_dangle':
+                    cmd_method = this.world.command_close_dangle;
+                    break;
+                case 'open_rend':
+                    cmd_method = this.world.command_open_rend;
+                    break;
+                case 'close_rend':
+                    cmd_method = this.world.command_close_rend;
+                    break;
+                case 'take_item_box':
+                    cmd_method = this.world.command_take_item_box;
+                    break;
+                default:
+                    throw new datatypes_1.CommandError("invalid cmd_name given: " + cmd_name);
+            }
+
+            for (var _len = arguments.length, cmd_args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+                cmd_args[_key - 1] = arguments[_key];
+            }
+
+            var _cmd_method$apply = cmd_method.apply(this.world, cmd_args),
+                _cmd_method$apply2 = _slicedToArray(_cmd_method$apply, 2),
+                new_world = _cmd_method$apply2[0],
+                msg = _cmd_method$apply2[1];
+
+            var tokens = [cmd_name];
+            tokens.push.apply(tokens, cmd_args);
+            console.log('> ' + tokens.join(' ') + '\n');
+            console.log(msg + '\n');
+            this.world = new_world;
+        }
+    }]);
+
+    return WorldDriver;
+}();
+
+function test() {
+    var contents = immutable_1.List([new items_1.Codex(), new items_1.Pinecone(), new items_1.CityKey()]);
+    var world = new SingleBoxWorld({ box: new Box({ contents: contents }) });
+    console.log('NEW WORLD: test heavy spillage when rolling\n\n\n');
+    var d = new WorldDriver(world);
+    d.apply_command('lift_box');
+    d.apply_command('roll_box', 'forward');
+    d.apply_command('rotate_y_box', 'left');
+    // cut the top face vertically along the center from top to bottom
+    d.apply_command('cut_box', 'top', 'vertically', 'center', 'top', 'bottom');
+    // cut the top face vertically along the right edge from top to bottom
+    d.apply_command('cut_box', 'top', 'vertically', 'right', 'top', 'bottom');
+    // should result in a dangle
+    // cut the top face horizontally along the top edge from center to right
+    d.apply_command('cut_box', 'top', 'horizontally', 'top', 'center', 'right');
+    // should result in a rend
+    // cut the top face horizontally along the bottom edge from center to right
+    d.apply_command('cut_box', 'top', 'horizontally', 'bottom', 'center', 'right');
+    d.apply_command('roll_box', 'forward');
+    // should result in the rend facing straight down, maybe spilling
+    d.apply_command('roll_box', 'forward');
+    d.apply_command('lift_box');
+    console.log('\n\n\nNEW WORLD: test heavy spillage and collapse from bottom when lifting\n\n\n');
+    var d2 = new WorldDriver(world);
+    d2.apply_command('cut_box', 'front', 'horizontally', 'bottom', 'left', 'right');
+    d2.apply_command('rotate_y_box', 'left');
+    d2.apply_command('cut_box', 'front', 'horizontally', 'bottom', 'left', 'right');
+    d2.apply_command('rotate_y_box', 'left');
+    d2.apply_command('cut_box', 'front', 'horizontally', 'bottom', 'left', 'right');
+    d2.apply_command('rotate_y_box', 'left');
+    d2.apply_command('cut_box', 'front', 'horizontally', 'bottom', 'left', 'right');
+    d2.apply_command('lift_box');
+    console.log('\n\n\nNEW WORLD: test taping\n\n\n');
+    var d3 = new WorldDriver(world);
+    d3.apply_command('cut_box', 'top', 'horizontally', 'top', 'left', 'right');
+    d3.apply_command('cut_box', 'top', 'horizontally', 'bottom', 'left', 'right');
+    d3.apply_command('cut_box', 'top', 'vertically', 'left', 'top', 'bottom');
+    d3.apply_command('open_dangle', 'top');
+    d3.apply_command('take_item_box');
+    d3.apply_command('close_dangle', 'top');
+    d3.apply_command('cut_box', 'top', 'vertically', 'right', 'top', 'bottom');
+    d3.apply_command('open_rend', 'top');
+    d3.apply_command('take_item_box');
+    d3.apply_command('take_item_box');
+    d3.apply_command('close_rend', 'top');
+    d3.apply_command('tape_box', 'top', 'vertically', 'right', 'top', 'bottom');
+    d3.apply_command('tape_box', 'top', 'vertically', 'left', 'top', 'middle');
+    console.log('\n\n\nNEW WORLD: test light spillage when rolling and lifting\n\n\n');
+    var d4 = new WorldDriver(world);
+    d4.apply_command('cut_box', 'front', 'horizontally', 'top', 'left', 'right');
+    d4.apply_command('cut_box', 'front', 'horizontally', 'bottom', 'left', 'right');
+    d4.apply_command('cut_box', 'front', 'vertically', 'left', 'top', 'bottom');
+    d4.apply_command('lift_box');
+    d4.apply_command('cut_box', 'front', 'vertically', 'right', 'top', 'bottom');
+    d4.apply_command('roll_box', 'right');
+}
+exports.test = test;
+test();
+
+},{"./box_geometry":2,"./commands":3,"./datatypes":4,"./items":5,"./text_tools":6,"./world_update_effects":8,"immutable":1}],8:[function(require,module,exports){
 "use strict";
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -7578,6 +8080,6 @@ function with_world_update(f) {
 exports.with_world_update = with_world_update;
 //TODO define world update exceptions
 
-},{"./datatypes":3,"immutable":1}]},{},[2,3,4,6,7])
+},{"./datatypes":4,"immutable":1}]},{},[2,3,4,5,7,8])
 
 //# sourceMappingURL=bundle.js.map
