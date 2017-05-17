@@ -151,7 +151,7 @@ export class Box {
         let new_rend_state = this.rend_state;
         let intended_new_state = operation == RendOperation.close ? RendState.closed : RendState.open;
         if (intended_new_state == new_rend_state.get(rend)) {
-            throw new WorldUpdateError(`cannot ${operation} a rend that is already ${intended_new_state}`);
+            throw new WorldUpdateError(`cannot ${RendOperation[operation]} a rend that is already ${RendState[intended_new_state]}`);
         }
 
         new_rend_state = new_rend_state.set(rend, intended_new_state);
@@ -182,7 +182,7 @@ export class Box {
 
         let intended_new_state = operation == RendOperation.close ? RendState.closed : RendState.open;
         if (this.dangle_state.get(dangle) == intended_new_state) {
-            throw new WorldUpdateError('cannot ${operation} a dangle that is already ${intended_new_state}');
+            throw new WorldUpdateError('cannot ${RendOperation[operation]} a dangle that is already ${RendState[intended_new_state]}');
         }
 
         let new_dangle_state = this.dangle_state.set(dangle, intended_new_state);
@@ -711,7 +711,7 @@ export class SingleBoxWorld {
         return with_world_update(function (effects) {
             let face = word_2_face.get(face_w);
             if (face !== Face.t && face !== Face.s) {
-                throw new CommandError(`face must be either top or front. got ${face}`);
+                throw new CommandError(`face must be either top or front. got ${face_w}`);
             }
 
             let dim_2_pos = [
@@ -1002,7 +1002,7 @@ export class SingleBoxWorld {
                 }
             });
             if (updated.size == 0) {
-                throw new WorldUpdateError(`No dangles to ${operation} on ${face} face`);
+                throw new WorldUpdateError(`No dangles to ${operation} on ${face_w} face`);
             }
 
             let swing_dir_msg = operation == 'close' ? 'in' : 'out';
@@ -1014,7 +1014,7 @@ export class SingleBoxWorld {
                 hinge_msg = 'hinges';
             }
 
-            let message = `You swing the cardboard on the ${Face[face]} of the box ${swing_dir_msg} on its ${hinge_msg}`;
+            let message = `You swing the cardboard on the ${face_w} of the box ${swing_dir_msg} on its ${hinge_msg}`;
             if (!inner_this.box.appears_open() && new_box.appears_open()) {
                 message += '\nYou get a glimpse inside the box through the opening.';
 
@@ -1071,7 +1071,7 @@ export class SingleBoxWorld {
                 }
             });
             if (updated.size == 0) {
-                throw new WorldUpdateError(`No rends to ${operation} on ${face} face`);
+                throw new WorldUpdateError(`No rends to ${operation} on ${face_w} face`);
             }
 
             let total_face_membership = Map<Face, number>();

@@ -6982,7 +6982,7 @@ var Box = function () {
             var new_rend_state = this.rend_state;
             var intended_new_state = operation == datatypes_1.RendOperation.close ? datatypes_1.RendState.closed : datatypes_1.RendState.open;
             if (intended_new_state == new_rend_state.get(rend)) {
-                throw new datatypes_1.WorldUpdateError("cannot " + operation + " a rend that is already " + intended_new_state);
+                throw new datatypes_1.WorldUpdateError("cannot " + datatypes_1.RendOperation[operation] + " a rend that is already " + datatypes_1.RendState[intended_new_state]);
             }
             new_rend_state = new_rend_state.set(rend, intended_new_state);
             var new_box = this.update({ rend_state: new_rend_state });
@@ -7011,7 +7011,7 @@ var Box = function () {
             }
             var intended_new_state = operation == datatypes_1.RendOperation.close ? datatypes_1.RendState.closed : datatypes_1.RendState.open;
             if (this.dangle_state.get(dangle) == intended_new_state) {
-                throw new datatypes_1.WorldUpdateError('cannot ${operation} a dangle that is already ${intended_new_state}');
+                throw new datatypes_1.WorldUpdateError('cannot ${RendOperation[operation]} a dangle that is already ${RendState[intended_new_state]}');
             }
             var new_dangle_state = this.dangle_state.set(dangle, intended_new_state);
             var new_box = this.update({ dangle_state: new_dangle_state });
@@ -7554,7 +7554,7 @@ var SingleBoxWorld = function () {
             return world_update_effects_1.with_world_update(function (effects) {
                 var face = commands_1.word_2_face.get(face_w);
                 if (face !== datatypes_1.Face.t && face !== datatypes_1.Face.s) {
-                    throw new datatypes_1.CommandError("face must be either top or front. got " + face);
+                    throw new datatypes_1.CommandError("face must be either top or front. got " + face_w);
                 }
                 var dim_2_pos = [['left', 'center', 'right'], ['top', 'middle', 'bottom']];
                 var dim_a = void 0;
@@ -7832,7 +7832,7 @@ var SingleBoxWorld = function () {
                     }
                 });
                 if (updated.size == 0) {
-                    throw new datatypes_1.WorldUpdateError("No dangles to " + operation + " on " + face + " face");
+                    throw new datatypes_1.WorldUpdateError("No dangles to " + operation + " on " + face_w + " face");
                 }
                 var swing_dir_msg = operation == 'close' ? 'in' : 'out';
                 var num_hinges = updated.map(function (d) {
@@ -7844,7 +7844,7 @@ var SingleBoxWorld = function () {
                 } else {
                     hinge_msg = 'hinges';
                 }
-                var message = "You swing the cardboard on the " + datatypes_1.Face[face] + " of the box " + swing_dir_msg + " on its " + hinge_msg;
+                var message = "You swing the cardboard on the " + face_w + " of the box " + swing_dir_msg + " on its " + hinge_msg;
                 if (!inner_this.box.appears_open() && new_box.appears_open()) {
                     message += '\nYou get a glimpse inside the box through the opening.';
                     if (new_box.appears_empty()) {
@@ -7902,7 +7902,7 @@ var SingleBoxWorld = function () {
                     }
                 });
                 if (updated.size == 0) {
-                    throw new datatypes_1.WorldUpdateError("No rends to " + operation + " on " + face + " face");
+                    throw new datatypes_1.WorldUpdateError("No rends to " + operation + " on " + face_w + " face");
                 }
                 var total_face_membership = immutable_1.Map();
                 total_face_membership = updated.reduce(function (total, r) {
