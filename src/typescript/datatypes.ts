@@ -54,6 +54,13 @@ export enum Direction {
 
 export let directions = [Direction.n, Direction.s, Direction.e, Direction.w];
 
+export let direction_2_face = Map<Direction, Face>([
+    [Direction.n, Face.n],
+    [Direction.s, Face.s],
+    [Direction.e, Face.e],
+    [Direction.w, Face.w]
+]);
+
 export class Dangle {
     readonly partition: Partition;
     readonly edges: List<Edge>;

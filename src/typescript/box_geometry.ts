@@ -152,12 +152,12 @@ export class FaceMesh {
     readonly vertices: Matrix2;
     readonly quadrants: Matrix2;
 
-    constructor(vertices, quadrants){
+    constructor(vertices: Matrix2, quadrants: Matrix2){
         this.vertices = vertices;
         this.quadrants = quadrants;
     }
 
-    rotate(degrees) {
+    rotate(degrees: number) {
         return new FaceMesh(this.vertices.rotate(degrees), this.quadrants.rotate(degrees));
     }
 }
@@ -253,7 +253,7 @@ export class BoxMesh{
         return face_membership.get(Face.b) > 0;
     }
 
-    get_partition_face_membership(partition) {
+    get_partition_face_membership(partition: Partition) {
         let face_membership = Map<Face, number>().asMutable();
         for (let f of faces) {
             let total = 0;
@@ -431,7 +431,7 @@ export class BoxMesh{
         return edges;
     }    
 
-    rotate_y(degrees) {
+    rotate_y(degrees: number) {
         //validate degrees somehow
 
         if (degrees == 0 || degrees == 360) {
@@ -525,7 +525,7 @@ export class BoxMesh{
     }
 }
 
-function rotate_y_faces(fs: Map<Face, FaceMesh>, degrees) {
+function rotate_y_faces(fs: Map<Face, FaceMesh>, degrees: number) {
     if (degrees == 0 || degrees == 360) {
         return fs;
     }

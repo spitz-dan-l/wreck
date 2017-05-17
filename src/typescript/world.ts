@@ -9,6 +9,7 @@ import {
     Dangle,
     Direction,
     directions,
+    direction_2_face,
     Edge,
     EdgeDirection,
     EdgeOperation,
@@ -52,7 +53,7 @@ import {capitalize, face_message, uncapitalize} from './text_tools';
 
 import {List, Map, Set} from 'immutable';
 
-interface BoxParams {
+export interface BoxParams {
     box_mesh?: BoxMesh,
     rend_state?: Map<Partition, RendState>,
     dangle_state?: Map<Dangle, RendState>,
@@ -60,7 +61,7 @@ interface BoxParams {
     contents?: List<Item>
 }
 
-class Box {
+export class Box {
     readonly box_mesh: BoxMesh;
     readonly rend_state: Map<Partition, RendState>;
     readonly dangle_state: Map<Dangle, RendState>;
@@ -197,7 +198,7 @@ class Box {
         return new_box;
     }
 
-    rotate_y(degrees) {
+    rotate_y(degrees: number) {
         let new_box_mesh = this.box_mesh.rotate_y(degrees);
         return this.update(new_box_mesh);
     }
@@ -208,7 +209,7 @@ class Box {
         }
 
         let new_box_mesh = this.box_mesh.roll(direction);
-        let dir_face = Face[Direction[direction]];
+        let dir_face: Face = direction_2_face.get(direction);
 
         let new_contents = this.contents;
         let rend_state_updates = this.rend_state;
@@ -225,7 +226,7 @@ class Box {
                 [Face.w, Face.e]]);
  
             let heavy_spill_faces: [Face, Face][] = [
-                [Face[Direction[direction]], Face.b],
+                [dir_face, Face.b],
                 [Face.t, dir_face],
                 [Face.b, dir_2_opposite.get(dir_face)]];
             let light_spill_faces = ([Face.n, Face.s, Face.e, Face.w]
@@ -269,7 +270,7 @@ class Box {
                 let spill_face: Face;
                 if (d.free_face == Face.t) {
                     spillage_level = SpillageLevel.heavy;
-                    spill_face = Face[Direction[direction]];
+                    spill_face = dir_face;
                 } else if (d.free_face == dir_face) {
                     spillage_level = SpillageLevel.heavy;
                     spill_face = Face.b;
@@ -418,11 +419,11 @@ class Box {
         return new_box;
     }
 
-    cut(face: Face, start, end) {
+    cut(face: Face, start: Point2, end: Point2) {
         return this.cut_or_tape(EdgeOperation.cut, face, start, end);
     }
 
-    tape(face, start, end) {
+    tape(face: Face, start: Point2, end: Point2) {
         return this.cut_or_tape(EdgeOperation.tape, face, start, end);
     }
 
@@ -570,15 +571,15 @@ class Box {
     }
 }
 
-interface SingleBoxWorldParams {
+export interface SingleBoxWorldParams {
     box?: Box,
     taken_items?: List<Item>,
     spilled_items?: List<Item>
 }
 
-type CommandResult = [SingleBoxWorld, string];
+export type CommandResult = [SingleBoxWorld, string];
 
-class SingleBoxWorld {
+export class SingleBoxWorld {
     readonly box: Box;
     readonly taken_items: List<Item>;
     readonly spilled_items: List<Item>;
@@ -950,7 +951,7 @@ class SingleBoxWorld {
         if (effects.spilled_dangles.size > 0) {
             let total_face_membership = Map<Face, number>();
             effects.spilled_dangles.forEach(function (sd) {
-                let sd_mem = new_box.box_mesh.get_partition_face_membership(sd);
+                let sd_mem = new_box.box_mesh.get_partition_face_membership(sd.partition);
                 total_face_membership = counter_update(total_face_membership, sd_mem);
             });
             let sd_faces = counter_order(total_face_membership);
@@ -1130,15 +1131,15 @@ class SingleBoxWorld {
     }
 }
 
-class WorldDriver {
+export class WorldDriver {
     world: SingleBoxWorld;
 
     constructor (initial_world: SingleBoxWorld) {
         this.world = initial_world;
     }
 
-    apply_command(cmd_name: string, ...cmd_args: Token[]) {
-        let cmd_method: (...any) => CommandResult;
+    apply_command(cmd_name: Token, ...cmd_args: Token[]) {
+        let cmd_method: (...cmd_args: Token[]) => CommandResult;
         switch (cmd_name) {
             case 'rotate_y_box':
                 cmd_method = this.world.command_rotate_y_box;
@@ -1176,10 +1177,21 @@ class WorldDriver {
         let [new_world, msg] = cmd_method.apply(this.world, cmd_args);
         let tokens: Token[] = [cmd_name];
         tokens.push(...cmd_args);
-        console.log('> ' + tokens.join(' ') + '\n');
-        console.log(msg + '\n');
+        //console.log('> ' + tokens.join(' ') + '\n');
+        //console.log(msg + '\n');
         this.world = new_world;
+        return msg
     }
+
+    run(cmd: string) {
+        let [cmd_name, cmd_args]: [Token, Token[]] = parse_command(cmd);
+        return this.apply_command(cmd_name, ...cmd_args);
+    }
+}
+
+export function parse_command(cmd: string): [Token, Token[]] {
+    let tokens = cmd.split(/\s*/);
+    return [tokens[0], tokens.slice(1)];
 }
 
 export function test() {
@@ -1260,5 +1272,3 @@ export function test() {
 
     d4.apply_command('roll_box', 'right');
 }
-
-test();

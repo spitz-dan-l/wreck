@@ -10,14 +10,22 @@ var paths = {
     pages: ['src/html/*.html']
 };
 
-
-var watchedBrowserify = watchify(browserify({
+var myBrowserify = browserify({
     basedir: 'src/typescript',
     debug: true,
-    entries: ['box_geometry.ts', 'commands.ts', 'datatypes.ts', 'items.ts', 'world.ts', 'world_update_effects.ts'],
+    entries: ['box_geometry.ts', 'commands.ts', 'datatypes.ts', 'main.ts', 'items.ts', 'world.ts', 'world_update_effects.ts'],
     cache: {},
     packageCache: {}
-}));
+});
+
+
+// var watchedBrowserify = watchify(browserify({
+//     basedir: 'src/typescript',
+//     debug: true,
+//     entries: ['box_geometry.ts', 'commands.ts', 'datatypes.ts', 'items.ts', 'world.ts', 'world_update_effects.ts'],
+//     cache: {},
+//     packageCache: {}
+// }));
 
 gulp.task('copyHtml', function () {
     return gulp.src(paths.pages)
@@ -25,7 +33,7 @@ gulp.task('copyHtml', function () {
 });
 
 function bundle() {
-    return watchedBrowserify
+    return myBrowserify
     .plugin(tsify)
     .transform('babelify', {
         presets: ['es2015'],
@@ -40,5 +48,6 @@ function bundle() {
 };
 
 gulp.task('default', ['copyHtml'], bundle);
-watchedBrowserify.on("update", bundle);
-watchedBrowserify.on("log", gutil.log);
+myBrowserify.on("update", bundle);
+myBrowserify.on("log", gutil.log);
+//myBrowserify.on("error", gutil.log);
