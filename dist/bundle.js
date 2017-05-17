@@ -6840,7 +6840,7 @@ jQuery(function ($) {
     }, {
         greetings: 'Demo Parser Interface for The Wreck',
         name: 'wreck_demo',
-        height: 200,
+        height: 500,
         prompt: '> '
     });
 });
