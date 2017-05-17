@@ -7668,7 +7668,7 @@ var SingleBoxWorld = function () {
                 if (effects.new_rends.size == 1) {
                     new_rends_message = "A new section of cardboard comes free on the " + face_msg + ".";
                 } else {
-                    new_rends_message = face_order.size + " new sections of cardboard come free on the " + face_msg;
+                    new_rends_message = effects.new_rends.size + " new sections of cardboard come free on the " + face_msg;
                 }
                 message += '\n' + new_rends_message;
             }
@@ -7684,7 +7684,7 @@ var SingleBoxWorld = function () {
                 if (effects.new_dangles.size == 1) {
                     _new_rends_message = "A new section of cardboard on the " + _face_msg + " can be swung freely on a hinge.";
                 } else {
-                    _new_rends_message = _face_order.size + " new sections of cardboard on the " + _face_msg + " can be swung freely on a hinge";
+                    _new_rends_message = effects.new_dangles.size + " new sections of cardboard on the " + _face_msg + " can be swung freely on a hinge";
                 }
                 message += '\n' + _new_rends_message;
             }
