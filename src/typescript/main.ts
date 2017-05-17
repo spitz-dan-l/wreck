@@ -1,9 +1,9 @@
-import * as jQuery from 'jquery';
-import 'jquery.terminal';
 import {List} from 'immutable';
 import {CityKey, Codex, Pinecone} from './items';
 import {Item} from './datatypes';
 import {Box, SingleBoxWorld, WorldDriver} from './world';
+
+declare var jQuery: any;
 
 jQuery(function($: any) {
     let contents = List<Item>([new Codex(), new Pinecone(), new CityKey()]);
@@ -26,7 +26,7 @@ jQuery(function($: any) {
     }, {
         greetings: 'Demo Parser Interface for The Wreck',
         name: 'wreck_demo',
-        height: 200,
+        height: 500,
         prompt: '> '
     });
 });

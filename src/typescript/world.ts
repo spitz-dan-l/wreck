@@ -1190,7 +1190,8 @@ export class WorldDriver {
 }
 
 export function parse_command(cmd: string): [Token, Token[]] {
-    let tokens = cmd.split(/\s*/);
+    let tokens = cmd.split(/\s+/);
+    console.log(tokens);
     return [tokens[0], tokens.slice(1)];
 }
 

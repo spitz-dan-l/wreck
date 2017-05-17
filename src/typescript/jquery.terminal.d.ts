@@ -1,8 +1,8 @@
 interface JQuery {
-    terminal(callback?: Function): any;
+    terminal(callback?: Function, options?: any): any;
 }
 
 interface JQueryStatic {
-    terminal(callback?: Function): any;
+    terminal(callback?: Function, options?: any): any;
 }
 
