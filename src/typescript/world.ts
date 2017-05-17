@@ -182,7 +182,7 @@ export class Box {
 
         let intended_new_state = operation == RendOperation.close ? RendState.closed : RendState.open;
         if (this.dangle_state.get(dangle) == intended_new_state) {
-            throw new WorldUpdateError('cannot ${RendOperation[operation]} a dangle that is already ${RendState[intended_new_state]}');
+            throw new WorldUpdateError(`cannot ${RendOperation[operation]} a dangle that is already ${RendState[intended_new_state]}`);
         }
 
         let new_dangle_state = this.dangle_state.set(dangle, intended_new_state);
@@ -500,7 +500,7 @@ export class Box {
             new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge, new EdgeState()).apply_tape());
         }
 
-        return this.update({box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state});
+        return this.update({box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state, edge_state: new_edge_state});
     }
 
     take_next_item() {
@@ -1185,7 +1185,7 @@ export class WorldDriver {
 
     run(cmd: string) {
         let [cmd_name, cmd_args]: [Token, Token[]] = parse_command(cmd);
-        return this.apply_command(cmd_name, ...cmd_args);
+        return this.apply_command(cmd_name, ...cmd_args) + '\n';
     }
 }
 

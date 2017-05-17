@@ -7011,7 +7011,7 @@ var Box = function () {
             }
             var intended_new_state = operation == datatypes_1.RendOperation.close ? datatypes_1.RendState.closed : datatypes_1.RendState.open;
             if (this.dangle_state.get(dangle) == intended_new_state) {
-                throw new datatypes_1.WorldUpdateError('cannot ${RendOperation[operation]} a dangle that is already ${RendState[intended_new_state]}');
+                throw new datatypes_1.WorldUpdateError("cannot " + datatypes_1.RendOperation[operation] + " a dangle that is already " + datatypes_1.RendState[intended_new_state]);
             }
             var new_dangle_state = this.dangle_state.set(dangle, intended_new_state);
             var new_box = this.update({ dangle_state: new_dangle_state });
@@ -7355,7 +7355,7 @@ var Box = function () {
             } else {
                 new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge, new datatypes_1.EdgeState()).apply_tape());
             }
-            return this.update({ box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state });
+            return this.update({ box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state, edge_state: new_edge_state });
         }
     }, {
         key: "take_next_item",
@@ -8027,7 +8027,7 @@ var WorldDriver = function () {
                 cmd_name = _parse_command2[0],
                 cmd_args = _parse_command2[1];
 
-            return this.apply_command.apply(this, [cmd_name].concat(_toConsumableArray(cmd_args)));
+            return this.apply_command.apply(this, [cmd_name].concat(_toConsumableArray(cmd_args))) + '\n';
         }
     }]);
 
