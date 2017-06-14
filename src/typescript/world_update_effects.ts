@@ -23,7 +23,7 @@ interface WorldUpdateEffectsRef {
 
 export let world_update: WorldUpdateEffectsRef = {};
 
-export function with_world_update(f: (effects: WorldUpdateEffects) => any) {
+export function with_world_update<T>(f: (effects: WorldUpdateEffects) => T) {
     //TODO validate: error if world_update.effects isn't null/undefined
     world_update.effects = new WorldUpdateEffects();
     let result = f(world_update.effects);

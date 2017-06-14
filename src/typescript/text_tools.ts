@@ -28,3 +28,30 @@ export function face_message(face_order: List<Face>, f_code_2_name?: Map<Face, s
         return face_order.butLast().map(f_code_2_name.get).join(', ') + ' and ' + f_code_2_name.get(face_order.last()) + ' faces';
     }
 }
+
+export function starts_with(str: string, searchString: string, position?: number){
+    position = position || 0;
+    return str.substr(position, searchString.length) === searchString;
+}
+
+export function tokens_equal(tks1: string[], tks2: string[]) {
+    if (tks1.length !== tks2.length) {
+        return false;
+    }
+
+    for (let i = 0; i < tks1.length; i++) {
+        if (tks1[i] !== tks2[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+export function tokenize(s: string) {
+    return s.split(/\s+/);
+}
+
+export function untokenize(tokens: string[]){
+    return tokens.join(' ');
+}
