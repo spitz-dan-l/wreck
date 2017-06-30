@@ -49,9 +49,17 @@ export function tokens_equal(tks1: string[], tks2: string[]) {
 }
 
 export function tokenize(s: string) {
-    return s.split(/\s+/);
+    let tokens = s.split(/(?:\s|&nbsp;)+/g);
+    if (last(tokens) === ''){
+        tokens.pop();
+    }
+    return tokens;
 }
 
 export function untokenize(tokens: string[]){
     return tokens.join(' ');
+}
+
+export function last(x: any[] | string){
+    return x[x.length - 1];
 }

@@ -1,7 +1,7 @@
 import {Map} from 'immutable';
 import {Direction, EdgeOperation, EdgeDirection, Face, RelativePosition, RendOperation} from './datatypes';
 
-import {starts_with, untokenize} from './text_tools';
+import {starts_with, tokenize, untokenize} from './text_tools';
 
 export type Token = string;
 
@@ -86,10 +86,10 @@ export enum DisplayEltType {
     error = 4
 }
 
-interface DisplayElt {
+export interface DisplayElt {
     display: DisplayEltType,
-    tokens: Token[],
-    typeahead?: Token[][],
+    match: string,
+    typeahead?: string[],
     name?: string
 }
 
@@ -99,16 +99,16 @@ export enum MatchValidity {
     invalid = 2
 }
 
-//export type MaybeMatch<str_type extends string> = str_type | false;
-
 export class CommandParser {
+    command: string;
     tokens: Token[];
     position: number = 0;
     validity: MatchValidity = MatchValidity.valid;
     match: DisplayElt[] = [];
 
-    constructor(tokens: Token[]) {
-        this.tokens = tokens;
+    constructor(command: string) {
+        this.command = command;
+        this.tokens = tokenize(command);
     }
 
     consume_exact(spec_tokens: Token[], display: DisplayEltType=DisplayEltType.keyword, name?: string): boolean {
@@ -119,7 +119,7 @@ export class CommandParser {
         let match_tokens: Token[] = [];
         let pos_offset = 0;
         for (let spec_tok of spec_tokens) {
-            if (this.position === this.tokens.length) {
+            if (this.position + pos_offset === this.tokens.length) {
                 this.validity = MatchValidity.partial;
                 break; //partial validity
             }
@@ -147,7 +147,7 @@ export class CommandParser {
         if (this.validity === MatchValidity.valid) {
             this.match.push({
                 display: display,
-                tokens: match_tokens,
+                match: untokenize(match_tokens),
                 name: name});
             this.position;
             return true;
@@ -157,8 +157,8 @@ export class CommandParser {
             if (this.position === this.tokens.length) {
                 this.match.push({
                     display: DisplayEltType.partial,
-                    tokens: match_tokens,
-                    typeahead: [spec_tokens],
+                    match: untokenize(match_tokens),
+                    typeahead: [untokenize(spec_tokens)],
                     name: name});
 
                 return false;
@@ -171,7 +171,7 @@ export class CommandParser {
         this.position = this.tokens.length;
         this.match.push({
             display: DisplayEltType.error,
-            tokens: match_tokens,
+            match: untokenize(match_tokens),
             name: name});
         return false;
     }
@@ -179,13 +179,13 @@ export class CommandParser {
     consume_option<S extends string>(option_spec_tokens: Token[][], name?: string, display: DisplayEltType=DisplayEltType.option): S | false{
         let partial_matches: DisplayElt[] = []; 
         for (let spec_toks of option_spec_tokens) {
-            let subparser = new CommandParser(this.tokens.slice(this.position));
+            let subparser = new CommandParser(untokenize(this.tokens.slice(this.position)));
             let exact_match = subparser.consume_exact(spec_toks, display, name);
 
             if (exact_match) {
                 this.match.push(subparser.match[0]);
                 this.position += subparser.position;
-                return <S>untokenize(subparser.match[0].tokens);
+                return <S>subparser.match[0].match;
             }
 
             if (subparser.validity === MatchValidity.partial){
@@ -199,7 +199,7 @@ export class CommandParser {
             let typeahead = partial_matches.map((de) => de.typeahead[0]);
             this.match.push({
                 display: DisplayEltType.partial,
-                tokens: partial_matches[0].tokens,
+                match: partial_matches[0].match,
                 typeahead: typeahead,
                 name: name})
             return false;
@@ -209,7 +209,7 @@ export class CommandParser {
         let match_tokens = this.tokens.slice(this.position);
         this.match.push({
             display: DisplayEltType.error,
-            tokens: match_tokens,
+            match: untokenize(match_tokens),
             name: name});
         return false;
     }
@@ -218,12 +218,20 @@ export class CommandParser {
         return this.consume_exact(spec_tokens, DisplayEltType.filler);
     }
 
+    is_done() {
+        if (this.position !== this.tokens.length) {
+            return false;
+        }
+
+        return this.validity === MatchValidity.valid;
+    }
+
     done() {
         if (this.position !== this.tokens.length) {
             this.validity = MatchValidity.invalid;
             this.match.push({
                 display: DisplayEltType.error,
-                tokens: this.tokens.slice(this.position)
+                match: untokenize(this.tokens.slice(this.position))
             });
             this.position = this.tokens.length;
         }
@@ -241,13 +249,64 @@ export class CommandParser {
     }
 }
 
-export type CommandResult<WorldType> = {
-    world?: WorldType;
-    message?: string;
-} | undefined
-
-export interface Command<WorldType> {
-    command_name: Token[];
-    execute: (world: WorldType, parser: CommandParser) => CommandResult<WorldType>;
+export interface WorldType {
+    get_command_map(): Map<String, Command<this>>
 }
 
+export type CommandResult<T extends WorldType> = {
+    world?: T;
+    message?: string;
+    parser?: CommandParser;
+} | undefined
+
+export interface Command<T extends WorldType> {
+    command_name: Token[];
+    execute: (world: T, parser: CommandParser) => CommandResult<T>;
+}
+
+export function apply_command<T extends WorldType> (world: T, cmd: string) {
+    let parser = new CommandParser(cmd);
+
+    let command_map = world.get_command_map();
+    let options: Token[][] = command_map.valueSeq().map((v) => v.command_name).toArray();
+
+    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
+    let result: CommandResult<T> = {parser: parser, world: world};
+
+    if (!cmd_name) {
+        return result;
+    }
+
+    let command = command_map.get(cmd_name)
+    let cmd_result = command.execute(this, parser);
+    
+    if (cmd_result !== undefined) {
+        if (cmd_result.world !== undefined) {
+            result.world = cmd_result.world;
+        }
+        if (cmd_result.message !== undefined) {
+            result.message = cmd_result.message;
+        }
+    }
+    return result;
+}
+
+export class WorldDriver<T extends WorldType> {
+    history: CommandResult<T>[];
+    
+    current_state: CommandResult<T>;
+
+    constructor (initial_world: T) {
+        this.current_state = {world: initial_world};
+    }
+
+    apply_command(cmd: string, commit: boolean = true) {
+        let result = apply_command(this.current_state.world, cmd);
+
+        if (commit){
+            this.history.push(this.current_state);
+            this.current_state = result;
+        }
+        return result;
+    }
+}

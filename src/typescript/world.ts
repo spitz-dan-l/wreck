@@ -48,8 +48,11 @@ import {
     CommandResult,
     CommandParser,
     Command,
+    DisplayElt,
     DisplayEltType,
-    MatchValidity
+    MatchValidity,
+    WorldType,
+    WorldDriver
 } from './commands'
 
 import {WorldUpdateEffects, with_world_update, world_update} from './world_update_effects';
@@ -584,7 +587,7 @@ export interface SingleBoxWorldParams {
     spilled_items?: List<Item>
 }
 
-export class SingleBoxWorld {
+export class SingleBoxWorld implements WorldType{
     readonly box: Box;
     readonly taken_items: List<Item>;
     readonly spilled_items: List<Item>;
@@ -620,6 +623,31 @@ export class SingleBoxWorld {
         }
 
         return new SingleBoxWorld({box, taken_items, spilled_items});
+    }
+
+    get_command_map(): Map<string, Command<this>> {
+        let commands: Command<SingleBoxWorld>[] = [];
+        commands.push(rotate_y_box);
+        commands.push(roll_box);
+        commands.push(lift_box);
+        commands.push(cut_box);
+        commands.push(tape_box);
+        commands.push(open_dangle);
+        commands.push(close_dangle);
+        commands.push(remove_rend);
+        commands.push(replace_rend);
+        commands.push(take_item);
+
+        let command_map = Map<string, Command<this>>().asMutable();
+        let options: Token[][] = [];
+
+        for (let command of commands) {
+            options.push(command.command_name);
+            command_map.set(untokenize(command.command_name), <Command<this>>command);
+        }
+        command_map.asImmutable();
+        
+        return command_map;
     }
 
     cut_message(new_box: Box, cut_edge_states: List<EdgeState>, effects: WorldUpdateEffects) {
@@ -787,8 +815,6 @@ export class SingleBoxWorld {
     }
 }
 
-let commands: Command<SingleBoxWorld>[] = [];
-
 let rotate_y_box: Command<SingleBoxWorld> = {
     command_name: ['rotate'],
     
@@ -813,7 +839,6 @@ let rotate_y_box: Command<SingleBoxWorld> = {
         };
     }
 }
-commands.push(rotate_y_box);
 
 let roll_box: Command<SingleBoxWorld> = {
     command_name: ["roll"],
@@ -859,7 +884,6 @@ let roll_box: Command<SingleBoxWorld> = {
         });
     }
 }
-commands.push(roll_box);
 
 let lift_box: Command<SingleBoxWorld> = {
     command_name: ['lift'],
@@ -913,25 +937,22 @@ let lift_box: Command<SingleBoxWorld> = {
         });
     }
 }
-commands.push(lift_box);
 
 let cut_box: Command<SingleBoxWorld> = {
     command_name: ['cut'],
     execute: cut_or_tape_box
 }
-commands.push(cut_box);
 
 let tape_box: Command<SingleBoxWorld> = {
     command_name: ['tape'],
     execute: cut_or_tape_box
 }
-commands.push(tape_box);
 
 function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
     //operation: EdgeOpWord, face_w: FaceWord, dir: EdgeDirWord, start_pos_a: PositionWord, start_pos_b: PositionWord, end_pos_b: PositionWord): CommandResult {
     //let inner_this = this;
     return with_world_update(function (effects) {
-        let operation: EdgeOpWord = <EdgeOpWord>untokenize(parser.get_match('command').tokens);
+        let operation: EdgeOpWord = <EdgeOpWord>parser.get_match('command').match;
         
         if (!parser.consume_filler(['on'])){
             return;
@@ -1079,18 +1100,17 @@ let open_dangle: Command<SingleBoxWorld> = {
     command_name: ['open'],
     execute: open_or_close_dangle
 }
-commands.push(open_dangle);
+
 
 let close_dangle: Command<SingleBoxWorld> = {
     command_name: ['close'],
     execute: open_or_close_dangle
 }
-commands.push(close_dangle);
 
 function open_or_close_dangle(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
     // operation: DangleOpWord, face_w: FaceWord)
     return with_world_update(function (effects) {
-        let operation = <DangleOpWord>untokenize(parser.get_match('command').tokens);
+        let operation = <DangleOpWord>parser.get_match('command').match;
         let face_w = parser.consume_option<FaceWord>(face_word_tokens, 'face');
         if (!face_w || !parser.done()) {
             return;
@@ -1153,18 +1173,16 @@ let remove_rend: Command<SingleBoxWorld> = {
     command_name: ['remove'],
     execute: remove_or_replace_rend
 }
-commands.push(remove_rend);
 
 let replace_rend: Command<SingleBoxWorld> = {
     command_name: ['replace'],
     execute: remove_or_replace_rend
 }
-commands.push(replace_rend);
 
 function remove_or_replace_rend(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
     //operation: RendOpWord, face_w: FaceWord): CommandResult {
     return with_world_update(function (effects) {
-        let operation = <RendOpWord>untokenize(parser.get_match('command').tokens);
+        let operation = <RendOpWord>parser.get_match('command').match;
         let face_w = parser.consume_option<FaceWord>(face_word_tokens, 'face');
         if (!face_w || !parser.done()) {
             return;
@@ -1260,50 +1278,6 @@ let take_item: Command<SingleBoxWorld> = {
 
             return {world: world.update({box: new_box, taken_items: new_taken_items}), message: message};
         });
-    }
-}
-commands.push(take_item);
-
-export class WorldDriver {
-    world: SingleBoxWorld;
-
-    constructor (initial_world: SingleBoxWorld) {
-        this.world = initial_world;
-    }
-
-    run(cmd: string) {
-        let tokens = tokenize(cmd);
-        let parser = new CommandParser(tokens);
-
-        let command_map = Map<string, Command<SingleBoxWorld>>().asMutable();
-        let options: Token[][] = [];
-        commands.forEach(function (command){
-            options.push(command.command_name);
-            command_map.set(untokenize(command.command_name), command);
-        });
-
-        let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
-        if (!cmd_name) {
-            return '';
-        }
-
-        let command = command_map.get(cmd_name)
-        let result = command.execute(this.world, parser);
-        if (result === undefined) {
-            return '';
-        }
-
-        if (result.world !== undefined) {
-            this.world = result.world;
-        }
-        if (result.message !== undefined) {
-            return result.message;
-        }
-    }
-
-    apply_command(cmd: string) {
-        let result = this.run(cmd);
-        console.log(result);
     }
 }
 

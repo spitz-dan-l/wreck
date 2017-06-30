@@ -1,0 +1,13 @@
+
+
+rotate handler
+
+
+command match:
+
+tokenized command string
+
+return "enriched" tokenized string
+
+    semantic-based highlighting of tokens
+    colors for full matches
