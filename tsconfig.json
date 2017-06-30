@@ -9,6 +9,7 @@
     },
     "include": [
         "./src/tsx/*",
+        "./src/typescript/*",
         "./src/components/*"
     ]
 }
