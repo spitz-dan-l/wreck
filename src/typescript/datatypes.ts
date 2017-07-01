@@ -1,13 +1,125 @@
-import {
-    Collection,
-    hash,
-    isImmutable,
-    List,
-    Map,
-    Set
-} from 'immutable';
+// import {
+//     Collection,
+//     hash,
+//     isImmutable,
+//     List,
+//     Map,
+//     Set
+// } from 'immutable';
 
-export type Partition = Set<number>;
+export class FuckDict<K, V> {
+    readonly keys_map: Map<string, K>;
+    readonly values_map: Map<string, V>;
+
+    size: number = 0
+
+    constructor(a?: [K, V][]) {
+        this.keys_map = new Map<string, K>();
+        this.values_map = new Map<string, V>();
+
+        if (a !== undefined) {
+            for (let [k, v] of a) {
+                this.set(k, v);
+            }
+        }
+    }
+
+    set(k: K, v: V) {
+        let s = k.toString();
+        this.keys_map.set(s, k);
+        this.values_map.set(s, v);
+        this.size = this.keys_map.size;
+        return this;
+    }
+
+    get(k: K) {
+        let s = k.toString();
+        return this.values_map.get(s);
+    }
+
+    has_key(k: K) {
+        return this.keys_map.has(k.toString());
+    }
+
+    keys_array() {
+        return Array.from(this.keys_map.values());
+    }
+
+    values_array() {
+        return Array.from(this.values_map.values());
+    }
+
+    entries_array(): [K, V][] {
+        let result: [K, V][] = [];
+        for (let [s, k] of this.keys_map.entries()) {
+            result.push([k, this.values_map.get(s)]);
+        }
+        return result;
+    }
+
+    keys_equal(other: FuckDict<K, V>) {
+        for (let elem of this.keys_array()) {
+            if (!other.has_key(elem)){
+                return false;
+            }
+        }
+
+        for (let elem of other.keys_array()) {
+            if (!this.has_key(elem)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    keys_intersect(other: FuckDict<K, V>) {
+        let result: K[] = [];
+        for (let k of this.keys_array()) {
+            if (other.has_key(k)) {
+                result.push(k)
+            }
+        }
+        return result;
+    }
+
+    keys_subset(other: FuckDict<K, V>) {
+        for (let elem of this.keys_array()) {
+            if (!other.has_key(elem)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    toString() {
+        let entry_strings: string[] = this.entries_array().map(Array.toString).sort();
+
+        return `FuckDict<${entry_strings.join(',')}>`;
+    }
+}
+
+export type FuckSet<T> = FuckDict<T, undefined>;
+
+export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
+    if (ar1.length !== ar2.length) {
+        return false;
+    }
+
+    for (let i = 0; i < ar1.length; i++) {
+        if (ar1[i].toString() !== ar2[i].toString()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+export function array_fuck_contains<T>(ar: T[], elt: T){
+    return ar.some((x) => x.toString() === elt.toString())
+}
+
+export type Partition = FuckSet<number>;
+
 
 export class Edge {
     readonly start: number;
@@ -24,13 +136,11 @@ export class Edge {
     }
 
     equals(other:Edge){
-        return (this.start == other.start && this.end == other.end);
+        return (this.start === other.start && this.end === other.end);
     }
 
-    hashCode() {
-        return hash(hash(this.start) + hash(this.end));
-        // fuck
-        // return ( this.end << 16 ) ^ this.start;
+    toString(): string {
+        return `Edge<${this.start},${this.end}>`;
     }
 }
 
@@ -54,7 +164,7 @@ export enum Direction {
 
 export let directions = [Direction.n, Direction.s, Direction.e, Direction.w];
 
-export let direction_2_face = Map<Direction, Face>([
+export let direction_2_face = new Map<Direction, Face>([
     [Direction.n, Face.n],
     [Direction.s, Face.s],
     [Direction.e, Face.e],
@@ -63,11 +173,11 @@ export let direction_2_face = Map<Direction, Face>([
 
 export class Dangle {
     readonly partition: Partition;
-    readonly edges: List<Edge>;
+    readonly edges: Edge[];
     readonly fixed_face: Face;
     readonly free_face: Face;
 
-    constructor(partition: Partition, edges: List<Edge>, fixed_face: Face, free_face: Face) {
+    constructor(partition: Partition, edges: Edge[], fixed_face: Face, free_face: Face) {
         this.partition = partition;
         this.edges = edges;
         this.fixed_face = fixed_face;
@@ -76,14 +186,15 @@ export class Dangle {
 
     equals(other: Dangle){
         return (
-            this.partition.equals(other.partition)
-            && this.edges.equals(other.edges)
+            this.partition.keys_equal(other.partition)
+            && arrays_fuck_equal(this.edges, other.edges)
             && this.fixed_face === other.fixed_face
             && this.free_face === other.free_face);
     }
 
-    hashCode() {
-        return hash(hash(this.partition) + hash(this.edges) + hash(this.fixed_face) + hash(this.free_face));
+    toString() {
+        return `Dangle<${this.partition},${this.edges},${this.fixed_face},${this.free_face}>`;
+        
         //let faces_hash = (this.fixed_face << 16) ^ this.free_face; //fuck!
         //return this.partition.hashCode() + this.edges.hashCode() + faces_hash;
     }
@@ -258,25 +369,19 @@ export function counter_get<T>(counter: Counter<T>, key: T){
 }
 
 export function counter_update<T>(counter1: Counter<T>, counter2: Counter<T>){
-    let switch_to_immutable = isImmutable(counter1);
-    let result = counter1.asMutable();
-
     counter2.forEach(function (v, k){
-        counter_add(result, k, v);
+        counter_add(counter1, k, v);
     });
 
-    if (switch_to_immutable) {
-        result = result.asImmutable();
-    }
-    return result;
+    return counter1;
 }
 
 export function counter_order<T>(counter: Counter<T>, include_zero=false){
-    let result = counter.sort();
+    let result = Array.from(counter.entries()).sort((a, b) => a[1] - b[1]);
     if (!include_zero) {
-        result = result.filter((count) => count > 0);
+        result = result.filter(([t, i]) => i > 0);
     }
-    return result.keySeq().toList().reverse();
+    return result.map(([t, i]) => t);
 }
 
 export enum RelativePosition {

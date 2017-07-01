@@ -1,7 +1,5 @@
 import {Face} from './datatypes';
 
-import {List, Map} from 'immutable';
-
 export function uncapitalize(msg: string) {
     return msg[0].toLowerCase() + msg.slice(1);
 }
@@ -10,9 +8,9 @@ export function capitalize(msg: string) {
     return msg[0].toUpperCase() + msg.slice(1);
 }
 
-export function face_message(face_order: List<Face>, f_code_2_name?: Map<Face, string>){
+export function face_message(face_order: Face[], f_code_2_name?: Map<Face, string>){
     if (f_code_2_name === undefined) {
-        f_code_2_name = Map<Face, string>([
+        f_code_2_name = new Map<Face, string>([
             [Face.n, 'back'],
             [Face.s, 'front'],
             [Face.e, 'right'],
@@ -22,10 +20,10 @@ export function face_message(face_order: List<Face>, f_code_2_name?: Map<Face, s
         ]);
     }
 
-    if (face_order.size == 1) {
-        return f_code_2_name.get(face_order.first()) + ' face';
+    if (face_order.length == 1) {
+        return f_code_2_name.get(face_order[0]) + ' face';
     } else {
-        return face_order.butLast().map(f_code_2_name.get).join(', ') + ' and ' + f_code_2_name.get(face_order.last()) + ' faces';
+        return face_order.slice(0, -1).map(f_code_2_name.get).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
     }
 }
 

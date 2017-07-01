@@ -1,5 +1,5 @@
 module.exports = {
-    entry: "./src/tsx/index.tsx",
+    entry: "./src/typescript/world.ts",
     output: {
         filename: "bundle.js",
         path: __dirname + "/dist"
@@ -26,7 +26,6 @@ module.exports = {
     },
     externals: {
         "react": "React",
-        "react-dom": "ReactDOM",
-        "immutable": "Immutable"
+        "react-dom": "ReactDOM"
     },
 };
