@@ -97,6 +97,10 @@ export class FuckDict<K, V> {
 
         return `FuckDict<${entry_strings.join(',')}>`;
     }
+
+    copy() {
+        return new FuckDict(this.entries_array());
+    }
 }
 
 export type FuckSet<T> = FuckDict<T, undefined>;

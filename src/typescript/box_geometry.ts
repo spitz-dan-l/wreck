@@ -112,7 +112,7 @@ export let [quadrant_2_edges, edge_2_quadrants] = build_edge_quadrant_mappings()
 function get_quadrant_partition(quadrant: number, cut_edges: Edge[]): Partition {
     let current_partition = new FuckDict<number, undefined>([[quadrant, undefined]]);
 
-    let horizon: Edge[] = Array.from(quadrant_2_edges.get(quadrant));
+    let horizon: Edge[] = quadrant_2_edges.get(quadrant).slice();
 
     while (horizon.length > 0){
         let e = horizon.shift();
@@ -232,7 +232,7 @@ export class BoxMesh{
 
         let new_edge = new Edge(fs, fe);
 
-        let new_cut_edges = this.cut_edges;
+        let new_cut_edges = this.cut_edges.slice();
         if (operation == EdgeOperation.cut && !array_fuck_contains(new_cut_edges, new_edge)) {
             new_cut_edges.push(new_edge);
         }
@@ -301,7 +301,7 @@ export class BoxMesh{
 
             for (let es of [[e1, e2], [e1], [e2]]) {
 
-                let new_cut_edges = Array.from(inner_this.cut_edges);
+                let new_cut_edges = inner_this.cut_edges.slice();
                 new_cut_edges.push(...es);
 
                 let new_partitions = get_partitions(new_cut_edges);
@@ -389,7 +389,7 @@ export class BoxMesh{
     }
 
     get_box_edges(): [Edge, Edge][] {
-        let edges = List<[Edge, Edge]>();
+        let edges: [Edge, Edge][] = [];
 
         let t_b_edge_coords: [number, number][][] = [
             [[0,0], [0,1], [0,2]],
@@ -410,7 +410,7 @@ export class BoxMesh{
 
                 let e2 = new Edge(v2, v3);
 
-                edges = edges.push([e1, e2]);
+                edges.push([e1, e2]);
             }
         }
 
@@ -425,7 +425,7 @@ export class BoxMesh{
 
             let e2 = new Edge(v2, v3);
 
-            edges = edges.push([e1, e2]);
+            edges.push([e1, e2]);
 
         }
         return edges;
@@ -463,7 +463,7 @@ export class BoxMesh{
     }
 
     description(){
-        let face_descr = Map<Face, string>([
+        let face_descr = new Map<Face, string>([
             [Face.t, 'top'],
             [Face.b, 'bottom'],
             [Face.n, 'back'],
@@ -533,22 +533,22 @@ function rotate_y_faces(fs: Map<Face, FaceMesh>, degrees: number) {
     let shift = degrees / 90;
     let face_cycle = [Face.n, Face.w, Face.s, Face.e, Face.n, Face.w, Face.s, Face.e];
 
-    let new_faces = Map<Face, FaceMesh>();
+    let new_faces = new Map<Face, FaceMesh>();
 
     for (let f of [Face.n, Face.e, Face.s, Face.w]){
         let ind = face_cycle.indexOf(f);
-        new_faces = new_faces.set(f, fs.get(face_cycle[ind + shift]));
+        new_faces.set(f, fs.get(face_cycle[ind + shift]));
     }
 
     for (let f of [Face.t, Face.b]){
-        new_faces = new_faces.set(f, fs.get(f).rotate(degrees));
+        new_faces.set(f, fs.get(f).rotate(degrees));
     }
 
     return new_faces;
 }
 
 function roll_faces(fs: Map<Face, FaceMesh>, direction: Direction){
-    let new_faces = Map<Face, FaceMesh>().asMutable();
+    let new_faces = new Map<Face, FaceMesh>()
 
     if (direction == Direction.n) {
         new_faces.set(
@@ -584,7 +584,7 @@ function roll_faces(fs: Map<Face, FaceMesh>, direction: Direction){
             Face.s, fs.get(Face.s).rotate(270));
     }
 
-    return new_faces.asImmutable();
+    return new_faces;
 }
 
 
