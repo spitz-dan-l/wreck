@@ -151,7 +151,7 @@ class FuckDict {
         return true;
     }
     toString() {
-        let entry_strings = this.entries_array().map(Array.toString).sort();
+        let entry_strings = this.entries_array().map(x => x.toString()).sort();
         return `FuckDict<${entry_strings.join(',')}>`;
     }
     copy() {
@@ -427,7 +427,7 @@ function face_message(face_order, f_code_2_name) {
     if (face_order.length == 1) {
         return f_code_2_name.get(face_order[0]) + ' face';
     } else {
-        return face_order.slice(0, -1).map(f_code_2_name.get).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
+        return face_order.slice(0, -1).map(x => f_code_2_name.get(x)).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
     }
 }
 exports.face_message = face_message;
@@ -1058,7 +1058,7 @@ function apply_command(world, cmd) {
         return result;
     }
     let command = command_map.get(cmd_name);
-    let cmd_result = command.execute(this, parser);
+    let cmd_result = command.execute(world, parser);
     if (cmd_result !== undefined) {
         if (cmd_result.world !== undefined) {
             result.world = cmd_result.world;
@@ -1073,10 +1073,14 @@ exports.apply_command = apply_command;
 class WorldDriver {
     constructor(initial_world) {
         this.current_state = { world: initial_world };
+        this.history = [];
     }
     apply_command(cmd, commit = true) {
         let result = apply_command(this.current_state.world, cmd);
         if (commit) {
+            if (result.message !== undefined) {
+                console.log(result.message);
+            }
             this.history.push(this.current_state);
             this.current_state = result;
         }
@@ -1411,7 +1415,7 @@ class Box {
             test_box_mesh.get_free_rends().forEach(function (r) {
                 let face_membership = test_box_mesh.get_partition_face_membership(r);
                 let test_faces = [datatypes_1.Face.b, datatypes_1.Face.n, datatypes_1.Face.s, datatypes_1.Face.e, datatypes_1.Face.w];
-                let count = test_faces.map(face_membership.get).reduce((x, y) => x + y);
+                let count = test_faces.map(x => face_membership.get(x)).reduce((x, y) => x + y);
                 if (face_membership.get(datatypes_1.Face.t) > count) {
                     effects.spillage_level = datatypes_1.SpillageLevel.heavy;
                     effects.spill_faces.push(datatypes_1.Face.b);
@@ -2238,6 +2242,8 @@ function test() {
     d4.apply_command('roll right');
 }
 exports.test = test;
+test();
 
 /***/ })
 /******/ ]);
+//# sourceMappingURL=bundle.js.map

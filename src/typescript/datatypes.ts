@@ -93,7 +93,7 @@ export class FuckDict<K, V> {
     }
 
     toString() {
-        let entry_strings: string[] = this.entries_array().map(Array.toString).sort();
+        let entry_strings: string[] = this.entries_array().map((x) => x.toString()).sort();
 
         return `FuckDict<${entry_strings.join(',')}>`;
     }

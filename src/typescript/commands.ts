@@ -278,7 +278,7 @@ export function apply_command<T extends WorldType> (world: T, cmd: string) {
     }
 
     let command = command_map.get(cmd_name)
-    let cmd_result = command.execute(this, parser);
+    let cmd_result = command.execute(world, parser);
     
     if (cmd_result !== undefined) {
         if (cmd_result.world !== undefined) {
@@ -298,12 +298,16 @@ export class WorldDriver<T extends WorldType> {
 
     constructor (initial_world: T) {
         this.current_state = {world: initial_world};
+        this.history = [];
     }
 
     apply_command(cmd: string, commit: boolean = true) {
         let result = apply_command(this.current_state.world, cmd);
 
         if (commit){
+            if (result.message !== undefined) {
+                console.log(result.message);
+            }
             this.history.push(this.current_state);
             this.current_state = result;
         }

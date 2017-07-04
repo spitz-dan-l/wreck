@@ -358,7 +358,7 @@ export class Box {
             test_box_mesh.get_free_rends().forEach(function (r) {
                 let face_membership = test_box_mesh.get_partition_face_membership(r);
                 let test_faces = [Face.b, Face.n, Face.s, Face.e, Face.w];
-                let count = test_faces.map(face_membership.get).reduce((x, y) => x + y);
+                let count = test_faces.map((x) => face_membership.get(x)).reduce((x, y) => x + y);
                 if (face_membership.get(Face.t) > count) {
                     effects.spillage_level = SpillageLevel.heavy;
                     effects.spill_faces.push(Face.b);
@@ -1375,3 +1375,5 @@ export function test() {
 
     d4.apply_command('roll right');
 }
+
+test();

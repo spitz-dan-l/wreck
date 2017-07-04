@@ -23,7 +23,7 @@ export function face_message(face_order: Face[], f_code_2_name?: Map<Face, strin
     if (face_order.length == 1) {
         return f_code_2_name.get(face_order[0]) + ' face';
     } else {
-        return face_order.slice(0, -1).map(f_code_2_name.get).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
+        return face_order.slice(0, -1).map((x) => f_code_2_name.get(x)).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
     }
 }
 
