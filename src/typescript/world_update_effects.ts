@@ -1,20 +1,20 @@
-import {Matrix2, make_matrix2, Dangle, Face, Edge, Partition, faces, EdgeOperation, Point2, Direction, Item, SpillageLevel} from './datatypes';
+import * as Datatypes from './datatypes';
 
-import {Map, List, Set, OrderedSet, is} from 'immutable';
+// import {Map, List, Set, OrderedSet, is} from 'immutable';
 
 export class WorldUpdateEffects {
-    spill_faces = List<Face>();
-    spilled_items = List<Item>();
-    spilled_rends = Set<Partition>();
-    spilled_dangles = Set<Dangle>();
-    spillage_level = SpillageLevel.none;
-    taken_items = List<Item>();
-    new_rends = List<Partition>();
-    new_dangles = List<Dangle>();
-    repaired_rends = List<Partition>();
-    repaired_dangles = List<Dangle>();
+    spill_faces: Datatypes.Face[] = [];
+    spilled_items: Datatypes.Item[] = [];
+    spilled_rends: Datatypes.FuckSet<Datatypes.Partition> = new Datatypes.FuckDict<Datatypes.Partition, undefined>();
+    spilled_dangles: Datatypes.FuckSet<Datatypes.Dangle> = new Datatypes.FuckDict<Datatypes.Dangle, undefined>();
+    spillage_level = Datatypes.SpillageLevel.none;
+    taken_items: Datatypes.Item[] = [];
+    new_rends: Datatypes.Partition[] = [];
+    new_dangles: Datatypes.Dangle[] = [];
+    repaired_rends: Datatypes.Partition[] = [];
+    repaired_dangles: Datatypes.Dangle[] = [];
     box_collapsed = false;
-    collapse_spilled_items = List<Item>();
+    collapse_spilled_items: Datatypes.Item[] = [];
 }
 
 interface WorldUpdateEffectsRef {

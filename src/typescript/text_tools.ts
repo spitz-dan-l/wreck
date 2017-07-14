@@ -1,7 +1,5 @@
 import {Face} from './datatypes';
 
-import {List, Map} from 'immutable';
-
 export function uncapitalize(msg: string) {
     return msg[0].toLowerCase() + msg.slice(1);
 }
@@ -10,9 +8,9 @@ export function capitalize(msg: string) {
     return msg[0].toUpperCase() + msg.slice(1);
 }
 
-export function face_message(face_order: List<Face>, f_code_2_name?: Map<Face, string>){
+export function face_message(face_order: Face[], f_code_2_name?: Map<Face, string>){
     if (f_code_2_name === undefined) {
-        f_code_2_name = Map<Face, string>([
+        f_code_2_name = new Map<Face, string>([
             [Face.n, 'back'],
             [Face.s, 'front'],
             [Face.e, 'right'],
@@ -22,10 +20,10 @@ export function face_message(face_order: List<Face>, f_code_2_name?: Map<Face, s
         ]);
     }
 
-    if (face_order.size == 1) {
-        return f_code_2_name.get(face_order.first()) + ' face';
+    if (face_order.length == 1) {
+        return f_code_2_name.get(face_order[0]) + ' face';
     } else {
-        return face_order.butLast().map(f_code_2_name.get).join(', ') + ' and ' + f_code_2_name.get(face_order.last()) + ' faces';
+        return face_order.slice(0, -1).map((x) => f_code_2_name.get(x)).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
     }
 }
 
@@ -48,10 +46,44 @@ export function tokens_equal(tks1: string[], tks2: string[]) {
     return true;
 }
 
-export function tokenize(s: string) {
-    return s.split(/\s+/);
+export function tokenize(s: string): [string[], number[]] {
+    let pat = /[\S\0]+/g;
+    
+    let tokens: string[] = [];
+    let token_indexes: number[] = [];
+    
+    let match: RegExpExecArray;
+    while ((match = pat.exec(s)) !== null) {
+        tokens.push(match[0]);
+        token_indexes.push(match.index);
+    }
+
+    return [tokens, token_indexes];
+
 }
 
-export function untokenize(tokens: string[]){
-    return tokens.join(' ');
+export function untokenize(tokens: string[], token_positions?: number[]){
+    if (token_positions === undefined) {
+        return tokens.join(' ');
+    }
+    
+    let result: string = '';
+
+    for (let i = 0; i < tokens.length; i++){
+        let cur_pos = result.length;
+        let target_pos = token_positions[i];
+        let padding = target_pos - cur_pos;
+        result += ' '.repeat(padding);
+        result += tokens[i];
+    }
+
+    return result;
+}
+
+export function normalize_whitespace(s: string) {
+    return s.replace(/\s+/g, ' ');
+}
+
+export function last(x: any[] | string){
+    return x[x.length - 1];
 }

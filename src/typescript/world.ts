@@ -1,6 +1,10 @@
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+
 import {BoxMesh, edge_2_quadrants, FaceMesh} from './box_geometry';
 
 import {
+    array_fuck_contains,
     CardboardEdge,
     CommandError,
     Counter,
@@ -15,6 +19,7 @@ import {
     EdgeOperation,
     EdgeState,
     Face,
+    FuckDict,
     Item,
     Partition,
     Point2,
@@ -48,8 +53,11 @@ import {
     CommandResult,
     CommandParser,
     Command,
+    DisplayElt,
     DisplayEltType,
-    MatchValidity
+    MatchValidity,
+    WorldType,
+    WorldDriver
 } from './commands'
 
 import {WorldUpdateEffects, with_world_update, world_update} from './world_update_effects';
@@ -58,22 +66,22 @@ import {CityKey, Codex, Pinecone} from './items';
 
 import {capitalize, face_message, uncapitalize, tokens_equal, tokenize, untokenize} from './text_tools';
 
-import {List, Map, Set} from 'immutable';
+//import {List, Map, Set} from 'immutable';
 
 export interface BoxParams {
     box_mesh?: BoxMesh,
-    rend_state?: Map<Partition, RendState>,
-    dangle_state?: Map<Dangle, RendState>,
-    edge_state?: Map<Edge, EdgeState>,
-    contents?: List<Item>
+    rend_state?: FuckDict<Partition, RendState>,
+    dangle_state?: FuckDict<Dangle, RendState>,
+    edge_state?: FuckDict<Edge, EdgeState>,
+    contents?: Item[]
 }
 
 export class Box {
     readonly box_mesh: BoxMesh;
-    readonly rend_state: Map<Partition, RendState>;
-    readonly dangle_state: Map<Dangle, RendState>;
-    readonly edge_state: Map<Edge, EdgeState>;
-    readonly contents: List<Item>;
+    readonly rend_state: FuckDict<Partition, RendState>;
+    readonly dangle_state: FuckDict<Dangle, RendState>;
+    readonly edge_state: FuckDict<Edge, EdgeState>;
+    readonly contents: Item[];
 
     constructor({box_mesh, rend_state, dangle_state, edge_state, contents}: BoxParams){
         if (box_mesh === undefined) {
@@ -92,12 +100,12 @@ export class Box {
         this.dangle_state = dangle_state;
 
         if (edge_state === undefined) {
-            edge_state = Map<Edge, EdgeState>();
+            edge_state = new FuckDict<Edge, EdgeState>();
         }
         this.edge_state = edge_state;
 
         if (contents === undefined) {
-            contents = List<Item>();
+            contents = [];
         }
         this.contents = contents;
     }
@@ -128,26 +136,26 @@ export class Box {
 
     default_rend_state(box_mesh: BoxMesh) {
         let rends = box_mesh.get_free_rends();
-        let result = Map<Partition, RendState>().asMutable();
+        let result = new FuckDict<Partition, RendState>();
         rends.forEach(function (r) {
             result.set(r, RendState.closed);
         });
-        return result.asImmutable();
+        return result;
     }
 
     default_dangle_state(box_mesh: BoxMesh) {
         let dangles = box_mesh.get_dangles();
-        let result = Map<Dangle, RendState>().asMutable();
+        let result = new FuckDict<Dangle, RendState>();
         dangles.forEach(function (d) {
             result.set(d, RendState.closed);
         });
-        return result.asImmutable();
+        return result;
     }
 
     open_or_close_rend(operation: RendOperation, rend: Partition) {
         let box_rends = this.box_mesh.get_rends();
 
-        if (!box_rends.contains(rend)){
+        if (!array_fuck_contains(box_rends, rend)){
             throw new CommandError('rend does not exist on the box');
         }
 
@@ -155,21 +163,21 @@ export class Box {
             throw new WorldUpdateError('cannot open or close a fixed rend');
         }
 
-        let new_rend_state = this.rend_state;
+        let new_rend_state = this.rend_state.copy();
         let intended_new_state = operation == RendOperation.close ? RendState.closed : RendState.open;
         if (intended_new_state == new_rend_state.get(rend)) {
             throw new WorldUpdateError(`cannot ${RendOperation[operation]} a rend that is already ${RendState[intended_new_state]}`);
         }
 
-        new_rend_state = new_rend_state.set(rend, intended_new_state);
+        new_rend_state.set(rend, intended_new_state);
 
         let new_box = this.update({rend_state: new_rend_state});
 
         if (new_box.is_collapsed()) {
             let effects = world_update.effects;
             effects.box_collapsed = true;
-            effects.collapse_spilled_items = effects.collapse_spilled_items.push(...new_box.contents.toArray());
-            let new_contents = List<Item>();
+            effects.collapse_spilled_items.push(...new_box.contents);
+            let new_contents: Item[] = [];
             new_box = new_box.update({contents: new_contents});
         }
 
@@ -192,14 +200,15 @@ export class Box {
             throw new WorldUpdateError(`cannot ${RendOperation[operation]} a dangle that is already ${RendState[intended_new_state]}`);
         }
 
-        let new_dangle_state = this.dangle_state.set(dangle, intended_new_state);
+        let new_dangle_state = this.dangle_state.copy();
+        new_dangle_state.set(dangle, intended_new_state);
 
         let new_box = this.update({dangle_state: new_dangle_state});
         if (new_box.is_collapsed()) {
             let effects = world_update.effects;
             effects.box_collapsed = true;
-            effects.collapse_spilled_items = effects.collapse_spilled_items.push(...new_box.contents.toArray());
-            let new_contents = List<Item>();
+            effects.collapse_spilled_items.push(...new_box.contents);
+            let new_contents: Item[] = [];
             new_box = new_box.update({contents: new_contents});
         }
         return new_box;
@@ -207,26 +216,26 @@ export class Box {
 
     rotate_y(degrees: number) {
         let new_box_mesh = this.box_mesh.rotate_y(degrees);
-        return this.update(new_box_mesh);
+        return this.update({box_mesh: new_box_mesh});
     }
 
     roll(direction: Direction) {
-        if (this.dangle_state.some((state) => state == RendState.open)) {
+        if (this.dangle_state.values_array().some((state) => state == RendState.open)) {
             throw new WorldUpdateError('cannot roll a box with open dangles');
         }
 
         let new_box_mesh = this.box_mesh.roll(direction);
         let dir_face: Face = direction_2_face.get(direction);
 
-        let new_contents = this.contents;
-        let rend_state_updates = this.rend_state;
-        let dangle_state_updates = this.dangle_state;
+        let new_contents = this.contents.slice();
+        let rend_state_updates = this.rend_state.copy();
+        let dangle_state_updates = this.dangle_state.copy();
 
         let inner_this = this;
         let effects = world_update.effects;
 
-        if (new_contents.size > 0){
-            let dir_2_opposite = Map<Face, Face>([
+        if (new_contents.length > 0){
+            let dir_2_opposite = new Map<Face, Face>([
                 [Face.n, Face.s],
                 [Face.s, Face.n],
                 [Face.e, Face.w],
@@ -240,19 +249,19 @@ export class Box {
                 .filter((d) => d !== dir_face && d !== dir_2_opposite.get(dir_face))
             );
                 
-            this.rend_state.forEach(function (state, r) {
+            this.rend_state.entries_array().forEach(function ([r, state]) {
                 let face_membership = inner_this.box_mesh.get_partition_face_membership(r);
                         
                 for (let [test_face, spill_face] of heavy_spill_faces) {
                     if (face_membership.get(test_face) > 0) {
-                        effects.spill_faces = effects.spill_faces.push(spill_face);
+                        effects.spill_faces.push(spill_face);
                         effects.spillage_level = SpillageLevel.heavy;
-                        effects.spilled_items = effects.spilled_items.push(...new_contents.toArray());
-                        new_contents = List<Item>();
+                        effects.spilled_items.push(...new_contents);
+                        new_contents = [];
 
                         if (state == RendState.closed) {
-                            effects.spilled_rends == effects.spilled_rends.add(r);
-                            rend_state_updates = rend_state_updates.set(r, RendState.open);
+                            effects.spilled_rends == effects.spilled_rends.set(r, undefined);
+                            rend_state_updates.set(r, RendState.open);
                         }
 
                     }
@@ -260,13 +269,12 @@ export class Box {
 
                 for (let spill_face of light_spill_faces) {
                     if (face_membership.get(spill_face) > 0) {
-                        effects.spill_faces = effects.spill_faces.push(spill_face);
+                        effects.spill_faces.push(spill_face);
                         if (effects.spillage_level < SpillageLevel.light) {
                             effects.spillage_level = SpillageLevel.light;
                         }
-                        if (new_contents.size > 0) {
-                            effects.spilled_items = effects.spilled_items.push(new_contents.first());
-                            new_contents = new_contents.rest();
+                        if (new_contents.length > 0) {
+                            effects.spilled_items.push(new_contents.shift());
                         }
                     }
                 }
@@ -290,33 +298,32 @@ export class Box {
                     if (spillage_level > effects.spillage_level) {
                         effects.spillage_level = spillage_level;
                     }
-                    effects.spill_faces = effects.spill_faces.push(spill_face);
+                    effects.spill_faces.push(spill_face);
 
                     if (spillage_level == SpillageLevel.light) {
-                        if (new_contents.size > 0) {
-                            effects.spilled_items = effects.spilled_items.push(new_contents.first());
-                            new_contents = new_contents.rest();
+                        if (new_contents.length > 0) {
+                            effects.spilled_items.push(new_contents.shift());
                         }
                     } else if (spillage_level == SpillageLevel.heavy) {
-                        effects.spilled_items = effects.spilled_items.push(...new_contents.toArray());
-                        new_contents = List<Item>();
+                        effects.spilled_items.push(...new_contents);
+                        new_contents = [];
                     }
 
-                    effects.spilled_dangles = effects.spilled_dangles.add(d);
-                    dangle_state_updates = dangle_state_updates.set(d, RendState.open);
+                    effects.spilled_dangles.set(d, undefined);
+                    dangle_state_updates.set(d, RendState.open);
                 }
             });
             
             new_box_mesh.get_dangles().forEach(function (d) {
                 if (d.free_face == dir_2_opposite.get(dir_face)) {
                     effects.spillage_level = SpillageLevel.heavy;
-                    effects.spill_faces = effects.spill_faces.push(dir_2_opposite.get(dir_face));
+                    effects.spill_faces.push(dir_2_opposite.get(dir_face));
 
-                    effects.spilled_items = effects.spilled_items.push(...new_contents.toArray());
-                    new_contents = List<Item>();
+                    effects.spilled_items.push(...new_contents);
+                    new_contents = [];
 
-                    effects.spilled_dangles = effects.spilled_dangles.add(d);
-                    dangle_state_updates = dangle_state_updates.set(d, RendState.open);
+                    effects.spilled_dangles.set(d, undefined);
+                    dangle_state_updates.set(d, RendState.open);
                 }
             });
         }
@@ -329,8 +336,8 @@ export class Box {
 
         if (new_box.is_collapsed()) {
             effects.box_collapsed = true;
-            effects.collapse_spilled_items = effects.collapse_spilled_items.push(...new_contents.toArray());
-            new_contents = List<Item>();
+            effects.collapse_spilled_items.push(...new_contents);
+            new_contents = [];
             new_box = new_box.update({contents: new_contents});
         }
 
@@ -341,27 +348,27 @@ export class Box {
         let effects = world_update.effects;
         let inner_this = this;
 
-        let new_contents = this.contents;
-        let new_rend_state = this.rend_state;
-        let new_dangle_state = this.dangle_state;
+        let new_contents = this.contents.slice();
+        let new_rend_state = this.rend_state.copy();
+        let new_dangle_state = this.dangle_state.copy();
 
-        if (new_contents.size > 0) {
+        if (new_contents.length > 0) {
             let test_box_mesh = this.box_mesh.roll(Direction.s).roll(Direction.s);
 
             test_box_mesh.get_free_rends().forEach(function (r) {
                 let face_membership = test_box_mesh.get_partition_face_membership(r);
                 let test_faces = [Face.b, Face.n, Face.s, Face.e, Face.w];
-                let count = test_faces.map(face_membership.get).reduce((x, y) => x + y);
+                let count = test_faces.map((x) => face_membership.get(x)).reduce((x, y) => x + y);
                 if (face_membership.get(Face.t) > count) {
                     effects.spillage_level = SpillageLevel.heavy;
-                    effects.spill_faces = effects.spill_faces.push(Face.b);
+                    effects.spill_faces.push(Face.b);
 
-                    effects.spilled_items = effects.spilled_items.push(...new_contents.toArray());
-                    new_contents = List<Item>();
+                    effects.spilled_items.push(...new_contents);
+                    new_contents = [];
 
-                    if (new_rend_state.get(r, RendState.closed) == RendState.closed) {
-                        effects.spilled_rends = effects.spilled_rends.add(r);
-                        new_rend_state = new_rend_state.set(r, RendState.open);
+                    if (!new_rend_state.has_key(r) || new_rend_state.get(r) === RendState.closed) {
+                        effects.spilled_rends.set(r, undefined);
+                        new_rend_state.set(r, RendState.open);
                     }
                 }
             });
@@ -369,17 +376,17 @@ export class Box {
             test_box_mesh.get_dangles().forEach(function (d) {
                 if (d.free_face == Face.t) {
                     effects.spillage_level = SpillageLevel.heavy;
-                    effects.spill_faces = effects.spill_faces.push(Face.b);
+                    effects.spill_faces.push(Face.b);
 
-                    effects.spilled_items = effects.spilled_items.push(...new_contents.toArray());
-                    new_contents = List<Item>();
+                    effects.spilled_items.push(...new_contents);
+                    new_contents = [];
 
-                    effects.spilled_dangles = effects.spilled_dangles.add(d);
-                    new_dangle_state = new_dangle_state.set(d, RendState.open);
+                    effects.spilled_dangles.set(d, undefined);
+                    new_dangle_state.set(d, RendState.open);
                 }
             });
 
-            this.rend_state.forEach(function (state, r) {
+            this.rend_state.entries_array().forEach(function ([r, state]) {
                 let face_membership = inner_this.box_mesh.get_partition_face_membership(r);
                 let light_spill_faces = [Face.n, Face.s, Face.e, Face.w].filter((f) => face_membership.get(f) > 0);
                 if (light_spill_faces.length > 0) {
@@ -388,27 +395,25 @@ export class Box {
                     }
                     effects.spill_faces.push(...light_spill_faces);
 
-                    if (new_contents.size > 0) {
-                        effects.spilled_items = effects.spilled_items.push(new_contents.first());
-                        new_contents = new_contents.rest();
+                    if (new_contents.length > 0) {
+                        effects.spilled_items.push(new_contents.shift());
                     }
                     if (state == RendState.closed) {
-                        effects.spilled_rends.add(r);
-                        new_rend_state = new_rend_state.set(r, RendState.open);
+                        effects.spilled_rends.set(r, undefined);
+                        new_rend_state.set(r, RendState.open);
                     }
                 }
             });
 
-            this.dangle_state.forEach(function (state, d) {
+            this.dangle_state.entries_array().forEach(function ([d, state]) {
                 if ([Face.n, Face.s, Face.e, Face.w].indexOf(d.free_face) !== -1) {
                     if (effects.spillage_level < SpillageLevel.light) {
                         effects.spillage_level = SpillageLevel.light;
                     }
                     effects.spill_faces.push(d.free_face);
 
-                    if (new_contents.size > 0) {
-                        effects.spilled_items = effects.spilled_items.push(new_contents.first());
-                        new_contents = new_contents.rest();
+                    if (new_contents.length > 0) {
+                        effects.spilled_items.push(new_contents.shift());
                     }
                 }
             });
@@ -418,8 +423,8 @@ export class Box {
 
         if (new_box.is_collapsed()) {
             effects.box_collapsed = true;
-            effects.collapse_spilled_items = effects.collapse_spilled_items.push(...new_contents.toArray());
-            new_contents = List<Item>();
+            effects.collapse_spilled_items.push(...new_contents);
+            new_contents = [];
             new_box = new_box.update({contents: new_contents});
         }
 
@@ -451,14 +456,14 @@ export class Box {
 
         let quadrants = edge_2_quadrants.get(edge);
 
-        this.rend_state.forEach(function (state, r) {
-            if (state == RendState.open && quadrants.every(r.contains)) {
+        this.rend_state.entries_array().forEach(function ([r, state]) {
+            if (state == RendState.open && quadrants.every(r.has_key)) {
                 throw new WorldUpdateError('cannot cut or tape on an open rend');
             }
         });
 
-        this.dangle_state.forEach(function (state, d) {
-            if (state == RendState.open && quadrants.every(d.partition.contains)) {
+        this.dangle_state.entries_array().forEach(function ([d, state]) {
+            if (state == RendState.open && quadrants.every(d.partition.has_key)) {
                 throw new WorldUpdateError('cannot cut or tape on an open dangle');
             }
         });
@@ -471,40 +476,49 @@ export class Box {
         }
 
         let new_rend_state = this.default_rend_state(new_box_mesh);
-        this.rend_state.forEach(function (state, r) {
-            if (new_rend_state.has(r)) {
-                new_rend_state = new_rend_state.set(r, state);
+        this.rend_state.entries_array().forEach(function ([r, state]) {
+            if (new_rend_state.has_key(r)) {
+                new_rend_state.set(r, state);
             } else {
-                effects.repaired_rends = effects.repaired_rends.push(r);
+                effects.repaired_rends.push(r);
             }
         });
 
-        new_rend_state.forEach(function (state, new_r) {
-            if (!inner_this.rend_state.has(new_r)) {
-                effects.new_rends = effects.new_rends.push(new_r);
+        new_rend_state.entries_array().forEach(function ([new_r, state]) {
+            if (!inner_this.rend_state.has_key(new_r)) {
+                effects.new_rends.push(new_r);
             }
         });
 
         let new_dangle_state = this.default_dangle_state(new_box_mesh);
-        this.dangle_state.forEach(function (state, d) {
-            if (new_dangle_state.has(d)) {
-                new_dangle_state = new_dangle_state.set(d, state);
+        this.dangle_state.entries_array().forEach(function ([d, state]) {
+            if (new_dangle_state.has_key(d)) {
+                new_dangle_state.set(d, state);
             } else {
-                effects.repaired_dangles = effects.repaired_dangles.push(d);
+                effects.repaired_dangles.push(d);
             }
         });
 
-        new_dangle_state.forEach(function (state, new_d) {
-            if (!inner_this.dangle_state.has(new_d)) {
-                effects.new_dangles = effects.new_dangles.push(new_d);
+        new_dangle_state.entries_array().forEach(function ([new_d, state]) {
+            if (!inner_this.dangle_state.has_key(new_d)) {
+                effects.new_dangles.push(new_d);
             }
         });
 
-        let new_edge_state = this.edge_state;
-        if (operation == EdgeOperation.cut) {
-            new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge, new EdgeState()).cut());
+        let new_edge_state = this.edge_state.copy();
+        
+        let new_state: EdgeState;
+        if (new_edge_state.has_key(edge)) {
+            new_state = new_edge_state.get(edge);
         } else {
-            new_edge_state = new_edge_state.set(edge, new_edge_state.get(edge, new EdgeState()).apply_tape());
+            new_state = new EdgeState()
+        }
+
+        if (operation == EdgeOperation.cut) {   
+            new_edge_state.set(edge, new_state.cut());
+        } else {
+
+            new_edge_state.set(edge, new_state.apply_tape());
         }
 
         return this.update({box_mesh: new_box_mesh, rend_state: new_rend_state, dangle_state: new_dangle_state, edge_state: new_edge_state});
@@ -513,7 +527,7 @@ export class Box {
     take_next_item() {
         let effects = world_update.effects;
 
-        if (this.contents.size == 0) {
+        if (this.contents.length == 0) {
             throw new WorldUpdateError('cannot take an item from an empty box');
         }
 
@@ -521,46 +535,45 @@ export class Box {
             throw new WorldUpdateError('cannot take an item from a box with no visible openings');
         }
 
-        let new_contents = this.contents;
-        effects.taken_items = effects.taken_items.push(new_contents.first());
-        new_contents = new_contents.rest();
+        let new_contents = this.contents.slice();
+        effects.taken_items.push(new_contents.shift());
 
         return this.update({contents: new_contents});
     }
 
     next_item() {
-        if (this.contents.size == 0) {
+        if (this.contents.length == 0) {
             return null;
         }
-        return this.contents.first();
+        return this.contents[0];
     }
 
     appears_open() {
-        if (this.rend_state.some((state) => state == RendState.open)) {
+        if (this.rend_state.values_array().some((state) => state == RendState.open)) {
             return true;
         }
-        if (this.dangle_state.some((state) => state == RendState.open)) {
+        if (this.dangle_state.values_array().some((state) => state == RendState.open)) {
             return true;
         }
         return false;
     }
 
     appears_empty() {
-        return this.appears_open() && this.contents.size == 0;
+        return this.appears_open() && this.contents.length == 0;
     }
 
     is_collapsed(){
-        let open_faces = Map<Face, number>().asMutable();
+        let open_faces = new Map<Face, number>();
         let inner_this = this;
         
-        this.rend_state.forEach(function (state, r) {
+        this.rend_state.entries_array().forEach(function ([r, state]) {
             if (state == RendState.open){
                 let face_membership = inner_this.box_mesh.get_partition_face_membership(r);
                 counter_update(open_faces, face_membership);
             }
         });
 
-        this.dangle_state.forEach(function (state, d) {
+        this.dangle_state.entries_array().forEach(function ([d, state]) {
             if (state == RendState.open){
                 let face_membership = inner_this.box_mesh.get_partition_face_membership(d.partition);
                 counter_update(open_faces, face_membership);
@@ -580,14 +593,14 @@ export class Box {
 
 export interface SingleBoxWorldParams {
     box?: Box,
-    taken_items?: List<Item>,
-    spilled_items?: List<Item>
+    taken_items?: Item[],
+    spilled_items?: Item[]
 }
 
-export class SingleBoxWorld {
+export class SingleBoxWorld implements WorldType{
     readonly box: Box;
-    readonly taken_items: List<Item>;
-    readonly spilled_items: List<Item>;
+    readonly taken_items: Item[];
+    readonly spilled_items: Item[];
 
     constructor({box, taken_items, spilled_items}: SingleBoxWorldParams) {
         if (box === undefined) {
@@ -596,12 +609,12 @@ export class SingleBoxWorld {
         this.box = box;
 
         if (taken_items === undefined) {
-            taken_items = List<Item>();
+            taken_items = [];
         }
         this.taken_items = taken_items;
 
         if (spilled_items === undefined) {
-            spilled_items = List<Item>();
+            spilled_items = [];
         }
         this.spilled_items = spilled_items;
     }
@@ -622,28 +635,52 @@ export class SingleBoxWorld {
         return new SingleBoxWorld({box, taken_items, spilled_items});
     }
 
-    cut_message(new_box: Box, cut_edge_states: List<EdgeState>, effects: WorldUpdateEffects) {
+    get_command_map(): Map<string, Command<this>> {
+        let commands: Command<SingleBoxWorld>[] = [];
+        commands.push(rotate_y_box);
+        commands.push(roll_box);
+        commands.push(lift_box);
+        commands.push(cut_box);
+        commands.push(tape_box);
+        commands.push(open_dangle);
+        commands.push(close_dangle);
+        commands.push(remove_rend);
+        commands.push(replace_rend);
+        commands.push(take_item);
+
+        let command_map = new Map<string, Command<this>>();
+        let options: Token[][] = [];
+
+        for (let command of commands) {
+            options.push(command.command_name);
+            command_map.set(untokenize(command.command_name), <Command<this>>command);
+        }
+        
+        return command_map;
+    }
+
+    cut_message(new_box: Box, cut_edge_states: EdgeState[], effects: WorldUpdateEffects) {
         let cut_message: string;
-        if (cut_edge_states.get(0).cardboard == CardboardEdge.intact) {
+        if (cut_edge_states[0].cardboard == CardboardEdge.intact) {
             cut_message = 'You slide your blade along the cardboard';
-            if (cut_edge_states.get(0).tape == TapeEdge.taped) {
+            if (cut_edge_states[0].tape == TapeEdge.taped) {
                 cut_message += ' and tape';
             }
             cut_message += '.';
         } else {
-            if (cut_edge_states.get(0).tape == TapeEdge.taped) {
+            if (cut_edge_states[0].tape == TapeEdge.taped) {
                 cut_message = 'You draw your blade easily along the line. It slits open the thin layer of tape covering the gap in the cardboard.';
             } else {
                 cut_message = 'You slide your blade along the line, but nothing is there to resist it.';
             }
         }
 
-        if (cut_edge_states.size > 1) {
-            if (cut_edge_states.get(1).cardboard != cut_edge_states.get(0).cardboard) {
-                if (cut_edge_states.get(1).cardboard == CardboardEdge.intact) {
+        if (cut_edge_states.length > 1) {
+            if (cut_edge_states[1].cardboard != cut_edge_states[0].cardboard) {
+                if (cut_edge_states[1].cardboard == CardboardEdge.intact) {
                     cut_message += ' Halfway across, it catches on solid cardboard, and you pull it along the rest of the way.';
                 } else {
-                    if (cut_edge_states.get(1).tape == TapeEdge.taped) {
+                    if (cut_edge_states[1].tape == TapeEdge.taped) {
                         cut_message += ' Halfway across, you reach a gap in the cardboard, and your blade slides easily along the thin layer of tape.';
                     } else {
                         cut_message += ' Halfway across, you reach a gap in the cardboard, and your blade is met with no further resistance.';
@@ -653,8 +690,8 @@ export class SingleBoxWorld {
         }
 
         let message = cut_message;
-        if (effects.new_rends.size > 0) {
-            let total_face_membership = Map<Face, number>();
+        if (effects.new_rends.length > 0) {
+            let total_face_membership = new Map<Face, number>();
             effects.new_rends.forEach(function (r) {
                 let face_membership = new_box.box_mesh.get_partition_face_membership(r);
                 total_face_membership = counter_update(total_face_membership, face_membership);
@@ -663,16 +700,16 @@ export class SingleBoxWorld {
             let face_msg = face_message(face_order);
 
             let new_rends_message: string;
-            if (effects.new_rends.size == 1) {
+            if (effects.new_rends.length == 1) {
                 new_rends_message = `A new section of cardboard comes free on the ${face_msg}.`;
             } else {
-                new_rends_message = `${effects.new_rends.size} new sections of cardboard come free on the ${face_msg}.`;
+                new_rends_message = `${effects.new_rends.length} new sections of cardboard come free on the ${face_msg}.`;
             }
             message += '\n' + new_rends_message;
         }
 
-        if (effects.new_dangles.size > 0) {
-            let total_face_membership = Map<Face, number>();
+        if (effects.new_dangles.length > 0) {
+            let total_face_membership = new Map<Face, number>();
             effects.new_dangles.forEach(function (d) {
                 let face_membership = new_box.box_mesh.get_partition_face_membership(d.partition);
                 total_face_membership = counter_update(total_face_membership, face_membership);
@@ -681,17 +718,17 @@ export class SingleBoxWorld {
             let face_msg = face_message(face_order);
 
             let new_rends_message: string;
-            if (effects.new_dangles.size == 1) {
+            if (effects.new_dangles.length == 1) {
                 new_rends_message = `A new section of cardboard on the ${face_msg} can be swung freely on a hinge.`;
             } else {
-                new_rends_message = `${effects.new_dangles.size} new sections of cardboard on the ${face_msg} can be swung freely on a hinge.`;
+                new_rends_message = `${effects.new_dangles.length} new sections of cardboard on the ${face_msg} can be swung freely on a hinge.`;
             }
             message += '\n' + new_rends_message;
         }
         return message;
     }
 
-    tape_message(new_box: Box, cut_edge_states: List<EdgeState>, effects: WorldUpdateEffects) {
+    tape_message(new_box: Box, cut_edge_states: EdgeState[], effects: WorldUpdateEffects) {
         let tape_message: string;
         if (cut_edge_states.some((ces) => ces.cardboard == CardboardEdge.intact)) {
             tape_message = 'You draw out a length of tape and fasten it to the cardboard.';
@@ -704,8 +741,8 @@ export class SingleBoxWorld {
         }
 
         let message = tape_message;
-        if (effects.repaired_dangles.size > 0) {
-            let total_face_membership = Map<Face, number>();
+        if (effects.repaired_dangles.length > 0) {
+            let total_face_membership = new Map<Face, number>();
             effects.repaired_dangles.forEach(function (d) {
                 let face_membership = new_box.box_mesh.get_partition_face_membership(d.partition);
                 total_face_membership = counter_update(total_face_membership, face_membership);
@@ -714,31 +751,31 @@ export class SingleBoxWorld {
             let face_msg = face_message(face_order);
 
             let repaired_dangles_message: string;
-            if (effects.new_rends.size == 1) {
+            if (effects.new_rends.length == 1) {
                 repaired_dangles_message = `A formerly freely-swinging section of cardboard on the ${face_msg} can no longer swing on its hinge.`;
             } else {
-                repaired_dangles_message = `${face_order.size} formerly freely-swinging sections of cardboard on the ${face_msg} can no longer swing on their hinges.`;
+                repaired_dangles_message = `${face_order.length} formerly freely-swinging sections of cardboard on the ${face_msg} can no longer swing on their hinges.`;
             }
             message += '\n' + repaired_dangles_message;
         }
         return message;
     }
 
-    item_spill_message(spilled_items: List<Item>){
+    item_spill_message(spilled_items: Item[]){
         let si = spilled_items;
         let during_spill_msg: string;
         let after_spill_msg: string;
 
-        if (si.size == 1) {
-            let item_msg = si.get(0).pre_gestalt();
+        if (si.length == 1) {
+            let item_msg = si[0].pre_gestalt();
             during_spill_msg = `${capitalize(item_msg)} spills out before you.`;
-            after_spill_msg = `It's ${si.get(0).article()} ${si.get(0).name()} - ${si.get(0).post_gestalt()}.`;
+            after_spill_msg = `It's ${si[0].article()} ${si[0].name()} - ${si[0].post_gestalt()}.`;
         } else {
-            let item_msg = si.butLast().map((i) => i.pre_gestalt()).join(', ') + ' and ' + si.last().pre_gestalt();
+            let item_msg = si.slice(0, si.length - 1).map((i) => i.pre_gestalt()).join(', ') + ' and ' + si[si.length - 1].pre_gestalt();
             during_spill_msg = capitalize(`${item_msg} spill out before you.`);
 
             let after_msgs = si.map((i) => `${i.article()} ${i.name()} - ${i.post_gestalt()}`);
-            after_spill_msg = "It's " + after_msgs.butLast().join(', ') + ' and ' + after_msgs.last() + '.';
+            after_spill_msg = "It's " + after_msgs.slice(0, after_msgs.length - 1).join(', ') + ' and ' + after_msgs[after_msgs.length - 1] + '.';
         }
 
         let spill_msg = during_spill_msg + ' ' + after_spill_msg;
@@ -748,36 +785,36 @@ export class SingleBoxWorld {
     spill_message(new_box: Box) {
         let effects = world_update.effects;
 
-        let structural_dmg_msgs = List<string>();
+        let structural_dmg_msgs: string[] = [];
 
         if (effects.spilled_rends.size > 0) {
-            let total_face_membership = Map<Face, number>();
-            effects.spilled_rends.forEach(function (sr) {
+            let total_face_membership = new Map<Face, number>();
+            effects.spilled_rends.keys_array().forEach(function (sr) {
                 let sr_mem = new_box.box_mesh.get_partition_face_membership(sr);
                 total_face_membership = counter_update(total_face_membership, sr_mem);
             });
             let sr_faces = counter_order(total_face_membership);
             let f_msg = face_message(sr_faces);
             let spilled_rends_msg = `free cardboard on the ${f_msg} falls away`;
-            structural_dmg_msgs = structural_dmg_msgs.push(spilled_rends_msg);
+            structural_dmg_msgs.push(spilled_rends_msg);
         }
 
         if (effects.spilled_dangles.size > 0) {
-            let total_face_membership = Map<Face, number>();
-            effects.spilled_dangles.forEach(function (sd) {
+            let total_face_membership = new Map<Face, number>();
+            effects.spilled_dangles.keys_array().forEach(function (sd) {
                 let sd_mem = new_box.box_mesh.get_partition_face_membership(sd.partition);
                 total_face_membership = counter_update(total_face_membership, sd_mem);
             });
             let sd_faces = counter_order(total_face_membership);
             let f_msg = face_message(sd_faces);
             let spilled_dangles_msg = `dangling cardboard on the ${f_msg} swings open`;
-            structural_dmg_msgs = structural_dmg_msgs.push(spilled_dangles_msg);
+            structural_dmg_msgs.push(spilled_dangles_msg);
         }
 
         let spill_msg = this.item_spill_message(effects.spilled_items);
         let result: string;
 
-        if (structural_dmg_msgs.size > 0) {
+        if (structural_dmg_msgs.length > 0) {
             let structure_dmg_msg = structural_dmg_msgs.join(' and ');
             result = `${structure_dmg_msg}. ${spill_msg}`;
         } else {
@@ -786,8 +823,6 @@ export class SingleBoxWorld {
         return result;
     }
 }
-
-let commands: Command<SingleBoxWorld>[] = [];
 
 let rotate_y_box: Command<SingleBoxWorld> = {
     command_name: ['rotate'],
@@ -813,7 +848,6 @@ let rotate_y_box: Command<SingleBoxWorld> = {
         };
     }
 }
-commands.push(rotate_y_box);
 
 let roll_box: Command<SingleBoxWorld> = {
     command_name: ["roll"],
@@ -846,7 +880,7 @@ let roll_box: Command<SingleBoxWorld> = {
 
             if (effects.box_collapsed) {
                 message += '\nThe added stress on the box causes it to collapse in on itself.';
-                if (effects.collapse_spilled_items.size > 0) {
+                if (effects.collapse_spilled_items.length > 0) {
                     message += ' ';
                     message += world.item_spill_message(effects.collapse_spilled_items);
                 }
@@ -859,7 +893,6 @@ let roll_box: Command<SingleBoxWorld> = {
         });
     }
 }
-commands.push(roll_box);
 
 let lift_box: Command<SingleBoxWorld> = {
     command_name: ['lift'],
@@ -889,7 +922,7 @@ let lift_box: Command<SingleBoxWorld> = {
                 if (total_weight > Weight.very_heavy) {
                     total_weight = Weight.very_heavy;
                 }
-                let weight_2_msg = Map<Weight, string>([
+                let weight_2_msg = new Map<Weight, string>([
                     [Weight.empty, 'so light as to be empty'],
                     [Weight.very_light, 'quite light'],
                     [Weight.light, 'light'],
@@ -904,7 +937,7 @@ let lift_box: Command<SingleBoxWorld> = {
 
             if (effects.box_collapsed) {
                 msg += '\nThe added stress on the box causes it to collapse in on itself.';
-                if (effects.collapse_spilled_items.size > 0) {
+                if (effects.collapse_spilled_items.length > 0) {
                     msg += ' ' + world.item_spill_message(effects.collapse_spilled_items);
                 }
             }
@@ -913,25 +946,22 @@ let lift_box: Command<SingleBoxWorld> = {
         });
     }
 }
-commands.push(lift_box);
 
 let cut_box: Command<SingleBoxWorld> = {
     command_name: ['cut'],
     execute: cut_or_tape_box
 }
-commands.push(cut_box);
 
 let tape_box: Command<SingleBoxWorld> = {
     command_name: ['tape'],
     execute: cut_or_tape_box
 }
-commands.push(tape_box);
 
 function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
     //operation: EdgeOpWord, face_w: FaceWord, dir: EdgeDirWord, start_pos_a: PositionWord, start_pos_b: PositionWord, end_pos_b: PositionWord): CommandResult {
     //let inner_this = this;
     return with_world_update(function (effects) {
-        let operation: EdgeOpWord = <EdgeOpWord>untokenize(parser.get_match('command').tokens);
+        let operation: EdgeOpWord = <EdgeOpWord>parser.get_match('command').match;
         
         if (!parser.consume_filler(['on'])){
             return;
@@ -1038,7 +1068,7 @@ function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandR
             cut_points = [[pt1, pt2]];
         }
 
-        let cut_edge_states = List<EdgeState>();
+        let cut_edge_states: EdgeState[] = [];
 
         let new_box = world.box;
 
@@ -1048,19 +1078,26 @@ function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandR
             let v2 = vertices.get(p2[0], p2[1]);
             let edge = new Edge(v1, v2);
 
-            cut_edge_states = cut_edge_states.push(new_box.edge_state.get(edge, new EdgeState()));
+            let new_state: EdgeState;
+            if (new_box.edge_state.has_key(edge)) {
+                new_state = new_box.edge_state.get(edge);
+            } else {
+                new_state = new EdgeState();
+            }
+
+            cut_edge_states.push(new_state);
             new_box = new_box.cut_or_tape(word_2_edge_op.get(operation), face, p1, p2);
         });
 
         effects.new_dangles.forEach(function (nd) {
-            if (effects.new_rends.contains(nd.partition)) {
-                effects.new_dangles = effects.new_dangles.remove(effects.new_dangles.indexOf(nd));
+            if (array_fuck_contains(effects.new_rends, nd.partition)) {
+                effects.new_dangles.splice(effects.new_dangles.indexOf(nd), 1);
             }
         });
 
         effects.repaired_dangles.forEach(function (rd) {
-            if (effects.new_rends.contains(rd.partition)) {
-                effects.repaired_dangles = effects.repaired_dangles.remove(effects.repaired_dangles.indexOf(rd));
+            if (array_fuck_contains(effects.new_rends, rd.partition)) {
+                effects.repaired_dangles.splice(effects.repaired_dangles.indexOf(rd), 1);
             }
         });
 
@@ -1079,27 +1116,26 @@ let open_dangle: Command<SingleBoxWorld> = {
     command_name: ['open'],
     execute: open_or_close_dangle
 }
-commands.push(open_dangle);
+
 
 let close_dangle: Command<SingleBoxWorld> = {
     command_name: ['close'],
     execute: open_or_close_dangle
 }
-commands.push(close_dangle);
 
 function open_or_close_dangle(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
     // operation: DangleOpWord, face_w: FaceWord)
     return with_world_update(function (effects) {
-        let operation = <DangleOpWord>untokenize(parser.get_match('command').tokens);
+        let operation = <DangleOpWord>parser.get_match('command').match;
         let face_w = parser.consume_option<FaceWord>(face_word_tokens, 'face');
         if (!face_w || !parser.done()) {
             return;
         }
 
         let face = word_2_face.get(face_w)
-        let applicable_dangles = world.box.dangle_state.keySeq().filter((d) => d.free_face == face);
+        let applicable_dangles = world.box.dangle_state.keys_array().filter((d) => d.free_face == face);
         let new_box = world.box;
-        let updated = List<Dangle>();
+        let updated: Dangle[] = [];
         applicable_dangles.forEach(function (d){
             let err = false;
             try {
@@ -1111,17 +1147,17 @@ function open_or_close_dangle(world: SingleBoxWorld, parser: CommandParser): Com
                 }
             }
             if (!err) {
-                updated = updated.push(d);
+                updated.push(d);
             }
         });
-        if (updated.size === 0) {
+        if (updated.length === 0) {
             parser.get_match('face').display = DisplayEltType.error;
             parser.validity = MatchValidity.invalid;
             return {message: `No dangles to ${operation} on ${face_w} face`};
         }
 
         let swing_dir_msg = operation === 'close' ? 'in' : 'out';
-        let num_hinges = updated.map((d) => d.fixed_face).toSet().size;
+        let num_hinges = new Set(updated.map((d) => d.fixed_face)).size;
         let hinge_msg: string;
         if (num_hinges == 1) {
             hinge_msg = 'hinge';
@@ -1141,7 +1177,7 @@ function open_or_close_dangle(world: SingleBoxWorld, parser: CommandParser): Com
         }
         if (effects.box_collapsed) {
             message += '\nThe added stress on the box causes it to collapse in on itself.';
-            if (effects.collapse_spilled_items.size > 0) {
+            if (effects.collapse_spilled_items.length > 0) {
                 message += ' ' + world.item_spill_message(effects.collapse_spilled_items);
             }
         }
@@ -1153,34 +1189,32 @@ let remove_rend: Command<SingleBoxWorld> = {
     command_name: ['remove'],
     execute: remove_or_replace_rend
 }
-commands.push(remove_rend);
 
 let replace_rend: Command<SingleBoxWorld> = {
     command_name: ['replace'],
     execute: remove_or_replace_rend
 }
-commands.push(replace_rend);
 
 function remove_or_replace_rend(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
     //operation: RendOpWord, face_w: FaceWord): CommandResult {
     return with_world_update(function (effects) {
-        let operation = <RendOpWord>untokenize(parser.get_match('command').tokens);
+        let operation = <RendOpWord>parser.get_match('command').match;
         let face_w = parser.consume_option<FaceWord>(face_word_tokens, 'face');
         if (!face_w || !parser.done()) {
             return;
         }
 
         let face = word_2_face.get(face_w);
-        let applicable_rends = List<Partition>();
-        world.box.rend_state.forEach(function (s, r) {
+        let applicable_rends: Partition[] = [];
+        world.box.rend_state.entries_array().forEach(function ([r, s]) {
             let face_membership = world.box.box_mesh.get_partition_face_membership(r);
             if (face_membership.get(face) > 0) {
-                applicable_rends = applicable_rends.push(r);
+                applicable_rends.push(r);
             }
         });
 
         let new_box = world.box;
-        let updated = List<Partition>();
+        let updated: Partition[] = [];
         applicable_rends.forEach(function (r){
             let err = false;
             try {
@@ -1192,16 +1226,16 @@ function remove_or_replace_rend(world: SingleBoxWorld, parser: CommandParser): C
                 }
             }
             if (!err) {
-                updated = updated.push(r);
+                updated.push(r);
             }
         });
-        if (updated.size == 0) {
+        if (updated.length == 0) {
             parser.get_match('face').display = DisplayEltType.error;
             parser.validity = MatchValidity.invalid;
             return {message: `No rends to ${operation} on ${face_w} face`};
         }
 
-        let total_face_membership = Map<Face, number>();
+        let total_face_membership = new Map<Face, number>();
         total_face_membership = updated.reduce(
             (total, r) => counter_update(
                 total,
@@ -1228,11 +1262,11 @@ function remove_or_replace_rend(world: SingleBoxWorld, parser: CommandParser): C
         }
         if (effects.box_collapsed) {
             message += '\nThe added stress on the box causes it to collapse in on itself.';
-            if (effects.collapse_spilled_items.size > 0) {
+            if (effects.collapse_spilled_items.length > 0) {
                 message += ' ' + world.item_spill_message(effects.collapse_spilled_items);
             }
         }
-        return {world:world.update({box: new_box}), message:message};
+        return {world: world.update({box: new_box}), message:message};
     });
 }
 
@@ -1247,9 +1281,9 @@ let take_item: Command<SingleBoxWorld> = {
             let new_box = world.box.take_next_item();
 
             let new_taken_items = world.taken_items;
-            new_taken_items.push(...effects.taken_items.toArray());
+            new_taken_items.push(...effects.taken_items);
 
-            let item = effects.taken_items.get(0);
+            let item = effects.taken_items[0];
             let message = `You reach in and take ${item.pre_gestalt()}. It's ${item.post_gestalt()}; ${item.article()} ${item.name()}.`;
         
             if (new_box.appears_empty()) {
@@ -1262,53 +1296,9 @@ let take_item: Command<SingleBoxWorld> = {
         });
     }
 }
-commands.push(take_item);
-
-export class WorldDriver {
-    world: SingleBoxWorld;
-
-    constructor (initial_world: SingleBoxWorld) {
-        this.world = initial_world;
-    }
-
-    run(cmd: string) {
-        let tokens = tokenize(cmd);
-        let parser = new CommandParser(tokens);
-
-        let command_map = Map<string, Command<SingleBoxWorld>>().asMutable();
-        let options: Token[][] = [];
-        commands.forEach(function (command){
-            options.push(command.command_name);
-            command_map.set(untokenize(command.command_name), command);
-        });
-
-        let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
-        if (!cmd_name) {
-            return '';
-        }
-
-        let command = command_map.get(cmd_name)
-        let result = command.execute(this.world, parser);
-        if (result === undefined) {
-            return '';
-        }
-
-        if (result.world !== undefined) {
-            this.world = result.world;
-        }
-        if (result.message !== undefined) {
-            return result.message;
-        }
-    }
-
-    apply_command(cmd: string) {
-        let result = this.run(cmd);
-        console.log(result);
-    }
-}
 
 export function test() {
-    let contents = List<Item>([new Codex(), new Pinecone(), new CityKey()]);
+    let contents: Item[] = [new Codex(), new Pinecone(), new CityKey()];
     let world = new SingleBoxWorld({box: new Box({contents: contents})});
 
     console.log('NEW WORLD: test heavy spillage when rolling\n\n\n');
@@ -1385,3 +1375,5 @@ export function test() {
 
     d4.apply_command('roll right');
 }
+
+test();
