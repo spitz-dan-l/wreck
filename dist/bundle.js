@@ -449,17 +449,36 @@ function tokens_equal(tks1, tks2) {
 }
 exports.tokens_equal = tokens_equal;
 function tokenize(s) {
-    let tokens = s.split(/(?:\s|&nbsp;)+/g);
-    if (last(tokens) === '') {
-        tokens.pop();
+    let pat = /[\S\0]+/g;
+    let tokens = [];
+    let token_indexes = [];
+    let match;
+    while ((match = pat.exec(s)) !== null) {
+        tokens.push(match[0]);
+        token_indexes.push(match.index);
     }
-    return tokens;
+    return [tokens, token_indexes];
 }
 exports.tokenize = tokenize;
-function untokenize(tokens) {
-    return tokens.join(' ');
+function untokenize(tokens, token_positions) {
+    if (token_positions === undefined) {
+        return tokens.join(' ');
+    }
+    let result = '';
+    for (let i = 0; i < tokens.length; i++) {
+        let cur_pos = result.length;
+        let target_pos = token_positions[i];
+        let padding = target_pos - cur_pos;
+        result += ' '.repeat(padding);
+        result += tokens[i];
+    }
+    return result;
 }
 exports.untokenize = untokenize;
+function normalize_whitespace(s) {
+    return s.replace(/\s+/g, ' ');
+}
+exports.normalize_whitespace = normalize_whitespace;
 function last(x) {
     return x[x.length - 1];
 }
@@ -923,13 +942,15 @@ class CommandParser {
         this.validity = MatchValidity.valid;
         this.match = [];
         this.command = command;
-        this.tokens = text_tools_1.tokenize(command);
+        [this.tokens, this.token_positions] = text_tools_1.tokenize(command);
     }
     consume_exact(spec_tokens, display = DisplayEltType.keyword, name) {
         if (spec_tokens.length === 0) {
             throw new Error("Can't consume an empty spec.");
         }
+        let offset = this.token_positions[this.position];
         let match_tokens = [];
+        let match_token_positions = [];
         let pos_offset = 0;
         for (let spec_tok of spec_tokens) {
             if (this.position + pos_offset === this.tokens.length) {
@@ -937,13 +958,16 @@ class CommandParser {
                 break; //partial validity
             }
             let next_tok = this.tokens[this.position + pos_offset];
+            let next_tok_pos = this.token_positions[this.position + pos_offset];
             if (spec_tok === next_tok) {
                 match_tokens.push(next_tok);
+                match_token_positions.push(next_tok_pos);
                 pos_offset++;
                 continue;
             }
             if (text_tools_1.starts_with(spec_tok, next_tok)) {
                 match_tokens.push(next_tok);
+                match_token_positions.push(next_tok_pos);
                 this.validity = MatchValidity.partial;
                 pos_offset++;
                 break;
@@ -955,17 +979,18 @@ class CommandParser {
         if (this.validity === MatchValidity.valid) {
             this.match.push({
                 display: display,
-                match: text_tools_1.untokenize(match_tokens),
+                match: text_tools_1.untokenize(match_tokens, match_token_positions),
+                offset: offset,
                 name: name
             });
-            this.position;
             return true;
         }
         if (this.validity === MatchValidity.partial) {
             if (this.position === this.tokens.length) {
                 this.match.push({
                     display: DisplayEltType.partial,
-                    match: text_tools_1.untokenize(match_tokens),
+                    match: text_tools_1.untokenize(match_tokens, match_token_positions),
+                    offset: offset,
                     typeahead: [text_tools_1.untokenize(spec_tokens)],
                     name: name
                 });
@@ -975,15 +1000,18 @@ class CommandParser {
             }
         }
         match_tokens.push(...this.tokens.slice(this.position));
+        match_token_positions.push(...this.token_positions.slice(this.position));
         this.position = this.tokens.length;
         this.match.push({
             display: DisplayEltType.error,
-            match: text_tools_1.untokenize(match_tokens),
+            match: text_tools_1.untokenize(match_tokens, match_token_positions),
+            offset: offset,
             name: name
         });
         return false;
     }
     consume_option(option_spec_tokens, name, display = DisplayEltType.option) {
+        let offset = this.token_positions[this.position];
         let partial_matches = [];
         for (let spec_toks of option_spec_tokens) {
             let subparser = new CommandParser(text_tools_1.untokenize(this.tokens.slice(this.position)));
@@ -991,7 +1019,7 @@ class CommandParser {
             if (exact_match) {
                 this.match.push(subparser.match[0]);
                 this.position += subparser.position;
-                return subparser.match[0].match;
+                return text_tools_1.normalize_whitespace(subparser.match[0].match);
             }
             if (subparser.validity === MatchValidity.partial) {
                 partial_matches.push(subparser.match[0]);
@@ -1004,6 +1032,7 @@ class CommandParser {
             this.match.push({
                 display: DisplayEltType.partial,
                 match: partial_matches[0].match,
+                offset: offset,
                 typeahead: typeahead,
                 name: name
             });
@@ -1011,9 +1040,11 @@ class CommandParser {
         }
         this.validity = MatchValidity.invalid;
         let match_tokens = this.tokens.slice(this.position);
+        let match_token_positions = this.token_positions.slice(this.position);
         this.match.push({
             display: DisplayEltType.error,
-            match: text_tools_1.untokenize(match_tokens),
+            match: text_tools_1.untokenize(match_tokens, match_token_positions),
+            offset: offset,
             name: name
         });
         return false;
@@ -1032,7 +1063,8 @@ class CommandParser {
             this.validity = MatchValidity.invalid;
             this.match.push({
                 display: DisplayEltType.error,
-                match: text_tools_1.untokenize(this.tokens.slice(this.position))
+                match: text_tools_1.untokenize(this.tokens.slice(this.position)),
+                offset: this.token_positions[this.position]
             });
             this.position = this.tokens.length;
         }
@@ -1072,19 +1104,22 @@ function apply_command(world, cmd) {
 exports.apply_command = apply_command;
 class WorldDriver {
     constructor(initial_world) {
-        this.current_state = { world: initial_world };
-        this.history = [];
+        this.current_state = null;
+        this.history = [{ world: initial_world }];
     }
     apply_command(cmd, commit = true) {
-        let result = apply_command(this.current_state.world, cmd);
+        let prev_state = this.history[this.history.length - 1];
+        let result = apply_command(prev_state.world, cmd);
+        console.log(result.message);
+        this.current_state = result;
         if (commit) {
-            if (result.message !== undefined) {
-                console.log(result.message);
-            }
-            this.history.push(this.current_state);
-            this.current_state = result;
+            this.commit();
         }
         return result;
+    }
+    commit() {
+        this.history.push(this.current_state);
+        this.current_state = null;
     }
 }
 exports.WorldDriver = WorldDriver;

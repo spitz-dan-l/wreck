@@ -9,7 +9,6 @@
         "jsx": "react"
     },
     "include": [
-        "./src/typescript/*",
-        "./src/components/*"
+        "./src/typescript/*"
     ]
 }

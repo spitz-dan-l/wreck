@@ -46,16 +46,42 @@ export function tokens_equal(tks1: string[], tks2: string[]) {
     return true;
 }
 
-export function tokenize(s: string) {
-    let tokens = s.split(/(?:\s|&nbsp;)+/g);
-    if (last(tokens) === ''){
-        tokens.pop();
+export function tokenize(s: string): [string[], number[]] {
+    let pat = /[\S\0]+/g;
+    
+    let tokens: string[] = [];
+    let token_indexes: number[] = [];
+    
+    let match: RegExpExecArray;
+    while ((match = pat.exec(s)) !== null) {
+        tokens.push(match[0]);
+        token_indexes.push(match.index);
     }
-    return tokens;
+
+    return [tokens, token_indexes];
+
 }
 
-export function untokenize(tokens: string[]){
-    return tokens.join(' ');
+export function untokenize(tokens: string[], token_positions?: number[]){
+    if (token_positions === undefined) {
+        return tokens.join(' ');
+    }
+    
+    let result: string = '';
+
+    for (let i = 0; i < tokens.length; i++){
+        let cur_pos = result.length;
+        let target_pos = token_positions[i];
+        let padding = target_pos - cur_pos;
+        result += ' '.repeat(padding);
+        result += tokens[i];
+    }
+
+    return result;
+}
+
+export function normalize_whitespace(s: string) {
+    return s.replace(/\s+/g, ' ');
 }
 
 export function last(x: any[] | string){

@@ -1,7 +1,7 @@
 // import {Map} from 'immutable';
 import {Direction, EdgeOperation, EdgeDirection, Face, RelativePosition, RendOperation} from './datatypes';
 
-import {starts_with, tokenize, untokenize} from './text_tools';
+import {starts_with, tokenize, untokenize, normalize_whitespace} from './text_tools';
 
 export type Token = string;
 
@@ -87,10 +87,11 @@ export enum DisplayEltType {
 }
 
 export interface DisplayElt {
-    display: DisplayEltType,
-    match: string,
-    typeahead?: string[],
-    name?: string
+    display: DisplayEltType, // the intended display style for this element
+    match: string, // the string that the parser matched for this element
+    offset: number, // the number of characters offset into the full string where this match starts
+    typeahead?: string[], // array of typeahead options
+    name?: string // internal name of this match (probably not useful for rendering purposes)
 }
 
 export enum MatchValidity {
@@ -102,21 +103,24 @@ export enum MatchValidity {
 export class CommandParser {
     command: string;
     tokens: Token[];
+    token_positions: number[];
     position: number = 0;
     validity: MatchValidity = MatchValidity.valid;
     match: DisplayElt[] = [];
 
     constructor(command: string) {
         this.command = command;
-        this.tokens = tokenize(command);
+        [this.tokens, this.token_positions] = tokenize(command);
     }
 
     consume_exact(spec_tokens: Token[], display: DisplayEltType=DisplayEltType.keyword, name?: string): boolean {
         if (spec_tokens.length === 0) {
             throw new Error("Can't consume an empty spec.");
         }
-
+        let offset = this.token_positions[this.position]
+        
         let match_tokens: Token[] = [];
+        let match_token_positions: number[] = [];
         let pos_offset = 0;
         for (let spec_tok of spec_tokens) {
             if (this.position + pos_offset === this.tokens.length) {
@@ -124,15 +128,18 @@ export class CommandParser {
                 break; //partial validity
             }
             let next_tok = this.tokens[this.position + pos_offset];
+            let next_tok_pos = this.token_positions[this.position + pos_offset];
 
             if (spec_tok === next_tok) {
                 match_tokens.push(next_tok);
+                match_token_positions.push(next_tok_pos);
                 pos_offset++;
                 continue;
             }
 
             if (starts_with(spec_tok, next_tok)) {
                 match_tokens.push(next_tok);
+                match_token_positions.push(next_tok_pos);
                 this.validity = MatchValidity.partial;
                 pos_offset++;
                 break;
@@ -144,12 +151,13 @@ export class CommandParser {
 
         this.position += pos_offset;
 
+
         if (this.validity === MatchValidity.valid) {
             this.match.push({
                 display: display,
-                match: untokenize(match_tokens),
+                match: untokenize(match_tokens, match_token_positions),
+                offset: offset,
                 name: name});
-            this.position;
             return true;
         }
 
@@ -157,7 +165,8 @@ export class CommandParser {
             if (this.position === this.tokens.length) {
                 this.match.push({
                     display: DisplayEltType.partial,
-                    match: untokenize(match_tokens),
+                    match: untokenize(match_tokens, match_token_positions),
+                    offset: offset,
                     typeahead: [untokenize(spec_tokens)],
                     name: name});
 
@@ -168,15 +177,19 @@ export class CommandParser {
         }
 
         match_tokens.push(...this.tokens.slice(this.position));
+        match_token_positions.push(...this.token_positions.slice(this.position));
         this.position = this.tokens.length;
         this.match.push({
             display: DisplayEltType.error,
-            match: untokenize(match_tokens),
+            match: untokenize(match_tokens, match_token_positions),
+            offset: offset,
             name: name});
         return false;
     }
 
     consume_option<S extends string>(option_spec_tokens: Token[][], name?: string, display: DisplayEltType=DisplayEltType.option): S | false{
+        let offset = this.token_positions[this.position];
+
         let partial_matches: DisplayElt[] = []; 
         for (let spec_toks of option_spec_tokens) {
             let subparser = new CommandParser(untokenize(this.tokens.slice(this.position)));
@@ -185,7 +198,7 @@ export class CommandParser {
             if (exact_match) {
                 this.match.push(subparser.match[0]);
                 this.position += subparser.position;
-                return <S>subparser.match[0].match;
+                return <S>normalize_whitespace(subparser.match[0].match);
             }
 
             if (subparser.validity === MatchValidity.partial){
@@ -200,6 +213,7 @@ export class CommandParser {
             this.match.push({
                 display: DisplayEltType.partial,
                 match: partial_matches[0].match,
+                offset: offset,
                 typeahead: typeahead,
                 name: name})
             return false;
@@ -207,9 +221,11 @@ export class CommandParser {
 
         this.validity = MatchValidity.invalid;
         let match_tokens = this.tokens.slice(this.position);
+        let match_token_positions = this.token_positions.slice(this.position);
         this.match.push({
             display: DisplayEltType.error,
-            match: untokenize(match_tokens),
+            match: untokenize(match_tokens, match_token_positions),
+            offset: offset,
             name: name});
         return false;
     }
@@ -231,7 +247,8 @@ export class CommandParser {
             this.validity = MatchValidity.invalid;
             this.match.push({
                 display: DisplayEltType.error,
-                match: untokenize(this.tokens.slice(this.position))
+                match: untokenize(this.tokens.slice(this.position)),
+                offset: this.token_positions[this.position]
             });
             this.position = this.tokens.length;
         }
@@ -297,20 +314,25 @@ export class WorldDriver<T extends WorldType> {
     current_state: CommandResult<T>;
 
     constructor (initial_world: T) {
-        this.current_state = {world: initial_world};
-        this.history = [];
+        this.current_state = null;
+        this.history = [{world: initial_world}];
     }
 
     apply_command(cmd: string, commit: boolean = true) {
-        let result = apply_command(this.current_state.world, cmd);
+        let prev_state = this.history[this.history.length - 1];
+        let result = apply_command(prev_state.world, cmd);
+        
+        console.log(result.message);
 
-        if (commit){
-            if (result.message !== undefined) {
-                console.log(result.message);
-            }
-            this.history.push(this.current_state);
-            this.current_state = result;
+        this.current_state = result;
+        if (commit) {
+            this.commit();
         }
         return result;
+    }
+
+    commit() {
+        this.history.push(this.current_state);
+        this.current_state = null;
     }
 }
