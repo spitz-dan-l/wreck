@@ -1,5 +1,5 @@
 module.exports = {
-    entry: "./src/typescript/world.ts",
+    entry: "./src/typescript/main.tsx",
     output: {
         filename: "bundle.js",
         path: __dirname + "/dist"

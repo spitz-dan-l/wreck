@@ -1,6 +1,3 @@
-import * as React from "react";
-import * as ReactDOM from "react-dom";
-
 import {BoxMesh, edge_2_quadrants, FaceMesh} from './box_geometry';
 
 import {

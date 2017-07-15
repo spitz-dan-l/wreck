@@ -333,7 +333,9 @@ export class WorldDriver<T extends WorldType> {
     }
 
     commit() {
+        let result = this.current_state;
         this.history.push(this.current_state);
         this.current_state = null;
+        return result;
     }
 }
