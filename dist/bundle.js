@@ -1110,7 +1110,9 @@ class WorldDriver {
     apply_command(cmd, commit = true) {
         let prev_state = this.history[this.history.length - 1];
         let result = apply_command(prev_state.world, cmd);
+        console.log(cmd);
         console.log(result.message);
+        console.log(result);
         this.current_state = result;
         if (commit) {
             this.commit();
@@ -2228,6 +2230,7 @@ function test() {
     d.apply_command('lift');
     d.apply_command('roll forward');
     d.apply_command('rotate left');
+    d.apply_command('rotate le', false);
     // cut the top face vertically along the center from top to bottom
     d.apply_command('cut on top vertically along center from top to bottom');
     // cut the top face vertically along the right edge from top to bottom

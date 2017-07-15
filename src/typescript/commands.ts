@@ -321,8 +321,9 @@ export class WorldDriver<T extends WorldType> {
     apply_command(cmd: string, commit: boolean = true) {
         let prev_state = this.history[this.history.length - 1];
         let result = apply_command(prev_state.world, cmd);
-        
+        console.log(cmd);
         console.log(result.message);
+        console.log(result);
 
         this.current_state = result;
         if (commit) {

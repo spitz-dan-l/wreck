@@ -1308,6 +1308,8 @@ export function test() {
     d.apply_command('roll forward');
     d.apply_command('rotate left');
 
+    d.apply_command('rotate le', false);
+
     // cut the top face vertically along the center from top to bottom
     d.apply_command('cut on top vertically along center from top to bottom');
 
