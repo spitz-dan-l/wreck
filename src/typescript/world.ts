@@ -954,67 +954,76 @@ let tape_box: Command<SingleBoxWorld> = {
     execute: cut_or_tape_box
 }
 
-function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
-    //operation: EdgeOpWord, face_w: FaceWord, dir: EdgeDirWord, start_pos_a: PositionWord, start_pos_b: PositionWord, end_pos_b: PositionWord): CommandResult {
-    //let inner_this = this;
-    return with_world_update(function (effects) {
-        let operation: EdgeOpWord = <EdgeOpWord>parser.get_match('command').match;
-        
-        if (!parser.consume_filler(['on'])){
-            return;
-        }
+type cut_or_tape_bindings = {cut_points?: [Point2, Point2][]} & {message?: string};
 
-        let face_w = parser.consume_option<FaceWord>(face_word_tokens, 'face');
-        if (!face_w){
-            return;
-        }
-        let face = word_2_face.get(face_w);
-        if (face !== Face.t && face !== Face.s) {
-            parser.get_match('face').display = DisplayEltType.error;
-            parser.validity = MatchValidity.invalid;
-            return {message: `Face must be either top or front. got ${face_w}`};
-        }
+const dim_2_pos = [
+    ['left', 'center', 'right'],
+    ['top','middle', 'bottom']
+];
 
-        let dir = parser.consume_option(edge_dir_word_tokens);
+function parser_cut_or_tape_box(parser: CommandParser): cut_or_tape_bindings {
+    let operation: EdgeOpWord = <EdgeOpWord>parser.get_match('command').match;
+
+    let dir: Token | false;
+    if (parser.is_done()) {
+        dir = 'horizontally';
+    } else {
+        dir = parser.consume_option(edge_dir_word_tokens);
+
         if (!dir){
             return;
         }
+    }
 
+    let dim_a: number;
+    let dim_b: number;
+
+    if (dir === 'vertically') {
+        dim_a = 0;
+        dim_b = 1;
+    } else {
+        dim_a = 1;
+        dim_b = 0;
+    }
+
+    let start_pos_a: Token | false;
+    if (parser.is_done()){
+        if (dim_a === 0) { //default for vertical
+            start_pos_a = 'center';
+        } else { // default for horizontal
+            start_pos_a = 'middle';
+        }
+    } else {
         if (!parser.consume_filler(['along'])){
             return;
         }
-        let dim_2_pos = [
-            ['left', 'center', 'right'],
-            ['top','middle', 'bottom']
-        ];
-
-        let dim_a: number;
-        let dim_b: number;
-
-        if (dir === 'vertically') {
-            dim_a = 0;
-            dim_b = 1;
-        } else {
-            dim_a = 1;
-            dim_b = 0;
-        }
-
-        let start_pos_a = parser.consume_option(position_word_tokens, 'start_pos_a');
+        start_pos_a = parser.consume_option(position_word_tokens, 'start_pos_a');
         if (!start_pos_a) {
             return;
         }
-
         if (dim_2_pos[dim_a].indexOf(start_pos_a) === -1) {
             parser.get_match('start_pos_a').display = DisplayEltType.error;
             parser.validity = MatchValidity.invalid;
             return {message: `invalid start_pos_a for ${dir} ${operation}: ${start_pos_a}`};
         }
-
+    }
+    
+    let start_pos_b: Token | false;
+    let end_pos_b: Token | false;
+    if (parser.is_done()) {
+        if (dim_a === 0) { //default for vertical
+            start_pos_b = 'top';
+            end_pos_b = 'bottom';
+        } else { // default for horizontal
+            start_pos_b = 'left';
+            end_pos_b = 'right';
+        }
+    } else {
         if (!parser.consume_filler(['from'])){
             return;
         }
 
-        let start_pos_b = parser.consume_option(position_word_tokens, 'start_pos_b');
+        start_pos_b = parser.consume_option(position_word_tokens, 'start_pos_b');
         if (!start_pos_b) {
             return;
         }
@@ -1027,7 +1036,7 @@ function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandR
         if (!parser.consume_filler(['to'])){
             return;
         }
-        let end_pos_b = parser.consume_option(position_word_tokens, 'end_pos_b');
+        end_pos_b = parser.consume_option(position_word_tokens, 'end_pos_b');
         if (!end_pos_b) {
             return;
         }
@@ -1037,38 +1046,56 @@ function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandR
             return {message: `invalid end_pos_b for ${dir} ${operation}: ${end_pos_b}`};
         }
 
-        let pt1: Point2 = [null, null];
-        let pt2: Point2 = [null, null];
+    }
+    
+    let pt1: Point2 = [null, null];
+    let pt2: Point2 = [null, null];
 
-        pt1[dim_a] = pt2[dim_a] = dim_2_pos[dim_a].indexOf(start_pos_a);
+    pt1[dim_a] = pt2[dim_a] = dim_2_pos[dim_a].indexOf(start_pos_a);
 
-        pt1[dim_b] = dim_2_pos[dim_b].indexOf(start_pos_b);
-        pt2[dim_b] = dim_2_pos[dim_b].indexOf(end_pos_b);
+    pt1[dim_b] = dim_2_pos[dim_b].indexOf(start_pos_b);
+    pt2[dim_b] = dim_2_pos[dim_b].indexOf(end_pos_b);
 
-        if (Math.abs(pt1[dim_b] - pt2[dim_b]) == 0) {
-            parser.get_match('end_pos_b').display = DisplayEltType.error;
-            return {message: 'no change between start_pos_b and end_pos_b.'};
+    if (Math.abs(pt1[dim_b] - pt2[dim_b]) == 0) {
+        parser.get_match('end_pos_b').display = DisplayEltType.error;
+        return {message: 'no change between start_pos_b and end_pos_b.'};
+    }
+
+    if (!parser.done()){
+        return;
+    }
+
+    let cut_points: [Point2, Point2][];
+    if (Math.abs(pt1[dim_b] - pt2[dim_b]) === 2) {
+        let pt3: Point2 = [null, null];
+        pt3[dim_a] = dim_2_pos[dim_a].indexOf(start_pos_a);
+        pt3[dim_b] = 1;
+
+        cut_points = [[pt1, pt3], [pt3, pt2]];
+    } else {
+        cut_points = [[pt1, pt2]];
+    }
+
+    return {cut_points};
+}
+
+function cut_or_tape_box(world: SingleBoxWorld, parser: CommandParser): CommandResult<SingleBoxWorld> {
+    //operation: EdgeOpWord, face_w: FaceWord, dir: EdgeDirWord, start_pos_a: PositionWord, start_pos_b: PositionWord, end_pos_b: PositionWord): CommandResult {
+    //let inner_this = this;
+    return with_world_update(function (effects) {
+        let operation: EdgeOpWord = <EdgeOpWord>parser.get_match('command').match;
+        
+        let parse_result = parser_cut_or_tape_box(parser);
+        if (parse_result === undefined || parse_result.message !== undefined) {
+            return parse_result;
         }
 
-        if (!parser.done()){
-            return;
-        }
-
-        let cut_points: [Point2, Point2][];
-        if (Math.abs(pt1[dim_b] - pt2[dim_b]) == 2) {
-            let pt3: Point2 = [null, null];
-            pt3[dim_a] = dim_2_pos[dim_a].indexOf(start_pos_a);
-            pt3[dim_b] = 1;
-
-            cut_points = [[pt1, pt3], [pt3, pt2]];
-        } else {
-            cut_points = [[pt1, pt2]];
-        }
+        let {cut_points} = parse_result;
 
         let cut_edge_states: EdgeState[] = [];
 
         let new_box = world.box;
-
+        let face = Face.t;
         cut_points.forEach(function ([p1, p2]) {
             let vertices = new_box.box_mesh.face_meshes.get(face).vertices;
             let v1 = vertices.get(p1[0], p1[1]);

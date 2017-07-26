@@ -187,17 +187,28 @@ export class CommandParser {
         return false;
     }
 
+    subparser() {
+        return new CommandParser(untokenize(this.tokens.slice(this.position)));
+    }
+
+    integrate(subparser: CommandParser) {
+        this.position += subparser.position;
+        this.match.push(...subparser.match);
+        this.validity = subparser.validity;
+    }
+
     consume_option<S extends string>(option_spec_tokens: Token[][], name?: string, display: DisplayEltType=DisplayEltType.option): S | false{
         let offset = this.token_positions[this.position];
 
         let partial_matches: DisplayElt[] = []; 
         for (let spec_toks of option_spec_tokens) {
-            let subparser = new CommandParser(untokenize(this.tokens.slice(this.position)));
+            let subparser = this.subparser();
             let exact_match = subparser.consume_exact(spec_toks, display, name);
 
             if (exact_match) {
-                this.match.push(subparser.match[0]);
-                this.position += subparser.position;
+                this.integrate(subparser);
+                // this.match.push(subparser.match[0]);
+                // this.position += subparser.position;
                 return <S>normalize_whitespace(subparser.match[0].match);
             }
 
