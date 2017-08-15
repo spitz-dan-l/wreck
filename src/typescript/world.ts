@@ -1402,4 +1402,4 @@ export function test() {
     d4.apply_command('roll right');
 }
 
-test();
+//test();
