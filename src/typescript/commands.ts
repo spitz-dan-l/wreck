@@ -325,8 +325,8 @@ export class WorldDriver<T extends WorldType> {
     current_state: CommandResult<T>;
 
     constructor (initial_world: T) {
-        this.current_state = null;
         this.history = [{world: initial_world}];
+        this.apply_command('', false); //populate this.current_state
     }
 
     apply_command(cmd: string, commit: boolean = true) {
@@ -346,7 +346,7 @@ export class WorldDriver<T extends WorldType> {
     commit() {
         let result = this.current_state;
         this.history.push(this.current_state);
-        this.current_state = null;
+        this.apply_command('', false);
         return result;
     }
 }
