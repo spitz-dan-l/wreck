@@ -1,21 +1,5 @@
 import * as React from 'react';
 
-
-const Carat = (props) => {
-  const {style, ...rest} = props;
-  const base_style = {
-    fontFamily: "'Fira Mono', 'monospace'",
-    fontSize: '1em',
-    fontColor: 'ivory'
-  }
-
-  return (
-    <div style={{...base_style, ...style}} {...rest}>
-      >
-    </div>
-  );
-}
-
 const InputWrapper = (props) => {
   const {style, children, ...rest} = props;
   const base_style = {
@@ -57,22 +41,18 @@ const InputWrapper = (props) => {
 const InputDisplay = (props) => {
   const {children, style, ...rest} = props;
   const base_style = {
-    fontSize: 14,
     worWrap: 'break-word',
-    lineHeight: '1em',
     outline: 0,
-    whiteSpace: 'normal',
-    minHeight: '2em',
-    minWidth: '10em',
-    background: '#fff',
+    // minHeight: '2em',
+    // minWidth: '10em',
     display: 'inline-block',
-    padding: '.5em 2em .5em 1em',
-    color: 'rgba(0,0,0,.87)',
+    // padding: '.5em 2em .5em 1em',
+    color: 'ivory',
     boxShadow: 'none',
-    border: '1px solid rgba(34,36,38,.15)',
-    transition: 'box-shadow .1s ease,width .1s ease',
-    margin: 0,
-    marginBottom: '-2px'
+    // border: '1px solid rgba(34,36,38,.15)',
+    // transition: 'box-shadow .1s ease,width .1s ease',
+    // margin: 0,
+    // marginBottom: '-2px'
   };
 
   return (
@@ -157,7 +137,6 @@ export class Prompt extends React.Component<any, any> {
     };
     return (
         <InputWrapper onClick={() => this.focus()}>
-          <Carat />
           <input onChange={this.handleChange} onKeyDown={this.handleKeys} value={this.state.value} style={input_style} ref={i => this.input = i} />
           <InputDisplay>
             {this.props.children}[]

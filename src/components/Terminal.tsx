@@ -11,27 +11,18 @@ import * as World from "../typescript/world";
 
 import {WorldDriver, MatchValidity} from "../typescript/commands";
 
-
-
-const ContentContainer = function (props) {
-  const {style, children, ...rest} = props;
+const Carat = (props) => {
+  const {style, ...rest} = props;
   const base_style = {
-    height: '100%',
-    width: '100%',
-    overflowY: 'scroll',
-
     fontFamily: "'Fira Mono', 'monospace'",
     fontSize: '1em',
-    fontColor: 'ivory',
-    background: 'white',
-    radius: 3,
-    position: 'relative',
-    display: 'flex'
-  };
+    color: 'ivory'
+  }
+
   return (
-    <div style={{...base_style, ...style}} {...rest}>
-      {children}
-    </div>
+    <span style={{...base_style, ...style}} {...rest}>
+      >
+    </span>
   );
 }
 
@@ -70,6 +61,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Wo
     console.log(input);
     let result = this.state.world_driver.apply_command(input, false);
     this.setState({world_driver: this.state.world_driver});
+    this.scrollToPrompt();
   }
 
   currentAutocomplete = () => {
@@ -90,27 +82,40 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Wo
       height: '100%',
       width: '100%',
       overflowY: 'scroll',
-
+      whiteSpace: 'pre-wrap',
       fontFamily: "'Fira Mono', 'monospace'",
       fontSize: '1em',
-      fontColor: 'ivory',
-      background: 'white',
+      color: 'ivory',
+      background: 'black',
       radius: 3,
-      position: 'relative',
-      display: 'flex'
+      position: 'absolute',
+      display: 'block'
     };
     return (
       <div style={container_style} onClick={this.focusPrompt} ref={cc => this.contentContainer = cc}>
-        {this.state.world_driver.history.map(({parser, message}, i) => (
-          <div key={i}>
-            <ParsedText parser={parser} />
-            <OutputText message={message} />
-          </div>
-        ))}
+        {this.state.world_driver.history.map(({parser, message}, i) => {
+          if (i === 0) {
+            return false; //don't display first hist element, it empty
+          }
+          return (
+            <div key={i}>
+              <p>
+                <Carat />
+                <ParsedText parser={parser} />
+              </p>
+              <p>
+                <OutputText message={message} />
+              </p>
+            </div>
+          )
+        })}
 
-        <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
-          <ParsedText parser={this.state.world_driver.current_state.parser} />
-        </Prompt>
+        <p>
+          <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
+            <Carat />
+            <ParsedText parser={this.state.world_driver.current_state.parser} />
+          </Prompt>
+        </p>
       </div>
     );
   }

@@ -813,22 +813,15 @@ const Text_1 = __webpack_require__(8);
 const Items = __webpack_require__(3);
 const World = __webpack_require__(11);
 const commands_1 = __webpack_require__(2);
-const ContentContainer = function (props) {
-    const { style, children } = props,
-          rest = __rest(props, ["style", "children"]);
+const Carat = props => {
+    const { style } = props,
+          rest = __rest(props, ["style"]);
     const base_style = {
-        height: '100%',
-        width: '100%',
-        overflowY: 'scroll',
         fontFamily: "'Fira Mono', 'monospace'",
         fontSize: '1em',
-        fontColor: 'ivory',
-        background: 'white',
-        radius: 3,
-        position: 'relative',
-        display: 'flex'
+        color: 'ivory'
     };
-    return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
+    return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), ">");
 };
 class Terminal extends React.Component {
     constructor(props) {
@@ -850,6 +843,7 @@ class Terminal extends React.Component {
             console.log(input);
             let result = this.state.world_driver.apply_command(input, false);
             this.setState({ world_driver: this.state.world_driver });
+            this.scrollToPrompt();
         };
         this.currentAutocomplete = () => {
             let current_state = this.state.world_driver.current_state;
@@ -873,15 +867,21 @@ class Terminal extends React.Component {
             height: '100%',
             width: '100%',
             overflowY: 'scroll',
+            whiteSpace: 'pre-wrap',
             fontFamily: "'Fira Mono', 'monospace'",
             fontSize: '1em',
-            fontColor: 'ivory',
-            background: 'white',
+            color: 'ivory',
+            background: 'black',
             radius: 3,
-            position: 'relative',
-            display: 'flex'
+            position: 'absolute',
+            display: 'block'
         };
-        return React.createElement("div", { style: container_style, onClick: this.focusPrompt, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => React.createElement("div", { key: i }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message: message }))), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser })));
+        return React.createElement("div", { style: container_style, onClick: this.focusPrompt, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
+            if (i === 0) {
+                return false; //don't display first hist element, it empty
+            }
+            return React.createElement("div", { key: i }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }))));
     }
 }
 exports.Terminal = Terminal;
@@ -907,16 +907,6 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(1);
-const Carat = props => {
-    const { style } = props,
-          rest = __rest(props, ["style"]);
-    const base_style = {
-        fontFamily: "'Fira Mono', 'monospace'",
-        fontSize: '1em',
-        fontColor: 'ivory'
-    };
-    return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), ">");
-};
 const InputWrapper = props => {
     const { style, children } = props,
           rest = __rest(props, ["style", "children"]);
@@ -953,22 +943,14 @@ const InputDisplay = props => {
     const { children, style } = props,
           rest = __rest(props, ["children", "style"]);
     const base_style = {
-        fontSize: 14,
         worWrap: 'break-word',
-        lineHeight: '1em',
         outline: 0,
-        whiteSpace: 'normal',
-        minHeight: '2em',
-        minWidth: '10em',
-        background: '#fff',
+        // minHeight: '2em',
+        // minWidth: '10em',
         display: 'inline-block',
-        padding: '.5em 2em .5em 1em',
-        color: 'rgba(0,0,0,.87)',
-        boxShadow: 'none',
-        border: '1px solid rgba(34,36,38,.15)',
-        transition: 'box-shadow .1s ease,width .1s ease',
-        margin: 0,
-        marginBottom: '-2px'
+        // padding: '.5em 2em .5em 1em',
+        color: 'ivory',
+        boxShadow: 'none'
     };
     return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
 };
@@ -1035,7 +1017,7 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement(Carat, null), React.createElement("input", { onChange: this.handleChange, onKeyDown: this.handleKeys, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, "[]"));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, onKeyDown: this.handleKeys, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, "[]"));
     }
 }
 exports.Prompt = Prompt;
@@ -1059,9 +1041,11 @@ exports.ParsedText = props => {
     const { parser, style } = props,
           rest = __rest(props, ["parser", "style"]);
     const base_style = {
+        display: 'inline-block',
         fontFamily: "'Fira Mono', 'monospace'",
         fontSize: '1em',
-        fontColor: 'ivory'
+        color: 'ivory',
+        whiteSpace: 'pre-wrap'
     };
     return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), parser !== undefined ? parser.command : '');
 };
@@ -1069,9 +1053,11 @@ exports.OutputText = props => {
     const { message, style } = props,
           rest = __rest(props, ["message", "style"]);
     const base_style = {
+        display: 'inline-block',
         fontFamily: "'Fira Mono', 'monospace'",
         fontSize: '1em',
-        fontColor: 'ivory'
+        color: 'ivory',
+        whiteSpace: 'pre-wrap'
     };
     return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), message !== undefined ? message : '');
 };

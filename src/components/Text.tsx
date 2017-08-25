@@ -3,9 +3,11 @@ import * as React from 'react';
 export const ParsedText = (props) => {
   const {parser, style, ...rest} = props;
   const base_style = {
+    display: 'inline-block',
     fontFamily: "'Fira Mono', 'monospace'",
     fontSize: '1em',
-    fontColor: 'ivory'
+    color: 'ivory',
+    whiteSpace: 'pre-wrap'
   }
 
   return (
@@ -18,9 +20,11 @@ export const ParsedText = (props) => {
 export const OutputText = (props) => {
   const {message, style, ...rest} = props;
   const base_style = {
+    display: 'inline-block',
     fontFamily: "'Fira Mono', 'monospace'",
     fontSize: '1em',
-    fontColor: 'ivory'
+    color: 'ivory',
+    whiteSpace: 'pre-wrap'
   }
 
   return (
