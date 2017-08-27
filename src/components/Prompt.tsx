@@ -12,47 +12,13 @@ const InputWrapper = (props) => {
   );
 }
 
-// //need a class to get ref
-// class Input extends React.Component<any, any> {
-//   render () {
-//     const {style, ...rest} = this.props;
-//     const input_style = {
-//       position: 'absolute',
-//       left: '-16px',
-//       top: 0,
-//       width: 0,
-//       height: 0,
-//       background: 'transparent',
-//       border: 'none',
-//       color: 'transparent',
-//       outline: 'none',
-//       padding: 0,
-//       resize: 'none',
-//       zIndex: -1,
-//       overflow: 'hidden'
-//     };
-
-//     return (
-//       <input style={{...base_style, ...style}} {...rest} />
-//     );
-//   }
-// }
-
 const InputDisplay = (props) => {
   const {children, style, ...rest} = props;
   const base_style = {
     worWrap: 'break-word',
     outline: 0,
-    // minHeight: '2em',
-    // minWidth: '10em',
     display: 'inline-block',
-    // padding: '.5em 2em .5em 1em',
-    color: 'ivory',
     boxShadow: 'none',
-    // border: '1px solid rgba(34,36,38,.15)',
-    // transition: 'box-shadow .1s ease,width .1s ease',
-    // margin: 0,
-    // marginBottom: '-2px'
   };
 
   return (
@@ -71,7 +37,7 @@ export class Prompt extends React.Component<any, any> {
 
 
 
-  state = { value: '' }; //meta is an object with isValid bool, and autocomplete array
+  state = { value: '' };
 
   handleSubmit = () => {
     let success = this.props.onSubmit();

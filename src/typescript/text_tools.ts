@@ -46,42 +46,49 @@ export function tokens_equal(tks1: string[], tks2: string[]) {
     return true;
 }
 
-export function tokenize(s: string): [string[], number[]] {
-    let pat = /[\S\0]+/g;
-    
-    let tokens: string[] = [];
-    let token_indexes: number[] = [];
-    
-    let match: RegExpExecArray;
-    while ((match = pat.exec(s)) !== null) {
-        tokens.push(match[0]);
-        token_indexes.push(match.index);
+export function tokenize(s: string): [string[], string[]] {
+    let word_pat = /[\S]+/g;
+    let space_pat = /[^\S]+/g;
+
+    let tokens = s.split(space_pat);
+    let gaps = s.split(word_pat);
+
+    if (tokens.length > 0){
+        if (tokens[0] === '') {
+            tokens.splice(0, 1);
+        }
+        if (tokens[tokens.length - 1] === '') {
+            tokens.splice(tokens.length - 1, 1);
+        }
     }
 
-    return [tokens, token_indexes];
-
+    return [tokens, gaps];
 }
 
-export function untokenize(tokens: string[], token_positions?: number[]){
-    if (token_positions === undefined) {
+function tokenize_tests() {
+    console.log('tokenize tests');
+    console.log(tokenize(' l'));
+}
+
+export function untokenize(tokens: string[], gaps?: string[]){
+    if (gaps === undefined) {
         return tokens.join(' ');
     }
     
     let result: string = '';
-
-    for (let i = 0; i < tokens.length; i++){
-        let cur_pos = result.length;
-        let target_pos = token_positions[i];
-        let padding = target_pos - cur_pos;
-        result += ' '.repeat(padding);
-        result += tokens[i];
+    let i = 0;
+    for (i = 0; i < gaps.length; i++){
+        result += gaps[i];
+        if (i < tokens.length) {
+            result += tokens[i];
+        }
     }
 
     return result;
 }
 
 export function normalize_whitespace(s: string) {
-    return s.replace(/\s+/g, ' ');
+    return s.trim().replace(/\s+/g, ' ');
 }
 
 export function last(x: any[] | string){

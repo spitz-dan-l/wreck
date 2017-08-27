@@ -1,6 +1,5 @@
 import * as React from 'react';
 
-// Internal
 import {Prompt} from './Prompt';
 import {ParsedText, OutputText} from './Text';
 
@@ -11,20 +10,11 @@ import * as World from "../typescript/world";
 
 import {WorldDriver, MatchValidity} from "../typescript/commands";
 
-const Carat = (props) => {
-  const {style, ...rest} = props;
-  const base_style = {
-    fontFamily: "'Fira Mono', 'monospace'",
-    fontSize: '1em',
-    color: 'ivory'
-  }
-
-  return (
-    <span style={{...base_style, ...style}} {...rest}>
-      >
-    </span>
-  );
-}
+const Carat = () => (
+  <span>
+    >
+  </span>
+);
 
 export class Terminal extends React.Component<any, {world_driver: WorldDriver<World.SingleBoxWorld>}> {
   contentContainer: any;
@@ -42,12 +32,15 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Wo
     this.focusPrompt();
   }
 
+  componentDidUpdate() {
+    this.focusPrompt();
+    this.scrollToPrompt();
+  }
+
   handleSubmit = () => {
-    //console.log(input);
     if (this.isCurrentlyValid()) {
       const output = this.state.world_driver.commit();
       this.setState({world_driver: this.state.world_driver});
-      this.scrollToPrompt();
       return true;
     }
     return false;
@@ -61,7 +54,6 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Wo
     console.log(input);
     let result = this.state.world_driver.apply_command(input, false);
     this.setState({world_driver: this.state.world_driver});
-    this.scrollToPrompt();
   }
 
   currentAutocomplete = () => {
@@ -83,13 +75,14 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Wo
       width: '100%',
       overflowY: 'scroll',
       whiteSpace: 'pre-wrap',
-      fontFamily: "'Fira Mono', 'monospace'",
-      fontSize: '1em',
+      fontFamily: "'Fira Mono'",
+      fontSize: '1.5em',
       color: 'ivory',
       background: 'black',
       radius: 3,
       position: 'absolute',
-      display: 'block'
+      display: 'block',
+      padding: '1em'
     };
     return (
       <div style={container_style} onClick={this.focusPrompt} ref={cc => this.contentContainer = cc}>
@@ -98,7 +91,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Wo
             return false; //don't display first hist element, it empty
           }
           return (
-            <div key={i}>
+            <div key={i.toString()}>
               <p>
                 <Carat />
                 <ParsedText parser={parser} />

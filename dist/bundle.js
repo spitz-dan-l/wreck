@@ -458,15 +458,14 @@ class CommandParser {
         this.validity = MatchValidity.valid;
         this.match = [];
         this.command = command;
-        [this.tokens, this.token_positions] = text_tools_1.tokenize(command);
+        [this.tokens, this.token_gaps] = text_tools_1.tokenize(command);
     }
     consume_exact(spec_tokens, display = DisplayEltType.keyword, name) {
         if (spec_tokens.length === 0) {
             throw new Error("Can't consume an empty spec.");
         }
-        let offset = this.token_positions[this.position];
         let match_tokens = [];
-        let match_token_positions = [];
+        let match_gaps = [];
         let pos_offset = 0;
         for (let spec_tok of spec_tokens) {
             if (this.position + pos_offset === this.tokens.length) {
@@ -474,16 +473,16 @@ class CommandParser {
                 break; //partial validity
             }
             let next_tok = this.tokens[this.position + pos_offset];
-            let next_tok_pos = this.token_positions[this.position + pos_offset];
+            let next_gap = this.token_gaps[this.position + pos_offset];
             if (spec_tok === next_tok) {
                 match_tokens.push(next_tok);
-                match_token_positions.push(next_tok_pos);
+                match_gaps.push(next_gap);
                 pos_offset++;
                 continue;
             }
             if (text_tools_1.starts_with(spec_tok, next_tok)) {
                 match_tokens.push(next_tok);
-                match_token_positions.push(next_tok_pos);
+                match_gaps.push(next_gap);
                 this.validity = MatchValidity.partial;
                 pos_offset++;
                 break;
@@ -495,8 +494,7 @@ class CommandParser {
         if (this.validity === MatchValidity.valid) {
             this.match.push({
                 display: display,
-                match: text_tools_1.untokenize(match_tokens, match_token_positions),
-                offset: offset,
+                match: text_tools_1.untokenize(match_tokens, match_gaps),
                 name: name
             });
             return true;
@@ -505,8 +503,7 @@ class CommandParser {
             if (this.position === this.tokens.length) {
                 this.match.push({
                     display: DisplayEltType.partial,
-                    match: text_tools_1.untokenize(match_tokens, match_token_positions),
-                    offset: offset,
+                    match: text_tools_1.untokenize(match_tokens, match_gaps),
                     typeahead: [text_tools_1.untokenize(spec_tokens)],
                     name: name
                 });
@@ -516,18 +513,17 @@ class CommandParser {
             }
         }
         match_tokens.push(...this.tokens.slice(this.position));
-        match_token_positions.push(...this.token_positions.slice(this.position));
+        match_gaps.push(...this.token_gaps.slice(this.position, this.tokens.length));
         this.position = this.tokens.length;
         this.match.push({
             display: DisplayEltType.error,
-            match: text_tools_1.untokenize(match_tokens, match_token_positions),
-            offset: offset,
+            match: text_tools_1.untokenize(match_tokens, match_gaps),
             name: name
         });
         return false;
     }
     subparser() {
-        return new CommandParser(text_tools_1.untokenize(this.tokens.slice(this.position)));
+        return new CommandParser(text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
     }
     integrate(subparser) {
         this.position += subparser.position;
@@ -535,15 +531,12 @@ class CommandParser {
         this.validity = subparser.validity;
     }
     consume_option(option_spec_tokens, name, display = DisplayEltType.option) {
-        let offset = this.token_positions[this.position];
         let partial_matches = [];
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
             let exact_match = subparser.consume_exact(spec_toks, display, name);
             if (exact_match) {
                 this.integrate(subparser);
-                // this.match.push(subparser.match[0]);
-                // this.position += subparser.position;
                 return text_tools_1.normalize_whitespace(subparser.match[0].match);
             }
             if (subparser.validity === MatchValidity.partial) {
@@ -557,7 +550,6 @@ class CommandParser {
             this.match.push({
                 display: DisplayEltType.partial,
                 match: partial_matches[0].match,
-                offset: offset,
                 typeahead: typeahead,
                 name: name
             });
@@ -565,11 +557,10 @@ class CommandParser {
         }
         this.validity = MatchValidity.invalid;
         let match_tokens = this.tokens.slice(this.position);
-        let match_token_positions = this.token_positions.slice(this.position);
+        let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
         this.match.push({
             display: DisplayEltType.error,
-            match: text_tools_1.untokenize(match_tokens, match_token_positions),
-            offset: offset,
+            match: text_tools_1.untokenize(match_tokens, match_token_gaps),
             name: name
         });
         return false;
@@ -588,8 +579,7 @@ class CommandParser {
             this.validity = MatchValidity.invalid;
             this.match.push({
                 display: DisplayEltType.error,
-                match: text_tools_1.untokenize(this.tokens.slice(this.position)),
-                offset: this.token_positions[this.position]
+                match: text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
             });
             this.position = this.tokens.length;
         }
@@ -635,9 +625,6 @@ class WorldDriver {
     apply_command(cmd, commit = true) {
         let prev_state = this.history[this.history.length - 1];
         let result = apply_command(prev_state.world, cmd);
-        console.log(cmd);
-        console.log(result.message);
-        console.log(result);
         this.current_state = result;
         if (commit) {
             this.commit();
@@ -757,34 +744,42 @@ function tokens_equal(tks1, tks2) {
 }
 exports.tokens_equal = tokens_equal;
 function tokenize(s) {
-    let pat = /[\S\0]+/g;
-    let tokens = [];
-    let token_indexes = [];
-    let match;
-    while ((match = pat.exec(s)) !== null) {
-        tokens.push(match[0]);
-        token_indexes.push(match.index);
+    let word_pat = /[\S]+/g;
+    let space_pat = /[^\S]+/g;
+    let tokens = s.split(space_pat);
+    let gaps = s.split(word_pat);
+    if (tokens.length > 0) {
+        if (tokens[0] === '') {
+            tokens.splice(0, 1);
+        }
+        if (tokens[tokens.length - 1] === '') {
+            tokens.splice(tokens.length - 1, 1);
+        }
     }
-    return [tokens, token_indexes];
+    return [tokens, gaps];
 }
 exports.tokenize = tokenize;
-function untokenize(tokens, token_positions) {
-    if (token_positions === undefined) {
+function tokenize_tests() {
+    console.log('tokenize tests');
+    console.log(tokenize(' l'));
+}
+function untokenize(tokens, gaps) {
+    if (gaps === undefined) {
         return tokens.join(' ');
     }
     let result = '';
-    for (let i = 0; i < tokens.length; i++) {
-        let cur_pos = result.length;
-        let target_pos = token_positions[i];
-        let padding = target_pos - cur_pos;
-        result += ' '.repeat(padding);
-        result += tokens[i];
+    let i = 0;
+    for (i = 0; i < gaps.length; i++) {
+        result += gaps[i];
+        if (i < tokens.length) {
+            result += tokens[i];
+        }
     }
     return result;
 }
 exports.untokenize = untokenize;
 function normalize_whitespace(s) {
-    return s.replace(/\s+/g, ' ');
+    return s.trim().replace(/\s+/g, ' ');
 }
 exports.normalize_whitespace = normalize_whitespace;
 function last(x) {
@@ -799,39 +794,21 @@ exports.last = last;
 "use strict";
 
 
-var __rest = this && this.__rest || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function") for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0) t[p[i]] = s[p[i]];
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(1);
-// Internal
 const Prompt_1 = __webpack_require__(7);
 const Text_1 = __webpack_require__(8);
 const Items = __webpack_require__(3);
 const World = __webpack_require__(11);
 const commands_1 = __webpack_require__(2);
-const Carat = props => {
-    const { style } = props,
-          rest = __rest(props, ["style"]);
-    const base_style = {
-        fontFamily: "'Fira Mono', 'monospace'",
-        fontSize: '1em',
-        color: 'ivory'
-    };
-    return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), ">");
-};
+const Carat = () => React.createElement("span", null, ">");
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
         this.handleSubmit = () => {
-            //console.log(input);
             if (this.isCurrentlyValid()) {
                 const output = this.state.world_driver.commit();
                 this.setState({ world_driver: this.state.world_driver });
-                this.scrollToPrompt();
                 return true;
             }
             return false;
@@ -843,7 +820,6 @@ class Terminal extends React.Component {
             console.log(input);
             let result = this.state.world_driver.apply_command(input, false);
             this.setState({ world_driver: this.state.world_driver });
-            this.scrollToPrompt();
         };
         this.currentAutocomplete = () => {
             let current_state = this.state.world_driver.current_state;
@@ -862,25 +838,30 @@ class Terminal extends React.Component {
     componentDidMount() {
         this.focusPrompt();
     }
+    componentDidUpdate() {
+        this.focusPrompt();
+        this.scrollToPrompt();
+    }
     render() {
         const container_style = {
             height: '100%',
             width: '100%',
             overflowY: 'scroll',
             whiteSpace: 'pre-wrap',
-            fontFamily: "'Fira Mono', 'monospace'",
-            fontSize: '1em',
+            fontFamily: "'Fira Mono'",
+            fontSize: '1.5em',
             color: 'ivory',
             background: 'black',
             radius: 3,
             position: 'absolute',
-            display: 'block'
+            display: 'block',
+            padding: '1em'
         };
         return React.createElement("div", { style: container_style, onClick: this.focusPrompt, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
             if (i === 0) {
                 return false; //don't display first hist element, it empty
             }
-            return React.createElement("div", { key: i }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+            return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
         }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }))));
     }
 }
@@ -915,41 +896,13 @@ const InputWrapper = props => {
     };
     return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
 };
-// //need a class to get ref
-// class Input extends React.Component<any, any> {
-//   render () {
-//     const {style, ...rest} = this.props;
-//     const input_style = {
-//       position: 'absolute',
-//       left: '-16px',
-//       top: 0,
-//       width: 0,
-//       height: 0,
-//       background: 'transparent',
-//       border: 'none',
-//       color: 'transparent',
-//       outline: 'none',
-//       padding: 0,
-//       resize: 'none',
-//       zIndex: -1,
-//       overflow: 'hidden'
-//     };
-//     return (
-//       <input style={{...base_style, ...style}} {...rest} />
-//     );
-//   }
-// }
 const InputDisplay = props => {
     const { children, style } = props,
           rest = __rest(props, ["children", "style"]);
     const base_style = {
         worWrap: 'break-word',
         outline: 0,
-        // minHeight: '2em',
-        // minWidth: '10em',
         display: 'inline-block',
-        // padding: '.5em 2em .5em 1em',
-        color: 'ivory',
         boxShadow: 'none'
     };
     return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
@@ -960,7 +913,7 @@ let keys = {
 class Prompt extends React.Component {
     constructor() {
         super(...arguments);
-        this.state = { value: '' }; //meta is an object with isValid bool, and autocomplete array
+        this.state = { value: '' };
         this.handleSubmit = () => {
             let success = this.props.onSubmit();
             if (success) {
@@ -1037,26 +990,44 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(1);
+const commands_1 = __webpack_require__(2);
+function get_display_color(det) {
+    switch (det) {
+        case commands_1.DisplayEltType.keyword:
+            return 'blue';
+        case commands_1.DisplayEltType.option:
+            return 'orange';
+        case commands_1.DisplayEltType.filler:
+            return 'ivory';
+        case commands_1.DisplayEltType.partial:
+            return 'gray';
+        case commands_1.DisplayEltType.error:
+            return 'red';
+    }
+}
 exports.ParsedText = props => {
-    const { parser, style } = props,
-          rest = __rest(props, ["parser", "style"]);
-    const base_style = {
+    const { parser } = props,
+          rest = __rest(props, ["parser"]);
+    let style = {
         display: 'inline-block',
-        fontFamily: "'Fira Mono', 'monospace'",
-        fontSize: '1em',
-        color: 'ivory',
         whiteSpace: 'pre-wrap'
     };
-    return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), parser !== undefined ? parser.command : '');
+    let validity = parser.validity;
+    if (validity === commands_1.MatchValidity.valid) {
+        style.fontWeight = '900';
+    } else {
+        style.fontWeight = '300';
+        if (validity === commands_1.MatchValidity.invalid) {
+            style.fontStyle = 'italic';
+        }
+    }
+    return React.createElement("div", Object.assign({ style: Object.assign({}, style) }, rest), parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("span", { key: i.toString(), style: { color: get_display_color(elt.display) } }, elt.match)), parser.token_gaps[parser.token_gaps.length - 1]);
 };
 exports.OutputText = props => {
     const { message, style } = props,
           rest = __rest(props, ["message", "style"]);
     const base_style = {
         display: 'inline-block',
-        fontFamily: "'Fira Mono', 'monospace'",
-        fontSize: '1em',
-        color: 'ivory',
         whiteSpace: 'pre-wrap'
     };
     return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), message !== undefined ? message : '');
