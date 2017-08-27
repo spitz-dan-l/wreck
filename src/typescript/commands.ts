@@ -128,14 +128,14 @@ export class CommandParser {
             let next_tok = this.tokens[this.position + pos_offset];
             let next_gap = this.token_gaps[this.position + pos_offset];
 
-            if (spec_tok === next_tok) {
+            if (spec_tok === next_tok.toLowerCase()) {
                 match_tokens.push(next_tok);
                 match_gaps.push(next_gap);
                 pos_offset++;
                 continue;
             }
 
-            if (starts_with(spec_tok, next_tok)) {
+            if (starts_with(spec_tok, next_tok.toLowerCase())) {
                 match_tokens.push(next_tok);
                 match_gaps.push(next_gap);
                 this.validity = MatchValidity.partial;
@@ -265,6 +265,22 @@ export class CommandParser {
     }
 }
 
+export function with_early_stopping(parse_gen: IterableIterator<any>){
+    let value: any = undefined;
+    let done: boolean = false;
+
+    while (!done) {
+        let result = parse_gen.next(value);
+        value = result.value;
+        done = result.done;
+        if (value === false) {
+            return;
+        }
+    }
+
+    return value;
+}
+
 export interface WorldType {
     get_command_map(): Map<String, Command<this>>
 }
@@ -312,8 +328,9 @@ export class WorldDriver<T extends WorldType> {
     
     current_state: CommandResult<T>;
 
-    constructor (initial_world: T) {
-        this.history = [{world: initial_world}];
+    constructor (initial_world: T, message?: string) {
+        this.history = [{world: initial_world, message}];
+
         this.apply_command('', false); //populate this.current_state
     }
 

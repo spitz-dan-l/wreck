@@ -1,9 +1,9 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
 
-import {Terminal} from "../components/Terminal";
+import {Game} from "../components/Game";
 
-ReactDom.render(<Terminal />, document.getElementById('game'));
+ReactDom.render(<Game />, document.getElementById('game'));
 
 // import {List, Map} from 'immutable';
 // import {CityKey, Codex, Pinecone} from './items';

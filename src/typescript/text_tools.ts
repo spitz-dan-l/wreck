@@ -94,3 +94,8 @@ export function normalize_whitespace(s: string) {
 export function last(x: any[] | string){
     return x[x.length - 1];
 }
+
+export function random_choice(choices: any[]) {
+  var index = Math.floor(Math.random() * choices.length);
+  return choices[index];
+}

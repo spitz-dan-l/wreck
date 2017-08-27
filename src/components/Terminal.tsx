@@ -7,6 +7,7 @@ import {Item} from "../typescript/datatypes";
 import * as Items from "../typescript/items";
 
 import * as World from "../typescript/world";
+import {BirdWorld} from '../typescript/bird_world';
 
 import {WorldDriver, MatchValidity} from "../typescript/commands";
 
@@ -16,16 +17,17 @@ const Carat = () => (
   </span>
 );
 
-export class Terminal extends React.Component<any, {world_driver: WorldDriver<World.SingleBoxWorld>}> {
+export class Terminal extends React.Component<any, {world_driver: WorldDriver<BirdWorld>}> {
   contentContainer: any;
   prompt: any;
 
   constructor(props) {
     super(props);
-    let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
-    let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
-      
-    this.state = {world_driver: new WorldDriver(world)};
+    // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
+    // let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
+    
+    // this.state = {world_driver: new WorldDriver(world, 'You see a box.')};
+    this.state = {world_driver: this.props.world_driver};
   }
 
   componentDidMount() {
@@ -88,7 +90,13 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Wo
       <div style={container_style} onClick={this.focusPrompt} ref={cc => this.contentContainer = cc}>
         {this.state.world_driver.history.map(({parser, message}, i) => {
           if (i === 0) {
-            return false; //don't display first hist element, it empty
+            return (
+              <div key={i.toString()}>
+                <p>
+                  <OutputText message={message} />
+                </p>
+              </div>
+            );
           }
           return (
             <div key={i.toString()}>

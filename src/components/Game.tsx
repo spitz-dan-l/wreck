@@ -8,42 +8,28 @@ import * as Items from "../typescript/items";
 
 import * as World from "../typescript/world";
 
-import {WorldDriver, MatchValidity} from "../typescript/commands";
+import {WorldDriver, WorldType, MatchValidity} from "../typescript/commands";
+
+import {BirdWorld} from '../typescript/bird_world';
 
 
-export default class Game extends React.Component<any, WorldDriver<World.SingleBoxWorld>> {
-    world_driver: WorldDriver<World.SingleBoxWorld>;
+export class Game extends React.Component<any, WorldDriver<World.SingleBoxWorld>> {
+  world_driver: WorldDriver<WorldType>;
 
-    componentWillMount () {
-        let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
-        let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
-        this.setState(new WorldDriver(world));
-    }
+  componentWillMount () {
+    // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
+    // let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
 
-    handleCommandSubmit = (input: string) => {
-        console.log(input);
-        let result = this.state.commit();
-        this.setState(this.state);
-        return result;
-    }
+    this.world_driver = new WorldDriver(new BirdWorld(), "You're standing around on the earth.")
+    
+  }
 
-    handlePromptChange = (input) => {
-        console.log(input);
-        let result = this.world_driver.apply_command(input, false);
-        let isValid = result.parser.validity === MatchValidity.valid;
-        let autocomplete = result.parser.match[result.parser.match.length - 1].typeahead;
-        return {result, isValid, autocomplete};
-    }
-
-    render () {
-        return (
-            <div style={{height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-                <Terminal
-                    world_driver={this.world_driver}
-                    onCommandSubmit={this.handleCommandSubmit}
-                    onPromptChange={this.handlePromptChange}
-                 />
-            </div>
-        );
-    }
+  render () {
+    return (
+      <Terminal
+        world_driver={this.world_driver}
+      
+       />
+    );
+  }
 }
