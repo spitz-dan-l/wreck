@@ -23,10 +23,6 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
 
   constructor(props) {
     super(props);
-    // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
-    // let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
-    
-    // this.state = {world_driver: new WorldDriver(world, 'You see a box.')};
     this.state = {world_driver: this.props.world_driver};
   }
 

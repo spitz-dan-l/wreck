@@ -200,7 +200,7 @@ class CommandParser {
             let exact_match = subparser.consume_exact(spec_toks, display, name);
             if (exact_match) {
                 this.integrate(subparser);
-                return text_tools_1.normalize_whitespace(subparser.match[0].match);
+                return text_tools_1.normalize_whitespace(text_tools_1.untokenize(spec_toks));
             }
             if (subparser.validity === MatchValidity.partial) {
                 partial_matches.push(subparser.match[0]);
@@ -258,11 +258,11 @@ class CommandParser {
     }
 }
 exports.CommandParser = CommandParser;
-function with_early_stopping(parse_gen) {
+function with_early_stopping(gen) {
     let value = undefined;
     let done = false;
     while (!done) {
-        let result = parse_gen.next(value);
+        let result = gen.next(value);
         value = result.value;
         done = result.done;
         if (value === false) {
@@ -272,6 +272,14 @@ function with_early_stopping(parse_gen) {
     return value;
 }
 exports.with_early_stopping = with_early_stopping;
+function call_with_early_stopping(gen_func) {
+    function inner(...args) {
+        let gen = gen_func(...args);
+        return with_early_stopping(gen);
+    }
+    return inner;
+}
+exports.call_with_early_stopping = call_with_early_stopping;
 function apply_command(world, cmd) {
     let parser = new CommandParser(cmd);
     let command_map = world.get_command_map();
@@ -291,12 +299,32 @@ function apply_command(world, cmd) {
             result.message = cmd_result.message;
         }
     }
+    result = apply_interstitial_update(result);
     return result;
 }
 exports.apply_command = apply_command;
+function apply_interstitial_update(result) {
+    if (result.world.interstitial_update !== undefined) {
+        //confusing, but we are running pre_command for the *next* command, not the one that just ran
+        let res2 = result.world.interstitial_update();
+        if (res2.world !== undefined) {
+            result.world = res2.world;
+        }
+        if (res2.message !== undefined) {
+            if (result.message !== undefined) {
+                result.message += '\n\n' + res2.message;
+            } else {
+                result.message = res2.message;
+            }
+        }
+    }
+    return result;
+}
 class WorldDriver {
-    constructor(initial_world, message) {
-        this.history = [{ world: initial_world, message }];
+    constructor(initial_world) {
+        let initial_result = { world: initial_world };
+        initial_result = apply_interstitial_update(initial_result);
+        this.history = [initial_result];
         this.apply_command('', false); //populate this.current_state
     }
     apply_command(cmd, commit = true) {
@@ -764,7 +792,7 @@ class Game extends React.Component {
     componentWillMount() {
         // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
         // let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
-        this.world_driver = new commands_1.WorldDriver(new bird_world_1.BirdWorld(), "You're standing around on the earth.");
+        this.world_driver = new commands_1.WorldDriver(new bird_world_1.BirdWorld());
     }
     render() {
         return React.createElement(Terminal_1.Terminal, { world_driver: this.world_driver });
@@ -922,9 +950,6 @@ class Terminal extends React.Component {
         this.scrollToPrompt = () => {
             this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
         };
-        // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
-        // let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
-        // this.state = {world_driver: new WorldDriver(world, 'You see a box.')};
         this.state = { world_driver: this.props.world_driver };
     }
     componentDidMount() {
@@ -1025,6 +1050,7 @@ exports.OutputText = props => {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const commands_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
 class BirdWorld {
     constructor(is_in_heaven = false) {
@@ -1045,46 +1071,37 @@ class BirdWorld {
         }
         return command_map;
     }
+    interstitial_update() {
+        return { message: this.is_in_heaven ? "You're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly." : "You're standing around on the earth."
+        };
+    }
 }
 exports.BirdWorld = BirdWorld;
 const go_cmd = {
     command_name: ['go'],
-    execute: function (world, parser) {
+    execute: commands_1.call_with_early_stopping(function* (world, parser) {
         let dir_options = [];
         if (world.is_in_heaven) {
             dir_options.push(['down']);
         } else {
             dir_options.push(['up']);
         }
-        let dir_word = parser.consume_option(dir_options);
-        if (!dir_word) {
-            return;
-        }
-        if (!parser.done()) {
-            return;
-        }
+        let dir_word = yield parser.consume_option(dir_options);
+        yield parser.done();
         let new_world = world.update(!world.is_in_heaven);
         let message = text_tools_1.capitalize(dir_word) + ' you go.';
-        if (new_world.is_in_heaven) {
-            message += "\nYou're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly.";
-        }
         return { world: new_world, message: message };
-    }
+    })
 };
 const mispronounce_cmd = {
     command_name: ['mispronounce'],
-    execute: function (world, parser) {
-        let specifier_word = parser.consume_option([["zarathustra's"]]);
-        if (!specifier_word) {
-            return;
-        }
-        if (!parser.consume_exact(['name'])) {
-            return;
-        }
+    execute: commands_1.call_with_early_stopping(function* (world, parser) {
+        let specifier_word = yield parser.consume_option([["zarathustra's"]]);
+        yield parser.consume_exact(['name']);
         let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
         let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
         return { world, message };
-    }
+    })
 };
 
 /***/ }),

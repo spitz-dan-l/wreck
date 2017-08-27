@@ -200,7 +200,7 @@ export class CommandParser {
 
             if (exact_match) {
                 this.integrate(subparser);
-                return <S>normalize_whitespace(subparser.match[0].match);
+                return <S>normalize_whitespace(untokenize(spec_toks));
             }
 
             if (subparser.validity === MatchValidity.partial){
@@ -265,12 +265,12 @@ export class CommandParser {
     }
 }
 
-export function with_early_stopping(parse_gen: IterableIterator<any>){
-    let value: any = undefined;
+export function with_early_stopping(gen: IterableIterator<string | boolean>){
+    let value: any | boolean = undefined;
     let done: boolean = false;
 
     while (!done) {
-        let result = parse_gen.next(value);
+        let result = gen.next(value);
         value = result.value;
         done = result.done;
         if (value === false) {
@@ -281,15 +281,29 @@ export function with_early_stopping(parse_gen: IterableIterator<any>){
     return value;
 }
 
-export interface WorldType {
-    get_command_map(): Map<String, Command<this>>
+export function call_with_early_stopping<F extends (...any) => any>(gen_func: F){
+    function inner(...args) {
+        let gen = gen_func(...args);
+        return with_early_stopping(gen);
+    }
+    return inner;
 }
+
+export interface WorldType {
+    get_command_map(): Map<String, Command<this>>,
+    interstitial_update?(): InterstitialUpdateResult<this>,
+}
+
+export type InterstitialUpdateResult<T extends WorldType> = {
+    world?: T;
+    message?: string;
+} | undefined;
 
 export type CommandResult<T extends WorldType> = {
     world?: T;
     message?: string;
     parser?: CommandParser;
-} | undefined
+} | undefined;
 
 export interface Command<T extends WorldType> {
     command_name: Token[];
@@ -310,6 +324,7 @@ export function apply_command<T extends WorldType> (world: T, cmd: string) {
     }
 
     let command = command_map.get(cmd_name)
+
     let cmd_result = command.execute(world, parser);
     
     if (cmd_result !== undefined) {
@@ -320,6 +335,27 @@ export function apply_command<T extends WorldType> (world: T, cmd: string) {
             result.message = cmd_result.message;
         }
     }
+
+    result = apply_interstitial_update(result);
+    
+    return result;
+}
+
+function apply_interstitial_update<T extends WorldType>(result: CommandResult<T>): CommandResult<T> {
+    if (result.world.interstitial_update !== undefined) {
+        //confusing, but we are running pre_command for the *next* command, not the one that just ran
+        let res2 = result.world.interstitial_update();
+        if (res2.world !== undefined) {
+            result.world = res2.world;
+        }
+        if (res2.message !== undefined) {
+            if (result.message !== undefined){
+                result.message += '\n\n' + res2.message;
+            } else {
+                result.message = res2.message;
+            }
+        }
+    }
     return result;
 }
 
@@ -328,8 +364,10 @@ export class WorldDriver<T extends WorldType> {
     
     current_state: CommandResult<T>;
 
-    constructor (initial_world: T, message?: string) {
-        this.history = [{world: initial_world, message}];
+    constructor (initial_world: T) {
+        let initial_result: CommandResult<T> = {world: initial_world};
+        initial_result = apply_interstitial_update(initial_result);
+        this.history = [initial_result];
 
         this.apply_command('', false); //populate this.current_state
     }
