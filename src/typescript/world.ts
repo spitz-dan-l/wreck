@@ -632,7 +632,7 @@ export class SingleBoxWorld implements WorldType{
         return new SingleBoxWorld({box, taken_items, spilled_items});
     }
 
-    get_command_map(): Map<string, Command<this>> {
+    get_commands(): Command<this>[] {
         let commands: Command<SingleBoxWorld>[] = [];
         commands.push(rotate_y_box);
         commands.push(roll_box);
@@ -645,15 +645,7 @@ export class SingleBoxWorld implements WorldType{
         commands.push(replace_rend);
         commands.push(take_item);
 
-        let command_map = new Map<string, Command<this>>();
-        let options: Token[][] = [];
-
-        for (let command of commands) {
-            options.push(command.command_name);
-            command_map.set(untokenize(command.command_name), <Command<this>>command);
-        }
-        
-        return command_map;
+        return <Command<this>[]> commands;
     }
 
     cut_message(new_box: Box, cut_edge_states: EdgeState[], effects: WorldUpdateEffects) {

@@ -282,14 +282,14 @@ function call_with_early_stopping(gen_func) {
 exports.call_with_early_stopping = call_with_early_stopping;
 function apply_command(world, cmd) {
     let parser = new CommandParser(cmd);
-    let command_map = world.get_command_map();
-    let options = Array.from(command_map.values()).map(v => v.command_name);
+    let commands = world.get_commands();
+    let options = commands.map(cmd => cmd.command_name);
     let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
     let result = { parser: parser, world: world };
     if (!cmd_name) {
         return result;
     }
-    let command = command_map.get(cmd_name);
+    let command = commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(cmd.command_name))];
     let cmd_result = command.execute(world, parser);
     if (cmd_result !== undefined) {
         if (cmd_result.world !== undefined) {
@@ -1059,17 +1059,13 @@ class BirdWorld {
     update(is_in_heaven = false) {
         return new BirdWorld(is_in_heaven);
     }
-    get_command_map() {
+    get_commands() {
         let commands = [];
         commands.push(go_cmd);
-        commands.push(mispronounce_cmd);
-        let command_map = new Map();
-        let options = [];
-        for (let command of commands) {
-            options.push(command.command_name);
-            command_map.set(text_tools_1.untokenize(command.command_name), command);
+        if (this.is_in_heaven) {
+            commands.push(mispronounce_cmd);
         }
-        return command_map;
+        return commands;
     }
     interstitial_update() {
         return { message: this.is_in_heaven ? "You're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly." : "You're standing around on the earth."

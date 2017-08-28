@@ -290,7 +290,7 @@ export function call_with_early_stopping<F extends (...any) => any>(gen_func: F)
 }
 
 export interface WorldType {
-    get_command_map(): Map<String, Command<this>>,
+    get_commands(): Command<this>[],
     interstitial_update?(): InterstitialUpdateResult<this>,
 }
 
@@ -313,8 +313,8 @@ export interface Command<T extends WorldType> {
 export function apply_command<T extends WorldType> (world: T, cmd: string) {
     let parser = new CommandParser(cmd);
 
-    let command_map = world.get_command_map();
-    let options: Token[][] = Array.from(command_map.values()).map((v) => v.command_name);
+    let commands = world.get_commands();
+    let options = commands.map((cmd) => cmd.command_name);
 
     let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
     let result: CommandResult<T> = {parser: parser, world: world};
@@ -323,7 +323,7 @@ export function apply_command<T extends WorldType> (world: T, cmd: string) {
         return result;
     }
 
-    let command = command_map.get(cmd_name)
+    let command = commands[commands.findIndex((cmd) => cmd_name === untokenize(cmd.command_name))]
 
     let cmd_result = command.execute(world, parser);
     

@@ -1,7 +1,5 @@
 import * as Datatypes from './datatypes';
 
-// import {Map, List, Set, OrderedSet, is} from 'immutable';
-
 export class WorldUpdateEffects {
     spill_faces: Datatypes.Face[] = [];
     spilled_items: Datatypes.Item[] = [];

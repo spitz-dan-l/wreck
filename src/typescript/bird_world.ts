@@ -7,8 +7,6 @@ import {
     call_with_early_stopping
 } from './commands'
 
-import {WorldUpdateEffects, with_world_update, world_update} from './world_update_effects';
-
 import {capitalize, tokenize, untokenize, random_choice} from './text_tools';
 
 
@@ -24,20 +22,13 @@ export class BirdWorld implements WorldType{
         return new BirdWorld(is_in_heaven);
     }
 
-    get_command_map(): Map<string, Command<this>> {
+    get_commands(): Command<this>[]{
         let commands: Command<BirdWorld>[] = [];
         commands.push(go_cmd);
-        commands.push(mispronounce_cmd);
-
-        let command_map = new Map<string, Command<this>>();
-        let options: Token[][] = [];
-
-        for (let command of commands) {
-            options.push(command.command_name);
-            command_map.set(untokenize(command.command_name), <Command<this>>command);
+        if (this.is_in_heaven) {
+            commands.push(mispronounce_cmd);
         }
-
-        return command_map;
+        return <Command<this>[]>commands;
     }
 
     interstitial_update() {
@@ -51,7 +42,7 @@ export class BirdWorld implements WorldType{
 const go_cmd: Command<BirdWorld> = {
     command_name: ['go'],
     execute: call_with_early_stopping(
-        function*(world:BirdWorld, parser: CommandParser){
+        function*(world: BirdWorld, parser: CommandParser){
             let dir_options: Token[][] = [];
             if (world.is_in_heaven) {
                 dir_options.push(['down']);

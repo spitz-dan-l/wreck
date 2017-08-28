@@ -54,7 +54,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
     this.setState({world_driver: this.state.world_driver});
   }
 
-  currentAutocomplete = () => {
+  currentTypeahead = () => {
     let current_state = this.state.world_driver.current_state
     return current_state.parser.match[current_state.parser.match.length - 1].typeahead;
   }
@@ -113,6 +113,11 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
             <ParsedText parser={this.state.world_driver.current_state.parser} />
           </Prompt>
         </p>
+        {/* typeahead options go here */
+          this.currentTypeahead().map((option, i) => {
+            
+          })
+        }
       </div>
     );
   }
