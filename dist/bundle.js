@@ -1007,7 +1007,7 @@ const commands_1 = __webpack_require__(1);
 function get_display_color(det) {
     switch (det) {
         case commands_1.DisplayEltType.keyword:
-            return 'blue';
+            return 'aqua';
         case commands_1.DisplayEltType.option:
             return 'orange';
         case commands_1.DisplayEltType.filler:

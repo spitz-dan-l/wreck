@@ -5,7 +5,7 @@ import {DisplayEltType, MatchValidity} from '../typescript/commands';
 function get_display_color(det: DisplayEltType) {
   switch (det) {
     case DisplayEltType.keyword:
-      return 'blue';
+      return 'aqua';
     case DisplayEltType.option:
       return 'orange';
     case DisplayEltType.filler:
