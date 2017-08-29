@@ -15,7 +15,6 @@ export class BirdWorld implements WorldType{
 
     constructor(is_in_heaven: boolean = false) {
         this.is_in_heaven = is_in_heaven;
-
     }
 
     update(is_in_heaven: boolean = false) {

@@ -942,7 +942,11 @@ class Terminal extends React.Component {
         };
         this.currentTypeahead = () => {
             let current_state = this.state.world_driver.current_state;
-            return current_state.parser.match[current_state.parser.match.length - 1].typeahead;
+            let typeahead = current_state.parser.match[current_state.parser.match.length - 1].typeahead;
+            if (typeahead === undefined) {
+                return [];
+            }
+            return typeahead;
         };
         this.focusPrompt = () => {
             this.prompt.focus();

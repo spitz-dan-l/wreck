@@ -56,7 +56,11 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
 
   currentTypeahead = () => {
     let current_state = this.state.world_driver.current_state
-    return current_state.parser.match[current_state.parser.match.length - 1].typeahead;
+    let typeahead = current_state.parser.match[current_state.parser.match.length - 1].typeahead;
+    if (typeahead === undefined) {
+      return [];
+    }
+    return typeahead;
   }
 
   focusPrompt = () => {
@@ -115,7 +119,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
         </p>
         {/* typeahead options go here */
           this.currentTypeahead().map((option, i) => {
-            
+
           })
         }
       </div>
