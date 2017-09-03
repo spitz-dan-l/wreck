@@ -81,8 +81,8 @@ module.exports = React;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 // import {Map} from 'immutable';
-const datatypes_1 = __webpack_require__(2);
-const text_tools_1 = __webpack_require__(3);
+const datatypes_1 = __webpack_require__(3);
+const text_tools_1 = __webpack_require__(2);
 exports.horiz_position_word_tokens = [['left'], ['center'], ['right']];
 exports.vert_position_word_tokens = [['top'], ['middle'], ['bottom']];
 exports.word_2_relative_position = new Map([['left', datatypes_1.RelativePosition.left], ['center', datatypes_1.RelativePosition.center], ['right', datatypes_1.RelativePosition.right], ['top', datatypes_1.RelativePosition.top], ['middle', datatypes_1.RelativePosition.middle], ['bottom', datatypes_1.RelativePosition.bottom]]);
@@ -193,7 +193,7 @@ class CommandParser {
         this.match.push(...subparser.match);
         this.validity = subparser.validity;
     }
-    consume_option(option_spec_tokens, name, display = DisplayEltType.option) {
+    consume_option(option_spec_tokens, name, display = DisplayEltType.option, disabled_option_spec_tokens = []) {
         let partial_matches = [];
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
@@ -206,15 +206,25 @@ class CommandParser {
                 partial_matches.push(subparser.match[0]);
             }
         }
+        let disabled_partial_matches = [];
+        for (let disabled_spec_toks of disabled_option_spec_tokens) {
+            let subparser = this.subparser();
+            let exact_match = subparser.consume_exact(disabled_spec_toks, display, name);
+            if (exact_match || subparser.validity === MatchValidity.partial) {
+                disabled_partial_matches.push(subparser.match[0]);
+            }
+        }
         if (partial_matches.length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
             let typeahead = partial_matches.map(de => de.typeahead[0]);
+            let disabled_typeahead = disabled_partial_matches.map(de => de.typeahead[0]);
             this.match.push({
                 display: DisplayEltType.partial,
                 match: partial_matches[0].match,
                 typeahead: typeahead,
-                name: name
+                name: name,
+                disabled_typeahead: disabled_typeahead
             });
             return false;
         }
@@ -282,9 +292,10 @@ function call_with_early_stopping(gen_func) {
 exports.call_with_early_stopping = call_with_early_stopping;
 function apply_command(world, cmd) {
     let parser = new CommandParser(cmd);
-    let commands = world.get_commands();
+    let { commands, disabled_commands } = world.get_commands();
     let options = commands.map(cmd => cmd.command_name);
-    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
+    let disabled_options = disabled_commands.map(cmd => cmd.command_name);
+    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword, disabled_options);
     let result = { parser: parser, world: world };
     if (!cmd_name) {
         return result;
@@ -347,6 +358,109 @@ exports.WorldDriver = WorldDriver;
 
 /***/ }),
 /* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const datatypes_1 = __webpack_require__(3);
+function uncapitalize(msg) {
+    return msg[0].toLowerCase() + msg.slice(1);
+}
+exports.uncapitalize = uncapitalize;
+function capitalize(msg) {
+    return msg[0].toUpperCase() + msg.slice(1);
+}
+exports.capitalize = capitalize;
+function face_message(face_order, f_code_2_name) {
+    if (f_code_2_name === undefined) {
+        f_code_2_name = new Map([[datatypes_1.Face.n, 'back'], [datatypes_1.Face.s, 'front'], [datatypes_1.Face.e, 'right'], [datatypes_1.Face.w, 'left'], [datatypes_1.Face.t, 'top'], [datatypes_1.Face.b, 'bottom']]);
+    }
+    if (face_order.length == 1) {
+        return f_code_2_name.get(face_order[0]) + ' face';
+    } else {
+        return face_order.slice(0, -1).map(x => f_code_2_name.get(x)).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
+    }
+}
+exports.face_message = face_message;
+function starts_with(str, searchString, position) {
+    position = position || 0;
+    return str.substr(position, searchString.length) === searchString;
+}
+exports.starts_with = starts_with;
+function tokens_equal(tks1, tks2) {
+    if (tks1.length !== tks2.length) {
+        return false;
+    }
+    for (let i = 0; i < tks1.length; i++) {
+        if (tks1[i] !== tks2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.tokens_equal = tokens_equal;
+function tokenize(s) {
+    let word_pat = /[\S]+/g;
+    let space_pat = /[^\S]+/g;
+    let tokens = s.split(space_pat);
+    let gaps = s.split(word_pat);
+    if (tokens.length > 0) {
+        if (tokens[0] === '') {
+            tokens.splice(0, 1);
+        }
+        if (tokens[tokens.length - 1] === '' && gaps[gaps.length - 1] === '') {
+            tokens.splice(tokens.length - 1, 1);
+        }
+    }
+    return [tokens, gaps];
+}
+exports.tokenize = tokenize;
+function tokenize_tests() {
+    console.log('tokenize tests');
+    console.log(tokenize(' l'));
+}
+function untokenize(tokens, gaps) {
+    if (gaps === undefined) {
+        return tokens.join(' ');
+    }
+    let result = '';
+    let i = 0;
+    for (i = 0; i < gaps.length; i++) {
+        result += gaps[i];
+        if (i < tokens.length) {
+            result += tokens[i];
+        }
+    }
+    return result;
+}
+exports.untokenize = untokenize;
+function get_indenting_whitespace(s) {
+    let space_pat = /^[^\S]+/;
+    let result = space_pat.exec(s);
+    if (result === null) {
+        return '';
+    }
+    return result[0];
+}
+exports.get_indenting_whitespace = get_indenting_whitespace;
+function normalize_whitespace(s) {
+    return s.trim().replace(/\s+/g, ' ');
+}
+exports.normalize_whitespace = normalize_whitespace;
+function last(x) {
+    return x[x.length - 1];
+}
+exports.last = last;
+function random_choice(choices) {
+    var index = Math.floor(Math.random() * choices.length);
+    return choices[index];
+}
+exports.random_choice = random_choice;
+
+/***/ }),
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -683,100 +797,6 @@ class CommandError extends WreckError {}
 exports.CommandError = CommandError;
 
 /***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(2);
-function uncapitalize(msg) {
-    return msg[0].toLowerCase() + msg.slice(1);
-}
-exports.uncapitalize = uncapitalize;
-function capitalize(msg) {
-    return msg[0].toUpperCase() + msg.slice(1);
-}
-exports.capitalize = capitalize;
-function face_message(face_order, f_code_2_name) {
-    if (f_code_2_name === undefined) {
-        f_code_2_name = new Map([[datatypes_1.Face.n, 'back'], [datatypes_1.Face.s, 'front'], [datatypes_1.Face.e, 'right'], [datatypes_1.Face.w, 'left'], [datatypes_1.Face.t, 'top'], [datatypes_1.Face.b, 'bottom']]);
-    }
-    if (face_order.length == 1) {
-        return f_code_2_name.get(face_order[0]) + ' face';
-    } else {
-        return face_order.slice(0, -1).map(x => f_code_2_name.get(x)).join(', ') + ' and ' + f_code_2_name.get(face_order[face_order.length - 1]) + ' faces';
-    }
-}
-exports.face_message = face_message;
-function starts_with(str, searchString, position) {
-    position = position || 0;
-    return str.substr(position, searchString.length) === searchString;
-}
-exports.starts_with = starts_with;
-function tokens_equal(tks1, tks2) {
-    if (tks1.length !== tks2.length) {
-        return false;
-    }
-    for (let i = 0; i < tks1.length; i++) {
-        if (tks1[i] !== tks2[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-exports.tokens_equal = tokens_equal;
-function tokenize(s) {
-    let word_pat = /[\S]+/g;
-    let space_pat = /[^\S]+/g;
-    let tokens = s.split(space_pat);
-    let gaps = s.split(word_pat);
-    if (tokens.length > 0) {
-        if (tokens[0] === '') {
-            tokens.splice(0, 1);
-        }
-        if (tokens[tokens.length - 1] === '') {
-            tokens.splice(tokens.length - 1, 1);
-        }
-    }
-    return [tokens, gaps];
-}
-exports.tokenize = tokenize;
-function tokenize_tests() {
-    console.log('tokenize tests');
-    console.log(tokenize(' l'));
-}
-function untokenize(tokens, gaps) {
-    if (gaps === undefined) {
-        return tokens.join(' ');
-    }
-    let result = '';
-    let i = 0;
-    for (i = 0; i < gaps.length; i++) {
-        result += gaps[i];
-        if (i < tokens.length) {
-            result += tokens[i];
-        }
-    }
-    return result;
-}
-exports.untokenize = untokenize;
-function normalize_whitespace(s) {
-    return s.trim().replace(/\s+/g, ' ');
-}
-exports.normalize_whitespace = normalize_whitespace;
-function last(x) {
-    return x[x.length - 1];
-}
-exports.last = last;
-function random_choice(choices) {
-    var index = Math.floor(Math.random() * choices.length);
-    return choices[index];
-}
-exports.random_choice = random_choice;
-
-/***/ }),
 /* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -786,6 +806,9 @@ exports.random_choice = random_choice;
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const Terminal_1 = __webpack_require__(7);
+// import {Item} from "../typescript/datatypes";
+// import * as Items from "../typescript/items";
+// import * as World from "../typescript/world";
 const commands_1 = __webpack_require__(1);
 const bird_world_1 = __webpack_require__(9);
 class Game extends React.Component {
@@ -825,7 +848,8 @@ const InputWrapper = props => {
     const { style, children } = props,
           rest = __rest(props, ["style", "children"]);
     const base_style = {
-        position: 'relative'
+        position: 'relative',
+        minHeight: '5em'
     };
     return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
 };
@@ -887,7 +911,6 @@ class Prompt extends React.Component {
         };
     }
     render() {
-        console.log(this.state.value);
         const input_style = {
             position: 'absolute',
             left: '-16px',
@@ -952,7 +975,9 @@ class Terminal extends React.Component {
             this.prompt.focus();
         };
         this.scrollToPrompt = () => {
-            this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
+            if (this.contentContainer.scrollHeight - this.contentContainer.scrollTop > this.contentContainer.clientHeight) {
+                this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
+            }
         };
         this.state = { world_driver: this.props.world_driver };
     }
@@ -983,7 +1008,7 @@ class Terminal extends React.Component {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
             return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }))), this.currentTypeahead().map((option, i) => {}));
+        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser, showTypeahead: true }))));
     }
 }
 exports.Terminal = Terminal;
@@ -1004,6 +1029,7 @@ var __rest = this && this.__rest || function (s, e) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const commands_1 = __webpack_require__(1);
+const text_tools_1 = __webpack_require__(2);
 function get_display_color(det) {
     switch (det) {
         case commands_1.DisplayEltType.keyword:
@@ -1019,22 +1045,53 @@ function get_display_color(det) {
     }
 }
 exports.ParsedText = props => {
-    const { parser } = props,
-          rest = __rest(props, ["parser"]);
+    let { parser, showTypeahead } = props,
+        rest = __rest(props, ["parser", "showTypeahead"]);
+    if (showTypeahead === undefined) {
+        showTypeahead = false;
+    }
     let style = {
         display: 'inline-block',
-        whiteSpace: 'pre-wrap'
+        whiteSpace: 'pre-wrap',
+        position: 'relative'
     };
     let validity = parser.validity;
     if (validity === commands_1.MatchValidity.valid) {
         style.fontWeight = '900';
+        style.fontStyle = 'italic';
     } else {
-        style.fontWeight = '300';
+        style.fontWeight = '100';
         if (validity === commands_1.MatchValidity.invalid) {
-            style.fontStyle = 'italic';
+            style.opacity = '0.6';
         }
     }
-    return React.createElement("div", Object.assign({ style: Object.assign({}, style) }, rest), parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("span", { key: i.toString(), style: { color: get_display_color(elt.display) } }, elt.match)), parser.token_gaps[parser.token_gaps.length - 1]);
+    let typeahead = [];
+    let disabled_typeahead = [];
+    if (showTypeahead && parser.match.length > 0) {
+        let last_match = parser.match[parser.match.length - 1];
+        if ((last_match.match !== '' || parser.match.length === 1) && last_match.typeahead !== undefined) {
+            typeahead = last_match.typeahead;
+            if (last_match.disabled_typeahead !== undefined) {
+                disabled_typeahead = last_match.disabled_typeahead;
+            }
+        }
+    }
+    let elt_style = {
+        display: 'inline-block'
+    };
+    return React.createElement("div", Object.assign({ style: Object.assign({}, style) }, rest), parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: { display: 'inline-block' } }, elt.match), showTypeahead && i == parser.match.length - 1 && typeahead.length > 0 ? React.createElement(exports.TypeaheadList, { typeahead: typeahead, disabled_typeahead: disabled_typeahead, indentation: text_tools_1.get_indenting_whitespace(elt.match) }) : '')));
+};
+exports.TypeaheadList = props => {
+    const { typeahead, disabled_typeahead, indentation } = props;
+    const style = {
+        position: "absolute",
+        listStyleType: "none",
+        padding: 0,
+        margin: 0,
+        whiteSpace: 'pre'
+    };
+    const n_typeahead = typeahead.length;
+    return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))), disabled_typeahead.map((option, i) => React.createElement("li", { key: (i + n_typeahead).toString(), style: { opacity: 0.4, marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))));
 };
 exports.OutputText = props => {
     const { message, style } = props,
@@ -1055,7 +1112,7 @@ exports.OutputText = props => {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(1);
-const text_tools_1 = __webpack_require__(3);
+const text_tools_1 = __webpack_require__(2);
 class BirdWorld {
     constructor(is_in_heaven = false) {
         this.is_in_heaven = is_in_heaven;
@@ -1065,11 +1122,14 @@ class BirdWorld {
     }
     get_commands() {
         let commands = [];
+        let disabled_commands = [];
         commands.push(go_cmd);
         if (this.is_in_heaven) {
             commands.push(mispronounce_cmd);
+        } else {
+            disabled_commands.push(mispronounce_cmd);
         }
-        return commands;
+        return { commands, disabled_commands };
     }
     interstitial_update() {
         return { message: this.is_in_heaven ? "You're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly." : "You're standing around on the earth."
@@ -1081,12 +1141,15 @@ const go_cmd = {
     command_name: ['go'],
     execute: commands_1.call_with_early_stopping(function* (world, parser) {
         let dir_options = [];
+        let disabled_options = [];
         if (world.is_in_heaven) {
             dir_options.push(['down']);
+            disabled_options.push(['up']);
         } else {
             dir_options.push(['up']);
+            disabled_options.push(['down']);
         }
-        let dir_word = yield parser.consume_option(dir_options);
+        let dir_word = yield parser.consume_option(dir_options, undefined, undefined, disabled_options);
         yield parser.done();
         let new_world = world.update(!world.is_in_heaven);
         let message = text_tools_1.capitalize(dir_word) + ' you go.';
@@ -1097,7 +1160,7 @@ const mispronounce_cmd = {
     command_name: ['mispronounce'],
     execute: commands_1.call_with_early_stopping(function* (world, parser) {
         let specifier_word = yield parser.consume_option([["zarathustra's"]]);
-        yield parser.consume_exact(['name']);
+        yield parser.consume_filler(['name']);
         let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
         let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
         return { world, message };

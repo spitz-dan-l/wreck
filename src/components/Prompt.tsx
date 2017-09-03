@@ -3,7 +3,8 @@ import * as React from 'react';
 const InputWrapper = (props) => {
   const {style, children, ...rest} = props;
   const base_style = {
-    position: 'relative'
+    position: 'relative',
+    minHeight: '5em'
   };
   return (
     <div style={{...base_style, ...style}} {...rest} >
@@ -85,7 +86,6 @@ export class Prompt extends React.Component<any, any> {
   }
 
   render() {
-    console.log(this.state.value);
     const input_style: any = {
       position: 'absolute',
       left: '-16px',

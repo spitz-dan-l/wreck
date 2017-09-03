@@ -57,7 +57,7 @@ export function tokenize(s: string): [string[], string[]] {
         if (tokens[0] === '') {
             tokens.splice(0, 1);
         }
-        if (tokens[tokens.length - 1] === '') {
+        if (tokens[tokens.length - 1] === '' && gaps[gaps.length - 1] === '') {
             tokens.splice(tokens.length - 1, 1);
         }
     }
@@ -85,6 +85,15 @@ export function untokenize(tokens: string[], gaps?: string[]){
     }
 
     return result;
+}
+
+export function get_indenting_whitespace(s: string) {
+    let space_pat = /^[^\S]+/;
+    let result = space_pat.exec(s);
+    if (result === null){
+        return '';
+    }
+    return result[0];
 }
 
 export function normalize_whitespace(s: string) {

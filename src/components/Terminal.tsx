@@ -68,7 +68,10 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
   }
 
   scrollToPrompt = () => {
-    this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
+    if ((this.contentContainer.scrollHeight - this.contentContainer.scrollTop) > this.contentContainer.clientHeight) {
+      this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
+
+    }
   }
 
   render() {
@@ -114,14 +117,10 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
         <p>
           <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
             <Carat />
-            <ParsedText parser={this.state.world_driver.current_state.parser} />
+            <ParsedText parser={this.state.world_driver.current_state.parser} showTypeahead={true} />
           </Prompt>
         </p>
-        {/* typeahead options go here */
-          this.currentTypeahead().map((option, i) => {
-
-          })
-        }
+        
       </div>
     );
   }

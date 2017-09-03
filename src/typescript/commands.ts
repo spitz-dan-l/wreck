@@ -90,7 +90,8 @@ export interface DisplayElt {
     display: DisplayEltType, // the intended display style for this element
     match: string, // the string that the parser matched for this element
     typeahead?: string[], // array of typeahead options
-    name?: string // internal name of this match (probably not useful for rendering purposes)
+    name?: string, // internal name of this match (probably not useful for rendering purposes)
+    disabled_typeahead?: string[] //display stuff the player can't do
 }
 
 export enum MatchValidity {
@@ -192,8 +193,8 @@ export class CommandParser {
         this.validity = subparser.validity;
     }
 
-    consume_option<S extends string>(option_spec_tokens: Token[][], name?: string, display: DisplayEltType=DisplayEltType.option): S | false{
-        let partial_matches: DisplayElt[] = []; 
+    consume_option<S extends string>(option_spec_tokens: Token[][], name?: string, display: DisplayEltType=DisplayEltType.option, disabled_option_spec_tokens: Token[][]=[]): S | false{
+        let partial_matches: DisplayElt[] = [];
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
             let exact_match = subparser.consume_exact(spec_toks, display, name);
@@ -207,16 +208,27 @@ export class CommandParser {
                 partial_matches.push(subparser.match[0]);
             }
         }
+        let disabled_partial_matches: DisplayElt[] = [];
+        for (let disabled_spec_toks of disabled_option_spec_tokens) {
+            let subparser = this.subparser();
+            let exact_match = subparser.consume_exact(disabled_spec_toks, display, name);
+
+            if (exact_match || subparser.validity === MatchValidity.partial){
+                disabled_partial_matches.push(subparser.match[0]);
+            }
+        }
 
         if (partial_matches.length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
             let typeahead = partial_matches.map((de) => de.typeahead[0]);
+            let disabled_typeahead = disabled_partial_matches.map((de) => de.typeahead[0])
             this.match.push({
                 display: DisplayEltType.partial,
                 match: partial_matches[0].match,
                 typeahead: typeahead,
-                name: name})
+                name: name,
+                disabled_typeahead: disabled_typeahead})
             return false;
         }
 
@@ -290,9 +302,13 @@ export function call_with_early_stopping<F extends (...any) => any>(gen_func: F)
 }
 
 export interface WorldType {
-    get_commands(): Command<this>[],
+    get_commands(): GetCommandsResult<this>,
     interstitial_update?(): InterstitialUpdateResult<this>,
 }
+
+export type GetCommandsResult<T extends WorldType> = {
+    commands: Command<T>[], disabled_commands?: Command<T>[]
+};
 
 export type InterstitialUpdateResult<T extends WorldType> = {
     world?: T;
@@ -313,10 +329,11 @@ export interface Command<T extends WorldType> {
 export function apply_command<T extends WorldType> (world: T, cmd: string) {
     let parser = new CommandParser(cmd);
 
-    let commands = world.get_commands();
+    let {commands, disabled_commands} = world.get_commands();
     let options = commands.map((cmd) => cmd.command_name);
+    let disabled_options = disabled_commands.map((cmd) => cmd.command_name);
 
-    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
+    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword, disabled_options);
     let result: CommandResult<T> = {parser: parser, world: world};
 
     if (!cmd_name) {

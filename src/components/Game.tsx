@@ -3,17 +3,17 @@ import * as ReactDom from "react-dom";
 
 import {Terminal} from "./Terminal";
 
-import {Item} from "../typescript/datatypes";
-import * as Items from "../typescript/items";
+// import {Item} from "../typescript/datatypes";
+// import * as Items from "../typescript/items";
 
-import * as World from "../typescript/world";
+// import * as World from "../typescript/world";
 
 import {WorldDriver, WorldType, MatchValidity} from "../typescript/commands";
 
 import {BirdWorld} from '../typescript/bird_world';
 
 
-export class Game extends React.Component<any, WorldDriver<World.SingleBoxWorld>> {
+export class Game extends React.Component<any, WorldDriver<BirdWorld>> {
   world_driver: WorldDriver<WorldType>;
 
   componentWillMount () {

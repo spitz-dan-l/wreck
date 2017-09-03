@@ -1,6 +1,7 @@
 import {
     Token,
     CommandResult,
+    GetCommandsResult,
     CommandParser,
     Command,
     WorldType,
@@ -21,13 +22,16 @@ export class BirdWorld implements WorldType{
         return new BirdWorld(is_in_heaven);
     }
 
-    get_commands(): Command<this>[]{
+    get_commands(): GetCommandsResult<this>{
         let commands: Command<BirdWorld>[] = [];
+        let disabled_commands: Command<BirdWorld>[] = [];
         commands.push(go_cmd);
         if (this.is_in_heaven) {
             commands.push(mispronounce_cmd);
+        } else {
+            disabled_commands.push(mispronounce_cmd);
         }
-        return <Command<this>[]>commands;
+        return <GetCommandsResult<this>> {commands, disabled_commands};
     }
 
     interstitial_update() {
@@ -43,13 +47,16 @@ const go_cmd: Command<BirdWorld> = {
     execute: call_with_early_stopping(
         function*(world: BirdWorld, parser: CommandParser){
             let dir_options: Token[][] = [];
+            let disabled_options: Token[][] = [];
             if (world.is_in_heaven) {
                 dir_options.push(['down']);
+                disabled_options.push(['up']);
             } else {
                 dir_options.push(['up']);
+                disabled_options.push(['down']);
             }
             
-            let dir_word = yield parser.consume_option(dir_options);
+            let dir_word = yield parser.consume_option(dir_options, undefined, undefined, disabled_options);
             yield parser.done();
 
             let new_world = world.update(!world.is_in_heaven);
@@ -66,7 +73,7 @@ const mispronounce_cmd: Command<BirdWorld> = {
         function*(world: BirdWorld, parser: CommandParser) {
             let specifier_word = yield parser.consume_option([["zarathustra's"]]);
             
-            yield parser.consume_exact(['name']);
+            yield parser.consume_filler(['name']);
 
             let utterance_options = [
                 'Zammersretter',

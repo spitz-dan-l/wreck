@@ -48,6 +48,7 @@ import {
     word_2_rend_op,
     word_2_dangle_op,
     CommandResult,
+    GetCommandsResult,
     CommandParser,
     Command,
     DisplayElt,
@@ -632,7 +633,7 @@ export class SingleBoxWorld implements WorldType{
         return new SingleBoxWorld({box, taken_items, spilled_items});
     }
 
-    get_commands(): Command<this>[] {
+    get_commands() {
         let commands: Command<SingleBoxWorld>[] = [];
         commands.push(rotate_y_box);
         commands.push(roll_box);
@@ -645,7 +646,7 @@ export class SingleBoxWorld implements WorldType{
         commands.push(replace_rend);
         commands.push(take_item);
 
-        return <Command<this>[]> commands;
+        return <GetCommandsResult<this>> {commands};
     }
 
     cut_message(new_box: Box, cut_edge_states: EdgeState[], effects: WorldUpdateEffects) {
