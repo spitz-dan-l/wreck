@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 10);
+/******/ 	return __webpack_require__(__webpack_require__.s = 11);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -120,6 +120,7 @@ class CommandParser {
         this.position = 0;
         this.validity = MatchValidity.valid;
         this.match = [];
+        this.tail_padding = '';
         this.command = command;
         [this.tokens, this.token_gaps] = text_tools_1.tokenize(command);
     }
@@ -242,19 +243,28 @@ class CommandParser {
         return this.consume_exact(spec_tokens, DisplayEltType.filler);
     }
     is_done() {
+        if (this.position === this.tokens.length - 1 && this.tokens[this.tokens.length - 1] === '') {
+            console.log('detected the corner case');
+            return this.validity === MatchValidity.valid;
+        }
         if (this.position !== this.tokens.length) {
             return false;
         }
         return this.validity === MatchValidity.valid;
     }
     done() {
-        if (this.position !== this.tokens.length) {
-            this.validity = MatchValidity.invalid;
-            this.match.push({
-                display: DisplayEltType.error,
-                match: text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
-            });
-            this.position = this.tokens.length;
+        if (!this.is_done() /*this.position !== this.tokens.length */) {
+                this.validity = MatchValidity.invalid;
+                this.match.push({
+                    display: DisplayEltType.error,
+                    match: text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
+                });
+                this.position = this.tokens.length;
+                console.log(this);
+            } else {
+            if (this.position === this.tokens.length - 1) {
+                this.tail_padding = this.token_gaps[this.token_gaps.length - 1];
+            }
         }
         return this.validity === MatchValidity.valid;
     }
@@ -445,6 +455,11 @@ function get_indenting_whitespace(s) {
     return result[0];
 }
 exports.get_indenting_whitespace = get_indenting_whitespace;
+function ends_with_whitespace(s) {
+    let last_space_pat = /\s$/;
+    return last_space_pat.exec(s) !== null;
+}
+exports.ends_with_whitespace = ends_with_whitespace;
 function normalize_whitespace(s) {
     return s.trim().replace(/\s+/g, ' ');
 }
@@ -810,7 +825,7 @@ const Terminal_1 = __webpack_require__(7);
 // import * as Items from "../typescript/items";
 // import * as World from "../typescript/world";
 const commands_1 = __webpack_require__(1);
-const bird_world_1 = __webpack_require__(9);
+const bird_world_1 = __webpack_require__(10);
 class Game extends React.Component {
     componentWillMount() {
         // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
@@ -942,6 +957,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const Prompt_1 = __webpack_require__(6);
 const Text_1 = __webpack_require__(8);
+const TypeaheadList_1 = __webpack_require__(9);
+const text_tools_1 = __webpack_require__(2);
 const commands_1 = __webpack_require__(1);
 const Carat = () => React.createElement("span", null, ">");
 class Terminal extends React.Component {
@@ -963,13 +980,31 @@ class Terminal extends React.Component {
             let result = this.state.world_driver.apply_command(input, false);
             this.setState({ world_driver: this.state.world_driver });
         };
+        this.handleTypeaheadSelection = option => {
+            let matched_tokens = this.currentParser().match.map(elt => elt.match);
+            let current_indentation = this.currentIndentation();
+            if (current_indentation === '' && matched_tokens.length > 1) {
+                current_indentation = ' ';
+            }
+            let new_last_token = current_indentation + option;
+            matched_tokens[matched_tokens.length - 1] = new_last_token;
+            let new_command = ''.concat(...matched_tokens) + ' ';
+            this.handlePromptChange(new_command);
+            this.prompt.setState({ value: new_command });
+        };
+        this.currentParser = () => this.state.world_driver.current_state.parser;
         this.currentTypeahead = () => {
-            let current_state = this.state.world_driver.current_state;
-            let typeahead = current_state.parser.match[current_state.parser.match.length - 1].typeahead;
-            if (typeahead === undefined) {
+            let parser = this.currentParser();
+            let last_match = parser.match[parser.match.length - 1];
+            let typeahead = last_match.typeahead;
+            if (typeahead === undefined || parser.match.length > 1 && last_match.match === '') {
                 return [];
             }
             return typeahead;
+        };
+        this.currentIndentation = () => {
+            let parser = this.currentParser();
+            return text_tools_1.get_indenting_whitespace(parser.match[parser.match.length - 1].match);
         };
         this.focusPrompt = () => {
             this.prompt.focus();
@@ -1008,7 +1043,7 @@ class Terminal extends React.Component {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
             return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser, showTypeahead: true }))));
+        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList2, { typeahead: this.currentTypeahead(), disabled_typeahead: [], indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection })))));
     }
 }
 exports.Terminal = Terminal;
@@ -1029,7 +1064,6 @@ var __rest = this && this.__rest || function (s, e) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const commands_1 = __webpack_require__(1);
-const text_tools_1 = __webpack_require__(2);
 function get_display_color(det) {
     switch (det) {
         case commands_1.DisplayEltType.keyword:
@@ -1045,11 +1079,7 @@ function get_display_color(det) {
     }
 }
 exports.ParsedText = props => {
-    let { parser, showTypeahead } = props,
-        rest = __rest(props, ["parser", "showTypeahead"]);
-    if (showTypeahead === undefined) {
-        showTypeahead = false;
-    }
+    let { parser, children } = props;
     let style = {
         display: 'inline-block',
         whiteSpace: 'pre-wrap',
@@ -1065,33 +1095,15 @@ exports.ParsedText = props => {
             style.opacity = '0.6';
         }
     }
-    let typeahead = [];
-    let disabled_typeahead = [];
-    if (showTypeahead && parser.match.length > 0) {
-        let last_match = parser.match[parser.match.length - 1];
-        if ((last_match.match !== '' || parser.match.length === 1) && last_match.typeahead !== undefined) {
-            typeahead = last_match.typeahead;
-            if (last_match.disabled_typeahead !== undefined) {
-                disabled_typeahead = last_match.disabled_typeahead;
-            }
-        }
-    }
-    let elt_style = {
+    const elt_style = {
         display: 'inline-block'
     };
-    return React.createElement("div", Object.assign({ style: Object.assign({}, style) }, rest), parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: { display: 'inline-block' } }, elt.match), showTypeahead && i == parser.match.length - 1 && typeahead.length > 0 ? React.createElement(exports.TypeaheadList, { typeahead: typeahead, disabled_typeahead: disabled_typeahead, indentation: text_tools_1.get_indenting_whitespace(elt.match) }) : '')));
-};
-exports.TypeaheadList = props => {
-    const { typeahead, disabled_typeahead, indentation } = props;
-    const style = {
-        position: "absolute",
-        listStyleType: "none",
-        padding: 0,
-        margin: 0,
-        whiteSpace: 'pre'
+    const span_style = {
+        display: 'inline-block'
     };
-    const n_typeahead = typeahead.length;
-    return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))), disabled_typeahead.map((option, i) => React.createElement("li", { key: (i + n_typeahead).toString(), style: { opacity: 0.4, marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))));
+    console.log('tail padding is');
+    console.log(parser);
+    return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === parser.match.length - 1 ? children : '')));
 };
 exports.OutputText = props => {
     const { message, style } = props,
@@ -1105,6 +1117,55 @@ exports.OutputText = props => {
 
 /***/ }),
 /* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(0);
+exports.TypeaheadList = props => {
+    const { typeahead, disabled_typeahead, indentation } = props;
+    const style = {
+        position: "absolute",
+        listStyleType: "none",
+        padding: 0,
+        margin: 0,
+        whiteSpace: 'pre'
+    };
+    const n_typeahead = typeahead.length;
+    return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))), disabled_typeahead.map((option, i) => React.createElement("li", { key: (i + n_typeahead).toString(), style: { opacity: 0.4, marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))));
+};
+class TypeaheadList2 extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { selection_index: -1 };
+    }
+    handleClick(option) {
+        console.log('clicked');
+        console.log(option);
+        this.props.onTypeaheadSelection(option);
+    }
+    handleSubmit(option) {}
+    handleTab() {}
+    handleDirection() {}
+    render() {
+        const { typeahead, disabled_typeahead, indentation } = this.props;
+        const style = {
+            position: "absolute",
+            listStyleType: "none",
+            padding: 0,
+            margin: 0,
+            whiteSpace: 'pre'
+        };
+        const n_typeahead = typeahead.length;
+        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", { onClick: () => this.handleClick(option) }, option))), disabled_typeahead.map((option, i) => React.createElement("li", { key: (i + n_typeahead).toString(), style: { opacity: 0.4, marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))));
+    }
+}
+exports.TypeaheadList2 = TypeaheadList2;
+
+/***/ }),
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1161,6 +1222,7 @@ const mispronounce_cmd = {
     execute: commands_1.call_with_early_stopping(function* (world, parser) {
         let specifier_word = yield parser.consume_option([["zarathustra's"]]);
         yield parser.consume_filler(['name']);
+        yield parser.done();
         let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
         let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
         return { world, message };
@@ -1168,7 +1230,7 @@ const mispronounce_cmd = {
 };
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

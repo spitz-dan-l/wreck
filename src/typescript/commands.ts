@@ -107,6 +107,7 @@ export class CommandParser {
     position: number = 0;
     validity: MatchValidity = MatchValidity.valid;
     match: DisplayElt[] = [];
+    tail_padding: string = '';
 
     constructor(command: string) {
         this.command = command;
@@ -247,6 +248,11 @@ export class CommandParser {
     }
 
     is_done() {
+        if (this.position === this.tokens.length - 1 && this.tokens[this.tokens.length - 1] === ''){
+            console.log('detected the corner case');
+            return this.validity === MatchValidity.valid;
+        }
+
         if (this.position !== this.tokens.length) {
             return false;
         }
@@ -255,13 +261,18 @@ export class CommandParser {
     }
 
     done() {
-        if (this.position !== this.tokens.length) {
+        if (!this.is_done() /*this.position !== this.tokens.length */) {
             this.validity = MatchValidity.invalid;
             this.match.push({
                 display: DisplayEltType.error,
                 match: untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
             });
             this.position = this.tokens.length;
+            console.log(this);
+        } else {
+            if (this.position === this.tokens.length - 1) {
+                this.tail_padding = this.token_gaps[this.token_gaps.length - 1];
+            }
         }
 
         return this.validity === MatchValidity.valid;

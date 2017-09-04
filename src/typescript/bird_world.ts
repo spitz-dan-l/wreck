@@ -75,6 +75,8 @@ const mispronounce_cmd: Command<BirdWorld> = {
             
             yield parser.consume_filler(['name']);
 
+            yield parser.done();
+
             let utterance_options = [
                 'Zammersretter',
                 'Hoosterzaro',

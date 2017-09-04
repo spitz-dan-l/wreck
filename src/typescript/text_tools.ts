@@ -96,6 +96,11 @@ export function get_indenting_whitespace(s: string) {
     return result[0];
 }
 
+export function ends_with_whitespace(s: string) {
+    let last_space_pat = /\s$/;
+    return last_space_pat.exec(s) !== null;
+}
+
 export function normalize_whitespace(s: string) {
     return s.trim().replace(/\s+/g, ' ');
 }

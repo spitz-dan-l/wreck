@@ -36,8 +36,6 @@ let keys = {
 export class Prompt extends React.Component<any, any> {
   input: any;
 
-
-
   state = { value: '' };
 
   handleSubmit = () => {

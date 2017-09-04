@@ -1,0 +1,15 @@
+Niney-
+
+every option is the right thing to do somewhere
+but not so wrong elsewhere that you can't ping it there
+
+this is good. but add reuse.
+
+adding wreck stuff-
+    an 'option' is built out of smaller things
+    zendo-style guess the rule- whether you're "done" specifying an option is unclear
+    options are lexical!
+
+Other ideas
+    long structured commands
+    you can be wrong in multi-step operations, and have to start over (hadean lands! and witness!)

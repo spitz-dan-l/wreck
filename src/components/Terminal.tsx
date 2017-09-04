@@ -2,6 +2,8 @@ import * as React from 'react';
 
 import {Prompt} from './Prompt';
 import {ParsedText, OutputText} from './Text';
+import {TypeaheadList2} from './TypeaheadList';
+import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
 import {Item} from "../typescript/datatypes";
 import * as Items from "../typescript/items";
@@ -54,13 +56,35 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
     this.setState({world_driver: this.state.world_driver});
   }
 
+  handleTypeaheadSelection = (option) => {
+    let matched_tokens = this.currentParser().match.map((elt) => elt.match);
+    let current_indentation = this.currentIndentation();
+    if (current_indentation === '' && matched_tokens.length > 1) {
+      current_indentation = ' ';
+    }
+    let new_last_token = current_indentation + option;
+    matched_tokens[matched_tokens.length - 1] = new_last_token;
+
+    let new_command = ''.concat(...matched_tokens) + ' ';
+    this.handlePromptChange(new_command);
+    this.prompt.setState({value: new_command});
+  }
+
+  currentParser = () => this.state.world_driver.current_state.parser;
+
   currentTypeahead = () => {
-    let current_state = this.state.world_driver.current_state
-    let typeahead = current_state.parser.match[current_state.parser.match.length - 1].typeahead;
-    if (typeahead === undefined) {
+    let parser = this.currentParser();
+    let last_match = parser.match[parser.match.length - 1]; 
+    let typeahead = last_match.typeahead;
+    if (typeahead === undefined || (parser.match.length > 1 && last_match.match === '') ) {
       return [];
     }
     return typeahead;
+  }
+
+  currentIndentation = () => {
+    let parser = this.currentParser();
+    return get_indenting_whitespace(parser.match[parser.match.length - 1].match)
   }
 
   focusPrompt = () => {
@@ -117,7 +141,14 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
         <p>
           <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
             <Carat />
-            <ParsedText parser={this.state.world_driver.current_state.parser} showTypeahead={true} />
+            <ParsedText parser={this.state.world_driver.current_state.parser}>
+              <TypeaheadList2
+                typeahead={this.currentTypeahead()}
+                disabled_typeahead={[]}
+                indentation={this.currentIndentation()}
+                onTypeaheadSelection={this.handleTypeaheadSelection}
+              />
+            </ParsedText>
           </Prompt>
         </p>
         

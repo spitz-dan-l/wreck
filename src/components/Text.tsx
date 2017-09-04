@@ -20,10 +20,7 @@ function get_display_color(det: DisplayEltType) {
 }
 
 export const ParsedText = (props) => {
-  let {parser, showTypeahead, ...rest} = props;
-  if (showTypeahead === undefined) {
-    showTypeahead = false;
-  }
+  let {parser, children} = props;
 
   let style: any = {
     display: 'inline-block',
@@ -41,67 +38,30 @@ export const ParsedText = (props) => {
     }
   }
 
-  let typeahead = [];
-  let disabled_typeahead = [];
-  if (showTypeahead && parser.match.length > 0) {
-    let last_match = parser.match[parser.match.length - 1];
-    if ((last_match.match !== '' || parser.match.length === 1) && last_match.typeahead !== undefined) {
-      typeahead = last_match.typeahead;
-      if (last_match.disabled_typeahead !== undefined){
-        disabled_typeahead = last_match.disabled_typeahead;
-      }
-    }
-  }
-
-  let elt_style: any = {
+  const elt_style: any = {
     display: 'inline-block'
   }
+
+  const span_style: any = {
+    display: 'inline-block'
+  }
+
+  console.log('tail padding is');
+  console.log(parser)
   return (
-    <div style={{...style}} {...rest}>
+    <div style={style}>
       {(parser === undefined) ? '' : 
         parser.match.map((elt, i) => (
           <div key={i.toString()} style={{...elt_style, ...{color: get_display_color(elt.display)}}}>
-            <span style={{display: 'inline-block'}}>{elt.match}</span>
-            { ( showTypeahead && i == parser.match.length - 1 && typeahead.length > 0) ? (
-              <TypeaheadList
-                typeahead={typeahead}
-                disabled_typeahead={disabled_typeahead}
-                indentation={get_indenting_whitespace(elt.match)}/> )
-            : '' }
+            <span style={span_style}>
+              {elt.match + ( i === parser.match.length - 1  ? parser.tail_padding : '' ) }
+            </span>
+            { ( i === parser.match.length - 1 ) ? children : '' }
           </div>
         ))
       }
-      {/* parser.token_gaps[parser.token_gaps.length - 1] */}
     </div>
   );
-}
-
-export const TypeaheadList = (props) => {
-  const {typeahead, disabled_typeahead, indentation} = props;
-  const style: any = {
-    position: "absolute",
-    listStyleType: "none",
-    padding: 0,
-    margin: 0,
-    whiteSpace: 'pre'
-  };
-  const n_typeahead = typeahead.length;
-  return (
-    <ul style={style}>
-      {typeahead.map((option, i) => (
-        <li key={i.toString()} style={{marginTop: '1em'}}>
-          <span>{indentation}</span>
-          <span>{option}</span>
-        </li>
-      ))}
-      {disabled_typeahead.map((option, i) => (
-        <li key={(i + n_typeahead).toString()} style={{opacity: 0.4, marginTop: '1em'}}>
-          <span>{indentation}</span>
-          <span>{option}</span>
-        </li>
-      ))}
-    </ul>
-  )
 }
 
 export const OutputText = (props) => {
