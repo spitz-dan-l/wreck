@@ -19,8 +19,12 @@ export class TypeaheadList extends React.Component<any, any> {
     this.props.onTypeaheadSelection(option);
   }
 
+  handleMouseOver(index) {
+    this.setState({selection_index: index});
+  }
+
   handleKeys(event) {
-    if (event.keyCode === keys.tab) {
+    if (event.keyCode === keys.tab || event.keyCode === keys.right) {
       event.preventDefault();
       if (this.state.selection_index === -1 || this.props.typeahead.length === 0) {
         return;
@@ -58,18 +62,22 @@ export class TypeaheadList extends React.Component<any, any> {
     return (
       <ul style={style}>
         {typeahead.map((option, i) => (
-          <li key={i.toString()} style={{
-            marginTop: '1em',
-            background: i === this.state.selection_index ? 'DimGray' : 'inherit'}}>
+          <li
+            key={i.toString()} 
+            onMouseOver={() => this.handleMouseOver(i)}
+            style={{
+              marginTop: '1em',
+              background: i === this.state.selection_index ? 'DimGray' : 'inherit',
+              opacity: is_enabled(option) ? 1.0 : 0.4
+            }}
+            {...(
+              is_enabled(option)
+                ? {onClick: () => this.handleClick(unwrap(option))}
+                : {}
+            )}
+          >
             <span>{indentation}</span>
-            <span
-              {...(
-                is_enabled(option)
-                  ? {onClick: () => this.handleClick(unwrap(option))}
-                  : {style: {opacity: '0.4'}}
-              )}>
-              {unwrap(option)}
-            </span>
+            <span>{unwrap(option)}</span>
           </li>
         ))}
       </ul>

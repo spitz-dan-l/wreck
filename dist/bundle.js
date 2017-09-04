@@ -1184,8 +1184,11 @@ class TypeaheadList extends React.Component {
     handleClick(option) {
         this.props.onTypeaheadSelection(option);
     }
+    handleMouseOver(index) {
+        this.setState({ selection_index: index });
+    }
     handleKeys(event) {
-        if (event.keyCode === keyboard_tools_1.keys.tab) {
+        if (event.keyCode === keyboard_tools_1.keys.tab || event.keyCode === keyboard_tools_1.keys.right) {
             event.preventDefault();
             if (this.state.selection_index === -1 || this.props.typeahead.length === 0) {
                 return;
@@ -1219,10 +1222,11 @@ class TypeaheadList extends React.Component {
             margin: 0,
             whiteSpace: 'pre'
         };
-        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: {
+        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", Object.assign({ key: i.toString(), onMouseOver: () => this.handleMouseOver(i), style: {
                 marginTop: '1em',
-                background: i === this.state.selection_index ? 'DimGray' : 'inherit'
-            } }, React.createElement("span", null, indentation), React.createElement("span", Object.assign({}, commands_1.is_enabled(option) ? { onClick: () => this.handleClick(commands_1.unwrap(option)) } : { style: { opacity: '0.4' } }), commands_1.unwrap(option)))));
+                background: i === this.state.selection_index ? 'DimGray' : 'inherit',
+                opacity: commands_1.is_enabled(option) ? 1.0 : 0.4
+            } }, commands_1.is_enabled(option) ? { onClick: () => this.handleClick(commands_1.unwrap(option)) } : {}), React.createElement("span", null, indentation), React.createElement("span", null, commands_1.unwrap(option)))));
     }
 }
 exports.TypeaheadList = TypeaheadList;
