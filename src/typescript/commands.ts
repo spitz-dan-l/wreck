@@ -89,9 +89,8 @@ export enum DisplayEltType {
 export interface DisplayElt {
     display: DisplayEltType, // the intended display style for this element
     match: string, // the string that the parser matched for this element
-    typeahead?: string[], // array of typeahead options
+    typeahead?: Disablable<string>[], // array of typeahead options
     name?: string, // internal name of this match (probably not useful for rendering purposes)
-    disabled_typeahead?: string[] //display stuff the player can't do
 }
 
 export enum MatchValidity {
@@ -99,6 +98,43 @@ export enum MatchValidity {
     partial = 1,
     invalid = 2
 }
+
+export type Disablable<T> = T | DWrapped<T>;
+export type DWrapped<T> = ([T] & {disablable: true, enabled: boolean})
+
+
+export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
+    return (<DWrapped<T>>x).disablable !== undefined;
+}
+
+export function dwrap<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
+    if (is_dwrapped(x)) {
+        return x; //could do check here for enabled being set properly already
+    } else {
+        let result = <DWrapped<T>>[x];
+        result.disablable = true;
+        result.enabled = enabled;
+        return result;
+    }
+}
+
+export function undwrap<T>(x: Disablable<T>): T {
+    if (is_dwrapped(x)) {
+        return x[0];
+    } else {
+        return x;
+    }
+}
+
+export function is_enabled<T>(x: Disablable<T>): boolean {
+    if (is_dwrapped(x)){
+        return x.enabled;
+    } else {
+        return true;
+    }
+}
+// let x: Disablable<number> = [123];
+// let y = {...x, enabled: true}
 
 export class CommandParser {
     command: string;
@@ -194,42 +230,40 @@ export class CommandParser {
         this.validity = subparser.validity;
     }
 
-    consume_option<S extends string>(option_spec_tokens: Token[][], name?: string, display: DisplayEltType=DisplayEltType.option, disabled_option_spec_tokens: Token[][]=[]): S | false{
-        let partial_matches: DisplayElt[] = [];
+    consume_option<S extends string>(option_spec_tokens: Disablable<Token[]>[], name?: string, display: DisplayEltType=DisplayEltType.option): S | false{
+        let partial_matches: Disablable<DisplayElt>[] = [];
+        
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(spec_toks, display, name);
+            let exact_match = subparser.consume_exact(undwrap(spec_toks), display, name);
 
-            if (exact_match) {
-                this.integrate(subparser);
-                return <S>normalize_whitespace(untokenize(spec_toks));
-            }
+            if (is_enabled(spec_toks)){
+                if (exact_match) {
+                    this.integrate(subparser);
+                    return <S>normalize_whitespace(untokenize(undwrap(spec_toks)));
+                }
 
-            if (subparser.validity === MatchValidity.partial){
-                partial_matches.push(subparser.match[0]);
-            }
-        }
-        let disabled_partial_matches: DisplayElt[] = [];
-        for (let disabled_spec_toks of disabled_option_spec_tokens) {
-            let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(disabled_spec_toks, display, name);
-
-            if (exact_match || subparser.validity === MatchValidity.partial){
-                disabled_partial_matches.push(subparser.match[0]);
+                if (subparser.validity === MatchValidity.partial){
+                    partial_matches.push(subparser.match[0]);
+                }
+            } else {
+                if (exact_match || subparser.validity === MatchValidity.partial){
+                    let disabled_match = dwrap(subparser.match[0], false);
+                    partial_matches.push(disabled_match);
+                }
             }
         }
-
-        if (partial_matches.length > 0) {
+        
+        if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
-            let typeahead = partial_matches.map((de) => de.typeahead[0]);
-            let disabled_typeahead = disabled_partial_matches.map((de) => de.typeahead[0])
+            let typeahead = partial_matches.map((de) => dwrap(undwrap(de).typeahead[0], is_enabled(de)));
             this.match.push({
                 display: DisplayEltType.partial,
-                match: partial_matches[0].match,
+                match: undwrap(partial_matches[0]).match,
                 typeahead: typeahead,
                 name: name,
-                disabled_typeahead: disabled_typeahead})
+            });
             return false;
         }
 
@@ -312,46 +346,44 @@ export function call_with_early_stopping<F extends (...any) => any>(gen_func: F)
     return inner;
 }
 
-export interface WorldType {
-    get_commands(): GetCommandsResult<this>,
-    interstitial_update?(): InterstitialUpdateResult<this>,
+export interface WorldType<T extends WorldType<T>> {
+    get_commands(): Disablable<Command<T>>[],
+    interstitial_update?(): InterstitialUpdateResult<T>,
 }
 
-export type GetCommandsResult<T extends WorldType> = {
-    commands: Command<T>[], disabled_commands?: Command<T>[]
-};
-
-export type InterstitialUpdateResult<T extends WorldType> = {
+export type InterstitialUpdateResult<T extends WorldType<T>> = {
     world?: T;
     message?: string;
 } | undefined;
 
-export type CommandResult<T extends WorldType> = {
+export type CommandResult<T extends WorldType<T>> = {
     world?: T;
     message?: string;
     parser?: CommandParser;
 } | undefined;
 
-export interface Command<T extends WorldType> {
+export interface Command<T extends WorldType<T>> {
     command_name: Token[];
     execute: (world: T, parser: CommandParser) => CommandResult<T>;
 }
 
-export function apply_command<T extends WorldType> (world: T, cmd: string) {
+export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
     let parser = new CommandParser(cmd);
 
-    let {commands, disabled_commands} = world.get_commands();
-    let options = commands.map((cmd) => cmd.command_name);
-    let disabled_options = disabled_commands.map((cmd) => cmd.command_name);
-
-    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword, disabled_options);
+    let commands = world.get_commands();
+    let options = commands.map((cmd) => {
+        let option = dwrap<string[]>(undwrap(cmd).command_name, is_enabled(cmd));
+        return option;
+    });
+    
+    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
     let result: CommandResult<T> = {parser: parser, world: world};
 
     if (!cmd_name) {
         return result;
     }
 
-    let command = commands[commands.findIndex((cmd) => cmd_name === untokenize(cmd.command_name))]
+    let command = undwrap(commands[commands.findIndex((cmd) => cmd_name === untokenize(undwrap(cmd).command_name))]);
 
     let cmd_result = command.execute(world, parser);
     
@@ -369,7 +401,7 @@ export function apply_command<T extends WorldType> (world: T, cmd: string) {
     return result;
 }
 
-function apply_interstitial_update<T extends WorldType>(result: CommandResult<T>): CommandResult<T> {
+function apply_interstitial_update<T extends WorldType<T>>(result: CommandResult<T>): CommandResult<T> {
     if (result.world.interstitial_update !== undefined) {
         //confusing, but we are running pre_command for the *next* command, not the one that just ran
         let res2 = result.world.interstitial_update();
@@ -387,7 +419,7 @@ function apply_interstitial_update<T extends WorldType>(result: CommandResult<T>
     return result;
 }
 
-export class WorldDriver<T extends WorldType> {
+export class WorldDriver<T extends WorldType<T>> {
     history: CommandResult<T>[];
     
     current_state: CommandResult<T>;

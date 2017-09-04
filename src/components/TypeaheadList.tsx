@@ -1,35 +1,8 @@
 import * as React from 'react';
 
+import {is_enabled} from '../typescript/commands';
 
-export const TypeaheadList = (props) => {
-  const {typeahead, disabled_typeahead, indentation} = props;
-  const style: any = {
-    position: "absolute",
-    listStyleType: "none",
-    padding: 0,
-    margin: 0,
-    whiteSpace: 'pre'
-  };
-  const n_typeahead = typeahead.length;
-  return (
-    <ul style={style}>
-      {typeahead.map((option, i) => (
-        <li key={i.toString()} style={{marginTop: '1em'}}>
-          <span>{indentation}</span>
-          <span>{option}</span>
-        </li>
-      ))}
-      {disabled_typeahead.map((option, i) => (
-        <li key={(i + n_typeahead).toString()} style={{opacity: 0.4, marginTop: '1em'}}>
-          <span>{indentation}</span>
-          <span>{option}</span>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-export class TypeaheadList2 extends React.Component<any, any> {
+export class TypeaheadList extends React.Component<any, any> {
   constructor(props) {
     super(props);
     this.state = {selection_index: -1};
@@ -68,13 +41,14 @@ export class TypeaheadList2 extends React.Component<any, any> {
         {typeahead.map((option, i) => (
           <li key={i.toString()} style={{marginTop: '1em'}}>
             <span>{indentation}</span>
-            <span onClick={() => this.handleClick(option)}>{option}</span>
-          </li>
-        ))}
-        {disabled_typeahead.map((option, i) => (
-          <li key={(i + n_typeahead).toString()} style={{opacity: 0.4, marginTop: '1em'}}>
-            <span>{indentation}</span>
-            <span>{option}</span>
+            <span
+              {...(
+                is_enabled(option)
+                  ? {onClick: () => this.handleClick(option)}
+                  : {style: {opacity: '0.4'}}
+              )}>
+              {option}
+            </span>
           </li>
         ))}
       </ul>

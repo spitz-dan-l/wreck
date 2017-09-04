@@ -115,6 +115,39 @@ var MatchValidity;
     MatchValidity[MatchValidity["partial"] = 1] = "partial";
     MatchValidity[MatchValidity["invalid"] = 2] = "invalid";
 })(MatchValidity = exports.MatchValidity || (exports.MatchValidity = {}));
+function is_dwrapped(x) {
+    return x.disablable !== undefined;
+}
+exports.is_dwrapped = is_dwrapped;
+function dwrap(x, enabled = true) {
+    if (is_dwrapped(x)) {
+        return x; //could do check here for enabled being set properly already
+    } else {
+        let result = [x];
+        result.disablable = true;
+        result.enabled = enabled;
+        return result;
+    }
+}
+exports.dwrap = dwrap;
+function undwrap(x) {
+    if (is_dwrapped(x)) {
+        return x[0];
+    } else {
+        return x;
+    }
+}
+exports.undwrap = undwrap;
+function is_enabled(x) {
+    if (is_dwrapped(x)) {
+        return x.enabled;
+    } else {
+        return true;
+    }
+}
+exports.is_enabled = is_enabled;
+// let x: Disablable<number> = [123];
+// let y = {...x, enabled: true}
 class CommandParser {
     constructor(command) {
         this.position = 0;
@@ -194,38 +227,35 @@ class CommandParser {
         this.match.push(...subparser.match);
         this.validity = subparser.validity;
     }
-    consume_option(option_spec_tokens, name, display = DisplayEltType.option, disabled_option_spec_tokens = []) {
+    consume_option(option_spec_tokens, name, display = DisplayEltType.option) {
         let partial_matches = [];
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(spec_toks, display, name);
-            if (exact_match) {
-                this.integrate(subparser);
-                return text_tools_1.normalize_whitespace(text_tools_1.untokenize(spec_toks));
-            }
-            if (subparser.validity === MatchValidity.partial) {
-                partial_matches.push(subparser.match[0]);
+            let exact_match = subparser.consume_exact(undwrap(spec_toks), display, name);
+            if (is_enabled(spec_toks)) {
+                if (exact_match) {
+                    this.integrate(subparser);
+                    return text_tools_1.normalize_whitespace(text_tools_1.untokenize(undwrap(spec_toks)));
+                }
+                if (subparser.validity === MatchValidity.partial) {
+                    partial_matches.push(subparser.match[0]);
+                }
+            } else {
+                if (exact_match || subparser.validity === MatchValidity.partial) {
+                    let disabled_match = dwrap(subparser.match[0], false);
+                    partial_matches.push(disabled_match);
+                }
             }
         }
-        let disabled_partial_matches = [];
-        for (let disabled_spec_toks of disabled_option_spec_tokens) {
-            let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(disabled_spec_toks, display, name);
-            if (exact_match || subparser.validity === MatchValidity.partial) {
-                disabled_partial_matches.push(subparser.match[0]);
-            }
-        }
-        if (partial_matches.length > 0) {
+        if (partial_matches.filter(de => is_enabled(de)).length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
-            let typeahead = partial_matches.map(de => de.typeahead[0]);
-            let disabled_typeahead = disabled_partial_matches.map(de => de.typeahead[0]);
+            let typeahead = partial_matches.map(de => dwrap(undwrap(de).typeahead[0], is_enabled(de)));
             this.match.push({
                 display: DisplayEltType.partial,
-                match: partial_matches[0].match,
+                match: undwrap(partial_matches[0]).match,
                 typeahead: typeahead,
-                name: name,
-                disabled_typeahead: disabled_typeahead
+                name: name
             });
             return false;
         }
@@ -302,15 +332,17 @@ function call_with_early_stopping(gen_func) {
 exports.call_with_early_stopping = call_with_early_stopping;
 function apply_command(world, cmd) {
     let parser = new CommandParser(cmd);
-    let { commands, disabled_commands } = world.get_commands();
-    let options = commands.map(cmd => cmd.command_name);
-    let disabled_options = disabled_commands.map(cmd => cmd.command_name);
-    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword, disabled_options);
+    let commands = world.get_commands();
+    let options = commands.map(cmd => {
+        let option = dwrap(undwrap(cmd).command_name, is_enabled(cmd));
+        return option;
+    });
+    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
     let result = { parser: parser, world: world };
     if (!cmd_name) {
         return result;
     }
-    let command = commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(cmd.command_name))];
+    let command = undwrap(commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(undwrap(cmd).command_name))]);
     let cmd_result = command.execute(world, parser);
     if (cmd_result !== undefined) {
         if (cmd_result.world !== undefined) {
@@ -1043,7 +1075,7 @@ class Terminal extends React.Component {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
             return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList2, { typeahead: this.currentTypeahead(), disabled_typeahead: [], indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection })))));
+        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), disabled_typeahead: [], indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection })))));
     }
 }
 exports.Terminal = Terminal;
@@ -1124,19 +1156,8 @@ exports.OutputText = props => {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-exports.TypeaheadList = props => {
-    const { typeahead, disabled_typeahead, indentation } = props;
-    const style = {
-        position: "absolute",
-        listStyleType: "none",
-        padding: 0,
-        margin: 0,
-        whiteSpace: 'pre'
-    };
-    const n_typeahead = typeahead.length;
-    return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))), disabled_typeahead.map((option, i) => React.createElement("li", { key: (i + n_typeahead).toString(), style: { opacity: 0.4, marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))));
-};
-class TypeaheadList2 extends React.Component {
+const commands_1 = __webpack_require__(1);
+class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
         this.state = { selection_index: -1 };
@@ -1159,10 +1180,10 @@ class TypeaheadList2 extends React.Component {
             whiteSpace: 'pre'
         };
         const n_typeahead = typeahead.length;
-        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", { onClick: () => this.handleClick(option) }, option))), disabled_typeahead.map((option, i) => React.createElement("li", { key: (i + n_typeahead).toString(), style: { opacity: 0.4, marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", null, option))));
+        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", Object.assign({}, commands_1.is_enabled(option) ? { onClick: () => this.handleClick(option) } : { style: { opacity: '0.4' } }), option))));
     }
 }
-exports.TypeaheadList2 = TypeaheadList2;
+exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
 /* 10 */
@@ -1183,14 +1204,9 @@ class BirdWorld {
     }
     get_commands() {
         let commands = [];
-        let disabled_commands = [];
         commands.push(go_cmd);
-        if (this.is_in_heaven) {
-            commands.push(mispronounce_cmd);
-        } else {
-            disabled_commands.push(mispronounce_cmd);
-        }
-        return { commands, disabled_commands };
+        commands.push(commands_1.dwrap(mispronounce_cmd, this.is_in_heaven));
+        return commands;
     }
     interstitial_update() {
         return { message: this.is_in_heaven ? "You're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly." : "You're standing around on the earth."
@@ -1202,15 +1218,9 @@ const go_cmd = {
     command_name: ['go'],
     execute: commands_1.call_with_early_stopping(function* (world, parser) {
         let dir_options = [];
-        let disabled_options = [];
-        if (world.is_in_heaven) {
-            dir_options.push(['down']);
-            disabled_options.push(['up']);
-        } else {
-            dir_options.push(['up']);
-            disabled_options.push(['down']);
-        }
-        let dir_word = yield parser.consume_option(dir_options, undefined, undefined, disabled_options);
+        dir_options.push(commands_1.dwrap(['down'], world.is_in_heaven));
+        dir_options.push(commands_1.dwrap(['up'], !world.is_in_heaven));
+        let dir_word = yield parser.consume_option(dir_options);
         yield parser.done();
         let new_world = world.update(!world.is_in_heaven);
         let message = text_tools_1.capitalize(dir_word) + ' you go.';

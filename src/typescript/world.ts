@@ -48,9 +48,9 @@ import {
     word_2_rend_op,
     word_2_dangle_op,
     CommandResult,
-    GetCommandsResult,
     CommandParser,
     Command,
+    Disablable,
     DisplayElt,
     DisplayEltType,
     MatchValidity,
@@ -595,7 +595,7 @@ export interface SingleBoxWorldParams {
     spilled_items?: Item[]
 }
 
-export class SingleBoxWorld implements WorldType{
+export class SingleBoxWorld implements WorldType<SingleBoxWorld>{
     readonly box: Box;
     readonly taken_items: Item[];
     readonly spilled_items: Item[];
@@ -646,7 +646,7 @@ export class SingleBoxWorld implements WorldType{
         commands.push(replace_rend);
         commands.push(take_item);
 
-        return <GetCommandsResult<this>> {commands};
+        return commands;
     }
 
     cut_message(new_box: Box, cut_edge_states: EdgeState[], effects: WorldUpdateEffects) {

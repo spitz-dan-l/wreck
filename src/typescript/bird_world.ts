@@ -1,7 +1,8 @@
 import {
     Token,
     CommandResult,
-    GetCommandsResult,
+    Disablable,
+    dwrap,
     CommandParser,
     Command,
     WorldType,
@@ -11,7 +12,7 @@ import {
 import {capitalize, tokenize, untokenize, random_choice} from './text_tools';
 
 
-export class BirdWorld implements WorldType{
+export class BirdWorld implements WorldType<BirdWorld>{
     readonly is_in_heaven: boolean;
 
     constructor(is_in_heaven: boolean = false) {
@@ -22,16 +23,11 @@ export class BirdWorld implements WorldType{
         return new BirdWorld(is_in_heaven);
     }
 
-    get_commands(): GetCommandsResult<this>{
-        let commands: Command<BirdWorld>[] = [];
-        let disabled_commands: Command<BirdWorld>[] = [];
+    get_commands(){
+        let commands: Disablable<Command<BirdWorld>>[] = [];
         commands.push(go_cmd);
-        if (this.is_in_heaven) {
-            commands.push(mispronounce_cmd);
-        } else {
-            disabled_commands.push(mispronounce_cmd);
-        }
-        return <GetCommandsResult<this>> {commands, disabled_commands};
+        commands.push(dwrap(mispronounce_cmd, this.is_in_heaven));
+        return commands;
     }
 
     interstitial_update() {
@@ -46,17 +42,11 @@ const go_cmd: Command<BirdWorld> = {
     command_name: ['go'],
     execute: call_with_early_stopping(
         function*(world: BirdWorld, parser: CommandParser){
-            let dir_options: Token[][] = [];
-            let disabled_options: Token[][] = [];
-            if (world.is_in_heaven) {
-                dir_options.push(['down']);
-                disabled_options.push(['up']);
-            } else {
-                dir_options.push(['up']);
-                disabled_options.push(['down']);
-            }
-            
-            let dir_word = yield parser.consume_option(dir_options, undefined, undefined, disabled_options);
+            let dir_options: Disablable<Token[]>[] = [];
+            dir_options.push(dwrap<Token[]>(['down'], world.is_in_heaven));
+            dir_options.push(dwrap<Token[]>(['up'], !world.is_in_heaven));
+
+            let dir_word = yield parser.consume_option(dir_options);
             yield parser.done();
 
             let new_world = world.update(!world.is_in_heaven);

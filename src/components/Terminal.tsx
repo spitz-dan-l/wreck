@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import {Prompt} from './Prompt';
 import {ParsedText, OutputText} from './Text';
-import {TypeaheadList2} from './TypeaheadList';
+import {TypeaheadList} from './TypeaheadList';
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
 import {Item} from "../typescript/datatypes";
@@ -142,7 +142,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
           <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
             <Carat />
             <ParsedText parser={this.state.world_driver.current_state.parser}>
-              <TypeaheadList2
+              <TypeaheadList
                 typeahead={this.currentTypeahead()}
                 disabled_typeahead={[]}
                 indentation={this.currentIndentation()}

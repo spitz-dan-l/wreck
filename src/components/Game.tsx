@@ -14,7 +14,7 @@ import {BirdWorld} from '../typescript/bird_world';
 
 
 export class Game extends React.Component<any, WorldDriver<BirdWorld>> {
-  world_driver: WorldDriver<WorldType>;
+  world_driver: WorldDriver<BirdWorld>;
 
   componentWillMount () {
     // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
