@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 11);
+/******/ 	return __webpack_require__(__webpack_require__.s = 12);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -850,13 +850,30 @@ exports.CommandError = CommandError;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.keys = {
+    tab: 9,
+    enter: 13,
+    left: 37,
+    up: 38,
+    right: 39,
+    down: 40
+};
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const Terminal_1 = __webpack_require__(7);
+const Terminal_1 = __webpack_require__(8);
 // import {Item} from "../typescript/datatypes";
 // import * as Items from "../typescript/items";
 // import * as World from "../typescript/world";
 const commands_1 = __webpack_require__(1);
-const bird_world_1 = __webpack_require__(10);
+const bird_world_1 = __webpack_require__(11);
 class Game extends React.Component {
     componentWillMount() {
         // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
@@ -870,13 +887,13 @@ class Game extends React.Component {
 exports.Game = Game;
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports) {
 
 module.exports = ReactDOM;
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -890,6 +907,7 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
+const keyboard_tools_1 = __webpack_require__(4);
 const InputWrapper = props => {
     const { style, children } = props,
           rest = __rest(props, ["style", "children"]);
@@ -910,9 +928,6 @@ const InputDisplay = props => {
     };
     return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
 };
-let keys = {
-    enter: 13
-};
 class Prompt extends React.Component {
     constructor() {
         super(...arguments);
@@ -925,7 +940,7 @@ class Prompt extends React.Component {
         };
         // when key down is called by auto complete see if we should just submit
         this.handleKeys = ({ keyCode }) => {
-            if (keyCode === keys.enter) {
+            if (keyCode === keyboard_tools_1.keys.enter) {
                 this.handleSubmit();
             }
             this.setCursor(this.input, this.input.value.length);
@@ -972,13 +987,13 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, onKeyDown: this.handleKeys, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, "[]"));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, "[]"));
     }
 }
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -986,15 +1001,19 @@ exports.Prompt = Prompt;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const Prompt_1 = __webpack_require__(6);
-const Text_1 = __webpack_require__(8);
-const TypeaheadList_1 = __webpack_require__(9);
+const Prompt_1 = __webpack_require__(7);
+const Text_1 = __webpack_require__(9);
+const TypeaheadList_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(2);
 const commands_1 = __webpack_require__(1);
 const Carat = () => React.createElement("span", null, ">");
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
+        this.handleKeys = event => {
+            this.prompt.handleKeys(event);
+            this.typeahead_list.handleKeys(event);
+        };
         this.handleSubmit = () => {
             if (this.isCurrentlyValid()) {
                 const output = this.state.world_driver.commit();
@@ -1069,18 +1088,18 @@ class Terminal extends React.Component {
             display: 'block',
             padding: '1em'
         };
-        return React.createElement("div", { style: container_style, onClick: this.focusPrompt, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
+        return React.createElement("div", { style: container_style, onClick: this.focusPrompt, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
             if (i === 0) {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
             return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), disabled_typeahead: [], indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection })))));
+        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t })))));
     }
 }
 exports.Terminal = Terminal;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1104,7 +1123,7 @@ function get_display_color(det) {
         case commands_1.DisplayEltType.filler:
             return 'ivory';
         case commands_1.DisplayEltType.partial:
-            return 'gray';
+            return 'silver';
         case commands_1.DisplayEltType.error:
             return 'red';
     }
@@ -1147,7 +1166,7 @@ exports.OutputText = props => {
 };
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1155,6 +1174,7 @@ exports.OutputText = props => {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
+const keyboard_tools_1 = __webpack_require__(4);
 const commands_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
@@ -1162,15 +1182,37 @@ class TypeaheadList extends React.Component {
         this.state = { selection_index: -1 };
     }
     handleClick(option) {
-        console.log('clicked');
-        console.log(option);
         this.props.onTypeaheadSelection(option);
     }
-    handleSubmit(option) {}
-    handleTab() {}
-    handleDirection() {}
+    handleKeys(event) {
+        console.log('keydown');
+        if (event.keyCode === keyboard_tools_1.keys.tab) {
+            event.preventDefault();
+            if (this.state.selection_index === -1 || this.props.typeahead.length === 0) {
+                return;
+            }
+            let selected = this.props.typeahead[this.state.selection_index];
+            if (commands_1.is_enabled(selected)) {
+                this.props.onTypeaheadSelection(commands_1.unwrap(selected));
+            } else {
+                return;
+            }
+        } else if (event.keyCode === keyboard_tools_1.keys.up) {
+            if (this.state.selection_index === -1) {
+                return;
+            } else {
+                this.setState({ selection_index: this.state.selection_index - 1 });
+            }
+        } else if (event.keyCode === keyboard_tools_1.keys.down) {
+            if (this.state.selection_index === this.props.typeahead.length - 1) {
+                return;
+            } else {
+                this.setState({ selection_index: this.state.selection_index + 1 });
+            }
+        }
+    }
     render() {
-        const { typeahead, disabled_typeahead, indentation } = this.props;
+        const { typeahead, indentation } = this.props;
         const style = {
             position: "absolute",
             listStyleType: "none",
@@ -1178,14 +1220,16 @@ class TypeaheadList extends React.Component {
             margin: 0,
             whiteSpace: 'pre'
         };
-        const n_typeahead = typeahead.length;
-        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", Object.assign({}, commands_1.is_enabled(option) ? { onClick: () => this.handleClick(commands_1.unwrap(option)) } : { style: { opacity: '0.4' } }), commands_1.unwrap(option)))));
+        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: {
+                marginTop: '1em',
+                background: i === this.state.selection_index ? 'DimGray' : 'inherit'
+            } }, React.createElement("span", null, indentation), React.createElement("span", Object.assign({}, commands_1.is_enabled(option) ? { onClick: () => this.handleClick(commands_1.unwrap(option)) } : { style: { opacity: '0.4' } }), commands_1.unwrap(option)))));
     }
 }
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1239,7 +1283,7 @@ const mispronounce_cmd = {
 };
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1247,8 +1291,8 @@ const mispronounce_cmd = {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const ReactDom = __webpack_require__(5);
-const Game_1 = __webpack_require__(4);
+const ReactDom = __webpack_require__(6);
+const Game_1 = __webpack_require__(5);
 ReactDom.render(React.createElement(Game_1.Game, null), document.getElementById('game'));
 // import {List, Map} from 'immutable';
 // import {CityKey, Codex, Pinecone} from './items';

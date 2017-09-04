@@ -22,6 +22,7 @@ const Carat = () => (
 export class Terminal extends React.Component<any, {world_driver: WorldDriver<BirdWorld>}> {
   contentContainer: any;
   prompt: any;
+  typeahead_list: any;
 
   constructor(props) {
     super(props);
@@ -37,6 +38,11 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
     this.scrollToPrompt();
   }
 
+  handleKeys = (event) => {
+    this.prompt.handleKeys(event);
+    this.typeahead_list.handleKeys(event);
+  }
+  
   handleSubmit = () => {
     if (this.isCurrentlyValid()) {
       const output = this.state.world_driver.commit();
@@ -114,7 +120,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
       padding: '1em'
     };
     return (
-      <div style={container_style} onClick={this.focusPrompt} ref={cc => this.contentContainer = cc}>
+      <div style={container_style} onClick={this.focusPrompt} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
         {this.state.world_driver.history.map(({parser, message}, i) => {
           if (i === 0) {
             return (
@@ -144,9 +150,9 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
             <ParsedText parser={this.state.world_driver.current_state.parser}>
               <TypeaheadList
                 typeahead={this.currentTypeahead()}
-                disabled_typeahead={[]}
                 indentation={this.currentIndentation()}
                 onTypeaheadSelection={this.handleTypeaheadSelection}
+                ref={t => this.typeahead_list = t}
               />
             </ParsedText>
           </Prompt>

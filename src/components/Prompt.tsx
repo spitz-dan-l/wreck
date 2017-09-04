@@ -1,4 +1,5 @@
 import * as React from 'react';
+import {keys} from '../typescript/keyboard_tools';
 
 const InputWrapper = (props) => {
   const {style, children, ...rest} = props;
@@ -28,10 +29,6 @@ const InputDisplay = (props) => {
     </span>
   );
 }
-
-let keys = {
-  enter: 13,
-};
 
 export class Prompt extends React.Component<any, any> {
   input: any;
@@ -101,7 +98,7 @@ export class Prompt extends React.Component<any, any> {
     };
     return (
         <InputWrapper onClick={() => this.focus()}>
-          <input onChange={this.handleChange} onKeyDown={this.handleKeys} value={this.state.value} style={input_style} ref={i => this.input = i} />
+          <input onChange={this.handleChange} value={this.state.value} style={input_style} ref={i => this.input = i} />
           <InputDisplay>
             {this.props.children}[]
           </InputDisplay>

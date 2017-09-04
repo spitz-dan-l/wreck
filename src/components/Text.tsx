@@ -13,7 +13,7 @@ function get_display_color(det: DisplayEltType) {
     case DisplayEltType.filler:
       return 'ivory';
     case DisplayEltType.partial:
-      return 'gray';
+      return 'silver';
     case DisplayEltType.error:
       return 'red';
   }
