@@ -286,7 +286,6 @@ export class CommandParser {
 
     is_done() {
         if (this.position === this.tokens.length - 1 && this.tokens[this.tokens.length - 1] === ''){
-            console.log('detected the corner case');
             return this.validity === MatchValidity.valid;
         }
 
@@ -305,7 +304,6 @@ export class CommandParser {
                 match: untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
             });
             this.position = this.tokens.length;
-            console.log(this);
         } else {
             if (this.position === this.tokens.length - 1) {
                 this.tail_padding = this.token_gaps[this.token_gaps.length - 1];

@@ -46,8 +46,6 @@ export const ParsedText = (props) => {
     display: 'inline-block'
   }
 
-  console.log('tail padding is');
-  console.log(parser)
   return (
     <div style={style}>
       {(parser === undefined) ? '' : 

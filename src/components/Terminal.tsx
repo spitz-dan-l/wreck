@@ -57,7 +57,6 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
   }
 
   handlePromptChange = (input) => {
-    console.log(input);
     let result = this.state.world_driver.apply_command(input, false);
     this.setState({world_driver: this.state.world_driver});
   }

@@ -276,7 +276,6 @@ class CommandParser {
     }
     is_done() {
         if (this.position === this.tokens.length - 1 && this.tokens[this.tokens.length - 1] === '') {
-            console.log('detected the corner case');
             return this.validity === MatchValidity.valid;
         }
         if (this.position !== this.tokens.length) {
@@ -292,7 +291,6 @@ class CommandParser {
                     match: text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
                 });
                 this.position = this.tokens.length;
-                console.log(this);
             } else {
             if (this.position === this.tokens.length - 1) {
                 this.tail_padding = this.token_gaps[this.token_gaps.length - 1];
@@ -1026,7 +1024,6 @@ class Terminal extends React.Component {
             return this.state.world_driver.current_state.parser.validity === commands_1.MatchValidity.valid;
         };
         this.handlePromptChange = input => {
-            console.log(input);
             let result = this.state.world_driver.apply_command(input, false);
             this.setState({ world_driver: this.state.world_driver });
         };
@@ -1151,8 +1148,6 @@ exports.ParsedText = props => {
     const span_style = {
         display: 'inline-block'
     };
-    console.log('tail padding is');
-    console.log(parser);
     return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === parser.match.length - 1 ? children : '')));
 };
 exports.OutputText = props => {
@@ -1181,11 +1176,15 @@ class TypeaheadList extends React.Component {
         super(props);
         this.state = { selection_index: -1 };
     }
+    componentDidUpdate() {
+        if (this.state.selection_index >= this.props.typeahead.length) {
+            this.setState({ selection_index: this.props.typeahead.length - 1 });
+        }
+    }
     handleClick(option) {
         this.props.onTypeaheadSelection(option);
     }
     handleKeys(event) {
-        console.log('keydown');
         if (event.keyCode === keyboard_tools_1.keys.tab) {
             event.preventDefault();
             if (this.state.selection_index === -1 || this.props.typeahead.length === 0) {

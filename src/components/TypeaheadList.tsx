@@ -9,12 +9,17 @@ export class TypeaheadList extends React.Component<any, any> {
     this.state = {selection_index: -1};
   }
 
+  componentDidUpdate() {
+    if (this.state.selection_index >= this.props.typeahead.length) {
+      this.setState({selection_index: this.props.typeahead.length - 1});
+    }
+  }
+
   handleClick(option) {
     this.props.onTypeaheadSelection(option);
   }
 
   handleKeys(event) {
-    console.log('keydown');
     if (event.keyCode === keys.tab) {
       event.preventDefault();
       if (this.state.selection_index === -1 || this.props.typeahead.length === 0) {
