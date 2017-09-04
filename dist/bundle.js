@@ -119,25 +119,27 @@ function is_dwrapped(x) {
     return x.disablable !== undefined;
 }
 exports.is_dwrapped = is_dwrapped;
-function dwrap(x, enabled = true) {
+function set_enabled(x, enabled = true) {
     if (is_dwrapped(x)) {
         return x; //could do check here for enabled being set properly already
     } else {
-        let result = [x];
-        result.disablable = true;
-        result.enabled = enabled;
+        let result = { value: x, disablable: true, enabled };
         return result;
     }
 }
-exports.dwrap = dwrap;
-function undwrap(x) {
+exports.set_enabled = set_enabled;
+function unwrap(x) {
     if (is_dwrapped(x)) {
-        return x[0];
+        return x.value;
     } else {
         return x;
     }
 }
-exports.undwrap = undwrap;
+exports.unwrap = unwrap;
+function with_disablable(x, f) {
+    return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));
+}
+exports.with_disablable = with_disablable;
 function is_enabled(x) {
     if (is_dwrapped(x)) {
         return x.enabled;
@@ -231,18 +233,18 @@ class CommandParser {
         let partial_matches = [];
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(undwrap(spec_toks), display, name);
+            let exact_match = subparser.consume_exact(unwrap(spec_toks), display, name);
             if (is_enabled(spec_toks)) {
                 if (exact_match) {
                     this.integrate(subparser);
-                    return text_tools_1.normalize_whitespace(text_tools_1.untokenize(undwrap(spec_toks)));
+                    return text_tools_1.normalize_whitespace(text_tools_1.untokenize(unwrap(spec_toks)));
                 }
                 if (subparser.validity === MatchValidity.partial) {
                     partial_matches.push(subparser.match[0]);
                 }
             } else {
                 if (exact_match || subparser.validity === MatchValidity.partial) {
-                    let disabled_match = dwrap(subparser.match[0], false);
+                    let disabled_match = set_enabled(subparser.match[0], false);
                     partial_matches.push(disabled_match);
                 }
             }
@@ -250,10 +252,10 @@ class CommandParser {
         if (partial_matches.filter(de => is_enabled(de)).length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
-            let typeahead = partial_matches.map(de => dwrap(undwrap(de).typeahead[0], is_enabled(de)));
+            let typeahead = partial_matches.map(de => with_disablable(de, x => x.typeahead[0]));
             this.match.push({
                 display: DisplayEltType.partial,
-                match: undwrap(partial_matches[0]).match,
+                match: unwrap(partial_matches[0]).match,
                 typeahead: typeahead,
                 name: name
             });
@@ -333,16 +335,13 @@ exports.call_with_early_stopping = call_with_early_stopping;
 function apply_command(world, cmd) {
     let parser = new CommandParser(cmd);
     let commands = world.get_commands();
-    let options = commands.map(cmd => {
-        let option = dwrap(undwrap(cmd).command_name, is_enabled(cmd));
-        return option;
-    });
+    let options = commands.map(cmd => with_disablable(cmd, c => c.command_name));
     let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
     let result = { parser: parser, world: world };
     if (!cmd_name) {
         return result;
     }
-    let command = undwrap(commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(undwrap(cmd).command_name))]);
+    let command = unwrap(commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(unwrap(cmd).command_name))]);
     let cmd_result = command.execute(world, parser);
     if (cmd_result !== undefined) {
         if (cmd_result.world !== undefined) {
@@ -1180,7 +1179,7 @@ class TypeaheadList extends React.Component {
             whiteSpace: 'pre'
         };
         const n_typeahead = typeahead.length;
-        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", Object.assign({}, commands_1.is_enabled(option) ? { onClick: () => this.handleClick(option) } : { style: { opacity: '0.4' } }), option))));
+        return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement("span", null, indentation), React.createElement("span", Object.assign({}, commands_1.is_enabled(option) ? { onClick: () => this.handleClick(commands_1.unwrap(option)) } : { style: { opacity: '0.4' } }), commands_1.unwrap(option)))));
     }
 }
 exports.TypeaheadList = TypeaheadList;
@@ -1205,7 +1204,7 @@ class BirdWorld {
     get_commands() {
         let commands = [];
         commands.push(go_cmd);
-        commands.push(commands_1.dwrap(mispronounce_cmd, this.is_in_heaven));
+        commands.push(commands_1.set_enabled(mispronounce_cmd, this.is_in_heaven));
         return commands;
     }
     interstitial_update() {
@@ -1218,8 +1217,8 @@ const go_cmd = {
     command_name: ['go'],
     execute: commands_1.call_with_early_stopping(function* (world, parser) {
         let dir_options = [];
-        dir_options.push(commands_1.dwrap(['down'], world.is_in_heaven));
-        dir_options.push(commands_1.dwrap(['up'], !world.is_in_heaven));
+        dir_options.push(commands_1.set_enabled(['up'], !world.is_in_heaven));
+        dir_options.push(commands_1.set_enabled(['down'], world.is_in_heaven));
         let dir_word = yield parser.consume_option(dir_options);
         yield parser.done();
         let new_world = world.update(!world.is_in_heaven);

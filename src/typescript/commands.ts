@@ -100,30 +100,33 @@ export enum MatchValidity {
 }
 
 export type Disablable<T> = T | DWrapped<T>;
-export type DWrapped<T> = ([T] & {disablable: true, enabled: boolean})
+export type DWrapped<T> = {value: T, disablable: true, enabled: boolean}
 
 
 export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
     return (<DWrapped<T>>x).disablable !== undefined;
 }
 
-export function dwrap<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
+export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
     if (is_dwrapped(x)) {
         return x; //could do check here for enabled being set properly already
     } else {
-        let result = <DWrapped<T>>[x];
-        result.disablable = true;
-        result.enabled = enabled;
+        let result: DWrapped<T> = {value: x, disablable: true, enabled};
+        
         return result;
     }
 }
 
-export function undwrap<T>(x: Disablable<T>): T {
+export function unwrap<T>(x: Disablable<T>): T {
     if (is_dwrapped(x)) {
-        return x[0];
+        return x.value;
     } else {
         return x;
     }
+}
+
+export function with_disablable<T1, T2>(x: Disablable<T1>, f: (t1: T1) => Disablable<T2>): Disablable<T2> {
+    return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));
 }
 
 export function is_enabled<T>(x: Disablable<T>): boolean {
@@ -235,12 +238,12 @@ export class CommandParser {
         
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(undwrap(spec_toks), display, name);
+            let exact_match = subparser.consume_exact(unwrap(spec_toks), display, name);
 
             if (is_enabled(spec_toks)){
                 if (exact_match) {
                     this.integrate(subparser);
-                    return <S>normalize_whitespace(untokenize(undwrap(spec_toks)));
+                    return <S>normalize_whitespace(untokenize(unwrap(spec_toks)));
                 }
 
                 if (subparser.validity === MatchValidity.partial){
@@ -248,7 +251,7 @@ export class CommandParser {
                 }
             } else {
                 if (exact_match || subparser.validity === MatchValidity.partial){
-                    let disabled_match = dwrap(subparser.match[0], false);
+                    let disabled_match = set_enabled(subparser.match[0], false);
                     partial_matches.push(disabled_match);
                 }
             }
@@ -257,10 +260,10 @@ export class CommandParser {
         if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
-            let typeahead = partial_matches.map((de) => dwrap(undwrap(de).typeahead[0], is_enabled(de)));
+            let typeahead = partial_matches.map((de) => with_disablable(de, (x) => x.typeahead[0]));
             this.match.push({
                 display: DisplayEltType.partial,
-                match: undwrap(partial_matches[0]).match,
+                match: unwrap(partial_matches[0]).match,
                 typeahead: typeahead,
                 name: name,
             });
@@ -371,10 +374,7 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
     let parser = new CommandParser(cmd);
 
     let commands = world.get_commands();
-    let options = commands.map((cmd) => {
-        let option = dwrap<string[]>(undwrap(cmd).command_name, is_enabled(cmd));
-        return option;
-    });
+    let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
     
     let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
     let result: CommandResult<T> = {parser: parser, world: world};
@@ -383,7 +383,8 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
         return result;
     }
 
-    let command = undwrap(commands[commands.findIndex((cmd) => cmd_name === untokenize(undwrap(cmd).command_name))]);
+    let command = unwrap(commands[commands.findIndex((cmd) => (
+        cmd_name === untokenize(unwrap(cmd).command_name)))]);
 
     let cmd_result = command.execute(world, parser);
     

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import {is_enabled} from '../typescript/commands';
+import {is_enabled, unwrap} from '../typescript/commands';
 
 export class TypeaheadList extends React.Component<any, any> {
   constructor(props) {
@@ -44,10 +44,10 @@ export class TypeaheadList extends React.Component<any, any> {
             <span
               {...(
                 is_enabled(option)
-                  ? {onClick: () => this.handleClick(option)}
+                  ? {onClick: () => this.handleClick(unwrap(option))}
                   : {style: {opacity: '0.4'}}
               )}>
-              {option}
+              {unwrap(option)}
             </span>
           </li>
         ))}

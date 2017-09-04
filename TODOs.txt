@@ -1,7 +1,5 @@
 TODOs
 
-- have consume_option accept either a Token[][] or a {tokens: Token[], enabled: boolean}[]
-
 - arrows and tab for autocomplete selection
 
 - drop everything and make a cool demo with narrative merit

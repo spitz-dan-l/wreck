@@ -2,7 +2,7 @@ import {
     Token,
     CommandResult,
     Disablable,
-    dwrap,
+    set_enabled,
     CommandParser,
     Command,
     WorldType,
@@ -26,7 +26,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
     get_commands(){
         let commands: Disablable<Command<BirdWorld>>[] = [];
         commands.push(go_cmd);
-        commands.push(dwrap(mispronounce_cmd, this.is_in_heaven));
+        commands.push(set_enabled(mispronounce_cmd, this.is_in_heaven));
         return commands;
     }
 
@@ -43,8 +43,8 @@ const go_cmd: Command<BirdWorld> = {
     execute: call_with_early_stopping(
         function*(world: BirdWorld, parser: CommandParser){
             let dir_options: Disablable<Token[]>[] = [];
-            dir_options.push(dwrap<Token[]>(['down'], world.is_in_heaven));
-            dir_options.push(dwrap<Token[]>(['up'], !world.is_in_heaven));
+            dir_options.push(set_enabled(['up'], !world.is_in_heaven));
+            dir_options.push(set_enabled(['down'], world.is_in_heaven));
 
             let dir_word = yield parser.consume_option(dir_options);
             yield parser.done();
