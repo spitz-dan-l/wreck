@@ -13,3 +13,5 @@ adding wreck stuff-
 Other ideas
     long structured commands
     you can be wrong in multi-step operations, and have to start over (hadean lands! and witness!)
+    
+    something about pairwise similarity/relational operations used to approximate a global space ???
