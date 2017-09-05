@@ -926,6 +926,7 @@ const InputDisplay = props => {
     };
     return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
 };
+const Cursor = props => React.createElement("span", { className: "blinking-cursor" }, String.fromCharCode(9608));
 class Prompt extends React.Component {
     constructor() {
         super(...arguments);
@@ -985,7 +986,7 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, "[]"));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, React.createElement(Cursor, null)));
     }
 }
 exports.Prompt = Prompt;
