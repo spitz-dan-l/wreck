@@ -926,7 +926,6 @@ const InputDisplay = props => {
     };
     return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
 };
-const Cursor = props => React.createElement("span", { className: "blinking-cursor" }, String.fromCharCode(9608));
 class Prompt extends React.Component {
     constructor() {
         super(...arguments);
@@ -986,7 +985,7 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, React.createElement(Cursor, null)));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children));
     }
 }
 exports.Prompt = Prompt;
@@ -1005,7 +1004,7 @@ const Text_1 = __webpack_require__(9);
 const TypeaheadList_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(2);
 const commands_1 = __webpack_require__(1);
-const Carat = () => React.createElement("span", null, ">");
+const Carat = () => React.createElement("span", null, ">\u00A0");
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -1091,7 +1090,7 @@ class Terminal extends React.Component {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
             return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t })))));
+        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser, with_cursor: true }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t })))));
     }
 }
 exports.Terminal = Terminal;
@@ -1126,8 +1125,12 @@ function get_display_color(det) {
             return 'red';
     }
 }
+const Cursor = props => React.createElement("span", { className: "blinking-cursor" }, String.fromCharCode(9608));
 exports.ParsedText = props => {
-    let { parser, children } = props;
+    let { parser, children, with_cursor } = props;
+    if (with_cursor === undefined) {
+        with_cursor = false;
+    }
     let style = {
         display: 'inline-block',
         whiteSpace: 'pre-wrap',
@@ -1149,7 +1152,7 @@ exports.ParsedText = props => {
     const span_style = {
         display: 'inline-block'
     };
-    return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === parser.match.length - 1 ? children : '')));
+    return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === parser.match.length - 1 ? children : '')), with_cursor ? React.createElement(Cursor, null) : []);
 };
 exports.OutputText = props => {
     const { message, style } = props,

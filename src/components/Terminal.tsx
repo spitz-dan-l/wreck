@@ -15,7 +15,7 @@ import {WorldDriver, MatchValidity} from "../typescript/commands";
 
 const Carat = () => (
   <span>
-    >
+    >&nbsp;
   </span>
 );
 
@@ -146,7 +146,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
         <p>
           <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
             <Carat />
-            <ParsedText parser={this.state.world_driver.current_state.parser}>
+            <ParsedText parser={this.state.world_driver.current_state.parser} with_cursor={true}>
               <TypeaheadList
                 typeahead={this.currentTypeahead()}
                 indentation={this.currentIndentation()}
