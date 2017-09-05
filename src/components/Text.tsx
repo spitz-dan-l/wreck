@@ -19,8 +19,6 @@ function get_display_color(det: DisplayEltType) {
   }
 }
 
-const Cursor = (props) => (<span className="blinking-cursor">{String.fromCharCode(9608)}</span>);
-
 export const ParsedText = (props) => {
   let {parser, children, with_cursor} = props;
 
@@ -64,7 +62,6 @@ export const ParsedText = (props) => {
           </div>
         ))
       }
-      {with_cursor ? <Cursor /> : []}
     </div>
   );
 }

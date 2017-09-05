@@ -30,6 +30,10 @@ const InputDisplay = (props) => {
   );
 }
 
+const Cursor = ({onClick}) => (<span className="blinking-cursor" onClick={onClick}>
+  {String.fromCharCode(9608)}
+</span>);
+
 export class Prompt extends React.Component<any, any> {
   input: any;
 
@@ -102,6 +106,7 @@ export class Prompt extends React.Component<any, any> {
           <InputDisplay>
             {this.props.children}
           </InputDisplay>
+          <Cursor onClick={() => this.handleSubmit()} />
         </InputWrapper>
     );
   }
