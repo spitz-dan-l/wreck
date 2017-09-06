@@ -65,6 +65,20 @@ export function tokenize(s: string): [string[], string[]] {
     return [tokens, gaps];
 }
 
+export function split_tokens(s: string): string[] {
+    let space_pat = /[^\S]+/g;
+    let tokens = s.split(space_pat);
+    if (tokens.length > 0){
+        if (tokens[0] === '') {
+            tokens.splice(0, 1);
+        }
+        if (tokens[tokens.length - 1] === '') {
+            tokens.splice(tokens.length - 1, 1);
+        }
+    }
+    return tokens;
+}
+
 function tokenize_tests() {
     console.log('tokenize tests');
     console.log(tokenize(' l'));

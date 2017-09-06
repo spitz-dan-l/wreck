@@ -6,10 +6,11 @@ import {
     CommandParser,
     Command,
     WorldType,
-    call_with_early_stopping
+    with_early_stopping,
+    consume_option_stepwise_eager
 } from './commands'
 
-import {capitalize, tokenize, untokenize, random_choice} from './text_tools';
+import {capitalize, tokenize, split_tokens, untokenize, random_choice} from './text_tools';
 
 
 export class BirdWorld implements WorldType<BirdWorld>{
@@ -27,6 +28,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
         let commands: Disablable<Command<BirdWorld>>[] = [];
         commands.push(go_cmd);
         commands.push(set_enabled(mispronounce_cmd, this.is_in_heaven));
+        commands.push(be_cmd);
         return commands;
     }
 
@@ -40,7 +42,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
 
 const go_cmd: Command<BirdWorld> = {
     command_name: ['go'],
-    execute: call_with_early_stopping(
+    execute: with_early_stopping(
         function*(world: BirdWorld, parser: CommandParser){
             let dir_options: Disablable<Token[]>[] = [];
             dir_options.push(set_enabled(['up'], !world.is_in_heaven));
@@ -59,7 +61,7 @@ const go_cmd: Command<BirdWorld> = {
 
 const mispronounce_cmd: Command<BirdWorld> = {
     command_name: ['mispronounce'],
-    execute: call_with_early_stopping(
+    execute: with_early_stopping(
         function*(world: BirdWorld, parser: CommandParser) {
             let specifier_word = yield parser.consume_option([["zarathustra's"]]);
             
@@ -82,5 +84,30 @@ const mispronounce_cmd: Command<BirdWorld> = {
     )
 }
 
+let roles: string[][] = [
+    split_tokens('the One Who Gazes Ahead,'),
+    split_tokens('the One Who Gazes Back,'),
+    split_tokens('the One Who Gazes Up,'),
+    split_tokens('the One Who Gazes Down,'),
+    split_tokens('the One Whose Palms Are Open,'),
+    split_tokens('the One Whose Palms Are Closed,'),
+    split_tokens('the One Who Is Strong,'),
+    split_tokens('the One Who Is Weak,'),
+    split_tokens('the One Who Seduces,'),
+    split_tokens('the One Who Is Seduced,'),
+];
 
 
+let role = roles[0];
+const be_cmd: Command<BirdWorld> = {
+    command_name: ['be'],
+    execute: with_early_stopping<CommandResult<BirdWorld>>(
+        function*(world: BirdWorld, parser: CommandParser) {
+            let role_choice = yield* consume_option_stepwise_eager(parser, roles);
+            yield parser.consume_filler(['dude']);
+            yield parser.done();
+
+            return {world, message: role_choice};
+        }
+    )
+}

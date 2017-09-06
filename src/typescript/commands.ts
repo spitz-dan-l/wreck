@@ -1,7 +1,7 @@
 // import {Map} from 'immutable';
 import {Direction, EdgeOperation, EdgeDirection, Face, RelativePosition, RendOperation} from './datatypes';
 
-import {starts_with, tokenize, untokenize, normalize_whitespace} from './text_tools';
+import {starts_with, tokenize, untokenize, normalize_whitespace, split_tokens} from './text_tools';
 
 export type Token = string;
 
@@ -169,21 +169,20 @@ export class CommandParser {
             let next_tok = this.tokens[this.position + pos_offset];
             let next_gap = this.token_gaps[this.position + pos_offset];
 
-            if (spec_tok === next_tok.toLowerCase()) {
+            if (spec_tok.toLowerCase() === next_tok.toLowerCase()) {
                 match_tokens.push(next_tok);
                 match_gaps.push(next_gap);
                 pos_offset++;
                 continue;
             }
 
-            if (starts_with(spec_tok, next_tok.toLowerCase())) {
+            if (starts_with(spec_tok.toLowerCase(), next_tok.toLowerCase())) {
                 match_tokens.push(next_tok);
                 match_gaps.push(next_gap);
                 this.validity = MatchValidity.partial;
                 pos_offset++;
                 break;
             }
-
             this.validity = MatchValidity.invalid;
             break;   
         }
@@ -206,7 +205,6 @@ export class CommandParser {
                     match: untokenize(match_tokens, match_gaps),
                     typeahead: [untokenize(spec_tokens)],
                     name: name});
-
                 return false;
             } else {
                 this.validity = MatchValidity.invalid;
@@ -323,7 +321,7 @@ export class CommandParser {
     }
 }
 
-export function with_early_stopping(gen: IterableIterator<string | boolean>){
+export function stop_early<R>(gen: IterableIterator<string | boolean>): R | undefined{
     let value: any | boolean = undefined;
     let done: boolean = false;
 
@@ -336,15 +334,45 @@ export function with_early_stopping(gen: IterableIterator<string | boolean>){
         }
     }
 
-    return value;
+    return <R>value;
 }
 
-export function call_with_early_stopping<F extends (...any) => any>(gen_func: F){
+export function with_early_stopping<R>(gen_func: (...any) => IterableIterator<any>): (...any) => R {
     function inner(...args) {
         let gen = gen_func(...args);
-        return with_early_stopping(gen);
+        return <R>stop_early(gen);
     }
-    return inner;
+    return <(...any) => R>inner;
+}
+
+export function* consume_option_stepwise_eager(parser: CommandParser, options: string[][]) {
+    let current_cmd = [];
+    let pos = 0;
+    while (true) {
+        let remaining_options = options.filter((toks) => 
+            toks.slice(0, pos).every((tok, i) => tok === current_cmd[i])
+        );
+
+        if (remaining_options.length === 0) {
+            return untokenize(current_cmd);
+        }
+
+        let next_tokens: Token[] = [];
+        for (let opt of remaining_options) {
+            if (pos < opt.length) {
+                let tok = opt[pos];
+                if (next_tokens.indexOf(tok) === -1) {
+                    next_tokens.push(tok);
+                }
+            } else {
+                return untokenize(current_cmd);
+            }
+        }
+        let display_type = next_tokens.length === 1 ? DisplayEltType.keyword : DisplayEltType.option;
+        let next_tok = yield parser.consume_option(next_tokens.map(split_tokens), undefined, display_type);
+        current_cmd.push(next_tok);
+        pos++;
+    }
 }
 
 export interface WorldType<T extends WorldType<T>> {

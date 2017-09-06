@@ -1,7 +1,5 @@
 TODOs
 
-- arrows and tab for autocomplete selection
-
 - drop everything and make a cool demo with narrative merit
 
 - Clarify ideas about compound/multistep scenarios w history erasure

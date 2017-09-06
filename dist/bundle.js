@@ -173,13 +173,13 @@ class CommandParser {
             }
             let next_tok = this.tokens[this.position + pos_offset];
             let next_gap = this.token_gaps[this.position + pos_offset];
-            if (spec_tok === next_tok.toLowerCase()) {
+            if (spec_tok.toLowerCase() === next_tok.toLowerCase()) {
                 match_tokens.push(next_tok);
                 match_gaps.push(next_gap);
                 pos_offset++;
                 continue;
             }
-            if (text_tools_1.starts_with(spec_tok, next_tok.toLowerCase())) {
+            if (text_tools_1.starts_with(spec_tok.toLowerCase(), next_tok.toLowerCase())) {
                 match_tokens.push(next_tok);
                 match_gaps.push(next_gap);
                 this.validity = MatchValidity.partial;
@@ -308,7 +308,7 @@ class CommandParser {
     }
 }
 exports.CommandParser = CommandParser;
-function with_early_stopping(gen) {
+function stop_early(gen) {
     let value = undefined;
     let done = false;
     while (!done) {
@@ -321,15 +321,41 @@ function with_early_stopping(gen) {
     }
     return value;
 }
-exports.with_early_stopping = with_early_stopping;
-function call_with_early_stopping(gen_func) {
+exports.stop_early = stop_early;
+function with_early_stopping(gen_func) {
     function inner(...args) {
         let gen = gen_func(...args);
-        return with_early_stopping(gen);
+        return stop_early(gen);
     }
     return inner;
 }
-exports.call_with_early_stopping = call_with_early_stopping;
+exports.with_early_stopping = with_early_stopping;
+function* consume_option_stepwise_eager(parser, options) {
+    let current_cmd = [];
+    let pos = 0;
+    while (true) {
+        let remaining_options = options.filter(toks => toks.slice(0, pos).every((tok, i) => tok === current_cmd[i]));
+        if (remaining_options.length === 0) {
+            return text_tools_1.untokenize(current_cmd);
+        }
+        let next_tokens = [];
+        for (let opt of remaining_options) {
+            if (pos < opt.length) {
+                let tok = opt[pos];
+                if (next_tokens.indexOf(tok) === -1) {
+                    next_tokens.push(tok);
+                }
+            } else {
+                return text_tools_1.untokenize(current_cmd);
+            }
+        }
+        let display_type = next_tokens.length === 1 ? DisplayEltType.keyword : DisplayEltType.option;
+        let next_tok = yield parser.consume_option(next_tokens.map(text_tools_1.split_tokens), undefined, display_type);
+        current_cmd.push(next_tok);
+        pos++;
+    }
+}
+exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
 function apply_command(world, cmd) {
     let parser = new CommandParser(cmd);
     let commands = world.get_commands();
@@ -456,6 +482,20 @@ function tokenize(s) {
     return [tokens, gaps];
 }
 exports.tokenize = tokenize;
+function split_tokens(s) {
+    let space_pat = /[^\S]+/g;
+    let tokens = s.split(space_pat);
+    if (tokens.length > 0) {
+        if (tokens[0] === '') {
+            tokens.splice(0, 1);
+        }
+        if (tokens[tokens.length - 1] === '') {
+            tokens.splice(tokens.length - 1, 1);
+        }
+    }
+    return tokens;
+}
+exports.split_tokens = split_tokens;
 function tokenize_tests() {
     console.log('tokenize tests');
     console.log(tokenize(' l'));
@@ -1256,6 +1296,7 @@ class BirdWorld {
         let commands = [];
         commands.push(go_cmd);
         commands.push(commands_1.set_enabled(mispronounce_cmd, this.is_in_heaven));
+        commands.push(be_cmd);
         return commands;
     }
     interstitial_update() {
@@ -1266,7 +1307,7 @@ class BirdWorld {
 exports.BirdWorld = BirdWorld;
 const go_cmd = {
     command_name: ['go'],
-    execute: commands_1.call_with_early_stopping(function* (world, parser) {
+    execute: commands_1.with_early_stopping(function* (world, parser) {
         let dir_options = [];
         dir_options.push(commands_1.set_enabled(['up'], !world.is_in_heaven));
         dir_options.push(commands_1.set_enabled(['down'], world.is_in_heaven));
@@ -1279,13 +1320,24 @@ const go_cmd = {
 };
 const mispronounce_cmd = {
     command_name: ['mispronounce'],
-    execute: commands_1.call_with_early_stopping(function* (world, parser) {
+    execute: commands_1.with_early_stopping(function* (world, parser) {
         let specifier_word = yield parser.consume_option([["zarathustra's"]]);
         yield parser.consume_filler(['name']);
         yield parser.done();
         let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
         let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
         return { world, message };
+    })
+};
+let roles = [text_tools_1.split_tokens('the One Who Gazes Ahead,'), text_tools_1.split_tokens('the One Who Gazes Back,'), text_tools_1.split_tokens('the One Who Gazes Up,'), text_tools_1.split_tokens('the One Who Gazes Down,'), text_tools_1.split_tokens('the One Whose Palms Are Open,'), text_tools_1.split_tokens('the One Whose Palms Are Closed,'), text_tools_1.split_tokens('the One Who Is Strong,'), text_tools_1.split_tokens('the One Who Is Weak,'), text_tools_1.split_tokens('the One Who Seduces,'), text_tools_1.split_tokens('the One Who Is Seduced,')];
+let role = roles[0];
+const be_cmd = {
+    command_name: ['be'],
+    execute: commands_1.with_early_stopping(function* (world, parser) {
+        let role_choice = yield* commands_1.consume_option_stepwise_eager(parser, roles);
+        yield parser.consume_filler(['dude']);
+        yield parser.done();
+        return { world, message: role_choice };
     })
 };
 
