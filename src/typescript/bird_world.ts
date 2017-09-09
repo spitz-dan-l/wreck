@@ -115,29 +115,40 @@ const mispronounce_cmd: Command<BirdWorld> = {
     )
 }
 
-let roles: string[][] = [
-    split_tokens('the One Who Gazes Ahead'),
-    split_tokens('the One Who Gazes Back'),
-    split_tokens('the One Who Gazes Up'),
-    split_tokens('the One Who Gazes Down'),
-    split_tokens('the One Whose Palms Are Open'),
-    split_tokens('the One Whose Palms Are Closed'),
-    split_tokens('the One Who Is Strong'),
-    split_tokens('the One Who Is Weak'),
-    split_tokens('the One Who Seduces'),
-    split_tokens('the One Who Is Seduced'),
+let roles: string[] = [
+    'the One Who Gazes Ahead',
+    'the One Who Gazes Back',
+    'the One Who Gazes Up',
+    'the One Who Gazes Down',
+    'the One Whose Palms Are Open',
+    'the One Whose Palms Are Closed',
+    'the One Who Is Strong',
+    'the One Who Is Weak',
+    'the One Who Seduces',
+    'the One Who Is Seduced'
 ];
 
+let qualities: string[] = [
+    'outwardly curious',
+    'introspective',
+    'transcendent',
+    'sorrowful',
+    'receptive',
+    'adversarial',
+    'confident',
+    'impressionable',
+    'predatory',
+    'vulnerable'
+]
 
-let role = roles[0];
 const be_cmd: Command<BirdWorld> = {
     command_name: ['be'],
     execute: with_early_stopping<CommandResult<BirdWorld>>(
         function*(world: BirdWorld, parser: CommandParser) {
-            let role_choice = yield* consume_option_stepwise_eager(parser, roles);
+            let role_choice = yield* consume_option_stepwise_eager(parser, roles.map(split_tokens));
             yield parser.done();
 
-            return {world, message: 'You feel cool.'};
+            return {world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.`};
         }
     )
 }

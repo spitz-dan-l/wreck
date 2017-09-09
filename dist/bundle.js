@@ -982,14 +982,14 @@ const mispronounce_cmd = {
         return { world, message };
     })
 };
-let roles = [text_tools_1.split_tokens('the One Who Gazes Ahead'), text_tools_1.split_tokens('the One Who Gazes Back'), text_tools_1.split_tokens('the One Who Gazes Up'), text_tools_1.split_tokens('the One Who Gazes Down'), text_tools_1.split_tokens('the One Whose Palms Are Open'), text_tools_1.split_tokens('the One Whose Palms Are Closed'), text_tools_1.split_tokens('the One Who Is Strong'), text_tools_1.split_tokens('the One Who Is Weak'), text_tools_1.split_tokens('the One Who Seduces'), text_tools_1.split_tokens('the One Who Is Seduced')];
-let role = roles[0];
+let roles = ['the One Who Gazes Ahead', 'the One Who Gazes Back', 'the One Who Gazes Up', 'the One Who Gazes Down', 'the One Whose Palms Are Open', 'the One Whose Palms Are Closed', 'the One Who Is Strong', 'the One Who Is Weak', 'the One Who Seduces', 'the One Who Is Seduced'];
+let qualities = ['outwardly curious', 'introspective', 'transcendent', 'sorrowful', 'receptive', 'adversarial', 'confident', 'impressionable', 'predatory', 'vulnerable'];
 const be_cmd = {
     command_name: ['be'],
     execute: commands_1.with_early_stopping(function* (world, parser) {
-        let role_choice = yield* commands_1.consume_option_stepwise_eager(parser, roles);
+        let role_choice = yield* commands_1.consume_option_stepwise_eager(parser, roles.map(text_tools_1.split_tokens));
         yield parser.done();
-        return { world, message: 'You feel cool.' };
+        return { world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.` };
     })
 };
 
