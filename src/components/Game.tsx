@@ -20,7 +20,7 @@ export class Game extends React.Component<any, WorldDriver<BirdWorld>> {
     // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
     // let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
 
-    this.world_driver = new WorldDriver(new BirdWorld())
+    this.world_driver = new WorldDriver(new BirdWorld({}))
     
   }
 

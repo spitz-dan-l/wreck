@@ -1,4 +1,14 @@
-import {Item, Weight} from './datatypes'
+import {Weight} from './datatypes'
+
+export abstract class Item {
+    abstract weight(): Weight;
+    abstract name(): string;
+    abstract pre_gestalt(): string;
+    abstract post_gestalt(): string;
+    article(): string {
+        return 'a';
+    }
+}
 
 export class Codex extends Item {
     weight() {

@@ -1,19 +1,20 @@
 import {
-    array_fuck_contains,
     Dangle,
     Direction,
     Edge,
     EdgeOperation,
     Face,
     faces,
+    Partition,
+ } from './datatypes';
+
+import {
+    array_fuck_contains,
     FuckDict,
     Matrix2,
     make_matrix2,
-    Partition,
     Point2,
- } from './datatypes';
-
-// import {is, List, Map, Set} from 'immutable';
+ } from '../datatypes';
 
 let face_vertices = new Map<Face, Matrix2>([
     [Face.t, make_matrix2([

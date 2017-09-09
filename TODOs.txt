@@ -6,8 +6,6 @@ TODOs
 
 - Refactor generic parser stuff out of string constant type stuff for boxworld
 
-- Figure out how to do WorldType without needing to cast stuff to `this`
-
 - Refactor world update stuff to
     - naturally support exceptions and error signals
     - keep track of intra-update state without polluting world object

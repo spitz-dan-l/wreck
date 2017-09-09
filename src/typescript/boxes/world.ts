@@ -1,12 +1,8 @@
 import {BoxMesh, edge_2_quadrants, FaceMesh} from './box_geometry';
 
 import {
-    array_fuck_contains,
     CardboardEdge,
     CommandError,
-    Counter,
-    counter_order,
-    counter_update,
     Dangle,
     Direction,
     directions,
@@ -16,10 +12,7 @@ import {
     EdgeOperation,
     EdgeState,
     Face,
-    FuckDict,
-    Item,
     Partition,
-    Point2,
     RelativePosition,
     RendOperation,
     RendState,
@@ -30,6 +23,15 @@ import {
 } from './datatypes';
 
 import {
+    array_fuck_contains,
+    Counter,
+    counter_order,
+    counter_update,
+    FuckDict,
+    Point2
+} from '../datatypes';
+
+import {
     DangleOpWord, dangle_op_word_tokens,
     EdgeDirWord, edge_dir_word_tokens,
     EdgeOpWord, edge_op_word_tokens,
@@ -38,7 +40,6 @@ import {
     RendOpWord, rend_op_word_tokens,
     RollDirWord, roll_dir_word_tokens,
     RotateYDirWord, rotate_y_word_tokens,
-    Token,
     word_2_degrees,
     word_2_dir,
     word_2_edge_dir,
@@ -47,6 +48,10 @@ import {
     word_2_relative_position,
     word_2_rend_op,
     word_2_dangle_op,
+} from './commands';
+
+import {
+    Token,
     CommandResult,
     CommandParser,
     Command,
@@ -56,15 +61,15 @@ import {
     MatchValidity,
     WorldType,
     WorldDriver
-} from './commands'
+} from '../commands';
 
 import {WorldUpdateEffects, with_world_update, world_update} from './world_update_effects';
 
-import {CityKey, Codex, Pinecone} from './items';
+import {Item, CityKey, Codex, Pinecone} from './items';
 
-import {capitalize, face_message, uncapitalize, tokens_equal, tokenize, untokenize} from './text_tools';
+import {capitalize, uncapitalize, tokens_equal, tokenize, untokenize} from '../text_tools';
 
-//import {List, Map, Set} from 'immutable';
+import {face_message} from './text_tools';
 
 export interface BoxParams {
     box_mesh?: BoxMesh,

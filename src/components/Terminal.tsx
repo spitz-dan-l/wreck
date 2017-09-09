@@ -5,10 +5,6 @@ import {ParsedText, OutputText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
-import {Item} from "../typescript/datatypes";
-import * as Items from "../typescript/items";
-
-import * as World from "../typescript/world";
 import {BirdWorld} from '../typescript/bird_world';
 
 import {WorldDriver, MatchValidity} from "../typescript/commands";
