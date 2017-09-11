@@ -1,10 +1,14 @@
 TODOs
 
 - drop everything and make a cool demo with narrative merit
+    - ignore the problem of messy history logs
+    - address the need to skim text with good writing
+    
+    - niney remake?
+
+- enhance generator parser functions to support forking subprocessors with resolving ambiguity (yikes)
 
 - Clarify ideas about compound/multistep scenarios w history erasure
-
-- Refactor generic parser stuff out of string constant type stuff for boxworld
 
 - Refactor world update stuff to
     - naturally support exceptions and error signals
