@@ -35,8 +35,10 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
   }
 
   handleKeys = (event) => {
-    this.prompt.handleKeys(event);
-    this.typeahead_list.handleKeys(event);
+    let swallowed_enter = this.typeahead_list.handleKeys(event);
+    if (!swallowed_enter) {
+      this.prompt.handleKeys(event);
+    }  
   }
   
   handleSubmit = () => {
@@ -127,11 +129,11 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
             );
           }
           return (
-            <div key={i.toString()}>
-              <p>
+            <div key={i.toString()} style={{marginTop: '1em'}}>
+              
                 <Carat />
                 <ParsedText parser={parser} />
-              </p>
+              
               <p>
                 <OutputText message={message} />
               </p>
@@ -139,10 +141,10 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
           )
         })}
 
-        <p>
+        
           <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
             <Carat />
-            <ParsedText parser={this.state.world_driver.current_state.parser} with_cursor={true}>
+            <ParsedText parser={this.state.world_driver.current_state.parser}>
               <TypeaheadList
                 typeahead={this.currentTypeahead()}
                 indentation={this.currentIndentation()}
@@ -151,7 +153,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
               />
             </ParsedText>
           </Prompt>
-        </p>
+        
         
       </div>
     );

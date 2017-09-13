@@ -24,30 +24,50 @@ export class TypeaheadList extends React.Component<any, any> {
   }
 
   handleKeys(event) {
-    if (event.keyCode === keys.tab || event.keyCode === keys.right) {
-      event.preventDefault();
-      if (this.state.selection_index === -1 || this.props.typeahead.length === 0) {
-        return;
-      }
-      let selected = this.props.typeahead[this.state.selection_index];
-      if (is_enabled(selected)) {
-        this.props.onTypeaheadSelection(unwrap(selected));
-      } else {
-        return;
-      }
-    } else if (event.keyCode === keys.up) {
-      if (this.state.selection_index === -1) {
-        return;
-      } else {
-        this.setState({selection_index: this.state.selection_index - 1});
-      }
-    } else if (event.keyCode === keys.down) {
-      if (this.state.selection_index === this.props.typeahead.length - 1) {
-        return;
-      } else {
-        this.setState({selection_index: this.state.selection_index + 1});
-      }
-    } 
+    let swallowed_enter = false;
+    
+    top: switch (event.keyCode) {
+      case keys.enter:
+        if (this.state.selection_index === -1) {
+          break;
+        }
+        swallowed_enter = true;
+      case keys.tab:
+        event.preventDefault();
+      case keys.right:      
+        if (this.props.typeahead.length === 0) {
+          break;
+        }
+        let selected = (this.state.selection_index === -1) ?
+          this.props.typeahead[0] :
+          this.props.typeahead[this.state.selection_index];
+
+        if (is_enabled(selected)) {
+          this.props.onTypeaheadSelection(unwrap(selected));
+        }
+        break;
+      
+      default:
+        let new_selection_index;
+        switch (event.keyCode) {
+          case keys.up:
+            if (this.state.selection_index === -1) {
+              break top;
+            }
+            new_selection_index = this.state.selection_index - 1;
+            break;
+          case keys.down:
+            if (this.state.selection_index === this.props.typeahead.length - 1) {
+              break top;
+            }
+            new_selection_index = this.state.selection_index + 1;
+            break;  
+        }
+        this.setState({selection_index: new_selection_index});
+        break;
+    }
+
+    return swallowed_enter;
   }
 
   render() {

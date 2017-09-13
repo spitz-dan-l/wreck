@@ -2,29 +2,28 @@ import * as React from 'react';
 import {keys} from '../typescript/keyboard_tools';
 
 const InputWrapper = (props) => {
-  const {style, children, ...rest} = props;
-  const base_style = {
+  const {children, ...rest} = props;
+  const style = {
     position: 'relative',
-    minHeight: '5em'
+    minHeight: '8em',
+    marginTop: '1em'
   };
   return (
-    <div style={{...base_style, ...style}} {...rest} >
+    <div style={style} {...rest} >
       {children}
     </div>
   );
 }
 
 const InputDisplay = (props) => {
-  const {children, style, ...rest} = props;
-  const base_style = {
-    worWrap: 'break-word',
-    outline: 0,
-    display: 'inline-block',
-    boxShadow: 'none',
+  const {children} = props;
+  const style = {
+    wordWrap: 'break-word',
+    
   };
 
   return (
-    <span style={{...base_style, ...style}} {...rest}>
+    <span style={style}>
       {children}
     </span>
   );
@@ -102,11 +101,11 @@ export class Prompt extends React.Component<any, any> {
     };
     return (
         <InputWrapper onClick={() => this.focus()}>
-          <input onChange={this.handleChange} value={this.state.value} style={input_style} ref={i => this.input = i} />
-          <InputDisplay>
-            {this.props.children}
-          </InputDisplay>
-          <Cursor onClick={() => this.handleSubmit()} />
+            <input onChange={this.handleChange} value={this.state.value} style={input_style} ref={i => this.input = i} />
+            <InputDisplay>
+              {this.props.children}
+              <Cursor onClick={() => this.handleSubmit()} />
+            </InputDisplay>
         </InputWrapper>
     );
   }

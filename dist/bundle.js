@@ -580,24 +580,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(3);
 const InputWrapper = props => {
-    const { style, children } = props,
-          rest = __rest(props, ["style", "children"]);
-    const base_style = {
+    const { children } = props,
+          rest = __rest(props, ["children"]);
+    const style = {
         position: 'relative',
-        minHeight: '5em'
+        minHeight: '8em',
+        marginTop: '1em'
     };
-    return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
+    return React.createElement("div", Object.assign({ style: style }, rest), children);
 };
 const InputDisplay = props => {
-    const { children, style } = props,
-          rest = __rest(props, ["children", "style"]);
-    const base_style = {
-        worWrap: 'break-word',
-        outline: 0,
-        display: 'inline-block',
-        boxShadow: 'none'
+    const { children } = props;
+    const style = {
+        wordWrap: 'break-word'
     };
-    return React.createElement("span", Object.assign({ style: Object.assign({}, base_style, style) }, rest), children);
+    return React.createElement("span", { style: style }, children);
 };
 const Cursor = ({ onClick }) => React.createElement("span", { className: "blinking-cursor", onClick: onClick }, String.fromCharCode(9608));
 class Prompt extends React.Component {
@@ -659,7 +656,7 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children), React.createElement(Cursor, { onClick: () => this.handleSubmit() }));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, React.createElement(Cursor, { onClick: () => this.handleSubmit() })));
     }
 }
 exports.Prompt = Prompt;
@@ -683,8 +680,10 @@ class Terminal extends React.Component {
     constructor(props) {
         super(props);
         this.handleKeys = event => {
-            this.prompt.handleKeys(event);
-            this.typeahead_list.handleKeys(event);
+            let swallowed_enter = this.typeahead_list.handleKeys(event);
+            if (!swallowed_enter) {
+                this.prompt.handleKeys(event);
+            }
         };
         this.handleSubmit = () => {
             if (this.isCurrentlyValid()) {
@@ -763,8 +762,8 @@ class Terminal extends React.Component {
             if (i === 0) {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
-            return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser })), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-        }), React.createElement("p", null, React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser, with_cursor: true }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t })))));
+            return React.createElement("div", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+        }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -776,12 +775,6 @@ exports.Terminal = Terminal;
 "use strict";
 
 
-var __rest = this && this.__rest || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function") for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0) t[p[i]] = s[p[i]];
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const commands_1 = __webpack_require__(1);
@@ -800,10 +793,7 @@ function get_display_color(det) {
     }
 }
 exports.ParsedText = props => {
-    let { parser, children, with_cursor } = props;
-    if (with_cursor === undefined) {
-        with_cursor = false;
-    }
+    let { parser, children } = props;
     let style = {
         display: 'inline-block',
         whiteSpace: 'pre-wrap',
@@ -828,13 +818,12 @@ exports.ParsedText = props => {
     return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === parser.match.length - 1 ? children : '')));
 };
 exports.OutputText = props => {
-    const { message, style } = props,
-          rest = __rest(props, ["message", "style"]);
-    const base_style = {
+    const { message } = props;
+    const style = {
         display: 'inline-block',
         whiteSpace: 'pre-wrap'
     };
-    return React.createElement("div", Object.assign({ style: Object.assign({}, base_style, style) }, rest), message !== undefined ? message : '');
+    return React.createElement("div", { style: style }, message !== undefined ? message : '');
 };
 
 /***/ }),
@@ -865,30 +854,44 @@ class TypeaheadList extends React.Component {
         this.setState({ selection_index: index });
     }
     handleKeys(event) {
-        if (event.keyCode === keyboard_tools_1.keys.tab || event.keyCode === keyboard_tools_1.keys.right) {
-            event.preventDefault();
-            if (this.state.selection_index === -1 || this.props.typeahead.length === 0) {
-                return;
-            }
-            let selected = this.props.typeahead[this.state.selection_index];
-            if (commands_1.is_enabled(selected)) {
-                this.props.onTypeaheadSelection(commands_1.unwrap(selected));
-            } else {
-                return;
-            }
-        } else if (event.keyCode === keyboard_tools_1.keys.up) {
-            if (this.state.selection_index === -1) {
-                return;
-            } else {
-                this.setState({ selection_index: this.state.selection_index - 1 });
-            }
-        } else if (event.keyCode === keyboard_tools_1.keys.down) {
-            if (this.state.selection_index === this.props.typeahead.length - 1) {
-                return;
-            } else {
-                this.setState({ selection_index: this.state.selection_index + 1 });
-            }
+        let swallowed_enter = false;
+        top: switch (event.keyCode) {
+            case keyboard_tools_1.keys.enter:
+                if (this.state.selection_index === -1) {
+                    break;
+                }
+                swallowed_enter = true;
+            case keyboard_tools_1.keys.tab:
+                event.preventDefault();
+            case keyboard_tools_1.keys.right:
+                if (this.props.typeahead.length === 0) {
+                    break;
+                }
+                let selected = this.state.selection_index === -1 ? this.props.typeahead[0] : this.props.typeahead[this.state.selection_index];
+                if (commands_1.is_enabled(selected)) {
+                    this.props.onTypeaheadSelection(commands_1.unwrap(selected));
+                }
+                break;
+            default:
+                let new_selection_index;
+                switch (event.keyCode) {
+                    case keyboard_tools_1.keys.up:
+                        if (this.state.selection_index === -1) {
+                            break top;
+                        }
+                        new_selection_index = this.state.selection_index - 1;
+                        break;
+                    case keyboard_tools_1.keys.down:
+                        if (this.state.selection_index === this.props.typeahead.length - 1) {
+                            break top;
+                        }
+                        new_selection_index = this.state.selection_index + 1;
+                        break;
+                }
+                this.setState({ selection_index: new_selection_index });
+                break;
         }
+        return swallowed_enter;
     }
     render() {
         const { typeahead, indentation } = this.props;

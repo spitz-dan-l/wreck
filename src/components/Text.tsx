@@ -20,11 +20,7 @@ function get_display_color(det: DisplayEltType) {
 }
 
 export const ParsedText = (props) => {
-  let {parser, children, with_cursor} = props;
-
-  if (with_cursor === undefined) {
-    with_cursor = false;
-  }
+  let {parser, children} = props;
 
   let style: any = {
     display: 'inline-block',
@@ -67,14 +63,14 @@ export const ParsedText = (props) => {
 }
 
 export const OutputText = (props) => {
-  const {message, style, ...rest} = props;
-  const base_style = {
+  const {message} = props;
+  const style = {
     display: 'inline-block',
     whiteSpace: 'pre-wrap'
   }
 
   return (
-    <div style={{...base_style, ...style}} {...rest}>
+    <div style={style}>
       {message !== undefined ? message : ''}
     </div>
   );
