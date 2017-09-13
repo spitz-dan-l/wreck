@@ -945,7 +945,9 @@ class BirdWorld {
     get_commands() {
         let commands = [];
         commands.push(go_cmd);
-        commands.push(commands_1.set_enabled(mispronounce_cmd, this.is_in_heaven));
+        if (this.has_seen.get(true)) {
+            commands.push(commands_1.set_enabled(mispronounce_cmd, this.is_in_heaven));
+        }
         commands.push(be_cmd);
         return commands;
     }
@@ -966,7 +968,9 @@ const go_cmd = {
     execute: commands_1.with_early_stopping(function* (world, parser) {
         let dir_options = [];
         dir_options.push(commands_1.set_enabled(['up'], !world.is_in_heaven));
-        dir_options.push(commands_1.set_enabled(['down'], world.is_in_heaven));
+        if (world.has_seen.get(true)) {
+            dir_options.push(commands_1.set_enabled(['down'], world.is_in_heaven));
+        }
         let dir_word = yield parser.consume_option(dir_options);
         yield parser.done();
         let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
