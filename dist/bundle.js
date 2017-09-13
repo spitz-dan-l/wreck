@@ -329,7 +329,7 @@ function* consume_option_stepwise_eager(parser, options) {
                 return text_tools_1.untokenize(current_cmd);
             }
         }
-        let display_type = next_tokens.length === 1 ? DisplayEltType.keyword : DisplayEltType.option;
+        let display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
         let next_tok = yield parser.consume_option(next_tokens.map(text_tools_1.split_tokens), undefined, display_type);
         current_cmd.push(next_tok);
         pos++;
