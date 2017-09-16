@@ -145,6 +145,15 @@ export class CommandParser {
         return false;
     }
 
+    copy() {
+        let p = new CommandParser(this.command);
+        p.position = this.position;
+        p.validity = this.validity;
+        p.match = [...this.match];
+        p.tail_padding = this.tail_padding;
+        return p;
+    }
+
     subparser() {
         return new CommandParser(untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
     }
@@ -245,28 +254,101 @@ export class CommandParser {
     }
 }
 
-export function stop_early<R>(gen: IterableIterator<string | boolean>): R | undefined{
-    let value: any | boolean = undefined;
-    let done: boolean = false;
+export interface Coroutine<Y, S, R> {
+    next(i?: S): {done: true, value: R} | {done: false, value: Y}
+}
 
-    while (!done) {
-        let result = gen.next(value);
-        value = result.value;
-        done = result.done;
-        if (value === false) {
-            return;
+export function coroutine<Y, S, R>(f: () => IterableIterator<Y>): () => Coroutine<Y, S, R> {
+    return <() => Coroutine<Y, S, R>>f;
+}
+
+export function instrument_coroutine<Y, S, R>(gen_func: () => Coroutine<Y, S, R>, lift?: (y: Y) => S[]): () => IterableIterator<R> {
+    if (lift === undefined) {
+        lift = (y: Y) => {
+            if (y instanceof Array) {
+                return <any>y;
+            } else {
+                return <any>[y];
+            }
         }
     }
 
-    return <R>value;
+    function* inner() {
+        type Path = {values: S[], iter: IterableIterator<S>};
+
+        let frontier: Path[] = [{values: [undefined], iter: undefined}];
+        while (frontier.length > 0) {
+            let path = frontier.pop();
+
+            let p: S[];
+            if (path.iter === undefined) {
+                p = path.values;
+            } else {
+                let n = path.iter.next();
+                if (n.done === false) {
+                    p = [...path.values, n.value];
+                    frontier.push(path);
+                } else {
+                    continue;
+                }
+            }
+
+            let gen = gen_func();
+
+            for (let inp of p.slice(0, -1)) {
+                gen.next(inp);
+            }
+
+            let branches_result = gen.next(p[p.length - 1])
+            if (branches_result.done === true) {
+                yield branches_result.value;
+            } else {
+                let branches = lift(branches_result.value);
+                let branch_iter = branches.values();
+                
+                frontier.push({values: p, iter: branch_iter})
+            }
+        }
+    }
+    return inner;
+//    return () => Array.from(inner());
 }
 
-export function with_early_stopping<R>(gen_func: (...any) => IterableIterator<any>): (...any) => R {
-    function inner(...args) {
-        let gen = gen_func(...args);
-        return <R>stop_early(gen);
+export function with_early_stopping<Y, R>(gen: () => Coroutine<Y | false, Y, R>): R | undefined {
+    let wrapped = instrument_coroutine<Y | false, Y, R>(
+        gen,
+        (y) => (y === false ? [] : [y])
+    );
+
+    let result = Array.from(wrapped());
+    if (result.length === 0) {
+        return;
     }
-    return <(...any) => R>inner;
+    return result[0];
+}
+
+export type ParsingCoroutine<T extends WorldType<T>> = Coroutine<string | boolean, string, CommandResult<T>>
+
+export function parse_with<T extends WorldType<T>>(f: (world: T, parser: CommandParser) => ParsingCoroutine<T>) {
+    function inner(world: T, parser: CommandParser) {
+        let new_p;
+        let new_f = () => {
+            new_p = parser.subparser();
+            return f(world, new_p);
+        }
+        let wrapped = instrument_coroutine<string| boolean, string | boolean, CommandResult<T>>(
+            new_f,
+            (y) => (y === false ? [] : [y])
+        );
+        
+        for (let res of wrapped()) {
+            parser.integrate(new_p);
+            return res
+        }
+        parser.integrate(new_p);
+        return;
+    }
+    return inner;
 }
 
 export function* consume_option_stepwise_eager(parser: CommandParser, options: string[][]) {

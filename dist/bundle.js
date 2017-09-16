@@ -201,6 +201,14 @@ class CommandParser {
         });
         return false;
     }
+    copy() {
+        let p = new CommandParser(this.command);
+        p.position = this.position;
+        p.validity = this.validity;
+        p.match = [...this.match];
+        p.tail_padding = this.tail_padding;
+        return p;
+    }
     subparser() {
         return new CommandParser(text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
     }
@@ -288,28 +296,81 @@ class CommandParser {
     }
 }
 exports.CommandParser = CommandParser;
-function stop_early(gen) {
-    let value = undefined;
-    let done = false;
-    while (!done) {
-        let result = gen.next(value);
-        value = result.value;
-        done = result.done;
-        if (value === false) {
-            return;
+function coroutine(f) {
+    return f;
+}
+exports.coroutine = coroutine;
+function instrument_coroutine(gen_func, lift) {
+    if (lift === undefined) {
+        lift = y => {
+            if (y instanceof Array) {
+                return y;
+            } else {
+                return [y];
+            }
+        };
+    }
+    function* inner() {
+        let frontier = [{ values: [undefined], iter: undefined }];
+        while (frontier.length > 0) {
+            let path = frontier.pop();
+            let p;
+            if (path.iter === undefined) {
+                p = path.values;
+            } else {
+                let n = path.iter.next();
+                if (n.done === false) {
+                    p = [...path.values, n.value];
+                    frontier.push(path);
+                } else {
+                    continue;
+                }
+            }
+            let gen = gen_func();
+            for (let inp of p.slice(0, -1)) {
+                gen.next(inp);
+            }
+            let branches_result = gen.next(p[p.length - 1]);
+            if (branches_result.done === true) {
+                yield branches_result.value;
+            } else {
+                let branches = lift(branches_result.value);
+                let branch_iter = branches.values();
+                frontier.push({ values: p, iter: branch_iter });
+            }
         }
     }
-    return value;
+    return inner;
+    //    return () => Array.from(inner());
 }
-exports.stop_early = stop_early;
-function with_early_stopping(gen_func) {
-    function inner(...args) {
-        let gen = gen_func(...args);
-        return stop_early(gen);
+exports.instrument_coroutine = instrument_coroutine;
+function with_early_stopping(gen) {
+    let wrapped = instrument_coroutine(gen, y => y === false ? [] : [y]);
+    let result = Array.from(wrapped());
+    if (result.length === 0) {
+        return;
+    }
+    return result[0];
+}
+exports.with_early_stopping = with_early_stopping;
+function parse_with(f) {
+    function inner(world, parser) {
+        let new_p;
+        let new_f = () => {
+            new_p = parser.subparser();
+            return f(world, new_p);
+        };
+        let wrapped = instrument_coroutine(new_f, y => y === false ? [] : [y]);
+        for (let res of wrapped()) {
+            parser.integrate(new_p);
+            return res;
+        }
+        parser.integrate(new_p);
+        return;
     }
     return inner;
 }
-exports.with_early_stopping = with_early_stopping;
+exports.parse_with = parse_with;
 function* consume_option_stepwise_eager(parser, options) {
     let current_cmd = [];
     let pos = 0;
@@ -752,7 +813,6 @@ class Terminal extends React.Component {
         this.focus();
     }
     componentDidUpdate() {
-        console.log('hoyoyoyoyo');
         this.focus();
         this.scrollToPrompt();
     }
@@ -977,9 +1037,12 @@ class BirdWorld {
     }
 }
 exports.BirdWorld = BirdWorld;
+function bird_world_coroutine(f) {
+    return commands_1.coroutine(f);
+}
 const go_cmd = {
     command_name: ['go'],
-    execute: commands_1.with_early_stopping(function* (world, parser) {
+    execute: commands_1.parse_with((world, parser) => bird_world_coroutine(function* () {
         let dir_options = [];
         dir_options.push(commands_1.set_enabled(['up'], !world.is_in_heaven));
         if (world.has_seen.get(true)) {
@@ -990,28 +1053,28 @@ const go_cmd = {
         let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
         let message = text_tools_1.capitalize(dir_word) + ' you go.';
         return { world: new_world, message: message };
-    })
+    })())
 };
 const mispronounce_cmd = {
     command_name: ['mispronounce'],
-    execute: commands_1.with_early_stopping(function* (world, parser) {
+    execute: commands_1.parse_with((world, parser) => bird_world_coroutine(function* () {
         let specifier_word = yield parser.consume_option([["zarathustra's"]]);
         yield parser.consume_filler(['name']);
         yield parser.done();
         let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
         let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
         return { world, message };
-    })
+    })())
 };
 let roles = ['the One Who Gazes Ahead', 'the One Who Gazes Back', 'the One Who Gazes Up', 'the One Who Gazes Down', 'the One Whose Palms Are Open', 'the One Whose Palms Are Closed', 'the One Who Is Strong', 'the One Who Is Weak', 'the One Who Seduces', 'the One Who Is Seduced'];
 let qualities = ['outwardly curious', 'introspective', 'transcendent', 'sorrowful', 'receptive', 'adversarial', 'confident', 'impressionable', 'predatory', 'vulnerable'];
 const be_cmd = {
     command_name: ['be'],
-    execute: commands_1.with_early_stopping(function* (world, parser) {
+    execute: commands_1.parse_with((world, parser) => bird_world_coroutine(function* () {
         let role_choice = yield* commands_1.consume_option_stepwise_eager(parser, roles.map(text_tools_1.split_tokens));
         yield parser.done();
         return { world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.` };
-    })
+    })())
 };
 
 /***/ }),

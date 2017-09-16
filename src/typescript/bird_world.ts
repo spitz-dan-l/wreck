@@ -2,6 +2,9 @@ import {
     Token,
     CommandResult,
     Disablable,
+    Coroutine,
+    coroutine,
+    parse_with,
     set_enabled,
     CommandParser,
     Command,
@@ -73,17 +76,21 @@ export class BirdWorld implements WorldType<BirdWorld>{
     }
 }
 
+function bird_world_coroutine(f) {
+    return coroutine<string | boolean, string, CommandResult<BirdWorld>>(f);
+}
+
 const go_cmd: Command<BirdWorld> = {
     command_name: ['go'],
-    execute: with_early_stopping(
-        function*(world: BirdWorld, parser: CommandParser){
+    execute: parse_with((world: BirdWorld, parser: CommandParser) =>
+        bird_world_coroutine(function* () {
             let dir_options: Disablable<Token[]>[] = [];
             dir_options.push(set_enabled(['up'], !world.is_in_heaven));
             
             if (world.has_seen.get(true)) {
                 dir_options.push(set_enabled(['down'], world.is_in_heaven));
             }
-            
+
             let dir_word = yield parser.consume_option(dir_options);
             yield parser.done();
 
@@ -91,14 +98,14 @@ const go_cmd: Command<BirdWorld> = {
             let message = capitalize(dir_word) + ' you go.';
 
             return {world: new_world, message: message};
-        }
+        })()
     )
 }
 
 const mispronounce_cmd: Command<BirdWorld> = {
     command_name: ['mispronounce'],
-    execute: with_early_stopping(
-        function*(world: BirdWorld, parser: CommandParser) {
+    execute: parse_with((world: BirdWorld, parser: CommandParser) =>
+        bird_world_coroutine(function* () {
             let specifier_word = yield parser.consume_option([["zarathustra's"]]);
             
             yield parser.consume_filler(['name']);
@@ -116,7 +123,7 @@ const mispronounce_cmd: Command<BirdWorld> = {
             let message = `"${random_choice(utterance_options)}," you say.`;
 
             return {world, message};
-        }
+        })()
     )
 }
 
@@ -148,12 +155,12 @@ let qualities: string[] = [
 
 const be_cmd: Command<BirdWorld> = {
     command_name: ['be'],
-    execute: with_early_stopping<CommandResult<BirdWorld>>(
-        function*(world: BirdWorld, parser: CommandParser) {
+    execute: parse_with((world: BirdWorld, parser: CommandParser) =>
+        bird_world_coroutine(function*() {
             let role_choice = yield* consume_option_stepwise_eager(parser, roles.map(split_tokens));
             yield parser.done();
 
             return {world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.`};
-        }
+        })()
     )
 }
