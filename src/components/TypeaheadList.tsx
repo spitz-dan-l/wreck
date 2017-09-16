@@ -47,7 +47,8 @@ export class TypeaheadList extends React.Component<any, any> {
         }
         break;
       
-      default:
+      case keys.up:
+      case keys.down:
         let new_selection_index;
         switch (event.keyCode) {
           case keys.up:

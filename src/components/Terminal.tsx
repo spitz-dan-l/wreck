@@ -26,11 +26,11 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
   }
 
   componentDidMount() {
-    this.focusPrompt();
+    this.focus();
   }
 
   componentDidUpdate() {
-    this.focusPrompt();
+    this.focus();
     this.scrollToPrompt();
   }
 
@@ -90,8 +90,12 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
     return get_indenting_whitespace(parser.match[parser.match.length - 1].match)
   }
 
-  focusPrompt = () => {
+  focus = () => {
     this.prompt.focus();
+  }
+
+  blur = () => {
+    this.prompt.blur();
   }
 
   scrollToPrompt = () => {
@@ -117,7 +121,7 @@ export class Terminal extends React.Component<any, {world_driver: WorldDriver<Bi
       padding: '1em'
     };
     return (
-      <div style={container_style} onClick={this.focusPrompt} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
+      <div style={container_style} tabIndex={-1} onFocus={this.focus} onBlur={this.blur} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
         {this.state.world_driver.history.map(({parser, message}, i) => {
           if (i === 0) {
             return (

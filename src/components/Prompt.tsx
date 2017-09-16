@@ -29,14 +29,21 @@ const InputDisplay = (props) => {
   );
 }
 
-const Cursor = ({onClick}) => (<span className="blinking-cursor" onClick={onClick}>
-  {String.fromCharCode(9608)}
-</span>);
+const Cursor = ({onClick}) => {
+  let style: any = {
+    position: 'fixed'
+  };
+  return (
+    <span className="blinking-cursor" style={style} onClick={onClick}>
+      {String.fromCharCode(9608)}
+    </span>
+  );
+};
 
 export class Prompt extends React.Component<any, any> {
   input: any;
 
-  state = { value: '' };
+  state = { value: '', is_focused: false };
 
   handleSubmit = () => {
     let success = this.props.onSubmit();
@@ -61,6 +68,11 @@ export class Prompt extends React.Component<any, any> {
 
   focus = () => {
     this.input.focus();
+    this.setState({is_focused: true});
+  }
+
+  blur = () => {
+    this.setState({is_focused: false});
   }
 
   setCursor = (node,pos) => {
@@ -104,7 +116,11 @@ export class Prompt extends React.Component<any, any> {
             <input onChange={this.handleChange} value={this.state.value} style={input_style} ref={i => this.input = i} />
             <InputDisplay>
               {this.props.children}
-              <Cursor onClick={() => this.handleSubmit()} />
+              {  
+                this.state.is_focused ?
+                  ( <Cursor onClick={() => this.handleSubmit()} /> ) :
+                  ''
+              }
             </InputDisplay>
         </InputWrapper>
     );

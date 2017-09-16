@@ -596,11 +596,16 @@ const InputDisplay = props => {
     };
     return React.createElement("span", { style: style }, children);
 };
-const Cursor = ({ onClick }) => React.createElement("span", { className: "blinking-cursor", onClick: onClick }, String.fromCharCode(9608));
+const Cursor = ({ onClick }) => {
+    let style = {
+        position: 'fixed'
+    };
+    return React.createElement("span", { className: "blinking-cursor", style: style, onClick: onClick }, String.fromCharCode(9608));
+};
 class Prompt extends React.Component {
     constructor() {
         super(...arguments);
-        this.state = { value: '' };
+        this.state = { value: '', is_focused: false };
         this.handleSubmit = () => {
             let success = this.props.onSubmit();
             if (success) {
@@ -621,6 +626,10 @@ class Prompt extends React.Component {
         };
         this.focus = () => {
             this.input.focus();
+            this.setState({ is_focused: true });
+        };
+        this.blur = () => {
+            this.setState({ is_focused: false });
         };
         this.setCursor = (node, pos) => {
             node = typeof node === "string" ? document.getElementById(node) : node;
@@ -656,7 +665,7 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, React.createElement(Cursor, { onClick: () => this.handleSubmit() })));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, this.state.is_focused ? React.createElement(Cursor, { onClick: () => this.handleSubmit() }) : ''));
     }
 }
 exports.Prompt = Prompt;
@@ -726,8 +735,11 @@ class Terminal extends React.Component {
             let parser = this.currentParser();
             return text_tools_1.get_indenting_whitespace(parser.match[parser.match.length - 1].match);
         };
-        this.focusPrompt = () => {
+        this.focus = () => {
             this.prompt.focus();
+        };
+        this.blur = () => {
+            this.prompt.blur();
         };
         this.scrollToPrompt = () => {
             if (this.contentContainer.scrollHeight - this.contentContainer.scrollTop > this.contentContainer.clientHeight) {
@@ -737,10 +749,11 @@ class Terminal extends React.Component {
         this.state = { world_driver: this.props.world_driver };
     }
     componentDidMount() {
-        this.focusPrompt();
+        this.focus();
     }
     componentDidUpdate() {
-        this.focusPrompt();
+        console.log('hoyoyoyoyo');
+        this.focus();
         this.scrollToPrompt();
     }
     render() {
@@ -758,7 +771,7 @@ class Terminal extends React.Component {
             display: 'block',
             padding: '1em'
         };
-        return React.createElement("div", { style: container_style, onClick: this.focusPrompt, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
+        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
             if (i === 0) {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
@@ -872,7 +885,8 @@ class TypeaheadList extends React.Component {
                     this.props.onTypeaheadSelection(commands_1.unwrap(selected));
                 }
                 break;
-            default:
+            case keyboard_tools_1.keys.up:
+            case keyboard_tools_1.keys.down:
                 let new_selection_index;
                 switch (event.keyCode) {
                     case keyboard_tools_1.keys.up:

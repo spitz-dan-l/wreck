@@ -6,8 +6,6 @@ TODOs
     
     - niney remake?
 
-- fix layout bug where input text shifts upwards slightly after submitting
-
 - enhance generator parser functions to support forking subprocessors with resolving ambiguity (yikes)
 
 - Clarify ideas about compound/multistep scenarios w history erasure
