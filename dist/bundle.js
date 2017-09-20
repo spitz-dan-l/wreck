@@ -63,17 +63,11 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 12);
+/******/ 	return __webpack_require__(__webpack_require__.s = 11);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports) {
-
-module.exports = React;
-
-/***/ }),
-/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -128,8 +122,6 @@ function is_enabled(x) {
     }
 }
 exports.is_enabled = is_enabled;
-// let x: Disablable<number> = [123];
-// let y = {...x, enabled: true}
 class CommandParser {
     constructor(command) {
         this.position = 0;
@@ -311,6 +303,8 @@ function with_early_stopping(gen_func) {
 }
 exports.with_early_stopping = with_early_stopping;
 function* consume_option_stepwise_eager(parser, options) {
+    // assumption: option tokens contain no spaces
+    // assumption: no option is a prefix of any other option
     let current_cmd = [];
     let pos = 0;
     while (true) {
@@ -402,6 +396,12 @@ class WorldDriver {
     }
 }
 exports.WorldDriver = WorldDriver;
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports) {
+
+module.exports = React;
 
 /***/ }),
 /* 2 */
@@ -538,33 +538,205 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const Terminal_1 = __webpack_require__(7);
-// import {Item} from "../typescript/datatypes";
-// import * as Items from "../typescript/items";
-// import * as World from "../typescript/world";
-const commands_1 = __webpack_require__(1);
-const bird_world_1 = __webpack_require__(10);
-class Game extends React.Component {
-    componentWillMount() {
-        // let contents: Item[] = [new Items.Codex(), new Items.Pinecone(), new Items.CityKey()];
-        // let world = new World.SingleBoxWorld({box: new World.Box({contents: contents})});
-        this.world_driver = new commands_1.WorldDriver(new bird_world_1.BirdWorld({}));
+const React = __webpack_require__(1);
+const Prompt_1 = __webpack_require__(7);
+const Text_1 = __webpack_require__(8);
+const TypeaheadList_1 = __webpack_require__(9);
+const text_tools_1 = __webpack_require__(2);
+const commands_1 = __webpack_require__(0);
+const Carat = () => React.createElement("span", null, ">\u00A0");
+class Terminal extends React.Component {
+    constructor(props) {
+        super(props);
+        this.handleKeys = event => {
+            let swallowed_enter = this.typeahead_list.handleKeys(event);
+            if (!swallowed_enter) {
+                this.prompt.handleKeys(event);
+            }
+        };
+        this.handleSubmit = () => {
+            if (this.isCurrentlyValid()) {
+                const output = this.state.world_driver.commit();
+                this.setState({ world_driver: this.state.world_driver });
+                return true;
+            }
+            return false;
+        };
+        this.isCurrentlyValid = () => {
+            return this.state.world_driver.current_state.parser.validity === commands_1.MatchValidity.valid;
+        };
+        this.handlePromptChange = input => {
+            let result = this.state.world_driver.apply_command(input, false);
+            this.setState({ world_driver: this.state.world_driver });
+        };
+        this.handleTypeaheadSelection = option => {
+            let matched_tokens = this.currentParser().match.map(elt => elt.match);
+            let current_indentation = this.currentIndentation();
+            if (current_indentation === '' && matched_tokens.length > 1) {
+                current_indentation = ' ';
+            }
+            let new_last_token = current_indentation + option;
+            matched_tokens[matched_tokens.length - 1] = new_last_token;
+            let new_command = ''.concat(...matched_tokens) + ' ';
+            this.handlePromptChange(new_command);
+            this.prompt.setState({ value: new_command });
+        };
+        this.currentParser = () => this.state.world_driver.current_state.parser;
+        this.currentTypeahead = () => {
+            let parser = this.currentParser();
+            let last_match = parser.match[parser.match.length - 1];
+            let typeahead = last_match.typeahead;
+            if (typeahead === undefined || parser.match.length > 1 && last_match.match === '') {
+                return [];
+            }
+            return typeahead;
+        };
+        this.currentIndentation = () => {
+            let parser = this.currentParser();
+            return text_tools_1.get_indenting_whitespace(parser.match[parser.match.length - 1].match);
+        };
+        this.focus = () => {
+            this.prompt.focus();
+        };
+        this.blur = () => {
+            this.prompt.blur();
+        };
+        this.scrollToPrompt = () => {
+            if (this.contentContainer.scrollHeight - this.contentContainer.scrollTop > this.contentContainer.clientHeight) {
+                this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
+            }
+        };
+        this.state = { world_driver: this.props.world_driver };
+    }
+    componentDidMount() {
+        this.focus();
+    }
+    componentDidUpdate() {
+        this.focus();
+        this.scrollToPrompt();
     }
     render() {
-        return React.createElement(Terminal_1.Terminal, { world_driver: this.world_driver });
+        const container_style = {
+            height: '100%',
+            width: '100%',
+            overflowY: 'scroll',
+            whiteSpace: 'pre-wrap',
+            fontFamily: "'Fira Mono'",
+            fontSize: '1.5em',
+            color: 'ivory',
+            background: 'black',
+            radius: 3,
+            position: 'absolute',
+            display: 'block',
+            padding: '1em'
+        };
+        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
+            if (i === 0) {
+                return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+            }
+            return React.createElement("div", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+        }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
-exports.Game = Game;
+exports.Terminal = Terminal;
 
 /***/ }),
 /* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const commands_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(10);
+const text_tools_1 = __webpack_require__(2);
+class BirdWorld {
+    constructor({ is_in_heaven, has_seen }) {
+        if (is_in_heaven === undefined) {
+            is_in_heaven = false;
+        }
+        if (has_seen === undefined) {
+            has_seen = new datatypes_1.FuckDict([[false, false], [true, false]]);
+        }
+        this.is_in_heaven = is_in_heaven;
+        this.has_seen = has_seen;
+    }
+    update({ is_in_heaven, has_seen }) {
+        if (is_in_heaven === undefined) {
+            is_in_heaven = this.is_in_heaven;
+        }
+        if (has_seen === undefined) {
+            has_seen = this.has_seen;
+        }
+        return new BirdWorld({ is_in_heaven, has_seen });
+    }
+    get_commands() {
+        let commands = [];
+        commands.push(go_cmd);
+        if (this.has_seen.get(true)) {
+            commands.push(commands_1.set_enabled(mispronounce_cmd, this.is_in_heaven));
+        }
+        commands.push(be_cmd);
+        return commands;
+    }
+    interstitial_update() {
+        if (!this.has_seen.get(this.is_in_heaven)) {
+            let new_has_seen = this.has_seen.copy();
+            new_has_seen.set(this.is_in_heaven, true);
+            return {
+                world: this.update({ has_seen: new_has_seen }),
+                message: this.is_in_heaven ? "You're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly." : "You're standing around on the earth."
+            };
+        }
+    }
+}
+exports.BirdWorld = BirdWorld;
+const go_cmd = {
+    command_name: ['go'],
+    execute: commands_1.with_early_stopping(function* (world, parser) {
+        let dir_options = [];
+        dir_options.push(commands_1.set_enabled(['up'], !world.is_in_heaven));
+        if (world.has_seen.get(true)) {
+            dir_options.push(commands_1.set_enabled(['down'], world.is_in_heaven));
+        }
+        let dir_word = yield parser.consume_option(dir_options);
+        yield parser.done();
+        let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
+        let message = text_tools_1.capitalize(dir_word) + ' you go.';
+        return { world: new_world, message: message };
+    })
+};
+const mispronounce_cmd = {
+    command_name: ['mispronounce'],
+    execute: commands_1.with_early_stopping(function* (world, parser) {
+        let specifier_word = yield parser.consume_option([["zarathustra's"]]);
+        yield parser.consume_filler(['name']);
+        yield parser.done();
+        let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
+        let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
+        return { world, message };
+    })
+};
+let roles = ['the One Who Gazes Ahead', 'the One Who Gazes Back', 'the One Who Gazes Up', 'the One Who Gazes Down', 'the One Whose Palms Are Open', 'the One Whose Palms Are Closed', 'the One Who Is Strong', 'the One Who Is Weak', 'the One Who Seduces', 'the One Who Is Seduced'];
+let qualities = ['outwardly curious', 'introspective', 'transcendent', 'sorrowful', 'receptive', 'adversarial', 'confident', 'impressionable', 'predatory', 'vulnerable'];
+const be_cmd = {
+    command_name: ['be'],
+    execute: commands_1.with_early_stopping(function* (world, parser) {
+        let role_choice = yield* commands_1.consume_option_stepwise_eager(parser, roles.map(text_tools_1.split_tokens));
+        yield parser.done();
+        return { world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.` };
+    })
+};
+
+/***/ }),
+/* 6 */
 /***/ (function(module, exports) {
 
 module.exports = ReactDOM;
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -577,7 +749,7 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(1);
 const keyboard_tools_1 = __webpack_require__(3);
 const InputWrapper = props => {
     const { children } = props,
@@ -671,117 +843,6 @@ class Prompt extends React.Component {
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const Prompt_1 = __webpack_require__(6);
-const Text_1 = __webpack_require__(8);
-const TypeaheadList_1 = __webpack_require__(9);
-const text_tools_1 = __webpack_require__(2);
-const commands_1 = __webpack_require__(1);
-const Carat = () => React.createElement("span", null, ">\u00A0");
-class Terminal extends React.Component {
-    constructor(props) {
-        super(props);
-        this.handleKeys = event => {
-            let swallowed_enter = this.typeahead_list.handleKeys(event);
-            if (!swallowed_enter) {
-                this.prompt.handleKeys(event);
-            }
-        };
-        this.handleSubmit = () => {
-            if (this.isCurrentlyValid()) {
-                const output = this.state.world_driver.commit();
-                this.setState({ world_driver: this.state.world_driver });
-                return true;
-            }
-            return false;
-        };
-        this.isCurrentlyValid = () => {
-            return this.state.world_driver.current_state.parser.validity === commands_1.MatchValidity.valid;
-        };
-        this.handlePromptChange = input => {
-            let result = this.state.world_driver.apply_command(input, false);
-            this.setState({ world_driver: this.state.world_driver });
-        };
-        this.handleTypeaheadSelection = option => {
-            let matched_tokens = this.currentParser().match.map(elt => elt.match);
-            let current_indentation = this.currentIndentation();
-            if (current_indentation === '' && matched_tokens.length > 1) {
-                current_indentation = ' ';
-            }
-            let new_last_token = current_indentation + option;
-            matched_tokens[matched_tokens.length - 1] = new_last_token;
-            let new_command = ''.concat(...matched_tokens) + ' ';
-            this.handlePromptChange(new_command);
-            this.prompt.setState({ value: new_command });
-        };
-        this.currentParser = () => this.state.world_driver.current_state.parser;
-        this.currentTypeahead = () => {
-            let parser = this.currentParser();
-            let last_match = parser.match[parser.match.length - 1];
-            let typeahead = last_match.typeahead;
-            if (typeahead === undefined || parser.match.length > 1 && last_match.match === '') {
-                return [];
-            }
-            return typeahead;
-        };
-        this.currentIndentation = () => {
-            let parser = this.currentParser();
-            return text_tools_1.get_indenting_whitespace(parser.match[parser.match.length - 1].match);
-        };
-        this.focus = () => {
-            this.prompt.focus();
-        };
-        this.blur = () => {
-            this.prompt.blur();
-        };
-        this.scrollToPrompt = () => {
-            if (this.contentContainer.scrollHeight - this.contentContainer.scrollTop > this.contentContainer.clientHeight) {
-                this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
-            }
-        };
-        this.state = { world_driver: this.props.world_driver };
-    }
-    componentDidMount() {
-        this.focus();
-    }
-    componentDidUpdate() {
-        console.log('hoyoyoyoyo');
-        this.focus();
-        this.scrollToPrompt();
-    }
-    render() {
-        const container_style = {
-            height: '100%',
-            width: '100%',
-            overflowY: 'scroll',
-            whiteSpace: 'pre-wrap',
-            fontFamily: "'Fira Mono'",
-            fontSize: '1.5em',
-            color: 'ivory',
-            background: 'black',
-            radius: 3,
-            position: 'absolute',
-            display: 'block',
-            padding: '1em'
-        };
-        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
-            if (i === 0) {
-                return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-            }
-            return React.createElement("div", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
-        }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
-    }
-}
-exports.Terminal = Terminal;
-
-/***/ }),
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -789,8 +850,8 @@ exports.Terminal = Terminal;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const commands_1 = __webpack_require__(1);
+const React = __webpack_require__(1);
+const commands_1 = __webpack_require__(0);
 function get_display_color(det) {
     switch (det) {
         case commands_1.DisplayEltType.keyword:
@@ -847,9 +908,9 @@ exports.OutputText = props => {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(1);
 const keyboard_tools_1 = __webpack_require__(3);
-const commands_1 = __webpack_require__(1);
+const commands_1 = __webpack_require__(0);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -927,95 +988,6 @@ exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
 /* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const commands_1 = __webpack_require__(1);
-const datatypes_1 = __webpack_require__(11);
-const text_tools_1 = __webpack_require__(2);
-class BirdWorld {
-    constructor({ is_in_heaven, has_seen }) {
-        if (is_in_heaven === undefined) {
-            is_in_heaven = false;
-        }
-        if (has_seen === undefined) {
-            has_seen = new datatypes_1.FuckDict([[false, false], [true, false]]);
-        }
-        this.is_in_heaven = is_in_heaven;
-        this.has_seen = has_seen;
-    }
-    update({ is_in_heaven, has_seen }) {
-        if (is_in_heaven === undefined) {
-            is_in_heaven = this.is_in_heaven;
-        }
-        if (has_seen === undefined) {
-            has_seen = this.has_seen;
-        }
-        return new BirdWorld({ is_in_heaven, has_seen });
-    }
-    get_commands() {
-        let commands = [];
-        commands.push(go_cmd);
-        if (this.has_seen.get(true)) {
-            commands.push(commands_1.set_enabled(mispronounce_cmd, this.is_in_heaven));
-        }
-        commands.push(be_cmd);
-        return commands;
-    }
-    interstitial_update() {
-        if (!this.has_seen.get(this.is_in_heaven)) {
-            let new_has_seen = this.has_seen.copy();
-            new_has_seen.set(this.is_in_heaven, true);
-            return {
-                world: this.update({ has_seen: new_has_seen }),
-                message: this.is_in_heaven ? "You're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly." : "You're standing around on the earth."
-            };
-        }
-    }
-}
-exports.BirdWorld = BirdWorld;
-const go_cmd = {
-    command_name: ['go'],
-    execute: commands_1.with_early_stopping(function* (world, parser) {
-        let dir_options = [];
-        dir_options.push(commands_1.set_enabled(['up'], !world.is_in_heaven));
-        if (world.has_seen.get(true)) {
-            dir_options.push(commands_1.set_enabled(['down'], world.is_in_heaven));
-        }
-        let dir_word = yield parser.consume_option(dir_options);
-        yield parser.done();
-        let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
-        let message = text_tools_1.capitalize(dir_word) + ' you go.';
-        return { world: new_world, message: message };
-    })
-};
-const mispronounce_cmd = {
-    command_name: ['mispronounce'],
-    execute: commands_1.with_early_stopping(function* (world, parser) {
-        let specifier_word = yield parser.consume_option([["zarathustra's"]]);
-        yield parser.consume_filler(['name']);
-        yield parser.done();
-        let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
-        let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
-        return { world, message };
-    })
-};
-let roles = ['the One Who Gazes Ahead', 'the One Who Gazes Back', 'the One Who Gazes Up', 'the One Who Gazes Down', 'the One Whose Palms Are Open', 'the One Whose Palms Are Closed', 'the One Who Is Strong', 'the One Who Is Weak', 'the One Who Seduces', 'the One Who Is Seduced'];
-let qualities = ['outwardly curious', 'introspective', 'transcendent', 'sorrowful', 'receptive', 'adversarial', 'confident', 'impressionable', 'predatory', 'vulnerable'];
-const be_cmd = {
-    command_name: ['be'],
-    execute: commands_1.with_early_stopping(function* (world, parser) {
-        let role_choice = yield* commands_1.consume_option_stepwise_eager(parser, roles.map(text_tools_1.split_tokens));
-        yield parser.done();
-        return { world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.` };
-    })
-};
-
-/***/ }),
-/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1194,17 +1166,20 @@ function counter_order(counter, include_zero = false) {
 exports.counter_order = counter_order;
 
 /***/ }),
-/* 12 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const ReactDom = __webpack_require__(5);
-const Game_1 = __webpack_require__(4);
-ReactDom.render(React.createElement(Game_1.Game, null), document.getElementById('game'));
+const React = __webpack_require__(1);
+const ReactDom = __webpack_require__(6);
+const Terminal_1 = __webpack_require__(4);
+const commands_1 = __webpack_require__(0);
+const bird_world_1 = __webpack_require__(5);
+let world_driver = new commands_1.WorldDriver(new bird_world_1.BirdWorld({}));
+ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ })
 /******/ ]);

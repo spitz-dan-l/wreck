@@ -1,6 +1,12 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
 
-import {Game} from "../components/Game";
+import {Terminal} from "../components/Terminal";
 
-ReactDom.render(<Game />, document.getElementById('game'));
+import {WorldDriver} from "../typescript/commands";
+
+import {BirdWorld} from '../typescript/bird_world';
+
+let world_driver = new WorldDriver(new BirdWorld({}))
+
+ReactDom.render(<Terminal world_driver={world_driver} />, document.getElementById('terminal'));

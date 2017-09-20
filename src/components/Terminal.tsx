@@ -5,9 +5,7 @@ import {ParsedText, OutputText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
-import {BirdWorld} from '../typescript/bird_world';
-
-import {WorldDriver, MatchValidity} from "../typescript/commands";
+import {WorldType, WorldDriver, MatchValidity} from "../typescript/commands";
 
 const Carat = () => (
   <span>
@@ -15,7 +13,7 @@ const Carat = () => (
   </span>
 );
 
-export class Terminal extends React.Component<any, {world_driver: WorldDriver<BirdWorld>}> {
+export class Terminal<T extends WorldType<T>> extends React.Component<any, {world_driver: WorldDriver<T>}> {
   contentContainer: any;
   prompt: any;
   typeahead_list: any;
