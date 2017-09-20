@@ -9,8 +9,8 @@ import {
     CommandParser,
     Command,
     WorldType,
-    with_early_stopping,
-    consume_option_stepwise_eager
+    consume_option_stepwise_eager,
+    consume_option_stepwise_eager2
 } from './commands'
 
 import {
@@ -137,7 +137,7 @@ let roles: string[] = [
     'the One Who Is Strong',
     'the One Who Is Weak',
     'the One Who Seduces',
-    'the One Who Is Seduced'
+    'the One Who Is Seduced',
 ];
 
 let qualities: string[] = [
@@ -157,9 +157,9 @@ const be_cmd: Command<BirdWorld> = {
     command_name: ['be'],
     execute: parse_with((world: BirdWorld, parser: CommandParser) =>
         bird_world_coroutine(function*() {
-            let role_choice = yield* consume_option_stepwise_eager(parser, roles.map(split_tokens));
+            let role_choice = yield* consume_option_stepwise_eager2(parser, roles.map(split_tokens));
             yield parser.done();
-
+            debugger;
             return {world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.`};
         })()
     )

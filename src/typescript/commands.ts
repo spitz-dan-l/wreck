@@ -145,15 +145,6 @@ export class CommandParser {
         return false;
     }
 
-    copy() {
-        let p = new CommandParser(this.command);
-        p.position = this.position;
-        p.validity = this.validity;
-        p.match = [...this.match];
-        p.tail_padding = this.tail_padding;
-        return p;
-    }
-
     subparser() {
         return new CommandParser(untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
     }
@@ -255,14 +246,24 @@ export class CommandParser {
 }
 
 export interface Coroutine<Y, S, R> {
-    next(i?: S): {done: true, value: R} | {done: false, value: Y}
+    next(i?: S): {done: true, value: R} | {done: false, value: Y};
 }
 
+// casts a generator function to a coroutine function
 export function coroutine<Y, S, R>(f: () => IterableIterator<Y>): () => Coroutine<Y, S, R> {
     return <() => Coroutine<Y, S, R>>f;
 }
 
-export function instrument_coroutine<Y, S, R>(gen_func: () => Coroutine<Y, S, R>, lift?: (y: Y) => S[]): () => IterableIterator<R> {
+export class CoroutinePartialResult extends Error {
+    readonly value;
+
+    constructor(value: any) {
+        super();
+        this.value = value;
+    }
+}
+
+export function instrument_coroutine<Y, S, R>(gen_func: () => Coroutine<Y, S, R>, lift?: (y: Y) => S[], finalize?: (r: R, states: Object[][]) => R): () => R {
     if (lift === undefined) {
         lift = (y: Y) => {
             if (y instanceof Array) {
@@ -273,10 +274,15 @@ export function instrument_coroutine<Y, S, R>(gen_func: () => Coroutine<Y, S, R>
         }
     }
 
-    function* inner() {
-        type Path = {values: S[], iter: IterableIterator<S>};
+    if (finalize === undefined) {
+        finalize = (r: R, states: Object[][]) => r;
+    }
 
-        let frontier: Path[] = [{values: [undefined], iter: undefined}];
+    function* inner() {
+        type Path = {values: S[], iter: IterableIterator<S>, state: Object[]};
+
+        let coroutine_state_results = [];
+        let frontier: Path[] = [{values: [undefined], iter: undefined, state:[{}]}];
         while (frontier.length > 0) {
             let path = frontier.pop();
 
@@ -289,43 +295,61 @@ export function instrument_coroutine<Y, S, R>(gen_func: () => Coroutine<Y, S, R>
                     p = [...path.values, n.value];
                     frontier.push(path);
                 } else {
+                    coroutine_state_results.push(path.state);
                     continue;
                 }
             }
 
-            let gen = gen_func();
+            let intermediate_states = [];
+            let state_ref = {coroutine_state: {}};
+            let gen = gen_func.bind(state_ref)();
 
             for (let inp of p.slice(0, -1)) {
                 gen.next(inp);
+                intermediate_states.push(state_ref.coroutine_state);
+                state_ref.coroutine_state = {};
             }
 
-            let branches_result = gen.next(p[p.length - 1])
+
+            let branches_result = gen.next(p[p.length - 1]);
+            intermediate_states.push(state_ref.coroutine_state);
+
+     
             if (branches_result.done === true) {
+                coroutine_state_results.push(intermediate_states);
                 yield branches_result.value;
             } else {
                 let branches = lift(branches_result.value);
                 let branch_iter = branches.values();
                 
-                frontier.push({values: p, iter: branch_iter})
+                frontier.push({values: p, iter: branch_iter, state: intermediate_states})
             }
         }
+        return coroutine_state_results;
     }
-    return inner;
-//    return () => Array.from(inner());
+    return () => {
+        let iter = inner();
+
+        let res = iter.next().value; //assumption: the iterator is not yet done
+
+        let coroutine_states = iter.next().value; //assumption: the iterator is done
+
+        return finalize(res, coroutine_states);
+    }
 }
 
-export function with_early_stopping<Y, R>(gen: () => Coroutine<Y | false, Y, R>): R | undefined {
-    let wrapped = instrument_coroutine<Y | false, Y, R>(
-        gen,
-        (y) => (y === false ? [] : [y])
-    );
+// export function with_early_stopping<Y, R>(gen: () => Coroutine<Y | false, Y, R>): R | undefined {
+//     let wrapped = instrument_coroutine<Y | false, Y, R>(
+//         gen,
+//         (y) => (y === false ? [] : [y])
+//     );
 
-    let result = Array.from(wrapped());
-    if (result.length === 0) {
-        return;
-    }
-    return result[0];
-}
+//     let result = Array.from(wrapped());
+//     if (result.length === 0) {
+//         return;
+//     }
+//     return result[0];
+// }
 
 export type ParsingCoroutine<T extends WorldType<T>> = Coroutine<string | boolean, string, CommandResult<T>>
 
@@ -336,17 +360,64 @@ export function parse_with<T extends WorldType<T>>(f: (world: T, parser: Command
             new_p = parser.subparser();
             return f(world, new_p);
         }
+        let lift = (y) => {
+            if (y === false) {
+                return [];
+            } else if (y instanceof Array) {
+                return y;
+            } else {
+                return [y];
+            }
+        }
+
+        let finalize = (r: CommandResult<T>, states: Object[][]) => {
+            
+            return r
+        }
+
         let wrapped = instrument_coroutine<string| boolean, string | boolean, CommandResult<T>>(
             new_f,
-            (y) => (y === false ? [] : [y])
+            lift
         );
         
-        for (let res of wrapped()) {
+        let iter = <Coroutine<CommandResult<T>, undefined, any[]>>(wrapped)();
+
+        let result = iter.next();
+
+        if (result.done === false) {
             parser.integrate(new_p);
-            return res
+            //update the display elt types according to any partial results received at the end
+            return result.value;
+        } else {
+            debugger;
+            let partial_results = result.value;
+
+            let pos = 0;
+
+            while (true) {
+                let unique_next_options = [];
+
+                for (let sub_p of partial_results) {
+                    if (pos < sub_p.match.length) {
+                        let opt = normalize_whitespace(sub_p.match[pos].match);
+                        if (unique_next_options.indexOf(opt) === -1) {
+                            unique_next_options.push(opt);
+                        }
+                    }
+                }
+
+                if (unique_next_options.length === 0) {
+                    break;
+                } else if (unique_next_options.length === 1) {
+                    parser.consume_filler(unique_next_options);
+                } else {
+                    parser.consume_option(unique_next_options.map((opt) => [opt]));
+                }
+                pos++;
+            }
+            return;
         }
-        parser.integrate(new_p);
-        return;
+
     }
     return inner;
 }
@@ -378,6 +449,30 @@ export function* consume_option_stepwise_eager(parser: CommandParser, options: s
         let next_tok = yield parser.consume_option(next_tokens.map(split_tokens), undefined, display_type);
         current_cmd.push(next_tok);
         pos++;
+    }
+}
+
+export function* consume_option_stepwise(parser: CommandParser, options: string[][]) {
+    let option_in_this_quantum_branch: string[] = yield options;
+    let start_position = parser.position;
+    let last_valid_position = start_position;
+    
+    for (let tok of option_in_this_quantum_branch) {
+        parser.consume_filler([tok]);
+        if (parser.validity === MatchValidity.valid) {
+            last_valid_position = parser.position;
+        } else {
+            break;
+        }
+    }
+
+    if (parser.validity === MatchValidity.valid) {
+        return untokenize(option_in_this_quantum_branch);
+    } else {
+        Object.assign(this.coroutine_state, {
+            start_position, last_valid_position, option: option_in_this_quantum_branch
+        });
+        yield false;
     }
 }
 

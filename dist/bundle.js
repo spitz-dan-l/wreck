@@ -201,14 +201,6 @@ class CommandParser {
         });
         return false;
     }
-    copy() {
-        let p = new CommandParser(this.command);
-        p.position = this.position;
-        p.validity = this.validity;
-        p.match = [...this.match];
-        p.tail_padding = this.tail_padding;
-        return p;
-    }
     subparser() {
         return new CommandParser(text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
     }
@@ -296,10 +288,18 @@ class CommandParser {
     }
 }
 exports.CommandParser = CommandParser;
+// casts a generator function to a coroutine function
 function coroutine(f) {
     return f;
 }
 exports.coroutine = coroutine;
+class CoroutinePartialResult extends Error {
+    constructor(value) {
+        super();
+        this.value = value;
+    }
+}
+exports.CoroutinePartialResult = CoroutinePartialResult;
 function instrument_coroutine(gen_func, lift) {
     if (lift === undefined) {
         lift = y => {
@@ -311,6 +311,7 @@ function instrument_coroutine(gen_func, lift) {
         };
     }
     function* inner() {
+        let partial_results = [];
         let frontier = [{ values: [undefined], iter: undefined }];
         while (frontier.length > 0) {
             let path = frontier.pop();
@@ -330,7 +331,17 @@ function instrument_coroutine(gen_func, lift) {
             for (let inp of p.slice(0, -1)) {
                 gen.next(inp);
             }
-            let branches_result = gen.next(p[p.length - 1]);
+            let branches_result;
+            try {
+                branches_result = gen.next(p[p.length - 1]);
+            } catch (e) {
+                if (e instanceof CoroutinePartialResult) {
+                    partial_results.push(e.value);
+                    continue;
+                } else {
+                    throw e;
+                }
+            }
             if (branches_result.done === true) {
                 yield branches_result.value;
             } else {
@@ -339,20 +350,11 @@ function instrument_coroutine(gen_func, lift) {
                 frontier.push({ values: p, iter: branch_iter });
             }
         }
+        return partial_results;
     }
     return inner;
-    //    return () => Array.from(inner());
 }
 exports.instrument_coroutine = instrument_coroutine;
-function with_early_stopping(gen) {
-    let wrapped = instrument_coroutine(gen, y => y === false ? [] : [y]);
-    let result = Array.from(wrapped());
-    if (result.length === 0) {
-        return;
-    }
-    return result[0];
-}
-exports.with_early_stopping = with_early_stopping;
 function parse_with(f) {
     function inner(world, parser) {
         let new_p;
@@ -360,13 +362,47 @@ function parse_with(f) {
             new_p = parser.subparser();
             return f(world, new_p);
         };
-        let wrapped = instrument_coroutine(new_f, y => y === false ? [] : [y]);
-        for (let res of wrapped()) {
+        let lift = y => {
+            if (y === false) {
+                return [];
+            } else if (y instanceof Array) {
+                return y;
+            } else {
+                return [y];
+            }
+        };
+        let wrapped = instrument_coroutine(new_f, lift);
+        let iter = wrapped();
+        let result = iter.next();
+        if (result.done === false) {
             parser.integrate(new_p);
-            return res;
+            //update the display elt types according to any partial results received at the end
+            return result.value;
+        } else {
+            debugger;
+            let partial_results = result.value;
+            let pos = 0;
+            while (true) {
+                let unique_next_options = [];
+                for (let sub_p of partial_results) {
+                    if (pos < sub_p.match.length) {
+                        let opt = text_tools_1.normalize_whitespace(sub_p.match[pos].match);
+                        if (unique_next_options.indexOf(opt) === -1) {
+                            unique_next_options.push(opt);
+                        }
+                    }
+                }
+                if (unique_next_options.length === 0) {
+                    break;
+                } else if (unique_next_options.length === 1) {
+                    parser.consume_filler(unique_next_options);
+                } else {
+                    parser.consume_option(unique_next_options.map(opt => [opt]));
+                }
+                pos++;
+            }
+            return;
         }
-        parser.integrate(new_p);
-        return;
     }
     return inner;
 }
@@ -397,6 +433,19 @@ function* consume_option_stepwise_eager(parser, options) {
     }
 }
 exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
+function* consume_option_stepwise_eager2(parser, options) {
+    let option_in_this_quantum_branch = yield options;
+    for (let tok of option_in_this_quantum_branch) {
+        parser.consume_filler([tok]);
+        if (parser.validity === MatchValidity.invalid) {
+            yield false;
+        } else if (parser.validity === MatchValidity.partial) {
+            throw new CoroutinePartialResult(parser);
+        }
+    }
+    return text_tools_1.untokenize(option_in_this_quantum_branch);
+}
+exports.consume_option_stepwise_eager2 = consume_option_stepwise_eager2;
 function apply_command(world, cmd) {
     let parser = new CommandParser(cmd);
     let commands = world.get_commands();
@@ -1071,8 +1120,9 @@ let qualities = ['outwardly curious', 'introspective', 'transcendent', 'sorrowfu
 const be_cmd = {
     command_name: ['be'],
     execute: commands_1.parse_with((world, parser) => bird_world_coroutine(function* () {
-        let role_choice = yield* commands_1.consume_option_stepwise_eager(parser, roles.map(text_tools_1.split_tokens));
+        let role_choice = yield* commands_1.consume_option_stepwise_eager2(parser, roles.map(text_tools_1.split_tokens));
         yield parser.done();
+        debugger;
         return { world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.` };
     })())
 };
