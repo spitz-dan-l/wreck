@@ -15,3 +15,18 @@ Other ideas
     you can be wrong in multi-step operations, and have to start over (hadean lands! and witness!)
     
     something about pairwise similarity/relational operations used to approximate a global space ???
+
+
+
+
+Loop-erased random walks for history management
+    A game where backtracking is impossible from the perspective of the game narrative
+    Instead, any traversal to an already-visited state rewrites history so that all visited states participating in the loop never happened, and instead were "imagined" or "considered but rejected"
+
+    In a 4-by-3 grid, there are 17 full-spanning acyclic traversals when starting from the corner. 17 "hows" of a walk across the entire grid.
+
+    If we take the 4 corners to be locations of particular significance, then we find there are 4 orders in which the corners can be visited for these 17 possible traversals. This would yield 4 skeleton narrative progressions.
+
+    Running with the idea of 4 corners of significance, there will be various numbers of non-corner spaces visited between corners. These spaces, in addition to being spatial locations which flesh out the setting, provide pacing in which the events of the previous corner-visits are reflected upon.
+
+    See lerw.py
