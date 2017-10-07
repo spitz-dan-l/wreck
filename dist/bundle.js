@@ -348,6 +348,9 @@ function apply_command(world, cmd) {
         if (cmd_result.message !== undefined) {
             result.message = cmd_result.message;
         }
+        if (cmd_result.history_updater !== undefined) {
+            result.history_updater = cmd_result.history_updater;
+        }
     }
     result = apply_interstitial_update(result);
     return result;
@@ -372,6 +375,15 @@ function apply_interstitial_update(result) {
     }
     return result;
 }
+function apply_history_update(history, result) {
+    if (result.history_updater === undefined) {
+        return [...history, result];
+    } else {
+        //let new_history = result.history_updater(history, result.world);
+        //let new_world = result.history_consolidator(new_history, result.world);
+        return result.history_updater(history, result.world);
+    }
+}
 class WorldDriver {
     constructor(initial_world) {
         let initial_result = { world: initial_world };
@@ -390,7 +402,7 @@ class WorldDriver {
     }
     commit() {
         let result = this.current_state;
-        this.history.push(this.current_state);
+        this.history = apply_history_update(this.history, result);
         this.apply_command('', false);
         return result;
     }
@@ -652,7 +664,10 @@ const commands_1 = __webpack_require__(0);
 const datatypes_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(2);
 class BirdWorld {
-    constructor({ is_in_heaven, has_seen }) {
+    constructor({ history, is_in_heaven, has_seen }) {
+        if (history === undefined) {
+            history = [];
+        }
         if (is_in_heaven === undefined) {
             is_in_heaven = false;
         }
@@ -662,7 +677,7 @@ class BirdWorld {
         this.is_in_heaven = is_in_heaven;
         this.has_seen = has_seen;
     }
-    update({ is_in_heaven, has_seen }) {
+    update({ history, is_in_heaven, has_seen }) {
         if (is_in_heaven === undefined) {
             is_in_heaven = this.is_in_heaven;
         }
@@ -702,6 +717,28 @@ const go_cmd = {
         }
         let dir_word = yield parser.consume_option(dir_options);
         yield parser.done();
+        if (world.has_seen.get(!world.is_in_heaven)) {
+            // do loop erasure on history
+            function update_history(history) {
+                let pos;
+                for (pos = history.length - 1; pos >= 0; pos--) {
+                    if (history[pos].world.is_in_heaven === !world.is_in_heaven) {
+                        break;
+                    }
+                }
+                let new_history = history.slice(0, pos + 1);
+                new_history[pos].message += '\n\nYou consider leaving, but decide not to.';
+                return new_history;
+            }
+            //applying loop-erasure logic to the current world
+            let new_has_seen = world.has_seen.copy();
+            new_has_seen.set(world.is_in_heaven, false);
+            let new_world = world.update({
+                has_seen: new_has_seen,
+                is_in_heaven: !world.is_in_heaven
+            });
+            return { world: new_world, history_updater: update_history };
+        }
         let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
         let message = text_tools_1.capitalize(dir_word) + ' you go.';
         return { world: new_world, message: message };

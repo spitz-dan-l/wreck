@@ -310,10 +310,16 @@ export type InterstitialUpdateResult<T extends WorldType<T>> = {
     message?: string;
 } | undefined;
 
+export type HistoryUpdateResult<T extends WorldType<T>> = {
+    history: CommandResult<T>[],
+    world?: T
+}
+
 export type CommandResult<T extends WorldType<T>> = {
     world?: T;
     message?: string;
     parser?: CommandParser;
+    history_updater?: (history: CommandResult<T>[], world?: T) => CommandResult<T>[];
 } | undefined;
 
 export interface Command<T extends WorldType<T>> {
@@ -346,6 +352,9 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
         if (cmd_result.message !== undefined) {
             result.message = cmd_result.message;
         }
+        if (cmd_result.history_updater !== undefined) {
+            result.history_updater = cmd_result.history_updater;
+        }
     }
 
     result = apply_interstitial_update(result);
@@ -373,9 +382,18 @@ function apply_interstitial_update<T extends WorldType<T>>(result: CommandResult
     return result;
 }
 
+function apply_history_update<T extends WorldType<T>>(history: CommandResult<T>[], result: CommandResult<T>): CommandResult<T>[] {
+    if (result.history_updater === undefined) {
+        return [...history, result];
+    } else {
+        //let new_history = result.history_updater(history, result.world);
+        //let new_world = result.history_consolidator(new_history, result.world);
+        return result.history_updater(history, result.world);
+    }
+}
+
 export class WorldDriver<T extends WorldType<T>> {
     history: CommandResult<T>[];
-    
     current_state: CommandResult<T>;
 
     constructor (initial_world: T) {
@@ -399,7 +417,7 @@ export class WorldDriver<T extends WorldType<T>> {
 
     commit() {
         let result = this.current_state;
-        this.history.push(this.current_state);
+        this.history = apply_history_update(this.history, result);
         this.apply_command('', false);
         return result;
     }
