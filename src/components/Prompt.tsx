@@ -3,7 +3,7 @@ import {keys} from '../typescript/keyboard_tools';
 
 const InputWrapper = (props) => {
   const {children, ...rest} = props;
-  const style = {
+  const style: any = {
     position: 'relative',
     minHeight: '8em',
     marginTop: '1em'

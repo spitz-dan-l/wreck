@@ -110,7 +110,7 @@ const go_cmd: Command<BirdWorld> = {
                     }
 
                     new_history[pos] = with_disablable(new_history[pos], (res) => {
-                        let new_res = {...res};
+                        let new_res = {...res}; //copy it so we aren't updating the original history entry
                         new_res.message += '\n\nYou consider leaving, but decide not to.';
                         return new_res;
                     })

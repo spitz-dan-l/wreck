@@ -408,7 +408,6 @@ class WorldDriver {
     commit() {
         //filter out any disabled history
         this.history = this.possible_history.filter(is_enabled).map(unwrap);
-        //this.history = apply_history_update(this.history, this.current_state);
         this.apply_command('', false);
         return this.current_state;
     }
@@ -652,7 +651,16 @@ class Terminal extends React.Component {
             if (i === 0) {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
-            return React.createElement("div", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+            let hist_elt_style = {
+                marginTop: '1em'
+            };
+            if (!commands_1.is_enabled(this.state.world_driver.possible_history[i])) {
+                hist_elt_style.opacity = '0.4';
+            }
+            return (
+                //check if this.state.world_driver.possible_history[i] is disabled
+                React.createElement("div", { key: i.toString(), style: hist_elt_style }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })))
+            );
         }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
@@ -736,12 +744,10 @@ const go_cmd = {
                     }
                 }
                 new_history[pos] = commands_1.with_disablable(new_history[pos], res => {
-                    let new_res = Object.assign({}, res);
+                    let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
                     new_res.message += '\n\nYou consider leaving, but decide not to.';
                     return new_res;
                 });
-                //let new_history = history.slice(0, pos + 1);
-                //unwrap(new_history[pos]).message += '\n\nYou consider leaving, but decide not to.';
                 return new_history;
             }
             return { history_updater: update_history };

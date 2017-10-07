@@ -5,7 +5,7 @@ import {ParsedText, OutputText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
-import {WorldType, WorldDriver, MatchValidity} from "../typescript/commands";
+import {WorldType, WorldDriver, MatchValidity, is_enabled} from "../typescript/commands";
 
 const Carat = () => (
   <span>
@@ -130,8 +130,16 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
               </div>
             );
           }
+          let hist_elt_style: any = {
+            marginTop: '1em'
+          };
+
+          if (!is_enabled(this.state.world_driver.possible_history[i])) {
+            hist_elt_style.opacity = '0.4';
+          }
           return (
-            <div key={i.toString()} style={{marginTop: '1em'}}>
+            //check if this.state.world_driver.possible_history[i] is disabled
+            <div key={i.toString()} style={hist_elt_style}>
               
                 <Carat />
                 <ParsedText parser={parser} />
@@ -143,8 +151,10 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
           )
         })}
 
-        
-          <Prompt onSubmit={this.handleSubmit} onChange={this.handlePromptChange} ref={p => this.prompt = p}>
+          <Prompt
+            onSubmit={this.handleSubmit}
+            onChange={this.handlePromptChange}
+            ref={p => this.prompt = p}>
             <Carat />
             <ParsedText parser={this.state.world_driver.current_state.parser}>
               <TypeaheadList
