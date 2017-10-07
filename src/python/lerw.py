@@ -31,9 +31,13 @@ def compute_full_traversals(dim_x, dim_y):
 
     all_full_traversals = []
 
-    for dest in points[1:]:
+    start = (0,0)
+
+    for dest in points:
+        if dest == start:
+            continue
         travs = []
-        for path in dfs_paths(graph, (0,0), dest):
+        for path in dfs_paths(graph, start, dest):
             if len(path) == dim_x * dim_y: #full traversal
                 travs.append(path)
         all_full_traversals.extend(travs)
