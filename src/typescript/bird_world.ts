@@ -3,6 +3,8 @@ import {
     CommandResult,
     Disablable,
     set_enabled,
+    unwrap,
+    with_disablable,
     CommandParser,
     Command,
     WorldType,
@@ -95,27 +97,27 @@ const go_cmd: Command<BirdWorld> = {
 
             if (world.has_seen.get(!world.is_in_heaven)) {
                 // do loop erasure on history
-                function update_history(history: CommandResult<BirdWorld>[]): CommandResult<BirdWorld>[] {
+                function update_history(history: CommandResult<BirdWorld>[]): Disablable<CommandResult<BirdWorld>>[] {
+                    let new_history = history.map((x) => set_enabled(x, true));
+
                     let pos;
                     for (pos = history.length - 1; pos >= 0; pos--) {
                         if (history[pos].world.is_in_heaven === !world.is_in_heaven) {
                             break;
+                        } else {
+                            new_history[pos] = set_enabled(new_history[pos], false);
                         }
                     }
-                    let new_history = history.slice(0, pos + 1);
-                    new_history[pos].message += '\n\nYou consider leaving, but decide not to.';
+
+                    new_history[pos] = with_disablable(new_history[pos], (res) => {
+                        let new_res = {...res};
+                        new_res.message += '\n\nYou consider leaving, but decide not to.';
+                        return new_res;
+                    })
+
                     return new_history;
                 }
-
-                //applying loop-erasure logic to the current world
-                let new_has_seen = world.has_seen.copy();
-                new_has_seen.set(world.is_in_heaven, false);
-
-                let new_world = world.update({
-                    has_seen: new_has_seen,
-                    is_in_heaven: !world.is_in_heaven
-                });
-                return {world: new_world, history_updater: update_history};
+                return {history_updater: update_history};
             }
 
             let new_world = world.update({is_in_heaven: !world.is_in_heaven});

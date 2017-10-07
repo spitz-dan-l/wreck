@@ -95,7 +95,10 @@ function is_dwrapped(x) {
 exports.is_dwrapped = is_dwrapped;
 function set_enabled(x, enabled = true) {
     if (is_dwrapped(x)) {
-        return x; //could do check here for enabled being set properly already
+        if (x.enabled !== enabled) {
+            x.enabled = enabled; //could do check here for enabled being set properly already
+        }
+        return x;
     } else {
         let result = { value: x, disablable: true, enabled };
         return result;
@@ -371,6 +374,9 @@ function apply_interstitial_update(result) {
                     result.message = res2.message;
                 }
             }
+            if (res2.history_updater !== undefined) {
+                result.history_updater = res2.history_updater;
+            }
         }
     }
     return result;
@@ -379,8 +385,6 @@ function apply_history_update(history, result) {
     if (result.history_updater === undefined) {
         return [...history, result];
     } else {
-        //let new_history = result.history_updater(history, result.world);
-        //let new_world = result.history_consolidator(new_history, result.world);
         return result.history_updater(history, result.world);
     }
 }
@@ -395,16 +399,18 @@ class WorldDriver {
         let prev_state = this.history[this.history.length - 1];
         let result = apply_command(prev_state.world, cmd);
         this.current_state = result;
+        this.possible_history = apply_history_update(this.history, this.current_state);
         if (commit) {
             this.commit();
         }
         return result;
     }
     commit() {
-        let result = this.current_state;
-        this.history = apply_history_update(this.history, result);
+        //filter out any disabled history
+        this.history = this.possible_history.filter(is_enabled).map(unwrap);
+        //this.history = apply_history_update(this.history, this.current_state);
         this.apply_command('', false);
-        return result;
+        return this.current_state;
     }
 }
 exports.WorldDriver = WorldDriver;
@@ -720,24 +726,25 @@ const go_cmd = {
         if (world.has_seen.get(!world.is_in_heaven)) {
             // do loop erasure on history
             function update_history(history) {
+                let new_history = history.map(x => commands_1.set_enabled(x, true));
                 let pos;
                 for (pos = history.length - 1; pos >= 0; pos--) {
                     if (history[pos].world.is_in_heaven === !world.is_in_heaven) {
                         break;
+                    } else {
+                        new_history[pos] = commands_1.set_enabled(new_history[pos], false);
                     }
                 }
-                let new_history = history.slice(0, pos + 1);
-                new_history[pos].message += '\n\nYou consider leaving, but decide not to.';
+                new_history[pos] = commands_1.with_disablable(new_history[pos], res => {
+                    let new_res = Object.assign({}, res);
+                    new_res.message += '\n\nYou consider leaving, but decide not to.';
+                    return new_res;
+                });
+                //let new_history = history.slice(0, pos + 1);
+                //unwrap(new_history[pos]).message += '\n\nYou consider leaving, but decide not to.';
                 return new_history;
             }
-            //applying loop-erasure logic to the current world
-            let new_has_seen = world.has_seen.copy();
-            new_has_seen.set(world.is_in_heaven, false);
-            let new_world = world.update({
-                has_seen: new_has_seen,
-                is_in_heaven: !world.is_in_heaven
-            });
-            return { world: new_world, history_updater: update_history };
+            return { history_updater: update_history };
         }
         let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
         let message = text_tools_1.capitalize(dir_word) + ' you go.';
