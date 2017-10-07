@@ -95,7 +95,10 @@ function is_dwrapped(x) {
 exports.is_dwrapped = is_dwrapped;
 function set_enabled(x, enabled = true) {
     if (is_dwrapped(x)) {
-        return x; //could do check here for enabled being set properly already
+        if (x.enabled !== enabled) {
+            x.enabled = enabled; //could do check here for enabled being set properly already
+        }
+        return x;
     } else {
         let result = { value: x, disablable: true, enabled };
         return result;
@@ -348,6 +351,9 @@ function apply_command(world, cmd) {
         if (cmd_result.message !== undefined) {
             result.message = cmd_result.message;
         }
+        if (cmd_result.history_updater !== undefined) {
+            result.history_updater = cmd_result.history_updater;
+        }
     }
     result = apply_interstitial_update(result);
     return result;
@@ -368,9 +374,19 @@ function apply_interstitial_update(result) {
                     result.message = res2.message;
                 }
             }
+            if (res2.history_updater !== undefined) {
+                result.history_updater = res2.history_updater;
+            }
         }
     }
     return result;
+}
+function apply_history_update(history, result) {
+    if (result.history_updater === undefined) {
+        return [...history, result];
+    } else {
+        return result.history_updater(history, result.world);
+    }
 }
 class WorldDriver {
     constructor(initial_world) {
@@ -383,16 +399,17 @@ class WorldDriver {
         let prev_state = this.history[this.history.length - 1];
         let result = apply_command(prev_state.world, cmd);
         this.current_state = result;
+        this.possible_history = apply_history_update(this.history, this.current_state);
         if (commit) {
             this.commit();
         }
         return result;
     }
     commit() {
-        let result = this.current_state;
-        this.history.push(this.current_state);
+        //filter out any disabled history
+        this.history = this.possible_history.filter(is_enabled).map(unwrap);
         this.apply_command('', false);
-        return result;
+        return this.current_state;
     }
 }
 exports.WorldDriver = WorldDriver;
@@ -634,7 +651,16 @@ class Terminal extends React.Component {
             if (i === 0) {
                 return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
             }
-            return React.createElement("div", { key: i.toString(), style: { marginTop: '1em' } }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+            let hist_elt_style = {
+                marginTop: '1em'
+            };
+            if (!commands_1.is_enabled(this.state.world_driver.possible_history[i])) {
+                hist_elt_style.opacity = '0.4';
+            }
+            return (
+                //check if this.state.world_driver.possible_history[i] is disabled
+                React.createElement("div", { key: i.toString(), style: hist_elt_style }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })))
+            );
         }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
@@ -652,7 +678,10 @@ const commands_1 = __webpack_require__(0);
 const datatypes_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(2);
 class BirdWorld {
-    constructor({ is_in_heaven, has_seen }) {
+    constructor({ history, is_in_heaven, has_seen }) {
+        if (history === undefined) {
+            history = [];
+        }
         if (is_in_heaven === undefined) {
             is_in_heaven = false;
         }
@@ -662,7 +691,7 @@ class BirdWorld {
         this.is_in_heaven = is_in_heaven;
         this.has_seen = has_seen;
     }
-    update({ is_in_heaven, has_seen }) {
+    update({ history, is_in_heaven, has_seen }) {
         if (is_in_heaven === undefined) {
             is_in_heaven = this.is_in_heaven;
         }
@@ -702,6 +731,27 @@ const go_cmd = {
         }
         let dir_word = yield parser.consume_option(dir_options);
         yield parser.done();
+        if (world.has_seen.get(!world.is_in_heaven)) {
+            // do loop erasure on history
+            function update_history(history) {
+                let new_history = history.map(x => commands_1.set_enabled(x, true));
+                let pos;
+                for (pos = history.length - 1; pos >= 0; pos--) {
+                    if (history[pos].world.is_in_heaven === !world.is_in_heaven) {
+                        break;
+                    } else {
+                        new_history[pos] = commands_1.set_enabled(new_history[pos], false);
+                    }
+                }
+                new_history[pos] = commands_1.with_disablable(new_history[pos], res => {
+                    let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
+                    new_res.message += '\n\nYou consider leaving, but decide not to.';
+                    return new_res;
+                });
+                return new_history;
+            }
+            return { history_updater: update_history };
+        }
         let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
         let message = text_tools_1.capitalize(dir_word) + ' you go.';
         return { world: new_world, message: message };

@@ -3,6 +3,8 @@ import {
     CommandResult,
     Disablable,
     set_enabled,
+    unwrap,
+    with_disablable,
     CommandParser,
     Command,
     WorldType,
@@ -18,16 +20,21 @@ import {capitalize, tokenize, split_tokens, untokenize, random_choice} from './t
 
 
 type BirdWorldState = {
+    history?: CommandResult<BirdWorld>[],
     is_in_heaven?: boolean,
     has_seen?: FuckDict<boolean, boolean>
 };
 
 export class BirdWorld implements WorldType<BirdWorld>{
+    
     readonly is_in_heaven: boolean;
     readonly has_seen: FuckDict<boolean, boolean>;
 
 
-    constructor({is_in_heaven, has_seen}: BirdWorldState) {
+    constructor({history, is_in_heaven, has_seen}: BirdWorldState) {
+        if (history === undefined) {
+            history = [];
+        }
         if (is_in_heaven === undefined) {
             is_in_heaven = false;
         }
@@ -39,7 +46,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
         this.has_seen = has_seen;
     }
 
-    update({is_in_heaven, has_seen}: BirdWorldState) {
+    update({history, is_in_heaven, has_seen}: BirdWorldState) {
         if (is_in_heaven === undefined) {
             is_in_heaven = this.is_in_heaven;
         }
@@ -63,6 +70,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
         if (!this.has_seen.get(this.is_in_heaven)) {
             let new_has_seen = this.has_seen.copy();
             new_has_seen.set(this.is_in_heaven, true);
+            
             return {
                 world: this.update({has_seen: new_has_seen}),
                 message: (this.is_in_heaven)
@@ -86,6 +94,31 @@ const go_cmd: Command<BirdWorld> = {
             
             let dir_word = yield parser.consume_option(dir_options);
             yield parser.done();
+
+            if (world.has_seen.get(!world.is_in_heaven)) {
+                // do loop erasure on history
+                function update_history(history: CommandResult<BirdWorld>[]): Disablable<CommandResult<BirdWorld>>[] {
+                    let new_history = history.map((x) => set_enabled(x, true));
+
+                    let pos;
+                    for (pos = history.length - 1; pos >= 0; pos--) {
+                        if (history[pos].world.is_in_heaven === !world.is_in_heaven) {
+                            break;
+                        } else {
+                            new_history[pos] = set_enabled(new_history[pos], false);
+                        }
+                    }
+
+                    new_history[pos] = with_disablable(new_history[pos], (res) => {
+                        let new_res = {...res}; //copy it so we aren't updating the original history entry
+                        new_res.message += '\n\nYou consider leaving, but decide not to.';
+                        return new_res;
+                    })
+
+                    return new_history;
+                }
+                return {history_updater: update_history};
+            }
 
             let new_world = world.update({is_in_heaven: !world.is_in_heaven});
             let message = capitalize(dir_word) + ' you go.';

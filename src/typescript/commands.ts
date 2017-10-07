@@ -33,7 +33,10 @@ export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
 
 export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
     if (is_dwrapped(x)) {
-        return x; //could do check here for enabled being set properly already
+        if (x.enabled !== enabled) {
+            x.enabled = enabled; //could do check here for enabled being set properly already
+        }
+        return x;
     } else {
         let result: DWrapped<T> = {value: x, disablable: true, enabled};
         
@@ -308,12 +311,14 @@ export interface WorldType<T extends WorldType<T>> {
 export type InterstitialUpdateResult<T extends WorldType<T>> = {
     world?: T;
     message?: string;
+    history_updater?: (history: CommandResult<T>[], world?: T) => Disablable<CommandResult<T>>[];
 } | undefined;
 
 export type CommandResult<T extends WorldType<T>> = {
     world?: T;
     message?: string;
     parser?: CommandParser;
+    history_updater?: (history: CommandResult<T>[], world?: T) => Disablable<CommandResult<T>>[];
 } | undefined;
 
 export interface Command<T extends WorldType<T>> {
@@ -346,6 +351,9 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
         if (cmd_result.message !== undefined) {
             result.message = cmd_result.message;
         }
+        if (cmd_result.history_updater !== undefined) {
+            result.history_updater = cmd_result.history_updater;
+        }
     }
 
     result = apply_interstitial_update(result);
@@ -368,14 +376,26 @@ function apply_interstitial_update<T extends WorldType<T>>(result: CommandResult
                     result.message = res2.message;
                 }
             }
+            if (res2.history_updater !== undefined) {
+                result.history_updater = res2.history_updater;
+            }
         }
     }
     return result;
 }
 
+function apply_history_update<T extends WorldType<T>>(history: CommandResult<T>[], result: CommandResult<T>): Disablable<CommandResult<T>>[] {
+    if (result.history_updater === undefined) {
+        return [...history, result];
+    } else {
+        return result.history_updater(history, result.world);
+    }
+}
+
 export class WorldDriver<T extends WorldType<T>> {
     history: CommandResult<T>[];
-    
+
+    possible_history: Disablable<CommandResult<T>>[];
     current_state: CommandResult<T>;
 
     constructor (initial_world: T) {
@@ -391,6 +411,7 @@ export class WorldDriver<T extends WorldType<T>> {
         let result = apply_command(prev_state.world, cmd);
          
         this.current_state = result;
+        this.possible_history = apply_history_update(this.history, this.current_state);
         if (commit) {
             this.commit();
         }
@@ -398,9 +419,10 @@ export class WorldDriver<T extends WorldType<T>> {
     }
 
     commit() {
-        let result = this.current_state;
-        this.history.push(this.current_state);
+        //filter out any disabled history
+        this.history = this.possible_history.filter(is_enabled).map(unwrap);
+
         this.apply_command('', false);
-        return result;
+        return this.current_state;
     }
 }
