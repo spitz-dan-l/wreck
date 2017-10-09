@@ -23,7 +23,6 @@ import {capitalize, tokenize, split_tokens, untokenize, random_choice} from './t
 
 
 type BirdWorldState = {
-    history?: CommandResult<BirdWorld>[],
     is_in_heaven?: boolean,
     has_seen?: FuckDict<boolean, boolean>
 };
@@ -34,10 +33,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
     readonly has_seen: FuckDict<boolean, boolean>;
 
 
-    constructor({history, is_in_heaven, has_seen}: BirdWorldState) {
-        if (history === undefined) {
-            history = [];
-        }
+    constructor({is_in_heaven, has_seen}: BirdWorldState) {
         if (is_in_heaven === undefined) {
             is_in_heaven = false;
         }
@@ -49,7 +45,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
         this.has_seen = has_seen;
     }
 
-    update({history, is_in_heaven, has_seen}: BirdWorldState) {
+    update({is_in_heaven, has_seen}: BirdWorldState) {
         if (is_in_heaven === undefined) {
             is_in_heaven = this.is_in_heaven;
         }

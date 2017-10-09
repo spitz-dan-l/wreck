@@ -113,8 +113,6 @@ export function array_fuck_contains<T>(ar: T[], elt: T){
     return ar.some((x) => x.toString() === elt.toString())
 }
 
-
-
 export type Point2 = [number, number];
 
 export function make_matrix2(data_obj: number[][]) {
@@ -124,6 +122,10 @@ export function make_matrix2(data_obj: number[][]) {
     let data = new Int16Array(data_obj.reduce((x, y) => x.concat(y)));
     // TODO complain if the total length is wrong
     return new Matrix2(data, dim_x, dim_y);
+}
+
+export function zeros(dim_x: number, dim_y: number) {
+    return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);
 }
 
 export class Matrix2 {
@@ -171,6 +173,10 @@ export class Matrix2 {
 
     contains(value: number): boolean{
         return this.data.indexOf(value) !== -1;
+    }
+
+    copy(): Matrix2 {
+        return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);
     }
 }
 

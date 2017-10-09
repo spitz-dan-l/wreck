@@ -1,3 +1,7 @@
 TODOs
 
-- compute the number of acyclic walks of a 4x3 grid starting from a particular point (17)
+- bare venience world
+
+- flesh out 4 corners
+
+- add "carriage return" token?

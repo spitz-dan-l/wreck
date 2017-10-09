@@ -181,6 +181,10 @@ function make_matrix2(data_obj) {
     return new Matrix2(data, dim_x, dim_y);
 }
 exports.make_matrix2 = make_matrix2;
+function zeros(dim_x, dim_y) {
+    return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);
+}
+exports.zeros = zeros;
 class Matrix2 {
     constructor(data, dim_x, dim_y) {
         this.data = data;
@@ -216,6 +220,9 @@ class Matrix2 {
     }
     contains(value) {
         return this.data.indexOf(value) !== -1;
+    }
+    copy() {
+        return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);
     }
 }
 exports.Matrix2 = Matrix2;
@@ -775,119 +782,6 @@ exports.Terminal = Terminal;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const parser_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
-const text_tools_1 = __webpack_require__(3);
-class BirdWorld {
-    constructor({ history, is_in_heaven, has_seen }) {
-        if (history === undefined) {
-            history = [];
-        }
-        if (is_in_heaven === undefined) {
-            is_in_heaven = false;
-        }
-        if (has_seen === undefined) {
-            has_seen = new datatypes_1.FuckDict([[false, false], [true, false]]);
-        }
-        this.is_in_heaven = is_in_heaven;
-        this.has_seen = has_seen;
-    }
-    update({ history, is_in_heaven, has_seen }) {
-        if (is_in_heaven === undefined) {
-            is_in_heaven = this.is_in_heaven;
-        }
-        if (has_seen === undefined) {
-            has_seen = this.has_seen;
-        }
-        return new BirdWorld({ is_in_heaven, has_seen });
-    }
-    get_commands() {
-        let commands = [];
-        commands.push(go_cmd);
-        if (this.has_seen.get(true)) {
-            commands.push(datatypes_1.set_enabled(mispronounce_cmd, this.is_in_heaven));
-        }
-        commands.push(be_cmd);
-        return commands;
-    }
-    interstitial_update() {
-        if (!this.has_seen.get(this.is_in_heaven)) {
-            let new_has_seen = this.has_seen.copy();
-            new_has_seen.set(this.is_in_heaven, true);
-            return {
-                world: this.update({ has_seen: new_has_seen }),
-                message: this.is_in_heaven ? "You're in Heaven. There's a bird up here. His name is Zarathustra. He is ugly." : "You're standing around on the earth."
-            };
-        }
-    }
-}
-exports.BirdWorld = BirdWorld;
-const go_cmd = {
-    command_name: ['go'],
-    execute: parser_1.with_early_stopping(function* (world, parser) {
-        let dir_options = [];
-        dir_options.push(datatypes_1.set_enabled(['up'], !world.is_in_heaven));
-        if (world.has_seen.get(true)) {
-            dir_options.push(datatypes_1.set_enabled(['down'], world.is_in_heaven));
-        }
-        let dir_word = yield parser.consume_option(dir_options);
-        yield parser.done();
-        if (world.has_seen.get(!world.is_in_heaven)) {
-            // do loop erasure on history
-            function update_history(history) {
-                let new_history = history.map(x => datatypes_1.set_enabled(x, true));
-                let pos;
-                for (pos = history.length - 1; pos >= 0; pos--) {
-                    if (history[pos].world.is_in_heaven === !world.is_in_heaven) {
-                        break;
-                    } else {
-                        new_history[pos] = datatypes_1.set_enabled(new_history[pos], false);
-                    }
-                }
-                new_history[pos] = datatypes_1.with_disablable(new_history[pos], res => {
-                    let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
-                    new_res.message += '\n\nYou consider leaving, but decide not to.';
-                    return new_res;
-                });
-                return new_history;
-            }
-            return { history_updater: update_history };
-        }
-        let new_world = world.update({ is_in_heaven: !world.is_in_heaven });
-        let message = text_tools_1.capitalize(dir_word) + ' you go.';
-        return { world: new_world, message: message };
-    })
-};
-const mispronounce_cmd = {
-    command_name: ['mispronounce'],
-    execute: parser_1.with_early_stopping(function* (world, parser) {
-        let specifier_word = yield parser.consume_option([["zarathustra's"]]);
-        yield parser.consume_filler(['name']);
-        yield parser.done();
-        let utterance_options = ['Zammersretter', 'Hoosterzaro', 'Rooster Thooster', 'Thester Zar', 'Zerthes Threstine'];
-        let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
-        return { world, message };
-    })
-};
-let roles = ['the One Who Gazes Ahead', 'the One Who Gazes Back', 'the One Who Gazes Up', 'the One Who Gazes Down', 'the One Whose Palms Are Open', 'the One Whose Palms Are Closed', 'the One Who Is Strong', 'the One Who Is Weak', 'the One Who Seduces', 'the One Who Is Seduced'];
-let qualities = ['outwardly curious', 'introspective', 'transcendent', 'sorrowful', 'receptive', 'adversarial', 'confident', 'impressionable', 'predatory', 'vulnerable'];
-const be_cmd = {
-    command_name: ['be'],
-    execute: parser_1.with_early_stopping(function* (world, parser) {
-        let role_choice = yield* parser_1.consume_option_stepwise_eager(parser, roles.map(text_tools_1.split_tokens));
-        yield parser.done();
-        return { world, message: `You feel ${qualities[roles.indexOf(role_choice)]}.` };
-    })
-};
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
 const datatypes_1 = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
@@ -971,6 +865,112 @@ class WorldDriver {
     }
 }
 exports.WorldDriver = WorldDriver;
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(1);
+const text_tools_1 = __webpack_require__(3);
+const dim_x = 4;
+const dim_y = 3;
+const location_descriptions = new datatypes_1.FuckDict([[[0, 0], 'Origin Point']]);
+class VenienceWorld {
+    constructor({ location, has_seen }) {
+        if (location === undefined) {
+            location = [0, 0];
+        }
+        if (has_seen === undefined) {
+            has_seen = datatypes_1.zeros(dim_x, dim_y);
+        }
+        this.location = location;
+        this.has_seen = has_seen;
+    }
+    update({ location, has_seen }) {
+        if (location === undefined) {
+            location = this.location;
+        }
+        if (has_seen === undefined) {
+            has_seen = this.has_seen;
+        }
+        return new VenienceWorld({ location, has_seen });
+    }
+    get_commands() {
+        let commands = [];
+        commands.push(go_cmd);
+        return commands;
+    }
+    interstitial_update() {
+        let [x, y] = this.location;
+        if (!this.has_seen.get(x, y)) {
+            let new_has_seen = this.has_seen.copy();
+            new_has_seen.set(x, y, 1);
+            return {
+                world: this.update({ has_seen: new_has_seen }),
+                message: location_descriptions.get(this.location) || undefined
+            };
+        }
+    }
+}
+exports.VenienceWorld = VenienceWorld;
+const go_cmd = {
+    command_name: ['go'],
+    execute: parser_1.with_early_stopping(function* (world, parser) {
+        let dir_options = [];
+        let [x, y] = world.location;
+        dir_options.push(datatypes_1.set_enabled(['north'], y > 0));
+        dir_options.push(datatypes_1.set_enabled(['south'], y < dim_y - 1));
+        dir_options.push(datatypes_1.set_enabled(['east'], x < dim_x - 1));
+        dir_options.push(datatypes_1.set_enabled(['west'], x > 0));
+        let dir_word = yield parser.consume_option(dir_options);
+        //TODO: add adverb component to end of command
+        yield parser.done();
+        let [dest_x, dest_y] = [x, y];
+        switch (dir_word) {
+            case 'north':
+                dest_y--;
+                break;
+            case 'south':
+                dest_y++;
+                break;
+            case 'east':
+                dest_x++;
+                break;
+            case 'west':
+                dest_x--;
+                break;
+        }
+        if (world.has_seen.get(dest_x, dest_y)) {
+            // do loop erasure on history
+            function update_history(history) {
+                let new_history = history.map(x => datatypes_1.set_enabled(x, true));
+                let pos;
+                for (pos = history.length - 1; pos >= 0; pos--) {
+                    if (datatypes_1.arrays_fuck_equal(history[pos].world.location, [dest_x, dest_y])) {
+                        break;
+                    } else {
+                        new_history[pos] = datatypes_1.set_enabled(new_history[pos], false);
+                    }
+                }
+                new_history[pos] = datatypes_1.with_disablable(new_history[pos], res => {
+                    let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
+                    new_res.message += '\n\nYou consider leaving, but decide not to.';
+                    return new_res;
+                });
+                return new_history;
+            }
+            return { history_updater: update_history };
+        }
+        let new_world = world.update({ location: [dest_x, dest_y] });
+        let message = text_tools_1.capitalize(dir_word) + ' you go.';
+        return { world: new_world, message: message };
+    })
+};
 
 /***/ }),
 /* 8 */
@@ -1240,9 +1240,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(8);
 const Terminal_1 = __webpack_require__(5);
-const commands_1 = __webpack_require__(7);
-const bird_world_1 = __webpack_require__(6);
-let world_driver = new commands_1.WorldDriver(new bird_world_1.BirdWorld({}));
+const commands_1 = __webpack_require__(6);
+//import {BirdWorld} from '../typescript/bird_world';
+const venience_world_1 = __webpack_require__(7);
+let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ })
