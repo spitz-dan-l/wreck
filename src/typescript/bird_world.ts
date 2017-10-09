@@ -1,19 +1,22 @@
 import {
-    Token,
     CommandResult,
+    Command,
+    WorldType
+} from './commands'
+
+import {
+    Token,
+    CommandParser,
+    with_early_stopping,
+    consume_option_stepwise_eager
+} from './parser'
+
+import {
+    FuckDict,
     Disablable,
     set_enabled,
     unwrap,
     with_disablable,
-    CommandParser,
-    Command,
-    WorldType,
-    with_early_stopping,
-    consume_option_stepwise_eager
-} from './commands'
-
-import {
-    FuckDict
 } from './datatypes';
 
 import {capitalize, tokenize, split_tokens, untokenize, random_choice} from './text_tools';

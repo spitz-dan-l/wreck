@@ -5,7 +5,11 @@ import {ParsedText, OutputText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
-import {WorldType, WorldDriver, MatchValidity, is_enabled} from "../typescript/commands";
+import {WorldType, WorldDriver} from "../typescript/commands";
+
+import {MatchValidity} from '../typescript/parser';
+
+import {is_enabled} from '../typescript/datatypes';
 
 const Carat = () => (
   <span>

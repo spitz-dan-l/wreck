@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import {keys} from '../typescript/keyboard_tools';
-import {is_enabled, unwrap} from '../typescript/commands';
+import {is_enabled, unwrap} from '../typescript/datatypes';
 
 export class TypeaheadList extends React.Component<any, any> {
   constructor(props) {

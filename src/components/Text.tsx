@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import {DisplayEltType, MatchValidity} from '../typescript/commands';
+import {DisplayEltType, MatchValidity} from '../typescript/parser';
 
 import {get_indenting_whitespace} from '../typescript/text_tools';
 

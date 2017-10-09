@@ -31,7 +31,7 @@ const InputDisplay = (props) => {
 
 const Cursor = ({onClick}) => {
   let style: any = {
-    position: 'fixed'
+    position: 'absolute'
   };
   return (
     <span className="blinking-cursor" style={style} onClick={onClick}>

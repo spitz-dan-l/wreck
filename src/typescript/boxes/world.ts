@@ -27,6 +27,7 @@ import {
     Counter,
     counter_order,
     counter_update,
+    Disablable,
     FuckDict,
     Point2
 } from '../datatypes';
@@ -51,17 +52,19 @@ import {
 } from './commands';
 
 import {
-    Token,
     CommandResult,
-    CommandParser,
     Command,
-    Disablable,
-    DisplayElt,
-    DisplayEltType,
-    MatchValidity,
     WorldType,
     WorldDriver
 } from '../commands';
+
+import {
+    Token,
+    CommandParser,
+    DisplayElt,
+    DisplayEltType,
+    MatchValidity
+} from '../parser'
 
 import {WorldUpdateEffects, with_world_update, world_update} from './world_update_effects';
 

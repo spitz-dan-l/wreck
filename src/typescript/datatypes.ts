@@ -208,3 +208,44 @@ export function counter_order<T>(counter: Counter<T>, include_zero=false){
     }
     return result.map(([t, i]) => t);
 }
+
+export type Disablable<T> = T | DWrapped<T>;
+export type DWrapped<T> = {value: T, disablable: true, enabled: boolean}
+
+
+export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
+    return (<DWrapped<T>>x).disablable !== undefined;
+}
+
+export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
+    if (is_dwrapped(x)) {
+        if (x.enabled !== enabled) {
+            x.enabled = enabled; //could do check here for enabled being set properly already
+        }
+        return x;
+    } else {
+        let result: DWrapped<T> = {value: x, disablable: true, enabled};
+        
+        return result;
+    }
+}
+
+export function unwrap<T>(x: Disablable<T>): T {
+    if (is_dwrapped(x)) {
+        return x.value;
+    } else {
+        return x;
+    }
+}
+
+export function with_disablable<T1, T2>(x: Disablable<T1>, f: (t1: T1) => Disablable<T2>): Disablable<T2> {
+    return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));
+}
+
+export function is_enabled<T>(x: Disablable<T>): boolean {
+    if (is_dwrapped(x)){
+        return x.enabled;
+    } else {
+        return true;
+    }
+}
