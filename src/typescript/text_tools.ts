@@ -1,3 +1,5 @@
+import * as React from 'react';
+
 export function uncapitalize(msg: string) {
     return msg[0].toLowerCase() + msg.slice(1);
 }

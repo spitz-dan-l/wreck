@@ -21,7 +21,6 @@ import {
 
 import {capitalize, tokenize, split_tokens, untokenize, random_choice} from './text_tools';
 
-
 type BirdWorldState = {
     is_in_heaven?: boolean,
     has_seen?: FuckDict<boolean, boolean>
@@ -40,7 +39,7 @@ export class BirdWorld implements WorldType<BirdWorld>{
         if (has_seen === undefined) {
             has_seen = new FuckDict<boolean, boolean>([[false, false], [true, false]]);
         }
-
+        
         this.is_in_heaven = is_in_heaven;
         this.has_seen = has_seen;
     }

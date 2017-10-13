@@ -25,12 +25,6 @@ import {
 
 import {capitalize, tokenize, split_tokens, untokenize, random_choice} from '../text_tools';
 
-
-type VenienceWorldState = {
-    readonly location?: Point2,
-    readonly has_seen?: Matrix2
-}
-
 const dim_x = 4;
 const dim_y = 3;
 
@@ -38,10 +32,17 @@ const location_descriptions = new FuckDict<Point2, string>([
     [[0,0], 'Origin Point']
 ])
 
+type VenienceWorldState = {
+    readonly location?: Point2,
+    readonly has_seen?: Matrix2
+}
+
 export class VenienceWorld implements WorldType<VenienceWorld>{
     // readonly state: VenienceWorldState;
     readonly location: Point2;
     readonly has_seen: Matrix2;
+    readonly loop_erasure_index: number;
+    readonly loop_erasure_message: string;
 
     constructor({location, has_seen}: VenienceWorldState) {
         if (location === undefined) {
