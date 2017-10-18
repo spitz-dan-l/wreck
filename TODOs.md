@@ -2,7 +2,7 @@ TODOs
 
 - bare venience world
 
-- flesh out 4 corners
+- flesh out 4 corners - got "Ben"
 
 - add "carriage return" token?
 
