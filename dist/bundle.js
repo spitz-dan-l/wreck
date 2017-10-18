@@ -392,23 +392,34 @@ class CommandParser {
     }
     consume_option(option_spec_tokens, name, display = DisplayEltType.option) {
         let partial_matches = [];
+        let exact_match_subparser = null;
+        let exact_match_spec_toks = null;
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(datatypes_1.unwrap(spec_toks), display, name);
+            let is_exact_match = subparser.consume_exact(datatypes_1.unwrap(spec_toks), display, name);
             if (datatypes_1.is_enabled(spec_toks)) {
-                if (exact_match) {
-                    this.integrate(subparser);
-                    return text_tools_1.normalize_whitespace(text_tools_1.untokenize(datatypes_1.unwrap(spec_toks)));
+                if (is_exact_match) {
+                    exact_match_subparser = subparser;
+                    exact_match_spec_toks = datatypes_1.unwrap(spec_toks);
+                    continue;
+                    // this.integrate(subparser);
+                    // return <S>normalize_whitespace(untokenize(unwrap(spec_toks)));
                 }
                 if (subparser.validity === MatchValidity.partial) {
                     partial_matches.push(subparser.match[0]);
                 }
             } else {
-                if (exact_match || subparser.validity === MatchValidity.partial) {
+                if (is_exact_match || subparser.validity === MatchValidity.partial) {
                     let disabled_match = datatypes_1.set_enabled(subparser.match[0], false);
                     partial_matches.push(disabled_match);
                 }
             }
+        }
+        if (exact_match_subparser !== null) {
+            let typeahead = partial_matches.map(de => datatypes_1.with_disablable(de, x => x.typeahead[0]));
+            this.integrate(exact_match_subparser);
+            this.match[this.match.length - 1].typeahead = typeahead;
+            return text_tools_1.normalize_whitespace(text_tools_1.untokenize(exact_match_spec_toks));
         }
         if (partial_matches.filter(de => datatypes_1.is_enabled(de)).length > 0) {
             this.validity = MatchValidity.partial;
@@ -688,7 +699,7 @@ class Terminal extends React.Component {
             this.setState({ world_driver: this.state.world_driver });
         };
         this.handleTypeaheadSelection = option => {
-            let matched_tokens = this.currentParser().match.map(elt => elt.match);
+            let matched_tokens = this.currentParser().match.slice(0, this.currentTypeaheadIndex() + 1).map(elt => elt.match);
             let current_indentation = this.currentIndentation();
             if (current_indentation === '' && matched_tokens.length > 1) {
                 current_indentation = ' ';
@@ -700,18 +711,30 @@ class Terminal extends React.Component {
             this.prompt.setState({ value: new_command });
         };
         this.currentParser = () => this.state.world_driver.current_state.parser;
+        this.currentTypeaheadIndex = () => {
+            let parser = this.currentParser();
+            // if (parser.command == 'be the one who') {
+            //   debugger;
+            // }
+            let typeahead_ind = parser.match.length - 1;
+            let last_match = parser.match[typeahead_ind];
+            if (parser.match.length > 1 && last_match.match === '') {
+                typeahead_ind--;
+            }
+            return typeahead_ind;
+        };
         this.currentTypeahead = () => {
             let parser = this.currentParser();
-            let last_match = parser.match[parser.match.length - 1];
-            let typeahead = last_match.typeahead;
-            if (typeahead === undefined || parser.match.length > 1 && last_match.match === '') {
+            let typeahead_ind = this.currentTypeaheadIndex();
+            let typeahead = parser.match[typeahead_ind].typeahead;
+            if (typeahead === undefined) {
                 return [];
             }
             return typeahead;
         };
         this.currentIndentation = () => {
             let parser = this.currentParser();
-            return text_tools_1.get_indenting_whitespace(parser.match[parser.match.length - 1].match);
+            return text_tools_1.get_indenting_whitespace(parser.match[this.currentTypeaheadIndex()].match);
         };
         this.focus = () => {
             this.prompt.focus();
@@ -762,7 +785,7 @@ class Terminal extends React.Component {
                 //check if this.state.world_driver.possible_history[i] is disabled
                 React.createElement("div", { key: i.toString(), style: hist_elt_style }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })))
             );
-        }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.state.world_driver.current_state.parser }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -1110,7 +1133,7 @@ function get_display_color(det) {
     }
 }
 exports.ParsedText = props => {
-    let { parser, children } = props;
+    let { parser, typeaheadIndex, children } = props;
     let style = {
         display: 'inline-block',
         whiteSpace: 'pre-wrap',
@@ -1132,7 +1155,7 @@ exports.ParsedText = props => {
     const span_style = {
         display: 'inline-block'
     };
-    return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === parser.match.length - 1 ? children : '')));
+    return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : '')));
 };
 exports.OutputText = props => {
     const { message } = props;
@@ -1218,7 +1241,8 @@ class TypeaheadList extends React.Component {
             listStyleType: "none",
             padding: 0,
             margin: 0,
-            whiteSpace: 'pre'
+            whiteSpace: 'pre',
+            color: 'silver'
         };
         return React.createElement("ul", { style: style }, typeahead.map((option, i) => React.createElement("li", Object.assign({ key: i.toString(), onMouseOver: () => this.handleMouseOver(i), style: {
                 marginTop: '1em',

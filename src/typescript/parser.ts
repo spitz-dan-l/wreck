@@ -5,7 +5,8 @@ import {
     unwrap,
     is_enabled,
     set_enabled,
-    with_disablable
+    with_disablable,
+    array_fuck_contains
 } from './datatypes';
 
 
@@ -126,28 +127,43 @@ export class CommandParser {
 
     consume_option<S extends string>(option_spec_tokens: Disablable<Token[]>[], name?: string, display: DisplayEltType=DisplayEltType.option): S | false{
         let partial_matches: Disablable<DisplayElt>[] = [];
-        
+        let exact_match_subparser: CommandParser = null;
+        let exact_match_spec_toks: Token[] = null;
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
-            let exact_match = subparser.consume_exact(unwrap(spec_toks), display, name);
+            let is_exact_match = subparser.consume_exact(unwrap(spec_toks), display, name);
 
             if (is_enabled(spec_toks)){
-                if (exact_match) {
-                    this.integrate(subparser);
-                    return <S>normalize_whitespace(untokenize(unwrap(spec_toks)));
+                if (is_exact_match) {
+                    
+                    exact_match_subparser = subparser;
+                    exact_match_spec_toks = unwrap(spec_toks);
+                    
+                    continue;
+                    // this.integrate(subparser);
+                    // return <S>normalize_whitespace(untokenize(unwrap(spec_toks)));
                 }
 
                 if (subparser.validity === MatchValidity.partial){
                     partial_matches.push(subparser.match[0]);
                 }
             } else {
-                if (exact_match || subparser.validity === MatchValidity.partial){
+                if (is_exact_match || subparser.validity === MatchValidity.partial){
                     let disabled_match = set_enabled(subparser.match[0], false);
                     partial_matches.push(disabled_match);
                 }
             }
         }
         
+        if (exact_match_subparser !== null) {
+            
+            let typeahead = partial_matches.map((de) => with_disablable(de, (x) => x.typeahead[0]));
+            this.integrate(exact_match_subparser);
+            this.match[this.match.length-1].typeahead = typeahead;
+
+            return <S>normalize_whitespace(untokenize(exact_match_spec_toks));
+        }
+
         if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;

@@ -62,7 +62,7 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   }
 
   handleTypeaheadSelection = (option) => {
-    let matched_tokens = this.currentParser().match.map((elt) => elt.match);
+    let matched_tokens = this.currentParser().match.slice(0, this.currentTypeaheadIndex() + 1).map((elt) => elt.match);
     let current_indentation = this.currentIndentation();
     if (current_indentation === '' && matched_tokens.length > 1) {
       current_indentation = ' ';
@@ -77,11 +77,26 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
 
   currentParser = () => this.state.world_driver.current_state.parser;
 
+  currentTypeaheadIndex = () => {
+    let parser = this.currentParser();
+    // if (parser.command == 'be the one who') {
+    //   debugger;
+    // }
+    let typeahead_ind = parser.match.length - 1;
+    let last_match = parser.match[typeahead_ind];
+    if (parser.match.length > 1 && last_match.match === '') {
+      typeahead_ind--;
+    }
+
+    return typeahead_ind;
+  }
+
   currentTypeahead = () => {
     let parser = this.currentParser();
-    let last_match = parser.match[parser.match.length - 1]; 
-    let typeahead = last_match.typeahead;
-    if (typeahead === undefined || (parser.match.length > 1 && last_match.match === '') ) {
+    let typeahead_ind = this.currentTypeaheadIndex();
+
+    let typeahead = parser.match[typeahead_ind].typeahead;
+    if (typeahead === undefined) {
       return [];
     }
     return typeahead;
@@ -89,7 +104,7 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
 
   currentIndentation = () => {
     let parser = this.currentParser();
-    return get_indenting_whitespace(parser.match[parser.match.length - 1].match)
+    return get_indenting_whitespace(parser.match[this.currentTypeaheadIndex()].match)
   }
 
   focus = () => {
@@ -160,7 +175,10 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
             onChange={this.handlePromptChange}
             ref={p => this.prompt = p}>
             <Carat />
-            <ParsedText parser={this.state.world_driver.current_state.parser}>
+            <ParsedText
+              parser={this.currentParser()}
+              typeaheadIndex={this.currentTypeaheadIndex()}
+            >
               <TypeaheadList
                 typeahead={this.currentTypeahead()}
                 indentation={this.currentIndentation()}

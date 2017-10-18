@@ -20,7 +20,7 @@ function get_display_color(det: DisplayEltType) {
 }
 
 export const ParsedText = (props) => {
-  let {parser, children} = props;
+  let {parser, typeaheadIndex, children} = props;
 
   let style: any = {
     display: 'inline-block',
@@ -54,7 +54,7 @@ export const ParsedText = (props) => {
             <span style={span_style}>
               {elt.match + ( i === parser.match.length - 1  ? parser.tail_padding : '' ) }
             </span>
-            { ( i === parser.match.length - 1 ) ? children : '' }
+            { ( i === typeaheadIndex ) ? children : '' }
           </div>
         ))
       }
