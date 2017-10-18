@@ -78,7 +78,8 @@ export class TypeaheadList extends React.Component<any, any> {
       listStyleType: "none",
       padding: 0,
       margin: 0,
-      whiteSpace: 'pre'
+      whiteSpace: 'pre',
+      color: 'silver'
     };
     return (
       <ul style={style}>
