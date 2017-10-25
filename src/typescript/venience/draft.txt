@@ -21,7 +21,7 @@ As you do, your notes are revealed. Many pages of them, stuffed into the envelop
 
 > remove them from the envelope
 
-You've labelled each page's top-right corner. A numbering system denoting which portion of Katya's sequence a given note page refers to.
+You've labelled each page's top-right corner. A numbering system denoting which portion of Katya's sequence a given page refers to.
 
 > sort them by label
 
