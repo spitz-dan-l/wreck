@@ -45,9 +45,9 @@ def compute_full_traversals(dim_x, dim_y):
     return all_full_traversals
 
 if __name__ == '__main__':
-    corners = [(0,0), (0, 2), (3,0), (3,2)]
+    corners = [(0,0), (0, 2), (2,0), (2,2)]
 
-    ts = compute_full_traversals(4,3)
+    ts = compute_full_traversals(3,3)
 
     corner_orders = Counter()
 

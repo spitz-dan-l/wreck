@@ -6,4 +6,6 @@ TODOs
 
 - add "carriage return" token?
 
-- Typeahead bug: who/whose option doesn't appear when it should
+- push old versions of history onto a stack for posterity/saving/logging
+
+- make erased loops collapse/expandable

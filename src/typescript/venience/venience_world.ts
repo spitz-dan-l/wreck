@@ -25,12 +25,31 @@ import {
 
 import {capitalize, tokenize, split_tokens, untokenize, random_choice} from '../text_tools';
 
-const dim_x = 4;
+const dim_x = 3;
 const dim_y = 3;
 
 const location_descriptions = new FuckDict<Point2, string>([
-    [[0,0], 'Origin Point']
+    [[0,0], 'Home'],
+    [[2,0], "Charlotte's Home"],
+    [[0,2], "Ben's Home"], 
+    [[2,2], "Danielle's Home"]
 ])
+
+//instead of homes, boxes
+
+// Charlotte
+// Southern rural culture
+// Pacifier, baby's clothes, blanket
+// Medical writeup, printed out
+
+// Ben
+// New england mist, trees
+// All notes
+// Musical score of numbers
+
+// Danielle
+// Coffee mug
+// 
 
 type VenienceWorldState = {
     readonly location?: Point2,

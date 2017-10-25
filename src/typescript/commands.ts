@@ -100,6 +100,8 @@ function apply_history_update<T extends WorldType<T>>(history: CommandResult<T>[
 }
 
 export class WorldDriver<T extends WorldType<T>> {
+    previous_histories: CommandResult<T>[][] = [];
+
     history: CommandResult<T>[];
 
     possible_history: Disablable<CommandResult<T>>[];
@@ -126,6 +128,9 @@ export class WorldDriver<T extends WorldType<T>> {
     }
 
     commit() {
+        //save previous history for posterity
+        this.previous_histories.push(this.history);
+
         //filter out any disabled history
         this.history = this.possible_history.filter(is_enabled).map(unwrap);
 

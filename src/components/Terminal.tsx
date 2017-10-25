@@ -79,9 +79,6 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
 
   currentTypeaheadIndex = () => {
     let parser = this.currentParser();
-    // if (parser.command == 'be the one who') {
-    //   debugger;
-    // }
     let typeahead_ind = parser.match.length - 1;
     let last_match = parser.match[typeahead_ind];
     if (parser.match.length > 1 && last_match.match === '') {

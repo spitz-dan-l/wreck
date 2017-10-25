@@ -140,8 +140,6 @@ export class CommandParser {
                     exact_match_spec_toks = unwrap(spec_toks);
                     
                     continue;
-                    // this.integrate(subparser);
-                    // return <S>normalize_whitespace(untokenize(unwrap(spec_toks)));
                 }
 
                 if (subparser.validity === MatchValidity.partial){
