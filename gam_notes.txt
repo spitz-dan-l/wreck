@@ -16,6 +16,8 @@ Other ideas
     
     something about pairwise similarity/relational operations used to approximate a global space ???
 
+    Views into earlier parts of the history
+        summary zoomed out view in right sidebar?
 
 
 

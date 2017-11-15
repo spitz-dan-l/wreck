@@ -409,8 +409,6 @@ class CommandParser {
                     exact_match_subparser = subparser;
                     exact_match_spec_toks = datatypes_1.unwrap(spec_toks);
                     continue;
-                    // this.integrate(subparser);
-                    // return <S>normalize_whitespace(untokenize(unwrap(spec_toks)));
                 }
                 if (subparser.validity === MatchValidity.partial) {
                     partial_matches.push(subparser.match[0]);
@@ -720,9 +718,6 @@ class Terminal extends React.Component {
         this.currentParser = () => this.state.world_driver.current_state.parser;
         this.currentTypeaheadIndex = () => {
             let parser = this.currentParser();
-            // if (parser.command == 'be the one who') {
-            //   debugger;
-            // }
             let typeahead_ind = parser.match.length - 1;
             let last_match = parser.match[typeahead_ind];
             if (parser.match.length > 1 && last_match.match === '') {
@@ -865,6 +860,7 @@ function apply_history_update(history, result) {
 }
 class WorldDriver {
     constructor(initial_world) {
+        this.previous_histories = [];
         let initial_result = { world: initial_world };
         initial_result = apply_interstitial_update(initial_result);
         this.history = [initial_result];
@@ -881,6 +877,8 @@ class WorldDriver {
         return result;
     }
     commit() {
+        //save previous history for posterity
+        this.previous_histories.push(this.history);
         //filter out any disabled history
         this.history = this.possible_history.filter(datatypes_1.is_enabled).map(datatypes_1.unwrap);
         this.apply_command('', false);
@@ -900,32 +898,43 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const parser_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
-const dim_x = 4;
+const dim_x = 3;
 const dim_y = 3;
-const location_descriptions = new datatypes_1.FuckDict([[[0, 0], 'Origin Point']]);
+const location_descriptions = new datatypes_1.FuckDict([[[0, 0], 'You walk into a small alcove within the trees.\n\nOn the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.'], [[2, 0], "Charlotte's Home"], [[0, 2], "Ben's Home"], [[2, 2], "Danielle's Home"]]);
 class VenienceWorld {
-    constructor({ location, has_seen }) {
+    constructor({ location, has_seen, command_sequence }) {
         if (location === undefined) {
             location = [0, 0];
         }
         if (has_seen === undefined) {
             has_seen = datatypes_1.zeros(dim_x, dim_y);
         }
+        if (command_sequence === undefined) {
+            command_sequence = [];
+        }
         this.location = location;
         this.has_seen = has_seen;
+        this.command_sequence = command_sequence;
     }
-    update({ location, has_seen }) {
+    update({ location, has_seen, command_sequence }) {
         if (location === undefined) {
             location = this.location;
         }
         if (has_seen === undefined) {
             has_seen = this.has_seen;
         }
-        return new VenienceWorld({ location, has_seen });
+        if (command_sequence === undefined) {
+            command_sequence = this.command_sequence;
+        }
+        return new VenienceWorld({ location, has_seen, command_sequence });
     }
     get_commands() {
         let commands = [];
-        commands.push(go_cmd);
+        if (this.command_sequence.length > 0) {
+            commands.push(this.command_sequence[0]);
+        } else {
+            commands.push(go_cmd);
+        }
         return commands;
     }
     interstitial_update() {
@@ -933,8 +942,12 @@ class VenienceWorld {
         if (!this.has_seen.get(x, y)) {
             let new_has_seen = this.has_seen.copy();
             new_has_seen.set(x, y, 1);
+            let new_cmd_seq = this.command_sequence;
+            if (x === 0 && y === 0) {
+                new_cmd_seq = exports.initial_cmd_seq;
+            }
             return {
-                world: this.update({ has_seen: new_has_seen }),
+                world: this.update({ has_seen: new_has_seen, command_sequence: new_cmd_seq }),
                 message: location_descriptions.get(this.location) || undefined
             };
         }
@@ -994,6 +1007,26 @@ const go_cmd = {
         return { world: new_world, message: message };
     })
 };
+function build_command_sequence(data) {
+    return data.map(([tokens, message]) => ({
+        command_name: tokens,
+        execute: parser_1.with_early_stopping(function* (world, parser) {
+            yield parser.done();
+            return {
+                world: world.update({
+                    command_sequence: world.command_sequence.slice(1)
+                }),
+                message: message
+            };
+        })
+    }));
+}
+exports.build_command_sequence = build_command_sequence;
+function tokenize_cmd([cmd, msg]) {
+    return [text_tools_1.split_tokens(cmd), msg];
+}
+let cmd_seq_data = [["sit at the desk", "The chair creeks quietly under your weight."], ['untie the bow', "It pulls loose easily."], ['unwrap the twine', 'The manilla envelope bulges out as you pull away the twine and wrap it in a small loop.'], ['unfold the envelope flap', 'As you do, your notes are revealed. Many pages of them, stuffed into the envelope.']];
+exports.initial_cmd_seq = build_command_sequence(cmd_seq_data.map(tokenize_cmd));
 
 /***/ }),
 /* 8 */

@@ -29,7 +29,7 @@ const dim_x = 3;
 const dim_y = 3;
 
 const location_descriptions = new FuckDict<Point2, string>([
-    [[0,0], 'Home'],
+    [[0,0], 'You walk into a small alcove within the trees.\n\nOn the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.'],
     [[2,0], "Charlotte's Home"],
     [[0,2], "Ben's Home"], 
     [[2,2], "Danielle's Home"]
@@ -53,7 +53,8 @@ const location_descriptions = new FuckDict<Point2, string>([
 
 type VenienceWorldState = {
     readonly location?: Point2,
-    readonly has_seen?: Matrix2
+    readonly has_seen?: Matrix2,
+    readonly command_sequence?: Command<VenienceWorld>[]
 }
 
 export class VenienceWorld implements WorldType<VenienceWorld>{
@@ -63,32 +64,45 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
     readonly loop_erasure_index: number;
     readonly loop_erasure_message: string;
 
-    constructor({location, has_seen}: VenienceWorldState) {
+    readonly command_sequence: Command<VenienceWorld>[];
+
+    constructor({location, has_seen, command_sequence}: VenienceWorldState) {
         if (location === undefined) {
             location = [0, 0];
         }
         if (has_seen === undefined) {
             has_seen = zeros(dim_x, dim_y);
         }
+        if (command_sequence === undefined) {
+            command_sequence = [];
+        }
 
         this.location = location;
         this.has_seen = has_seen;
+        this.command_sequence = command_sequence;
     }
 
-    update({location, has_seen}: VenienceWorldState) {
+    update({location, has_seen, command_sequence}: VenienceWorldState) {
         if (location === undefined) {
             location = this.location;
         }
         if (has_seen === undefined) {
             has_seen = this.has_seen;
         }
+        if (command_sequence === undefined) {
+            command_sequence = this.command_sequence;
+        }
 
-        return new VenienceWorld({location, has_seen});
+        return new VenienceWorld({location, has_seen, command_sequence});
     }
 
     get_commands(){
         let commands: Disablable<Command<VenienceWorld>>[] = [];
-        commands.push(go_cmd);
+        if (this.command_sequence.length > 0) {
+            commands.push(this.command_sequence[0])
+        } else {
+            commands.push(go_cmd);
+        }
         return commands;
     }
 
@@ -98,8 +112,13 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
             let new_has_seen = this.has_seen.copy();
             new_has_seen.set(x, y, 1);
             
+            let new_cmd_seq: Command<VenienceWorld>[] = this.command_sequence;
+            if (x ===0 && y === 0){
+                new_cmd_seq = initial_cmd_seq;
+            }
+
             return {
-                world: this.update({has_seen: new_has_seen}),
+                world: this.update({has_seen: new_has_seen, command_sequence: new_cmd_seq}),
                 message: location_descriptions.get(this.location) || undefined
             };
         }
@@ -173,3 +192,42 @@ const go_cmd: Command<VenienceWorld> = {
         }
     )
 }
+
+export function build_command_sequence(data: [Token[], string][]) {
+    return data.map(([tokens, message]) => ({
+        command_name: tokens,
+        execute: with_early_stopping(
+            function*(world: VenienceWorld, parser: CommandParser){
+                yield parser.done();
+
+                return {
+                    world: world.update({
+                        command_sequence: world.command_sequence.slice(1)
+                    }),
+                    message: message
+                }   
+            }
+        )}
+    ))
+}
+
+function tokenize_cmd([cmd, msg]: [string, string]): [Token[], string] {
+    return [split_tokens(cmd), msg];
+}
+
+let cmd_seq_data: [string, string][] = [
+    ["sit at the desk",
+     "The chair creeks quietly under your weight."],
+    
+    ['untie the bow',
+     "It pulls loose easily."],
+    
+    ['unwrap the twine',
+     'The manilla envelope bulges out as you pull away the twine and wrap it in a small loop.'],
+
+    ['unfold the envelope flap',
+     'As you do, your notes are revealed. Many pages of them, stuffed into the envelope.'],
+];
+
+export let initial_cmd_seq: Command<VenienceWorld>[] = build_command_sequence(
+    cmd_seq_data.map(tokenize_cmd));
