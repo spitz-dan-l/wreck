@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 12);
+/******/ 	return __webpack_require__(__webpack_require__.s = 13);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -898,59 +898,78 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const parser_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
+const cutscenes_1 = __webpack_require__(12);
 const dim_x = 3;
 const dim_y = 3;
-const location_descriptions = new datatypes_1.FuckDict([[[0, 0], 'You walk into a small alcove within the trees.\n\nOn the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.'], [[2, 0], "Charlotte's Home"], [[0, 2], "Ben's Home"], [[2, 2], "Danielle's Home"]]);
+const location_descriptions = new datatypes_1.FuckDict([[[0, 0], "Your Desk"], [[2, 0], "Charlotte's Home"], [[0, 2], "Ben's Home"], [[2, 2], "Danielle's Home"]]);
+let initial_cutscene = [[null, 'You walk into a small alcove within the trees.\n\nOn the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.'], ["sit at the desk", "The chair creeks quietly under your weight."], ['untie the bow', "It pulls loose easily."], ['unwrap the twine', 'The manilla envelope bulges out as you pull away the twine and wrap it in a small loop.'], ['unfold the envelope flap', 'As you do, your notes are revealed. Many pages of them, stuffed into the envelope.']];
+const location_cutscenes = new datatypes_1.FuckDict([[[0, 0], initial_cutscene]]);
 class VenienceWorld {
-    constructor({ location, has_seen, command_sequence }) {
+    constructor({ location, has_seen, cutscene }) {
         if (location === undefined) {
             location = [0, 0];
         }
         if (has_seen === undefined) {
             has_seen = datatypes_1.zeros(dim_x, dim_y);
         }
-        if (command_sequence === undefined) {
-            command_sequence = [];
+        if (cutscene === undefined) {
+            cutscene = [];
         }
         this.location = location;
         this.has_seen = has_seen;
-        this.command_sequence = command_sequence;
+        this.cutscene = cutscene;
     }
-    update({ location, has_seen, command_sequence }) {
+    update({ location, has_seen, cutscene }) {
         if (location === undefined) {
             location = this.location;
         }
         if (has_seen === undefined) {
             has_seen = this.has_seen;
         }
-        if (command_sequence === undefined) {
-            command_sequence = this.command_sequence;
+        if (cutscene === undefined) {
+            cutscene = this.cutscene;
         }
-        return new VenienceWorld({ location, has_seen, command_sequence });
+        return new VenienceWorld({ location, has_seen, cutscene });
     }
     get_commands() {
         let commands = [];
-        if (this.command_sequence.length > 0) {
-            commands.push(this.command_sequence[0]);
+        if (this.cutscene.length > 0) {
+            commands.push(this.cutscene[0]);
         } else {
             commands.push(go_cmd);
         }
         return commands;
     }
     interstitial_update() {
+        let result = {};
+        let world_update = {};
+        let message_parts = [];
         let [x, y] = this.location;
         if (!this.has_seen.get(x, y)) {
             let new_has_seen = this.has_seen.copy();
             new_has_seen.set(x, y, 1);
-            let new_cmd_seq = this.command_sequence;
-            if (x === 0 && y === 0) {
-                new_cmd_seq = exports.initial_cmd_seq;
+            world_update.has_seen = new_has_seen;
+            let loc_descr = location_descriptions.get(this.location);
+            if (loc_descr !== null) {
+                message_parts.push(loc_descr);
             }
-            return {
-                world: this.update({ has_seen: new_has_seen, command_sequence: new_cmd_seq }),
-                message: location_descriptions.get(this.location) || undefined
-            };
+            let loc_cutscene = location_cutscenes.get(this.location);
+            if (loc_cutscene !== undefined) {
+                let cs = loc_cutscene.slice();
+                if (cs[0][0] === null) {
+                    message_parts.push(cs[0][1]);
+                    cs.shift();
+                }
+                world_update.cutscene = cutscenes_1.build_cutscene(cs);
+            }
         }
+        if (message_parts.length > 0) {
+            result.message = message_parts.join('\n\n');
+        }
+        if (Object.keys(world_update).length > 0) {
+            result.world = this.update(world_update);
+        }
+        return result;
     }
 }
 exports.VenienceWorld = VenienceWorld;
@@ -995,7 +1014,7 @@ const go_cmd = {
                 }
                 new_history[pos] = datatypes_1.with_disablable(new_history[pos], res => {
                     let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
-                    new_res.message += '\n\nYou consider leaving, but decide not to.';
+                    new_res.message += '\nYou consider leaving, but decide not to.';
                     return new_res;
                 });
                 return new_history;
@@ -1007,26 +1026,6 @@ const go_cmd = {
         return { world: new_world, message: message };
     })
 };
-function build_command_sequence(data) {
-    return data.map(([tokens, message]) => ({
-        command_name: tokens,
-        execute: parser_1.with_early_stopping(function* (world, parser) {
-            yield parser.done();
-            return {
-                world: world.update({
-                    command_sequence: world.command_sequence.slice(1)
-                }),
-                message: message
-            };
-        })
-    }));
-}
-exports.build_command_sequence = build_command_sequence;
-function tokenize_cmd([cmd, msg]) {
-    return [text_tools_1.split_tokens(cmd), msg];
-}
-let cmd_seq_data = [["sit at the desk", "The chair creeks quietly under your weight."], ['untie the bow', "It pulls loose easily."], ['unwrap the twine', 'The manilla envelope bulges out as you pull away the twine and wrap it in a small loop.'], ['unfold the envelope flap', 'As you do, your notes are revealed. Many pages of them, stuffed into the envelope.']];
-exports.initial_cmd_seq = build_command_sequence(cmd_seq_data.map(tokenize_cmd));
 
 /***/ }),
 /* 8 */
@@ -1288,6 +1287,32 @@ exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
 /* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const text_tools_1 = __webpack_require__(3);
+const parser_1 = __webpack_require__(2);
+function build_cutscene(data) {
+    return data.map(([cmd, message]) => ({
+        command_name: text_tools_1.split_tokens(cmd),
+        execute: parser_1.with_early_stopping(function* (world, parser) {
+            yield parser.done();
+            return {
+                world: world.update({
+                    cutscene: world.cutscene.slice(1)
+                }),
+                message: message
+            };
+        })
+    }));
+}
+exports.build_cutscene = build_cutscene;
+
+/***/ }),
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

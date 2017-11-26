@@ -6,7 +6,7 @@ import {Terminal} from "../components/Terminal";
 import {WorldDriver} from "../typescript/commands";
 
 //import {BirdWorld} from '../typescript/bird_world';
-import {VenienceWorld, initial_cmd_seq} from '../typescript/venience/venience_world';
+import {VenienceWorld} from '../typescript/venience/venience_world';
 
 
 let world_driver = new WorldDriver(new VenienceWorld({}))

@@ -1,11 +1,9 @@
 TODOs
 
-- bare venience world
+- build generator-based dsl for linear, text-and-single-command sequences
 
 - flesh out 4 corners - got "Ben"
 
 - add "carriage return" token?
-
-- push old versions of history onto a stack for posterity/saving/logging
 
 - make erased loops collapse/expandable
