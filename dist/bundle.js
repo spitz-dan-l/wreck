@@ -1014,7 +1014,7 @@ const go_cmd = {
                 }
                 new_history[pos] = datatypes_1.with_disablable(new_history[pos], res => {
                     let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
-                    new_res.message += '\nYou consider leaving, but decide not to.';
+                    new_res.message += '\n\nYou consider leaving, but decide not to.';
                     return new_res;
                 });
                 return new_history;

@@ -76,7 +76,7 @@ const location_cutscenes = new FuckDict<Point2, CutsceneData>([
 type VenienceWorldState = {
     location?: Point2,
     has_seen?: Matrix2,
-    cutscene?: Command<VenienceWorld>[]
+    cutscene?: Cutscene<VenienceWorld>
 }
 
 export class VenienceWorld implements WorldType<VenienceWorld>{
@@ -86,7 +86,7 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
     readonly loop_erasure_index: number;
     readonly loop_erasure_message: string;
 
-    readonly cutscene: Command<VenienceWorld>[];
+    readonly cutscene: Cutscene<VenienceWorld>;
 
     constructor({location, has_seen, cutscene}: VenienceWorldState) {
         if (location === undefined) {
@@ -220,7 +220,7 @@ const go_cmd: Command<VenienceWorld> = {
 
                     new_history[pos] = with_disablable(new_history[pos], (res) => {
                         let new_res = {...res}; //copy it so we aren't updating the original history entry
-                        new_res.message += '\nYou consider leaving, but decide not to.';
+                        new_res.message += '\n\nYou consider leaving, but decide not to.';
                         return new_res;
                     })
 
