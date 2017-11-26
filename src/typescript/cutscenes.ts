@@ -9,7 +9,7 @@ import {split_tokens} from './text_tools';
 import {CommandParser, with_early_stopping} from './parser';
 
 type CutsceneState<T extends WorldType<T>> = {
-    cutscene?: Cutscene<WorldType<T>>
+    cutscene?: Cutscene<T>
 };
 
 type WorldWithCutscenes<T extends WorldType<T>> = WorldType<T> & {
