@@ -645,6 +645,12 @@ function random_choice(choices) {
     return choices[index];
 }
 exports.random_choice = random_choice;
+function dedent(strs, ...args) {
+    //find the first newline
+    //grab the whitespace immediately after it
+    //remove that whitespace after every newline
+}
+exports.dedent = dedent;
 
 /***/ }),
 /* 4 */
@@ -902,7 +908,9 @@ const cutscenes_1 = __webpack_require__(12);
 const dim_x = 3;
 const dim_y = 3;
 const location_descriptions = new datatypes_1.FuckDict([[[0, 0], "Your Desk"], [[2, 0], "Charlotte's Home"], [[0, 2], "Ben's Home"], [[2, 2], "Danielle's Home"]]);
-let initial_cutscene = [[null, 'You walk into a small alcove within the trees.\n\nOn the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.'], ["sit at the desk", "The chair creeks quietly under your weight."], ['untie the bow', "It pulls loose easily."], ['unwrap the twine', 'The manilla envelope bulges out as you pull away the twine and wrap it in a small loop.'], ['unfold the envelope flap', 'As you do, your notes are revealed. Many pages of them, stuffed into the envelope.']];
+let initial_cutscene = [[null, `You walk into a small alcove within the trees.
+
+     On the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.`], ["sit at the desk", "The chair creeks quietly under your weight."], ['untie the bow', "It pulls loose easily."], ['unwrap the twine', 'The manilla envelope bulges out as you pull away the twine and wrap it in a small loop.'], ['unfold the envelope flap', 'As you do, your notes are revealed. Many pages of them, stuffed into the envelope.']];
 const location_cutscenes = new datatypes_1.FuckDict([[[0, 0], initial_cutscene]]);
 class VenienceWorld {
     constructor({ location, has_seen, cutscene }) {

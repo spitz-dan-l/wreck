@@ -109,3 +109,9 @@ export function random_choice(choices: any[]) {
   var index = Math.floor(Math.random() * choices.length);
   return choices[index];
 }
+
+export function dedent(strs: string[], ...args) {
+    //find the first newline
+    //grab the whitespace immediately after it
+    //remove that whitespace after every newline
+}

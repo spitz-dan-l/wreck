@@ -39,7 +39,9 @@ const location_descriptions = new FuckDict<Point2, string>([
 
 let initial_cutscene: [string, string][] = [
     [null,
-     'You walk into a small alcove within the trees.\n\nOn the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.'],
+     `You walk into a small alcove within the trees.
+
+     On the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.`],
 
     ["sit at the desk",
      "The chair creeks quietly under your weight."],
