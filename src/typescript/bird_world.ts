@@ -1,7 +1,8 @@
 import {
     CommandResult,
     Command,
-    WorldType
+    WorldType,
+    eager_dispatch
 } from './commands'
 
 import {
@@ -52,6 +53,10 @@ export class BirdWorld implements WorldType<BirdWorld>{
             has_seen = this.has_seen;
         }
         return new BirdWorld({is_in_heaven, has_seen});
+    }
+
+    handle_command(parser: CommandParser) {
+        return eager_dispatch<BirdWorld>(this, parser);
     }
 
     get_commands(){

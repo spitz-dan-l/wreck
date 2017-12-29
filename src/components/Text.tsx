@@ -70,8 +70,6 @@ export const OutputText = (props) => {
   }
 
   return (
-    <div style={style}>
-      {message !== undefined ? message : ''}
-    </div>
+    <div style={style} dangerouslySetInnerHTML={{__html: message}} />
   );
 }

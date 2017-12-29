@@ -110,8 +110,23 @@ export function random_choice(choices: any[]) {
   return choices[index];
 }
 
-export function dedent(strs: string[], ...args) {
-    //find the first newline
-    //grab the whitespace immediately after it
-    //remove that whitespace after every newline
+export function dedent(strs: TemplateStringsArray, ...args) {
+    // do interpolation
+    let result: string = strs[0];
+    for (let i = 0; i < args.length; i++) {
+        result += args[i] + strs[i + 1];
+    }
+
+    //find the first newline with whitespace after it
+    let pat = /\n +/;
+    let m = pat.exec(result);
+
+    if (m === null) {
+        return result
+    }
+
+    let replace_pat = new RegExp(m[0], 'g');
+    let result2 = result.replace(replace_pat, '\n');
+    
+   return result2;
 }

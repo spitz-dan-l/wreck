@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 13);
+/******/ 	return __webpack_require__(__webpack_require__.s = 12);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -646,9 +646,20 @@ function random_choice(choices) {
 }
 exports.random_choice = random_choice;
 function dedent(strs, ...args) {
-    //find the first newline
-    //grab the whitespace immediately after it
-    //remove that whitespace after every newline
+    // do interpolation
+    let result = strs[0];
+    for (let i = 0; i < args.length; i++) {
+        result += args[i] + strs[i + 1];
+    }
+    //find the first newline with whitespace after it
+    let pat = /\n +/;
+    let m = pat.exec(result);
+    if (m === null) {
+        return result;
+    }
+    let replace_pat = new RegExp(m[0], 'g');
+    let result2 = result.replace(replace_pat, '\n');
+    return result2;
 }
 exports.dedent = dedent;
 
@@ -734,6 +745,9 @@ class Terminal extends React.Component {
         this.currentTypeahead = () => {
             let parser = this.currentParser();
             let typeahead_ind = this.currentTypeaheadIndex();
+            if (typeahead_ind === -1) {
+                return [];
+            }
             let typeahead = parser.match[typeahead_ind].typeahead;
             if (typeahead === undefined) {
                 return [];
@@ -742,7 +756,11 @@ class Terminal extends React.Component {
         };
         this.currentIndentation = () => {
             let parser = this.currentParser();
-            return text_tools_1.get_indenting_whitespace(parser.match[this.currentTypeaheadIndex()].match);
+            let typeahead_ind = this.currentTypeaheadIndex();
+            if (typeahead_ind === -1) {
+                return '';
+            }
+            return text_tools_1.get_indenting_whitespace(parser.match[typeahead_ind].match);
         };
         this.focus = () => {
             this.prompt.focus();
@@ -770,8 +788,9 @@ class Terminal extends React.Component {
             width: '100%',
             overflowY: 'scroll',
             whiteSpace: 'pre-wrap',
-            fontFamily: "'Fira Mono'",
-            fontSize: '1.5em',
+            fontFamily: "'Roboto Mono'",
+            fontSize: '1em',
+            fontWeight: 'light',
             color: 'ivory',
             background: 'black',
             radius: 3,
@@ -811,15 +830,8 @@ const datatypes_1 = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
 function apply_command(world, cmd) {
     let parser = new parser_1.CommandParser(cmd);
-    let commands = world.get_commands();
-    let options = commands.map(cmd => datatypes_1.with_disablable(cmd, c => c.command_name));
-    let cmd_name = parser.consume_option(options, 'command', parser_1.DisplayEltType.keyword);
     let result = { parser: parser, world: world };
-    if (!cmd_name) {
-        return result;
-    }
-    let command = datatypes_1.unwrap(commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(datatypes_1.unwrap(cmd).command_name))]);
-    let cmd_result = command.execute(world, parser);
+    let cmd_result = world.handle_command(parser);
     if (cmd_result !== undefined) {
         if (cmd_result.world !== undefined) {
             result.world = cmd_result.world;
@@ -892,6 +904,19 @@ class WorldDriver {
     }
 }
 exports.WorldDriver = WorldDriver;
+function eager_dispatch(world, parser) {
+    let commands = world.get_commands();
+    let options = commands.map(cmd => datatypes_1.with_disablable(cmd, c => c.command_name));
+    let cmd_name = parser.consume_option(options, 'command', parser_1.DisplayEltType.keyword);
+    let result = { parser: parser, world: world };
+    if (!cmd_name) {
+        return result;
+    }
+    let command = datatypes_1.unwrap(commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(datatypes_1.unwrap(cmd).command_name))]);
+    let cmd_result = command.execute(world, parser);
+    return cmd_result;
+}
+exports.eager_dispatch = eager_dispatch;
 
 /***/ }),
 /* 7 */
@@ -904,72 +929,188 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const parser_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
-const cutscenes_1 = __webpack_require__(12);
-const dim_x = 3;
-const dim_y = 3;
-const location_descriptions = new datatypes_1.FuckDict([[[0, 0], "Your Desk"], [[2, 0], "Charlotte's Home"], [[0, 2], "Ben's Home"], [[2, 2], "Danielle's Home"]]);
-let initial_cutscene = [[null, `You walk into a small alcove within the trees.
+function index_oms(oms) {
+    let result = new datatypes_1.FuckDict();
+    for (let om of oms) {
+        result.set(om.id, om);
+    }
+    //second pass, typecheck em
+    return result;
+}
+let tower_oms = index_oms([{
+    id: 'base, from path',
+    message: text_tools_1.dedent`The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
+    transitions: [['approach the viewing tower', 'base, regarding tower']]
+}, {
+    id: 'base, regarding tower',
+    message: text_tools_1.dedent`The viewing tower stands tall and straight. Its construction is one of basic, stable order. A square grid of thick wooden columns rooted deep within the ground rises up before you; the foundation of the tower.
 
-     On the grass sits a small wooden desk and chair. On the desk is a thickly stuffed manilla envelope, wrapped shut by a length of brown twine, tied in a haphazard bow.`], ["sit at the desk", "The chair creeks quietly under your weight."], ['untie the bow', "It pulls loose easily."], ['unwrap the twine', 'The manilla envelope bulges out as you pull away the twine and wrap it in a small loop.'], ['unfold the envelope flap', 'As you do, your notes are revealed. Many pages of them, stuffed into the envelope.']];
-const location_cutscenes = new datatypes_1.FuckDict([[[0, 0], initial_cutscene]]);
+            A wooden stairway set between the first two rows of columns leads upward.`,
+    transitions: [['climb the stairs', 'stairs 1, ascending']]
+}, {
+    id: 'stairs 1, ascending',
+    message: text_tools_1.dedent`As you ascend, the ground below you recedes.
+
+            You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
+
+            <i>"We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."</i>
+
+            The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
+    transitions: [['turn left and proceed along the platform', 'platform 1, ascending'], ['turn around and descend the stairs', 'base, regarding tower']]
+}, {
+    id: 'platform 1, ascending',
+    message: text_tools_1.dedent`You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
+
+            You continue reading:
+
+            <i>"From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."</i>
+
+            The platform terminates, and another wooden stairway to the left leads further up the tower.`,
+    transitions: [['turn left and climb the stairs', 'stairs 2, ascending'], ['turn around and proceed along the platform', 'stairs 1, ascending']]
+}, {
+    id: 'stairs 2, ascending',
+    message: text_tools_1.dedent`They feel solid under your feet, dull thuds sounding with each step.
+
+            <i>"It can feel like a deliverance when one reaches such a vantage after much aimless wandering."</i>
+
+            The stairs terminate in another left-branching platform.`,
+    transitions: [['turn left and proceed along the platform', 'platform 2, ascending'], ['turn around and descend the stairs', 'platform 1, ascending']]
+}, {
+    id: 'platform 2, ascending',
+    message: text_tools_1.dedent`You make your way across the weathered wood.
+
+            <i>"The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."</i>
+
+            A final wooden stairway to the left leads up to the top of the tower.`,
+    transitions: [['turn left and climb the stairs', 'top, arriving'], ['turn around and proceed along the platform', 'stairs 2, ascending']]
+}, {
+    id: 'top, arriving',
+    message: text_tools_1.dedent`You reach the top. A grand visage of the Mystic River and Macdonald Park extends before you in all directions.`,
+    transitions: [['survey the area', 'top, surveying'], ['descend the stairs', 'platform 2, ascending']]
+}, {
+    id: 'top, surveying',
+    message: text_tools_1.dedent`You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
+
+            You see the path you took to reach this viewing tower. You see it continue further onward, into MacDonald Park, and branch, curving into the brush by the river.
+
+            You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
+
+            <i>"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</i>`,
+    transitions: [['descend the stairs', 'stairs 2, descending']]
+}, {
+    id: 'stairs 3, descending',
+    message: text_tools_1.dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
+
+            <i>"Do not fret, my dear. Return to the madness of life after your brief respite."</i>`,
+    transitions: [['turn right and proceed along the platform', 'platform 2, descending'], ['turn around and ascend the stairs', 'top, surveying']]
+}, {
+    id: 'platform 2, descending',
+    message: text_tools_1.dedent`The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
+
+            <i>"Expect to forget; to be turned around; to become tangled up."</i>`,
+    transitions: [['turn right and descend the stairs', 'stairs 2, descending'], ['turn around and proceed along the platform', 'stairs 3, descending']]
+}, {
+    id: 'stairs 2, descending',
+    message: text_tools_1.dedent`The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
+
+            <i>"Find some joy in it; some exhilaration."</i>`,
+    transitions: [['turn right and proceed along the platform', 'platform 1, descending'], ['turn around and ascend the stairs', 'platform 2, descending']]
+}, {
+    id: 'platform 1, descending',
+    message: text_tools_1.dedent`You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
+
+            <i>"And know that you have changed, dear. That your ascent has taught you something."</i>`,
+    transitions: [['turn right and descend the stairs', 'base, regarding path'], ['turn around and proceed along the platform', 'stairs 2, descending']]
+}, {
+    id: 'base, regarding path',
+    message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?`,
+    transitions: []
+}]);
+function transitions_to_commands(transitions) {
+    return transitions.map(([cmd, next_om_id]) => ({
+        command_name: text_tools_1.split_tokens(cmd),
+        execute: parser_1.with_early_stopping(function* (world, parser) {
+            yield parser.done();
+            return {
+                world: world.update({
+                    current_om: next_om_id
+                })
+            };
+        })
+    }));
+}
 class VenienceWorld {
-    constructor({ location, has_seen, cutscene }) {
-        if (location === undefined) {
-            location = [0, 0];
+    constructor({ current_om, has_seen }) {
+        if (current_om === undefined) {
+            current_om = 'base, from path';
         }
         if (has_seen === undefined) {
-            has_seen = datatypes_1.zeros(dim_x, dim_y);
+            has_seen = new datatypes_1.FuckDict();
         }
-        if (cutscene === undefined) {
-            cutscene = [];
-        }
-        this.location = location;
+        this.current_om = current_om;
         this.has_seen = has_seen;
-        this.cutscene = cutscene;
     }
-    update({ location, has_seen, cutscene }) {
-        if (location === undefined) {
-            location = this.location;
+    update({ current_om, has_seen }) {
+        if (current_om === undefined) {
+            current_om = this.current_om;
         }
         if (has_seen === undefined) {
             has_seen = this.has_seen;
         }
-        if (cutscene === undefined) {
-            cutscene = this.cutscene;
-        }
-        return new VenienceWorld({ location, has_seen, cutscene });
+        return new VenienceWorld({ current_om, has_seen });
     }
-    get_commands() {
-        let commands = [];
-        if (this.cutscene.length > 0) {
-            commands.push(this.cutscene[0]);
-        } else {
-            commands.push(go_cmd);
-        }
-        return commands;
+    handle_command(parser) {
+        let world = this;
+        return parser_1.with_early_stopping(function* (parser) {
+            let om = tower_oms.get(world.current_om);
+            let cmd_options = om.transitions.map(([cmd, om_id]) => text_tools_1.split_tokens(cmd));
+            if (cmd_options.length === 0) {
+                return;
+            }
+            let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
+            yield parser.done();
+            let om_id_choice = world.current_om;
+            om.transitions.forEach(([cmd, om_id]) => {
+                if (cmd_choice === cmd) {
+                    om_id_choice = om_id;
+                }
+            });
+            console.log(om_id_choice);
+            return { world: world.update({
+                    current_om: om_id_choice
+                }) };
+        })(parser);
     }
     interstitial_update() {
         let result = {};
         let world_update = {};
         let message_parts = [];
-        let [x, y] = this.location;
-        if (!this.has_seen.get(x, y)) {
+        let om_descr = tower_oms.get(this.current_om).message;
+        message_parts.push(om_descr);
+        if (!this.has_seen.get(this.current_om)) {
             let new_has_seen = this.has_seen.copy();
-            new_has_seen.set(x, y, 1);
+            new_has_seen.set(this.current_om, true);
             world_update.has_seen = new_has_seen;
-            let loc_descr = location_descriptions.get(this.location);
-            if (loc_descr !== null) {
-                message_parts.push(loc_descr);
-            }
-            let loc_cutscene = location_cutscenes.get(this.location);
-            if (loc_cutscene !== undefined) {
-                let cs = loc_cutscene.slice();
-                if (cs[0][0] === null) {
-                    message_parts.push(cs[0][1]);
-                    cs.shift();
+        } else {
+            //historoony
+            let world = this;
+            function update_history(history) {
+                let new_history = history.map(x => datatypes_1.set_enabled(x, true));
+                let pos;
+                for (pos = history.length - 1; pos >= 0; pos--) {
+                    if (history[pos].world.current_om == world.current_om) {
+                        break;
+                    } else {
+                        new_history[pos] = datatypes_1.set_enabled(new_history[pos], false);
+                    }
                 }
-                world_update.cutscene = cutscenes_1.build_cutscene(cs);
+                new_history[pos] = datatypes_1.with_disablable(new_history[pos], res => {
+                    let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
+                    return new_res;
+                });
+                return new_history;
             }
+            return { history_updater: update_history };
         }
         if (message_parts.length > 0) {
             result.message = message_parts.join('\n\n');
@@ -981,59 +1122,6 @@ class VenienceWorld {
     }
 }
 exports.VenienceWorld = VenienceWorld;
-const go_cmd = {
-    command_name: ['go'],
-    execute: parser_1.with_early_stopping(function* (world, parser) {
-        let dir_options = [];
-        let [x, y] = world.location;
-        dir_options.push(datatypes_1.set_enabled(['north'], y > 0));
-        dir_options.push(datatypes_1.set_enabled(['south'], y < dim_y - 1));
-        dir_options.push(datatypes_1.set_enabled(['east'], x < dim_x - 1));
-        dir_options.push(datatypes_1.set_enabled(['west'], x > 0));
-        let dir_word = yield parser.consume_option(dir_options);
-        //TODO: add adverb component to end of command
-        yield parser.done();
-        let [dest_x, dest_y] = [x, y];
-        switch (dir_word) {
-            case 'north':
-                dest_y--;
-                break;
-            case 'south':
-                dest_y++;
-                break;
-            case 'east':
-                dest_x++;
-                break;
-            case 'west':
-                dest_x--;
-                break;
-        }
-        if (world.has_seen.get(dest_x, dest_y)) {
-            // do loop erasure on history
-            function update_history(history) {
-                let new_history = history.map(x => datatypes_1.set_enabled(x, true));
-                let pos;
-                for (pos = history.length - 1; pos >= 0; pos--) {
-                    if (datatypes_1.arrays_fuck_equal(history[pos].world.location, [dest_x, dest_y])) {
-                        break;
-                    } else {
-                        new_history[pos] = datatypes_1.set_enabled(new_history[pos], false);
-                    }
-                }
-                new_history[pos] = datatypes_1.with_disablable(new_history[pos], res => {
-                    let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
-                    new_res.message += '\n\nYou consider leaving, but decide not to.';
-                    return new_res;
-                });
-                return new_history;
-            }
-            return { history_updater: update_history };
-        }
-        let new_world = world.update({ location: [dest_x, dest_y] });
-        let message = text_tools_1.capitalize(dir_word) + ' you go.';
-        return { world: new_world, message: message };
-    })
-};
 
 /***/ }),
 /* 8 */
@@ -1203,7 +1291,7 @@ exports.OutputText = props => {
         display: 'inline-block',
         whiteSpace: 'pre-wrap'
     };
-    return React.createElement("div", { style: style }, message !== undefined ? message : '');
+    return React.createElement("div", { style: style, dangerouslySetInnerHTML: { __html: message } });
 };
 
 /***/ }),
@@ -1295,32 +1383,6 @@ exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
 /* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const text_tools_1 = __webpack_require__(3);
-const parser_1 = __webpack_require__(2);
-function build_cutscene(data) {
-    return data.map(([cmd, message]) => ({
-        command_name: text_tools_1.split_tokens(cmd),
-        execute: parser_1.with_early_stopping(function* (world, parser) {
-            yield parser.done();
-            return {
-                world: world.update({
-                    cutscene: world.cutscene.slice(1)
-                }),
-                message: message
-            };
-        })
-    }));
-}
-exports.build_cutscene = build_cutscene;
-
-/***/ }),
-/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

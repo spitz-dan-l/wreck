@@ -92,6 +92,10 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
     let parser = this.currentParser();
     let typeahead_ind = this.currentTypeaheadIndex();
 
+    if (typeahead_ind === -1) {
+      return [];
+    }
+
     let typeahead = parser.match[typeahead_ind].typeahead;
     if (typeahead === undefined) {
       return [];
@@ -101,7 +105,13 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
 
   currentIndentation = () => {
     let parser = this.currentParser();
-    return get_indenting_whitespace(parser.match[this.currentTypeaheadIndex()].match)
+    let typeahead_ind = this.currentTypeaheadIndex();
+
+    if (typeahead_ind === -1) {
+      return '';
+    }
+
+    return get_indenting_whitespace(parser.match[typeahead_ind].match)
   }
 
   focus = () => {
@@ -125,8 +135,9 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
       width: '100%',
       overflowY: 'scroll',
       whiteSpace: 'pre-wrap',
-      fontFamily: "'Fira Mono'",
-      fontSize: '1.5em',
+      fontFamily: "'Roboto Mono'", //"'Fira Mono'",
+      fontSize: '1em',
+      fontWeight: 'light',
       color: 'ivory',
       background: 'black',
       radius: 3,

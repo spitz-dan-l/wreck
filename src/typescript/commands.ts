@@ -11,8 +11,8 @@ import {
 import {CommandParser, DisplayEltType, Token} from './parser';
 
 export interface WorldType<T extends WorldType<T>> {
-    get_commands(): Disablable<Command<T>>[],
-    interstitial_update?(): InterstitialUpdateResult<T>,
+    handle_command(parser: CommandParser): CommandResult<T>,
+    interstitial_update?(): InterstitialUpdateResult<T>
 }
 
 export type InterstitialUpdateResult<T extends WorldType<T>> = {
@@ -36,20 +36,8 @@ export interface Command<T extends WorldType<T>> {
 export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
     let parser = new CommandParser(cmd);
 
-    let commands = world.get_commands();
-    let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
-    
-    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
     let result: CommandResult<T> = {parser: parser, world: world};
-
-    if (!cmd_name) {
-        return result;
-    }
-
-    let command = unwrap(commands[commands.findIndex((cmd) => (
-        cmd_name === untokenize(unwrap(cmd).command_name)))]);
-
-    let cmd_result = command.execute(world, parser);
+    let cmd_result = world.handle_command(parser)
     
     if (cmd_result !== undefined) {
         if (cmd_result.world !== undefined) {
@@ -137,4 +125,29 @@ export class WorldDriver<T extends WorldType<T>> {
         this.apply_command('', false);
         return this.current_state;
     }
+}
+
+// eager dispatch
+
+type WorldWithEagerDispatch<T extends WorldType<T>> = WorldType<T> & {
+    get_commands(): Disablable<Command<T>>[],
+}
+
+export function eager_dispatch<T extends WorldWithEagerDispatch<T>>(world: T, parser: CommandParser) {
+    let commands = world.get_commands();
+    let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
+    
+    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
+    let result: CommandResult<T> = {parser: parser, world: world};
+
+    if (!cmd_name) {
+        return result;
+    }
+
+    let command = unwrap(commands[commands.findIndex((cmd) => (
+        cmd_name === untokenize(unwrap(cmd).command_name)))]);
+
+    let cmd_result = command.execute(world, parser);
+
+    return cmd_result
 }
