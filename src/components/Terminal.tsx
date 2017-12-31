@@ -37,7 +37,7 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   }
 
   handleKeys = (event) => {
-    let swallowed_enter = this.typeahead_list.handleKeys(event);
+    let swallowed_enter = (this.typeahead_list !== null) ? this.typeahead_list.handleKeys(event) : false;
     if (!swallowed_enter) {
       this.prompt.handleKeys(event);
     }  
@@ -53,7 +53,8 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   }
 
   isCurrentlyValid = () => {
-    return this.state.world_driver.current_state.parser.validity === MatchValidity.valid;
+    let parser = this.currentParser();
+    return parser.validity === MatchValidity.valid && parser.is_done();
   }
 
   handlePromptChange = (input) => {
@@ -143,7 +144,8 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
       radius: 3,
       position: 'absolute',
       display: 'block',
-      padding: '1em'
+      padding: '1em',
+      marginRight: '3em'
     };
     return (
       <div style={container_style} tabIndex={-1} onFocus={this.focus} onBlur={this.blur} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>

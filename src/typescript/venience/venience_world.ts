@@ -32,7 +32,7 @@ type ObserverMomentID = string;
 type ObserverMoment = {
     id: ObserverMomentID,
     message: string,
-    transitions: [string, ObserverMomentID][]
+    transitions: [string[], ObserverMomentID][]
 };
 
 
@@ -54,7 +54,7 @@ let tower_oms = index_oms([
         id: 'base, from path',
         message: dedent`The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
         transitions: [
-            ['approach the viewing tower', 'base, regarding tower']]
+            [['approach', 'the viewing tower'], 'base, regarding tower']]
     },
     {
         id: 'base, regarding tower',
@@ -62,7 +62,7 @@ let tower_oms = index_oms([
 
             A wooden stairway set between the first two rows of columns leads upward.`,
         transitions: [
-            ['climb the stairs', 'stairs 1, ascending']]
+            [['climb', 'the stairs'], 'stairs 1, ascending']]
     },
     {
         id: 'stairs 1, ascending',
@@ -74,8 +74,8 @@ let tower_oms = index_oms([
 
             The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
         transitions: [
-            ['turn left and proceed along the platform', 'platform 1, ascending'],
-            ['turn around and descend the stairs', 'base, regarding tower']]
+            [['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'],
+            [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
     },
     {
         id: 'platform 1, ascending',
@@ -87,8 +87,8 @@ let tower_oms = index_oms([
 
             The platform terminates, and another wooden stairway to the left leads further up the tower.`,
         transitions: [
-            ['turn left and climb the stairs', 'stairs 2, ascending'],
-            ['turn around and proceed along the platform', 'stairs 1, ascending']]
+            [['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'],
+            [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
     },
     {
         id: 'stairs 2, ascending',
@@ -98,8 +98,8 @@ let tower_oms = index_oms([
 
             The stairs terminate in another left-branching platform.`,
         transitions: [
-            ['turn left and proceed along the platform', 'platform 2, ascending'],
-            ['turn around and descend the stairs', 'platform 1, ascending']]
+            [['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'],
+            [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
     },
     {
         id: 'platform 2, ascending',
@@ -109,15 +109,15 @@ let tower_oms = index_oms([
 
             A final wooden stairway to the left leads up to the top of the tower.`,
         transitions: [
-            ['turn left and climb the stairs', 'top, arriving'],
-            ['turn around and proceed along the platform', 'stairs 2, ascending']]
+            [['turn', 'left', 'and climb the stairs'], 'top, arriving'],
+            [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
     },
     {
         id: 'top, arriving',
         message: dedent`You reach the top. A grand visage of the Mystic River and Macdonald Park extends before you in all directions.`,
         transitions: [
-            ['survey the area', 'top, surveying'],
-            ['descend the stairs', 'platform 2, ascending']]
+            [['survey', 'the area'], 'top, surveying'],
+            [['descend', 'the stairs'], 'platform 2, ascending']]
     },
     {
         id: 'top, surveying',
@@ -129,7 +129,7 @@ let tower_oms = index_oms([
 
             <i>"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</i>`,
         transitions: [
-            ['descend the stairs', 'stairs 2, descending']]
+            [['descend', 'the stairs'], 'stairs 2, descending']]
     },
     {
         id: 'stairs 3, descending',
@@ -137,8 +137,8 @@ let tower_oms = index_oms([
 
             <i>"Do not fret, my dear. Return to the madness of life after your brief respite."</i>`,
         transitions: [
-            ['turn right and proceed along the platform', 'platform 2, descending'],
-            ['turn around and ascend the stairs', 'top, surveying']]
+            [['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'],
+            [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
     },
     {
         id: 'platform 2, descending',
@@ -146,8 +146,8 @@ let tower_oms = index_oms([
 
             <i>"Expect to forget; to be turned around; to become tangled up."</i>`,
         transitions: [
-            ['turn right and descend the stairs', 'stairs 2, descending'],
-            ['turn around and proceed along the platform', 'stairs 3, descending']]
+            [['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'],
+            [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
     },
     {
         id: 'stairs 2, descending',
@@ -155,8 +155,8 @@ let tower_oms = index_oms([
 
             <i>"Find some joy in it; some exhilaration."</i>`,
         transitions: [
-            ['turn right and proceed along the platform', 'platform 1, descending'],
-            ['turn around and ascend the stairs', 'platform 2, descending']]
+            [['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'],
+            [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
     },
     {
         id: 'platform 1, descending',
@@ -164,8 +164,8 @@ let tower_oms = index_oms([
 
             <i>"And know that you have changed, dear. That your ascent has taught you something."</i>`,
         transitions: [
-            ['turn right and descend the stairs', 'base, regarding path'],
-            ['turn around and proceed along the platform', 'stairs 2, descending']]
+            [['turn', 'right', 'and descend the stairs'], 'base, regarding path'],
+            [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
     },
     {
         id: 'base, regarding path',
@@ -242,9 +242,10 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
         return with_early_stopping(function*(parser: CommandParser) {
             let om = tower_oms.get(world.current_om);
 
-            let cmd_options = om.transitions.map(([cmd, om_id]) => split_tokens(cmd))
+            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd) //split_tokens(cmd))
 
             if (cmd_options.length === 0) {
+                yield parser.done();
                 return;
             }
 
@@ -254,13 +255,10 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
 
             let om_id_choice = world.current_om;
             om.transitions.forEach(([cmd, om_id]) => {
-                if (cmd_choice === cmd) {
+                if (cmd_choice === untokenize(cmd)) {
                     om_id_choice = om_id;
                 }
             });
-
-            console.log(om_id_choice);
-
 
             return {world: world.update({
                         current_om: om_id_choice

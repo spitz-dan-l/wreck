@@ -278,7 +278,13 @@ export function* consume_option_stepwise_eager(parser: CommandParser, options: s
                 return untokenize(current_cmd);
             }
         }
-        let display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
+        let display_type: DisplayEltType;
+        if (pos === 0) {
+            display_type = DisplayEltType.keyword;
+        } else {
+            display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
+        }
+        
         let next_tok = yield parser.consume_option(next_tokens.map(split_tokens), undefined, display_type);
         current_cmd.push(next_tok);
         pos++;

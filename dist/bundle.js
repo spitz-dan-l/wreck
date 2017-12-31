@@ -528,7 +528,12 @@ function* consume_option_stepwise_eager(parser, options) {
                 return text_tools_1.untokenize(current_cmd);
             }
         }
-        let display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
+        let display_type;
+        if (pos === 0) {
+            display_type = DisplayEltType.keyword;
+        } else {
+            display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
+        }
         let next_tok = yield parser.consume_option(next_tokens.map(text_tools_1.split_tokens), undefined, display_type);
         current_cmd.push(next_tok);
         pos++;
@@ -700,7 +705,7 @@ class Terminal extends React.Component {
     constructor(props) {
         super(props);
         this.handleKeys = event => {
-            let swallowed_enter = this.typeahead_list.handleKeys(event);
+            let swallowed_enter = this.typeahead_list !== null ? this.typeahead_list.handleKeys(event) : false;
             if (!swallowed_enter) {
                 this.prompt.handleKeys(event);
             }
@@ -714,7 +719,8 @@ class Terminal extends React.Component {
             return false;
         };
         this.isCurrentlyValid = () => {
-            return this.state.world_driver.current_state.parser.validity === parser_1.MatchValidity.valid;
+            let parser = this.currentParser();
+            return parser.validity === parser_1.MatchValidity.valid && parser.is_done();
         };
         this.handlePromptChange = input => {
             let result = this.state.world_driver.apply_command(input, false);
@@ -796,7 +802,8 @@ class Terminal extends React.Component {
             radius: 3,
             position: 'absolute',
             display: 'block',
-            padding: '1em'
+            padding: '1em',
+            marginRight: '3em'
         };
         return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
             if (i === 0) {
@@ -940,13 +947,13 @@ function index_oms(oms) {
 let tower_oms = index_oms([{
     id: 'base, from path',
     message: text_tools_1.dedent`The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
-    transitions: [['approach the viewing tower', 'base, regarding tower']]
+    transitions: [[['approach', 'the viewing tower'], 'base, regarding tower']]
 }, {
     id: 'base, regarding tower',
     message: text_tools_1.dedent`The viewing tower stands tall and straight. Its construction is one of basic, stable order. A square grid of thick wooden columns rooted deep within the ground rises up before you; the foundation of the tower.
 
             A wooden stairway set between the first two rows of columns leads upward.`,
-    transitions: [['climb the stairs', 'stairs 1, ascending']]
+    transitions: [[['climb', 'the stairs'], 'stairs 1, ascending']]
 }, {
     id: 'stairs 1, ascending',
     message: text_tools_1.dedent`As you ascend, the ground below you recedes.
@@ -956,7 +963,7 @@ let tower_oms = index_oms([{
             <i>"We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."</i>
 
             The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
-    transitions: [['turn left and proceed along the platform', 'platform 1, ascending'], ['turn around and descend the stairs', 'base, regarding tower']]
+    transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'], [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
 }, {
     id: 'platform 1, ascending',
     message: text_tools_1.dedent`You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
@@ -966,7 +973,7 @@ let tower_oms = index_oms([{
             <i>"From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."</i>
 
             The platform terminates, and another wooden stairway to the left leads further up the tower.`,
-    transitions: [['turn left and climb the stairs', 'stairs 2, ascending'], ['turn around and proceed along the platform', 'stairs 1, ascending']]
+    transitions: [[['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
 }, {
     id: 'stairs 2, ascending',
     message: text_tools_1.dedent`They feel solid under your feet, dull thuds sounding with each step.
@@ -974,7 +981,7 @@ let tower_oms = index_oms([{
             <i>"It can feel like a deliverance when one reaches such a vantage after much aimless wandering."</i>
 
             The stairs terminate in another left-branching platform.`,
-    transitions: [['turn left and proceed along the platform', 'platform 2, ascending'], ['turn around and descend the stairs', 'platform 1, ascending']]
+    transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'], [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
 }, {
     id: 'platform 2, ascending',
     message: text_tools_1.dedent`You make your way across the weathered wood.
@@ -982,11 +989,11 @@ let tower_oms = index_oms([{
             <i>"The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."</i>
 
             A final wooden stairway to the left leads up to the top of the tower.`,
-    transitions: [['turn left and climb the stairs', 'top, arriving'], ['turn around and proceed along the platform', 'stairs 2, ascending']]
+    transitions: [[['turn', 'left', 'and climb the stairs'], 'top, arriving'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
 }, {
     id: 'top, arriving',
     message: text_tools_1.dedent`You reach the top. A grand visage of the Mystic River and Macdonald Park extends before you in all directions.`,
-    transitions: [['survey the area', 'top, surveying'], ['descend the stairs', 'platform 2, ascending']]
+    transitions: [[['survey', 'the area'], 'top, surveying'], [['descend', 'the stairs'], 'platform 2, ascending']]
 }, {
     id: 'top, surveying',
     message: text_tools_1.dedent`You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
@@ -996,31 +1003,31 @@ let tower_oms = index_oms([{
             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
 
             <i>"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</i>`,
-    transitions: [['descend the stairs', 'stairs 2, descending']]
+    transitions: [[['descend', 'the stairs'], 'stairs 2, descending']]
 }, {
     id: 'stairs 3, descending',
     message: text_tools_1.dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
 
             <i>"Do not fret, my dear. Return to the madness of life after your brief respite."</i>`,
-    transitions: [['turn right and proceed along the platform', 'platform 2, descending'], ['turn around and ascend the stairs', 'top, surveying']]
+    transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'], [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
 }, {
     id: 'platform 2, descending',
     message: text_tools_1.dedent`The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
 
             <i>"Expect to forget; to be turned around; to become tangled up."</i>`,
-    transitions: [['turn right and descend the stairs', 'stairs 2, descending'], ['turn around and proceed along the platform', 'stairs 3, descending']]
+    transitions: [[['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
 }, {
     id: 'stairs 2, descending',
     message: text_tools_1.dedent`The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
 
             <i>"Find some joy in it; some exhilaration."</i>`,
-    transitions: [['turn right and proceed along the platform', 'platform 1, descending'], ['turn around and ascend the stairs', 'platform 2, descending']]
+    transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'], [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
 }, {
     id: 'platform 1, descending',
     message: text_tools_1.dedent`You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
 
             <i>"And know that you have changed, dear. That your ascent has taught you something."</i>`,
-    transitions: [['turn right and descend the stairs', 'base, regarding path'], ['turn around and proceed along the platform', 'stairs 2, descending']]
+    transitions: [[['turn', 'right', 'and descend the stairs'], 'base, regarding path'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
 }, {
     id: 'base, regarding path',
     message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?`,
@@ -1063,19 +1070,19 @@ class VenienceWorld {
         let world = this;
         return parser_1.with_early_stopping(function* (parser) {
             let om = tower_oms.get(world.current_om);
-            let cmd_options = om.transitions.map(([cmd, om_id]) => text_tools_1.split_tokens(cmd));
+            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd); //split_tokens(cmd))
             if (cmd_options.length === 0) {
+                yield parser.done();
                 return;
             }
             let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
             yield parser.done();
             let om_id_choice = world.current_om;
             om.transitions.forEach(([cmd, om_id]) => {
-                if (cmd_choice === cmd) {
+                if (cmd_choice === text_tools_1.untokenize(cmd)) {
                     om_id_choice = om_id;
                 }
             });
-            console.log(om_id_choice);
             return { world: world.update({
                     current_om: om_id_choice
                 }) };
