@@ -946,7 +946,9 @@ function index_oms(oms) {
 }
 let tower_oms = index_oms([{
     id: 'base, from path',
-    message: text_tools_1.dedent`The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
+    message: text_tools_1.dedent`<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
+
+        The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
     transitions: [[['approach', 'the viewing tower'], 'base, regarding tower']]
 }, {
     id: 'base, regarding tower',
@@ -1030,7 +1032,9 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'right', 'and descend the stairs'], 'base, regarding path'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
 }, {
     id: 'base, regarding path',
-    message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?`,
+    message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
+
+            <i>(End of demo. Thanks for playing!)</i>`,
     transitions: []
 }]);
 function transitions_to_commands(transitions) {

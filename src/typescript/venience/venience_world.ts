@@ -35,8 +35,6 @@ type ObserverMoment = {
     transitions: [string[], ObserverMomentID][]
 };
 
-
-
 function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMoment>{
     let result = new FuckDict<ObserverMomentID, ObserverMoment>();
 
@@ -52,7 +50,9 @@ function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMo
 let tower_oms = index_oms([
     {
         id: 'base, from path',
-        message: dedent`The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
+        message: dedent`<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
+
+        The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
         transitions: [
             [['approach', 'the viewing tower'], 'base, regarding tower']]
     },
@@ -169,7 +169,9 @@ let tower_oms = index_oms([
     },
     {
         id: 'base, regarding path',
-        message: dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?`,
+        message: dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
+
+            <i>(End of demo. Thanks for playing!)</i>`,
         transitions: []
     }
 ]);
