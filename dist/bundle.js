@@ -1005,7 +1005,7 @@ let tower_oms = index_oms([{
             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
 
             <i>"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</i>`,
-    transitions: [[['descend', 'the stairs'], 'stairs 2, descending']]
+    transitions: [[['descend', 'the stairs'], 'stairs 3, descending']]
 }, {
     id: 'stairs 3, descending',
     message: text_tools_1.dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.

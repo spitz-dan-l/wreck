@@ -129,7 +129,7 @@ let tower_oms = index_oms([
 
             <i>"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</i>`,
         transitions: [
-            [['descend', 'the stairs'], 'stairs 2, descending']]
+            [['descend', 'the stairs'], 'stairs 3, descending']]
     },
     {
         id: 'stairs 3, descending',
