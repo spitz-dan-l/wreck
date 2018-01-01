@@ -11,11 +11,24 @@ import {MatchValidity} from '../typescript/parser';
 
 import {is_enabled} from '../typescript/datatypes';
 
+import * as ReactTransitionGroup from 'react-transition-group';
+
 const Carat = () => (
   <span>
     >&nbsp;
   </span>
 );
+
+const Fade = ({ children, ...props }) => (
+  <ReactTransitionGroup.CSSTransition
+    {...props}
+    timeout={300}
+    classNames="fade"
+  >
+    {children}
+  </ReactTransitionGroup.CSSTransition>
+);
+
 
 export class Terminal<T extends WorldType<T>> extends React.Component<any, {world_driver: WorldDriver<T>}> {
   contentContainer: any;
@@ -149,54 +162,60 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
     };
     return (
       <div style={container_style} tabIndex={-1} onFocus={this.focus} onBlur={this.blur} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
-        {this.state.world_driver.history.map(({parser, message}, i) => {
-          if (i === 0) {
+        <ReactTransitionGroup.TransitionGroup>
+          {this.state.world_driver.history.map(({parser, message, index}) => {
+            if (index === 0) {
+              return (
+                <Fade key={index.toString()} >
+                  <div>
+                    <p>
+                      <OutputText message={message} />
+                    </p>
+                  </div>
+                </Fade>
+              );
+            }
+            let hist_elt_style: any = {
+              marginTop: '1em'
+            };
+
+            if (!is_enabled(this.state.world_driver.possible_history[index])) {
+              hist_elt_style.opacity = '0.4';
+            }
             return (
-              <div key={i.toString()}>
-                <p>
-                  <OutputText message={message} />
-                </p>
-              </div>
-            );
-          }
-          let hist_elt_style: any = {
-            marginTop: '1em'
-          };
-
-          if (!is_enabled(this.state.world_driver.possible_history[i])) {
-            hist_elt_style.opacity = '0.4';
-          }
-          return (
-            //check if this.state.world_driver.possible_history[i] is disabled
-            <div key={i.toString()} style={hist_elt_style}>
-              
-                <Carat />
-                <ParsedText parser={parser} />
-              
-              <p>
-                <OutputText message={message} />
-              </p>
-            </div>
-          )
-        })}
-
-          <Prompt
-            onSubmit={this.handleSubmit}
-            onChange={this.handlePromptChange}
-            ref={p => this.prompt = p}>
-            <Carat />
-            <ParsedText
-              parser={this.currentParser()}
-              typeaheadIndex={this.currentTypeaheadIndex()}
-            >
-              <TypeaheadList
-                typeahead={this.currentTypeahead()}
-                indentation={this.currentIndentation()}
-                onTypeaheadSelection={this.handleTypeaheadSelection}
-                ref={t => this.typeahead_list = t}
-              />
-            </ParsedText>
-          </Prompt>
+              //check if this.state.world_driver.possible_history[i] is disabled
+              <Fade key={index.toString()} >
+                <div style={hist_elt_style}>
+                  
+                  <Carat />
+                  <ParsedText parser={parser} />
+                  
+                  <p>
+                    <OutputText message={message} />
+                  </p>
+                </div>
+              </Fade>
+            )
+          })}
+        </ReactTransitionGroup.TransitionGroup>
+        
+        <Prompt
+          onSubmit={this.handleSubmit}
+          onChange={this.handlePromptChange}
+          ref={p => this.prompt = p}>
+          <Carat />
+          <ParsedText
+            parser={this.currentParser()}
+            typeaheadIndex={this.currentTypeaheadIndex()}
+          >
+            <TypeaheadList
+              typeahead={this.currentTypeahead()}
+              indentation={this.currentIndentation()}
+              onTypeaheadSelection={this.handleTypeaheadSelection}
+              ref={t => this.typeahead_list = t}
+            />
+          </ParsedText>
+        </Prompt>
         
         
       </div>

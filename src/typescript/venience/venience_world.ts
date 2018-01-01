@@ -13,6 +13,7 @@ import {
 
 import {
     FuckDict,
+    FuckSet,
     Disablable,
     set_enabled,
     unwrap,
@@ -42,8 +43,23 @@ function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMo
         result.set(om.id, om);
     }
 
-    //second pass, typecheck em
+    //second/third pass, typecheck em
+    let pointed_to: FuckSet<ObserverMomentID> = new FuckDict();
+    for (let om of oms) {
+        for (let [cmd, om_id] of om.transitions) {
+            if (!result.has_key(om_id)) {
+                throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+            }
+            pointed_to.set(om_id, undefined);
+        }
+    }
 
+    for (let om of oms.slice(1)) {
+        if (!pointed_to.has_key(om.id)) {
+            throw `om "${om.id}" is unreachable (and not the first in the list).`;
+        }
+    }
+    
     return result;
 }
 
@@ -244,7 +260,7 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
         return with_early_stopping(function*(parser: CommandParser) {
             let om = tower_oms.get(world.current_om);
 
-            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd) //split_tokens(cmd))
+            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd)
 
             if (cmd_options.length === 0) {
                 yield parser.done();

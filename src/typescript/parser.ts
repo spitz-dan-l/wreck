@@ -253,7 +253,6 @@ export function with_early_stopping<R>(gen_func: (...any) => IterableIterator<an
 }
 
 export function* consume_option_stepwise_eager(parser: CommandParser, options: string[][]) {
-    // assumption: option tokens contain no spaces
     // assumption: no option is a prefix of any other option
 
     let current_cmd = [];

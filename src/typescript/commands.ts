@@ -26,6 +26,7 @@ export type CommandResult<T extends WorldType<T>> = {
     message?: string;
     parser?: CommandParser;
     history_updater?: (history: CommandResult<T>[], world?: T) => Disablable<CommandResult<T>>[];
+    index?: number
 } | undefined;
 
 export interface Command<T extends WorldType<T>> {
@@ -98,6 +99,7 @@ export class WorldDriver<T extends WorldType<T>> {
     constructor (initial_world: T) {
         let initial_result: CommandResult<T> = {world: initial_world};
         initial_result = apply_interstitial_update(initial_result);
+        initial_result.index = 0;
         this.history = [initial_result];
  
         this.apply_command('', false); //populate this.current_state
@@ -107,6 +109,8 @@ export class WorldDriver<T extends WorldType<T>> {
         let prev_state = this.history[this.history.length - 1];
         let result = apply_command(prev_state.world, cmd);
          
+        result.index = prev_state.index + 1;
+
         this.current_state = result;
         this.possible_history = apply_history_update(this.history, this.current_state);
         if (commit) {

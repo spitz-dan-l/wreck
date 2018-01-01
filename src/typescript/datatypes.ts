@@ -218,7 +218,6 @@ export function counter_order<T>(counter: Counter<T>, include_zero=false){
 export type Disablable<T> = T | DWrapped<T>;
 export type DWrapped<T> = {value: T, disablable: true, enabled: boolean}
 
-
 export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
     return (<DWrapped<T>>x).disablable !== undefined;
 }

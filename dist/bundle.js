@@ -293,6 +293,21 @@ function is_enabled(x) {
     }
 }
 exports.is_enabled = is_enabled;
+// export type KWrapped<T> = {value: T, keyed: true, key: string};
+// export function is_kwrapped<T>(x: Keyed<T>): x is Keyed<T> {
+//     return (<KWrapped<T>>x).keyed !== undefined;
+// }
+// export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
+//     if (is_dwrapped(x)) {
+//         if (x.enabled !== enabled) {
+//             x.enabled = enabled; //could do check here for enabled being set properly already
+//         }
+//         return x;
+//     } else {
+//         let result: DWrapped<T> = {value: x, disablable: true, enabled};
+//         return result;
+//     }
+// }
 
 /***/ }),
 /* 2 */
@@ -508,7 +523,6 @@ function with_early_stopping(gen_func) {
 }
 exports.with_early_stopping = with_early_stopping;
 function* consume_option_stepwise_eager(parser, options) {
-    // assumption: option tokens contain no spaces
     // assumption: no option is a prefix of any other option
     let current_cmd = [];
     let pos = 0;
@@ -692,6 +706,12 @@ exports.keys = {
 "use strict";
 
 
+var __rest = this && this.__rest || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function") for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0) t[p[i]] = s[p[i]];
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const Prompt_1 = __webpack_require__(9);
@@ -700,7 +720,13 @@ const TypeaheadList_1 = __webpack_require__(11);
 const text_tools_1 = __webpack_require__(3);
 const parser_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
+const ReactTransitionGroup = __webpack_require__(13);
 const Carat = () => React.createElement("span", null, ">\u00A0");
+const Fade = _a => {
+    var { children } = _a,
+        props = __rest(_a, ["children"]);
+    return React.createElement(ReactTransitionGroup.CSSTransition, Object.assign({}, props, { timeout: 300, classNames: "fade" }), children);
+};
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -805,21 +831,21 @@ class Terminal extends React.Component {
             padding: '1em',
             marginRight: '3em'
         };
-        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, this.state.world_driver.history.map(({ parser, message }, i) => {
-            if (i === 0) {
-                return React.createElement("div", { key: i.toString() }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })));
+        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(ReactTransitionGroup.TransitionGroup, null, this.state.world_driver.history.map(({ parser, message, index }) => {
+            if (index === 0) {
+                return React.createElement(Fade, { key: index.toString() }, React.createElement("div", null, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))));
             }
             let hist_elt_style = {
                 marginTop: '1em'
             };
-            if (!datatypes_1.is_enabled(this.state.world_driver.possible_history[i])) {
+            if (!datatypes_1.is_enabled(this.state.world_driver.possible_history[index])) {
                 hist_elt_style.opacity = '0.4';
             }
             return (
                 //check if this.state.world_driver.possible_history[i] is disabled
-                React.createElement("div", { key: i.toString(), style: hist_elt_style }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message })))
+                React.createElement(Fade, { key: index.toString() }, React.createElement("div", { style: hist_elt_style }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))))
             );
-        }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        })), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -888,12 +914,14 @@ class WorldDriver {
         this.previous_histories = [];
         let initial_result = { world: initial_world };
         initial_result = apply_interstitial_update(initial_result);
+        initial_result.index = 0;
         this.history = [initial_result];
         this.apply_command('', false); //populate this.current_state
     }
     apply_command(cmd, commit = true) {
         let prev_state = this.history[this.history.length - 1];
         let result = apply_command(prev_state.world, cmd);
+        result.index = prev_state.index + 1;
         this.current_state = result;
         this.possible_history = apply_history_update(this.history, this.current_state);
         if (commit) {
@@ -941,7 +969,21 @@ function index_oms(oms) {
     for (let om of oms) {
         result.set(om.id, om);
     }
-    //second pass, typecheck em
+    //second/third pass, typecheck em
+    let pointed_to = new datatypes_1.FuckDict();
+    for (let om of oms) {
+        for (let [cmd, om_id] of om.transitions) {
+            if (!result.has_key(om_id)) {
+                throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+            }
+            pointed_to.set(om_id, undefined);
+        }
+    }
+    for (let om of oms.slice(1)) {
+        if (!pointed_to.has_key(om.id)) {
+            throw `om "${om.id}" is unreachable (and not the first in the list).`;
+        }
+    }
     return result;
 }
 let tower_oms = index_oms([{
@@ -1074,7 +1116,7 @@ class VenienceWorld {
         let world = this;
         return parser_1.with_early_stopping(function* (parser) {
             let om = tower_oms.get(world.current_om);
-            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd); //split_tokens(cmd))
+            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd);
             if (cmd_options.length === 0) {
                 yield parser.done();
                 return;
@@ -1408,6 +1450,12 @@ const commands_1 = __webpack_require__(6);
 const venience_world_1 = __webpack_require__(7);
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports) {
+
+module.exports = ReactTransitionGroup;
 
 /***/ })
 /******/ ]);
