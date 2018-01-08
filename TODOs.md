@@ -1,5 +1,7 @@
 TODOs
 
+- better slide animation for history erasure
+
 - add The End
 
 - ability to highlight chunks of history by entering in, but not executing, a particular command

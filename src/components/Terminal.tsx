@@ -19,16 +19,34 @@ const Carat = () => (
   </span>
 );
 
-const Fade = ({ children, ...props }) => (
-  <ReactTransitionGroup.CSSTransition
-    {...props}
-    timeout={300}
-    classNames="fade"
-  >
-    {children}
-  </ReactTransitionGroup.CSSTransition>
-);
+const duration = 500;
 
+const defaultStyle = {
+  transition: `opacity 200ms ease-in, max-height ${duration}ms linear`,
+  transitionDelay: '0ms, 200ms'
+}
+
+const transitionStyles = {
+  exiting: { opacity: 0, maxHeight: 0 },
+};
+
+const Fade = ({children, ...props}) => (
+  <ReactTransitionGroup.Transition
+    timeout={duration}
+    onEntered={(d) => (
+      d.style.maxHeight = `${d.clientHeight}px`
+    )}
+    {...props}>
+    {(state) => (
+      <div style={{
+        ...defaultStyle,
+        ...transitionStyles[state]
+      }}>
+        {children}
+      </div>
+    )}
+  </ReactTransitionGroup.Transition>
+);
 
 export class Terminal<T extends WorldType<T>> extends React.Component<any, {world_driver: WorldDriver<T>}> {
   contentContainer: any;

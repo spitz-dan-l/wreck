@@ -9,9 +9,12 @@
 
 .fade-exit {
   opacity: 0.4 !important;
+  transform: scaleY(1);
 }
 
 .fade-exit.fade-exit-active {
   opacity: 0.01 !important;
-  transition: opacity 300ms ease-in;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: opacity 200ms ease-in, transform 300ms ease-in;
 }

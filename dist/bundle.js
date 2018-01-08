@@ -293,21 +293,6 @@ function is_enabled(x) {
     }
 }
 exports.is_enabled = is_enabled;
-// export type KWrapped<T> = {value: T, keyed: true, key: string};
-// export function is_kwrapped<T>(x: Keyed<T>): x is Keyed<T> {
-//     return (<KWrapped<T>>x).keyed !== undefined;
-// }
-// export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
-//     if (is_dwrapped(x)) {
-//         if (x.enabled !== enabled) {
-//             x.enabled = enabled; //could do check here for enabled being set properly already
-//         }
-//         return x;
-//     } else {
-//         let result: DWrapped<T> = {value: x, disablable: true, enabled};
-//         return result;
-//     }
-// }
 
 /***/ }),
 /* 2 */
@@ -722,10 +707,18 @@ const parser_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
 const ReactTransitionGroup = __webpack_require__(13);
 const Carat = () => React.createElement("span", null, ">\u00A0");
+const duration = 500;
+const defaultStyle = {
+    transition: `opacity 200ms ease-in, max-height ${duration}ms linear`,
+    transitionDelay: '0ms, 200ms'
+};
+const transitionStyles = {
+    exiting: { opacity: 0, maxHeight: 0 }
+};
 const Fade = _a => {
     var { children } = _a,
         props = __rest(_a, ["children"]);
-    return React.createElement(ReactTransitionGroup.CSSTransition, Object.assign({}, props, { timeout: 300, classNames: "fade" }), children);
+    return React.createElement(ReactTransitionGroup.Transition, Object.assign({ timeout: duration, onEntered: d => d.style.maxHeight = `${d.clientHeight}px` }, props), state => React.createElement("div", { style: Object.assign({}, defaultStyle, transitionStyles[state]) }, children));
 };
 class Terminal extends React.Component {
     constructor(props) {
