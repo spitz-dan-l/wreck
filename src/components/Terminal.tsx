@@ -19,11 +19,11 @@ const Carat = () => (
   </span>
 );
 
-const duration = 500;
+const fade_duration = 300, height_duration = 400;
 
 const defaultStyle = {
-  transition: `opacity 200ms ease-in, max-height ${duration}ms linear`,
-  transitionDelay: '0ms, 200ms'
+  transition: `opacity ${fade_duration}ms ease-in, max-height ${height_duration}ms linear`,
+  transitionDelay: `0ms, ${fade_duration}ms`
 }
 
 const transitionStyles = {
@@ -32,8 +32,8 @@ const transitionStyles = {
 
 const Fade = ({children, ...props}) => (
   <ReactTransitionGroup.Transition
-    timeout={duration}
-    onEntered={(d) => (
+    timeout={fade_duration + height_duration}
+    onExit={(d) => (
       d.style.maxHeight = `${d.clientHeight}px`
     )}
     {...props}>
@@ -68,10 +68,14 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   }
 
   handleKeys = (event) => {
+    // debugger;
     let swallowed_enter = (this.typeahead_list !== null) ? this.typeahead_list.handleKeys(event) : false;
     if (!swallowed_enter) {
       this.prompt.handleKeys(event);
-    }  
+    }
+    if ([37, 38, 39, 40].indexOf(event.keyCode) > -1) {
+      event.preventDefault();
+    }
   }
   
   handleSubmit = () => {

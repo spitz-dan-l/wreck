@@ -707,10 +707,11 @@ const parser_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
 const ReactTransitionGroup = __webpack_require__(13);
 const Carat = () => React.createElement("span", null, ">\u00A0");
-const duration = 500;
+const fade_duration = 300,
+      height_duration = 400;
 const defaultStyle = {
-    transition: `opacity 200ms ease-in, max-height ${duration}ms linear`,
-    transitionDelay: '0ms, 200ms'
+    transition: `opacity ${fade_duration}ms ease-in, max-height ${height_duration}ms linear`,
+    transitionDelay: `0ms, ${fade_duration}ms`
 };
 const transitionStyles = {
     exiting: { opacity: 0, maxHeight: 0 }
@@ -718,15 +719,19 @@ const transitionStyles = {
 const Fade = _a => {
     var { children } = _a,
         props = __rest(_a, ["children"]);
-    return React.createElement(ReactTransitionGroup.Transition, Object.assign({ timeout: duration, onEntered: d => d.style.maxHeight = `${d.clientHeight}px` }, props), state => React.createElement("div", { style: Object.assign({}, defaultStyle, transitionStyles[state]) }, children));
+    return React.createElement(ReactTransitionGroup.Transition, Object.assign({ timeout: fade_duration + height_duration, onExit: d => d.style.maxHeight = `${d.clientHeight}px` }, props), state => React.createElement("div", { style: Object.assign({}, defaultStyle, transitionStyles[state]) }, children));
 };
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
         this.handleKeys = event => {
+            // debugger;
             let swallowed_enter = this.typeahead_list !== null ? this.typeahead_list.handleKeys(event) : false;
             if (!swallowed_enter) {
                 this.prompt.handleKeys(event);
+            }
+            if ([37, 38, 39, 40].indexOf(event.keyCode) > -1) {
+                event.preventDefault();
             }
         };
         this.handleSubmit = () => {
@@ -1277,7 +1282,7 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, this.state.is_focused ? React.createElement(Cursor, { onClick: () => this.handleSubmit() }) : ''));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, onFocus: e => console.log('input focus'), onBlur: e => console.log('input blur'), ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, this.state.is_focused ? React.createElement(Cursor, { onClick: () => this.handleSubmit() }) : ''));
     }
 }
 exports.Prompt = Prompt;

@@ -75,7 +75,7 @@ export class Prompt extends React.Component<any, any> {
     this.setState({is_focused: false});
   }
 
-  setCursor = (node,pos) => {
+  setCursor = (node, pos) => {
       node = (typeof node === "string") ? document.getElementById(node) : node;
 
       if(!node){
@@ -113,7 +113,7 @@ export class Prompt extends React.Component<any, any> {
     };
     return (
         <InputWrapper onClick={() => this.focus()}>
-            <input onChange={this.handleChange} value={this.state.value} style={input_style} ref={i => this.input = i} />
+            <input onChange={this.handleChange} value={this.state.value} style={input_style} onFocus={e => console.log('input focus')} onBlur={e => console.log('input blur')} ref={i => this.input = i} />
             <InputDisplay>
               {this.props.children}
               {  

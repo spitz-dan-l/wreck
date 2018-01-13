@@ -1,6 +1,6 @@
 TODOs
 
-- better slide animation for history erasure
+- safari keyboard doesn't work
 
 - add The End
 
@@ -12,6 +12,3 @@ TODOs
 
 - make erased loops collapse/expandable
 
-- more pure abstraction for commands
-    (forcing first-token-based dispatch not always good)
-    Support single parse command function, with first-token-based dispatch as a helper suite
