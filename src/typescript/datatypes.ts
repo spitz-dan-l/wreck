@@ -215,42 +215,102 @@ export function counter_order<T>(counter: Counter<T>, include_zero=false){
     return result.map(([t, i]) => t);
 }
 
-export type Disablable<T> = T | DWrapped<T>;
-export type DWrapped<T> = {value: T, disablable: true, enabled: boolean}
+// export type Disablable<T> = T | DWrapped<T>;
+// export type DWrapped<T> = {value: T, disablable: true, enabled: boolean}
 
-export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
-    return (<DWrapped<T>>x).disablable !== undefined;
+// export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
+//     return (<DWrapped<T>>x).disablable !== undefined;
+// }
+
+// export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
+//     if (is_dwrapped(x)) {
+//         if (x.enabled !== enabled) {
+//             x.enabled = enabled; //could do check here for enabled being set properly already
+//         }
+//         return x;
+//     } else {
+//         let result: DWrapped<T> = {value: x, disablable: true, enabled};
+        
+//         return result;
+//     }
+// }
+
+// export function unwrap<T>(x: Disablable<T>): T {
+//     if (is_dwrapped(x)) {
+//         return x.value;
+//     } else {
+//         return x;
+//     }
+// }
+
+// export function with_disablable<T1, T2>(x: Disablable<T1>, f: (t1: T1) => Disablable<T2>): Disablable<T2> {
+//     return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));
+// }
+
+// export function is_enabled<T>(x: Disablable<T>): boolean {
+//     if (is_dwrapped(x)){
+//         return x.enabled;
+//     } else {
+//         return true;
+//     }
+// }
+
+export type Annotatable<T, AT> = T | Annotated<T, AT>;
+export type Annotated<T, AT> = {value: T, annotated: true, annotation: AT};
+
+export function is_annotated<T, AT>(x: Annotatable<T, AT>): x is Annotated<T, AT>{
+    return (<Annotated<T, AT>>x).annotated !== undefined;
 }
 
-export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
-    if (is_dwrapped(x)) {
-        if (x.enabled !== enabled) {
-            x.enabled = enabled; //could do check here for enabled being set properly already
+export function annotate<T, AT>(x: Annotatable<T, AT>, annotation: AT): Annotatable<T, AT>{
+    if (is_annotated(x)) {
+        if (x.annotation !== annotation) {
+            x.annotation = annotation; //could do check here for enabled being set properly already
         }
         return x;
     } else {
-        let result: DWrapped<T> = {value: x, disablable: true, enabled};
+        let result: Annotated<T, AT> = {value: x, annotated: true, annotation};
         
         return result;
     }
 }
 
-export function unwrap<T>(x: Disablable<T>): T {
-    if (is_dwrapped(x)) {
+export function unwrap<T, AT>(x: Annotatable<T, AT>): T {
+    if (is_annotated(x)) {
         return x.value;
     } else {
         return x;
     }
 }
 
+export function with_annotatable<T1, T2, TA>(x: Annotatable<T1, TA>, f: (t1: T1) => Annotatable<T2, TA>): Annotatable<T2, TA> {
+    return annotate(unwrap(f(unwrap(x))), get_annotation(x));
+}
+
+export function get_annotation<T, TA>(x: Annotatable<T, TA>): TA {
+    if (is_annotated(x)){
+        return x.annotation;
+    } else {
+        return undefined;
+    }
+}
+
+
+export type Disablable<T> = Annotatable<T, boolean>
+
+export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true){
+    return annotate(x, enabled);
+}
+
 export function with_disablable<T1, T2>(x: Disablable<T1>, f: (t1: T1) => Disablable<T2>): Disablable<T2> {
-    return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));
+    return with_annotatable(x, f);
 }
 
 export function is_enabled<T>(x: Disablable<T>): boolean {
-    if (is_dwrapped(x)){
-        return x.enabled;
-    } else {
+    let result = get_annotation(x);
+    if (result === undefined) {
         return true;
     }
+
+    return result;
 }

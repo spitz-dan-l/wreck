@@ -1,7 +1,30 @@
-upload and transcribe mystic river voice notes
-    identify abstract lessons
-    identify landmarks/interesting portions of environment
-    identify path topology
+"Consider" command
+
+    Consider her meditation on vantage points
+    Consider her mediation on reflections
+
+    Could only offer considering as an option at a key point during a sequence.
+
+
+
+Should "Consider" be able to retroactively affect history?
+    - while entered but before submitted, highlight the history entries that would be changed by it
+    - after submitting, animate them changing
+
+Cons:
+    - affected history that scrolls beyond the top of the screen could go unnoticed by the player
+        - could experiment with interface measures to address this-
+            - a pulsing arrow bidding the player to scroll up to the affected point(s)
+            - a sub-window appearing over the main game window that can be scrolled or jumped around with shortcut buttons
+            - a page/segment/table of contents abstraction that shows which portions of the story are affected
+    - requires the player to focus on more than one thing at a time
+
+Pros:
+    - powerful evocation of how interpretation corresponds directly to source experience, "marking it up"
+        - one could argue that you can do this with alternating colors within the current output text being printed.
+        - until you "consider" the right thing, you can only get the "unenlightened" version of the experience, which ultimately results in erasure.
+            - doing it the right way will get the "enlightened" experience, and will be similar to the loop-erased "unenlighted" versions. but it's possible for the player to "miss the point" of this being similar.
+
 
 Tower approach, description, climb, survey from peak
 

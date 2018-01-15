@@ -4,7 +4,6 @@ import {
     Disablable,
     unwrap,
     is_enabled,
-    set_enabled,
     with_disablable
 } from './datatypes';
 
@@ -12,22 +11,30 @@ import {CommandParser, DisplayEltType, Token} from './parser';
 
 export interface WorldType<T extends WorldType<T>> {
     handle_command(parser: CommandParser): CommandResult<T>,
-    interstitial_update?(): InterstitialUpdateResult<T>
+    interstitial_update?(): InterstitialUpdateResult<T>,
 }
+
+export type HistoryUpdater<T extends WorldType<T>> = (history: CommandResult<T>[], world?: T) => Disablable<CommandResult<T>>[];
 
 export type InterstitialUpdateResult<T extends WorldType<T>> = {
     world?: T;
-    message?: string;
-    history_updater?: (history: CommandResult<T>[], world?: T) => Disablable<CommandResult<T>>[];
+    message?: HTMLDivElement;
+    // message?: string;
+    history_updater?: HistoryUpdater<T>;
 } | undefined;
 
-export type CommandResult<T extends WorldType<T>> = {
-    world?: T;
-    message?: string;
+export type CommandResult<T extends WorldType<T>> = InterstitialUpdateResult<T> & {
     parser?: CommandParser;
-    history_updater?: (history: CommandResult<T>[], world?: T) => Disablable<CommandResult<T>>[];
     index?: number
 } | undefined;
+
+// export type CommandResult<T extends WorldType<T>> = {
+//     world?: T;
+//     message?: string;
+//     parser?: CommandParser;
+//     history_updater?: (history: CommandResult<T>[], world?: T) => Disablable<CommandResult<T>>[];
+//     index?: number
+// } | undefined;
 
 export interface Command<T extends WorldType<T>> {
     command_name: Token[];
@@ -50,10 +57,10 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
         if (cmd_result.history_updater !== undefined) {
             result.history_updater = cmd_result.history_updater;
         }
+
+        result = apply_interstitial_update(result);
     }
 
-    result = apply_interstitial_update(result);
-    
     return result;
 }
 
@@ -65,12 +72,9 @@ function apply_interstitial_update<T extends WorldType<T>>(result: CommandResult
             if (res2.world !== undefined) {
                 result.world = res2.world;
             }
-            if (res2.message !== undefined) {
-                if (result.message !== undefined){
-                    result.message += '\n\n' + res2.message;
-                } else {
-                    result.message = res2.message;
-                }
+            if (res2.message !== undefined) { 
+                //assume they updated the original message in some way   
+                result.message = res2.message;
             }
             if (res2.history_updater !== undefined) {
                 result.history_updater = res2.history_updater;

@@ -66,7 +66,7 @@ function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMo
 let tower_oms = index_oms([
     {
         id: 'base, from path',
-        message: dedent`<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
+        message: dedent`<div class="meditation-1">(Welcome to the demo! This game doesn't have a proper name yet.)</div>
 
         The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
         transitions: [
@@ -86,7 +86,7 @@ let tower_oms = index_oms([
 
             You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
 
-            <i>"We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."</i>
+            <div class="meditation-1">"We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."</div>
 
             The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
         transitions: [
@@ -99,7 +99,7 @@ let tower_oms = index_oms([
 
             You continue reading:
 
-            <i>"From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."</i>
+            <div class="meditation-1">"From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."</div>
 
             The platform terminates, and another wooden stairway to the left leads further up the tower.`,
         transitions: [
@@ -110,7 +110,7 @@ let tower_oms = index_oms([
         id: 'stairs 2, ascending',
         message: dedent`They feel solid under your feet, dull thuds sounding with each step.
 
-            <i>"It can feel like a deliverance when one reaches such a vantage after much aimless wandering."</i>
+            <div class="meditation-1">"It can feel like a deliverance when one reaches such a vantage after much aimless wandering."</div>
 
             The stairs terminate in another left-branching platform.`,
         transitions: [
@@ -121,7 +121,7 @@ let tower_oms = index_oms([
         id: 'platform 2, ascending',
         message: dedent`You make your way across the weathered wood.
 
-            <i>"The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."</i>
+            <div class="meditation-1">"The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."</div>
 
             A final wooden stairway to the left leads up to the top of the tower.`,
         transitions: [
@@ -143,7 +143,7 @@ let tower_oms = index_oms([
 
             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
 
-            <i>"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</i>`,
+            <div class="meditation-1">"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</div>`,
         transitions: [
             [['descend', 'the stairs'], 'stairs 3, descending']]
     },
@@ -151,7 +151,7 @@ let tower_oms = index_oms([
         id: 'stairs 3, descending',
         message: dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
 
-            <i>"Do not fret, my dear. Return to the madness of life after your brief respite."</i>`,
+            <div class="meditation-1">"Do not fret, my dear. Return to the madness of life after your brief respite."</div>`,
         transitions: [
             [['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'],
             [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
@@ -160,7 +160,7 @@ let tower_oms = index_oms([
         id: 'platform 2, descending',
         message: dedent`The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
 
-            <i>"Expect to forget; to be turned around; to become tangled up."</i>`,
+            <div class="meditation-1">"Expect to forget; to be turned around; to become tangled up."</div>`,
         transitions: [
             [['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'],
             [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
@@ -169,7 +169,7 @@ let tower_oms = index_oms([
         id: 'stairs 2, descending',
         message: dedent`The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
 
-            <i>"Find some joy in it; some exhilaration."</i>`,
+            <div class="meditation-1">"Find some joy in it; some exhilaration."</div>`,
         transitions: [
             [['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'],
             [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
@@ -178,7 +178,7 @@ let tower_oms = index_oms([
         id: 'platform 1, descending',
         message: dedent`You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
 
-            <i>"And know that you have changed, dear. That your ascent has taught you something."</i>`,
+            <div class="meditation-1">"And know that you have changed, dear. That your ascent has taught you something."</div>`,
         transitions: [
             [['turn', 'right', 'and descend the stairs'], 'base, regarding path'],
             [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
@@ -187,7 +187,7 @@ let tower_oms = index_oms([
         id: 'base, regarding path',
         message: dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
 
-            <i>(End of demo. Thanks for playing!)</i>`,
+            <div class="meditation-1">(End of demo. Thanks for playing!)</div>`,
         transitions: []
     }
 ]);
@@ -229,6 +229,7 @@ type VenienceWorldState = {
 }
 
 export class VenienceWorld implements WorldType<VenienceWorld>{
+
     readonly current_om: ObserverMomentID;
     readonly has_seen: FuckDict<ObserverMomentID, boolean>;
     
@@ -324,7 +325,9 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
         }
 
         if (message_parts.length > 0) {
-            result.message = message_parts.join('\n\n');
+            result.message = document.createElement('div');
+            result.message.innerHTML = message_parts.join('\n\n');
+            // result.message = message_parts.join('\n\n');
         }
 
         if (Object.keys(world_update).length > 0){

@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 12);
+/******/ 	return __webpack_require__(__webpack_require__.s = 13);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -257,40 +257,56 @@ function counter_order(counter, include_zero = false) {
     return result.map(([t, i]) => t);
 }
 exports.counter_order = counter_order;
-function is_dwrapped(x) {
-    return x.disablable !== undefined;
+function is_annotated(x) {
+    return x.annotated !== undefined;
 }
-exports.is_dwrapped = is_dwrapped;
-function set_enabled(x, enabled = true) {
-    if (is_dwrapped(x)) {
-        if (x.enabled !== enabled) {
-            x.enabled = enabled; //could do check here for enabled being set properly already
+exports.is_annotated = is_annotated;
+function annotate(x, annotation) {
+    if (is_annotated(x)) {
+        if (x.annotation !== annotation) {
+            x.annotation = annotation; //could do check here for enabled being set properly already
         }
         return x;
     } else {
-        let result = { value: x, disablable: true, enabled };
+        let result = { value: x, annotated: true, annotation };
         return result;
     }
 }
-exports.set_enabled = set_enabled;
+exports.annotate = annotate;
 function unwrap(x) {
-    if (is_dwrapped(x)) {
+    if (is_annotated(x)) {
         return x.value;
     } else {
         return x;
     }
 }
 exports.unwrap = unwrap;
+function with_annotatable(x, f) {
+    return annotate(unwrap(f(unwrap(x))), get_annotation(x));
+}
+exports.with_annotatable = with_annotatable;
+function get_annotation(x) {
+    if (is_annotated(x)) {
+        return x.annotation;
+    } else {
+        return undefined;
+    }
+}
+exports.get_annotation = get_annotation;
+function set_enabled(x, enabled = true) {
+    return annotate(x, enabled);
+}
+exports.set_enabled = set_enabled;
 function with_disablable(x, f) {
-    return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));
+    return with_annotatable(x, f);
 }
 exports.with_disablable = with_disablable;
 function is_enabled(x) {
-    if (is_dwrapped(x)) {
-        return x.enabled;
-    } else {
+    let result = get_annotation(x);
+    if (result === undefined) {
         return true;
     }
+    return result;
 }
 exports.is_enabled = is_enabled;
 
@@ -675,6 +691,65 @@ exports.dedent = dedent;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(0);
+const parser_1 = __webpack_require__(2);
+exports.Carat = () => React.createElement("span", null, ">\u00A0");
+function get_display_color(det) {
+    switch (det) {
+        case parser_1.DisplayEltType.keyword:
+            return 'aqua';
+        case parser_1.DisplayEltType.option:
+            return 'orange';
+        case parser_1.DisplayEltType.filler:
+            return 'ivory';
+        case parser_1.DisplayEltType.partial:
+            return 'silver';
+        case parser_1.DisplayEltType.error:
+            return 'red';
+    }
+}
+exports.ParsedText = props => {
+    let { parser, typeaheadIndex, children } = props;
+    let style = {
+        display: 'inline-block',
+        whiteSpace: 'pre-wrap',
+        position: 'relative'
+    };
+    let validity = parser.validity;
+    if (validity === parser_1.MatchValidity.valid) {
+        style.fontWeight = '900';
+        style.fontStyle = 'italic';
+    } else {
+        style.fontWeight = '100';
+        if (validity === parser_1.MatchValidity.invalid) {
+            style.opacity = '0.6';
+        }
+    }
+    const elt_style = {
+        display: 'inline-block'
+    };
+    const span_style = {
+        display: 'inline-block'
+    };
+    return React.createElement("div", { style: { display: 'inline-block' } }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
+};
+exports.OutputText = props => {
+    const { message } = props;
+    const style = {
+        display: 'inline-block',
+        whiteSpace: 'pre-wrap'
+    };
+    return React.createElement("div", { style: style, dangerouslySetInnerHTML: { __html: message.innerHTML } });
+};
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.keys = {
     tab: 9,
     enter: 13,
@@ -685,42 +760,20 @@ exports.keys = {
 };
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var __rest = this && this.__rest || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function") for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0) t[p[i]] = s[p[i]];
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const Prompt_1 = __webpack_require__(9);
-const Text_1 = __webpack_require__(10);
-const TypeaheadList_1 = __webpack_require__(11);
+const Prompt_1 = __webpack_require__(11);
+const Text_1 = __webpack_require__(4);
+const TypeaheadList_1 = __webpack_require__(12);
+const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
 const parser_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
-const ReactTransitionGroup = __webpack_require__(13);
-const Carat = () => React.createElement("span", null, ">\u00A0");
-const fade_duration = 300,
-      height_duration = 400;
-const defaultStyle = {
-    transition: `opacity ${fade_duration}ms ease-in, max-height ${height_duration}ms linear`,
-    transitionDelay: `0ms, ${fade_duration}ms`
-};
-const transitionStyles = {
-    exiting: { opacity: 0, maxHeight: 0 }
-};
-const Fade = _a => {
-    var { children } = _a,
-        props = __rest(_a, ["children"]);
-    return React.createElement(ReactTransitionGroup.Transition, Object.assign({ timeout: fade_duration + height_duration, onExit: d => d.style.maxHeight = `${d.clientHeight}px` }, props), state => React.createElement("div", { style: Object.assign({}, defaultStyle, transitionStyles[state]) }, children));
-};
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -829,27 +882,13 @@ class Terminal extends React.Component {
             padding: '1em',
             marginRight: '3em'
         };
-        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(ReactTransitionGroup.TransitionGroup, null, this.state.world_driver.history.map(({ parser, message, index }) => {
-            if (index === 0) {
-                return React.createElement(Fade, { key: index.toString() }, React.createElement("div", null, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))));
-            }
-            let hist_elt_style = {
-                marginTop: '1em'
-            };
-            if (!datatypes_1.is_enabled(this.state.world_driver.possible_history[index])) {
-                hist_elt_style.opacity = '0.4';
-            }
-            return (
-                //check if this.state.world_driver.possible_history[i] is disabled
-                React.createElement(Fade, { key: index.toString() }, React.createElement("div", { style: hist_elt_style }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))))
-            );
-        })), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Carat, null), React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -873,8 +912,8 @@ function apply_command(world, cmd) {
         if (cmd_result.history_updater !== undefined) {
             result.history_updater = cmd_result.history_updater;
         }
+        result = apply_interstitial_update(result);
     }
-    result = apply_interstitial_update(result);
     return result;
 }
 exports.apply_command = apply_command;
@@ -887,11 +926,8 @@ function apply_interstitial_update(result) {
                 result.world = res2.world;
             }
             if (res2.message !== undefined) {
-                if (result.message !== undefined) {
-                    result.message += '\n\n' + res2.message;
-                } else {
-                    result.message = res2.message;
-                }
+                //assume they updated the original message in some way   
+                result.message = res2.message;
             }
             if (res2.history_updater !== undefined) {
                 result.history_updater = res2.history_updater;
@@ -952,7 +988,7 @@ function eager_dispatch(world, parser) {
 exports.eager_dispatch = eager_dispatch;
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -986,7 +1022,7 @@ function index_oms(oms) {
 }
 let tower_oms = index_oms([{
     id: 'base, from path',
-    message: text_tools_1.dedent`<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
+    message: text_tools_1.dedent`<div class="meditation-1">(Welcome to the demo! This game doesn't have a proper name yet.)</div>
 
         The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
     transitions: [[['approach', 'the viewing tower'], 'base, regarding tower']]
@@ -1002,7 +1038,7 @@ let tower_oms = index_oms([{
 
             You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
 
-            <i>"We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."</i>
+            <div class="meditation-1">"We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."</div>
 
             The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'], [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
@@ -1012,7 +1048,7 @@ let tower_oms = index_oms([{
 
             You continue reading:
 
-            <i>"From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."</i>
+            <div class="meditation-1">"From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."</div>
 
             The platform terminates, and another wooden stairway to the left leads further up the tower.`,
     transitions: [[['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
@@ -1020,7 +1056,7 @@ let tower_oms = index_oms([{
     id: 'stairs 2, ascending',
     message: text_tools_1.dedent`They feel solid under your feet, dull thuds sounding with each step.
 
-            <i>"It can feel like a deliverance when one reaches such a vantage after much aimless wandering."</i>
+            <div class="meditation-1">"It can feel like a deliverance when one reaches such a vantage after much aimless wandering."</div>
 
             The stairs terminate in another left-branching platform.`,
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'], [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
@@ -1028,7 +1064,7 @@ let tower_oms = index_oms([{
     id: 'platform 2, ascending',
     message: text_tools_1.dedent`You make your way across the weathered wood.
 
-            <i>"The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."</i>
+            <div class="meditation-1">"The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."</div>
 
             A final wooden stairway to the left leads up to the top of the tower.`,
     transitions: [[['turn', 'left', 'and climb the stairs'], 'top, arriving'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
@@ -1044,37 +1080,37 @@ let tower_oms = index_oms([{
 
             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
 
-            <i>"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</i>`,
+            <div class="meditation-1">"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</div>`,
     transitions: [[['descend', 'the stairs'], 'stairs 3, descending']]
 }, {
     id: 'stairs 3, descending',
     message: text_tools_1.dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
 
-            <i>"Do not fret, my dear. Return to the madness of life after your brief respite."</i>`,
+            <div class="meditation-1">"Do not fret, my dear. Return to the madness of life after your brief respite."</div>`,
     transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'], [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
 }, {
     id: 'platform 2, descending',
     message: text_tools_1.dedent`The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
 
-            <i>"Expect to forget; to be turned around; to become tangled up."</i>`,
+            <div class="meditation-1">"Expect to forget; to be turned around; to become tangled up."</div>`,
     transitions: [[['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
 }, {
     id: 'stairs 2, descending',
     message: text_tools_1.dedent`The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
 
-            <i>"Find some joy in it; some exhilaration."</i>`,
+            <div class="meditation-1">"Find some joy in it; some exhilaration."</div>`,
     transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'], [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
 }, {
     id: 'platform 1, descending',
     message: text_tools_1.dedent`You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
 
-            <i>"And know that you have changed, dear. That your ascent has taught you something."</i>`,
+            <div class="meditation-1">"And know that you have changed, dear. That your ascent has taught you something."</div>`,
     transitions: [[['turn', 'right', 'and descend the stairs'], 'base, regarding path'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
 }, {
     id: 'base, regarding path',
     message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
 
-            <i>(End of demo. Thanks for playing!)</i>`,
+            <div class="meditation-1">(End of demo. Thanks for playing!)</div>`,
     transitions: []
 }]);
 function transitions_to_commands(transitions) {
@@ -1164,7 +1200,9 @@ class VenienceWorld {
             return { history_updater: update_history };
         }
         if (message_parts.length > 0) {
-            result.message = message_parts.join('\n\n');
+            result.message = document.createElement('div');
+            result.message.innerHTML = message_parts.join('\n\n');
+            // result.message = message_parts.join('\n\n');
         }
         if (Object.keys(world_update).length > 0) {
             result.world = this.update(world_update);
@@ -1175,13 +1213,13 @@ class VenienceWorld {
 exports.VenienceWorld = VenienceWorld;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports) {
 
 module.exports = ReactDOM;
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1195,7 +1233,52 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(4);
+const ReactTransitionGroup = __webpack_require__(14);
+const Text_1 = __webpack_require__(4);
+const datatypes_1 = __webpack_require__(1);
+const fade_duration = 300,
+      height_duration = 400;
+const defaultStyle = {
+    transition: `opacity ${fade_duration}ms ease-in, max-height ${height_duration}ms linear`,
+    transitionDelay: `0ms, ${fade_duration}ms`
+};
+const transitionStyles = {
+    exiting: { opacity: 0, maxHeight: 0 }
+};
+const Fade = _a => {
+    var { children } = _a,
+        props = __rest(_a, ["children"]);
+    return React.createElement(ReactTransitionGroup.Transition, Object.assign({ timeout: fade_duration + height_duration, onExit: d => d.style.maxHeight = `${d.clientHeight}px` }, props), state => React.createElement("div", { style: Object.assign({}, defaultStyle, transitionStyles[state]) }, children));
+};
+exports.History = ({ history, possible_history }) => React.createElement(ReactTransitionGroup.TransitionGroup, null, history.map(({ parser, message, index }) => {
+    if (index === 0) {
+        return React.createElement(Fade, { key: index.toString() }, React.createElement("div", null, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))));
+    }
+    let hist_elt_style = {
+        marginTop: '1em'
+    };
+    if (!datatypes_1.is_enabled(possible_history[index])) {
+        hist_elt_style.opacity = '0.4';
+    }
+    return React.createElement(Fade, { key: index.toString() }, React.createElement("div", { style: hist_elt_style }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))));
+}));
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var __rest = this && this.__rest || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function") for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0) t[p[i]] = s[p[i]];
+    return t;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(0);
+const keyboard_tools_1 = __webpack_require__(5);
 const InputWrapper = props => {
     const { children } = props,
           rest = __rest(props, ["children"]);
@@ -1282,13 +1365,13 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, onFocus: e => console.log('input focus'), onBlur: e => console.log('input blur'), ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, this.state.is_focused ? React.createElement(Cursor, { onClick: () => this.handleSubmit() }) : ''));
+        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, this.state.is_focused ? React.createElement(Cursor, { onClick: () => this.handleSubmit() }) : ''));
     }
 }
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 10 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1296,65 +1379,7 @@ exports.Prompt = Prompt;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const parser_1 = __webpack_require__(2);
-function get_display_color(det) {
-    switch (det) {
-        case parser_1.DisplayEltType.keyword:
-            return 'aqua';
-        case parser_1.DisplayEltType.option:
-            return 'orange';
-        case parser_1.DisplayEltType.filler:
-            return 'ivory';
-        case parser_1.DisplayEltType.partial:
-            return 'silver';
-        case parser_1.DisplayEltType.error:
-            return 'red';
-    }
-}
-exports.ParsedText = props => {
-    let { parser, typeaheadIndex, children } = props;
-    let style = {
-        display: 'inline-block',
-        whiteSpace: 'pre-wrap',
-        position: 'relative'
-    };
-    let validity = parser.validity;
-    if (validity === parser_1.MatchValidity.valid) {
-        style.fontWeight = '900';
-        style.fontStyle = 'italic';
-    } else {
-        style.fontWeight = '100';
-        if (validity === parser_1.MatchValidity.invalid) {
-            style.opacity = '0.6';
-        }
-    }
-    const elt_style = {
-        display: 'inline-block'
-    };
-    const span_style = {
-        display: 'inline-block'
-    };
-    return React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : '')));
-};
-exports.OutputText = props => {
-    const { message } = props;
-    const style = {
-        display: 'inline-block',
-        whiteSpace: 'pre-wrap'
-    };
-    return React.createElement("div", { style: style, dangerouslySetInnerHTML: { __html: message } });
-};
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(4);
+const keyboard_tools_1 = __webpack_require__(5);
 const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
@@ -1433,7 +1458,7 @@ class TypeaheadList extends React.Component {
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1441,16 +1466,16 @@ exports.TypeaheadList = TypeaheadList;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const ReactDom = __webpack_require__(8);
-const Terminal_1 = __webpack_require__(5);
-const commands_1 = __webpack_require__(6);
+const ReactDom = __webpack_require__(9);
+const Terminal_1 = __webpack_require__(6);
+const commands_1 = __webpack_require__(7);
 //import {BirdWorld} from '../typescript/bird_world';
-const venience_world_1 = __webpack_require__(7);
+const venience_world_1 = __webpack_require__(8);
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports) {
 
 module.exports = ReactTransitionGroup;

@@ -2,7 +2,11 @@ import * as React from 'react';
 
 import {DisplayEltType, MatchValidity} from '../typescript/parser';
 
-import {get_indenting_whitespace} from '../typescript/text_tools';
+export const Carat = () => (
+  <span>
+    >&nbsp;
+  </span>
+);
 
 function get_display_color(det: DisplayEltType) {
   switch (det) {
@@ -47,17 +51,20 @@ export const ParsedText = (props) => {
   }
 
   return (
-    <div style={style}>
-      {(parser === undefined) ? '' : 
-        parser.match.map((elt, i) => (
-          <div key={i.toString()} style={{...elt_style, ...{color: get_display_color(elt.display)}}}>
-            <span style={span_style}>
-              {elt.match + ( i === parser.match.length - 1  ? parser.tail_padding : '' ) }
-            </span>
-            { ( i === typeaheadIndex ) ? children : '' }
-          </div>
-        ))
-      }
+    <div style={{display: 'inline-block'}}>
+      <Carat />
+      <div style={style}>
+        {(parser === undefined) ? '' : 
+          parser.match.map((elt, i) => (
+            <div key={i.toString()} style={{...elt_style, ...{color: get_display_color(elt.display)}}}>
+              <span style={span_style}>
+                {elt.match + ( i === parser.match.length - 1  ? parser.tail_padding : '' ) }
+              </span>
+              { ( i === typeaheadIndex ) ? children : '' }
+            </div>
+          ))
+        }
+      </div>
     </div>
   );
 }
@@ -70,6 +77,6 @@ export const OutputText = (props) => {
   }
 
   return (
-    <div style={style} dangerouslySetInnerHTML={{__html: message}} />
+    <div style={style} dangerouslySetInnerHTML={{__html: message.innerHTML}} />
   );
 }
