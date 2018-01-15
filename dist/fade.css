@@ -1,20 +1,46 @@
 .fade-enter {
-  opacity: 0.01;
+    opacity: 0;
+    max-height: 0px;
 }
 
 .fade-enter.fade-enter-active {
-  opacity: 1;
-  transition: opacity 200ms ease-in;
+  opacity: 1.0;
+  transition: opacity 300ms ease-in, max-height 400ms linear;
+  transition-delay: 400ms, 0ms;
 }
 
 .fade-exit {
-  opacity: 0.4 !important;
-  transform: scaleY(1);
+  
 }
 
 .fade-exit.fade-exit-active {
   opacity: 0.01 !important;
-  transform: scaleY(0);
-  transform-origin: top;
-  transition: opacity 200ms ease-in, transform 300ms ease-in;
+  max-height: 0px !important;
+  transition: opacity 300ms ease-in, max-height 400ms linear;
+  transition-delay: 0ms, 300ms;
+}
+
+
+.history {
+    margin-top: 1em;
+}
+
+/* add pulsing */
+.history.edit-status-0 {
+    opacity: 0.4;
+}
+
+/* add pulsing */
+.history.edit-status-2 {
+    background-color: midnightblue;
+}
+
+.history .meditation-1 {
+    display: none;
+}
+
+.history .meditation-1.enabled {
+    display: block;
+    font-style: italic;
+    color: gold;
 }

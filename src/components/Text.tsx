@@ -70,13 +70,13 @@ export const ParsedText = (props) => {
 }
 
 export const OutputText = (props) => {
-  const {message} = props;
+  const {message_html} = props;
   const style = {
     display: 'inline-block',
     whiteSpace: 'pre-wrap'
   }
 
   return (
-    <div style={style} dangerouslySetInnerHTML={{__html: message.innerHTML}} />
+    <div style={style} dangerouslySetInnerHTML={{__html: message_html}} />
   );
 }

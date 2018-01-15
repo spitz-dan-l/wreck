@@ -258,6 +258,9 @@ function counter_order(counter, include_zero = false) {
 }
 exports.counter_order = counter_order;
 function is_annotated(x) {
+    if (x === undefined) {
+        return false;
+    }
     return x.annotated !== undefined;
 }
 exports.is_annotated = is_annotated;
@@ -281,15 +284,15 @@ function unwrap(x) {
     }
 }
 exports.unwrap = unwrap;
-function with_annotatable(x, f) {
-    return annotate(unwrap(f(unwrap(x))), get_annotation(x));
+function with_annotatable(x, f, default_value) {
+    return annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
 }
 exports.with_annotatable = with_annotatable;
-function get_annotation(x) {
+function get_annotation(x, default_value) {
     if (is_annotated(x)) {
         return x.annotation;
     } else {
-        return undefined;
+        return default_value;
     }
 }
 exports.get_annotation = get_annotation;
@@ -734,12 +737,12 @@ exports.ParsedText = props => {
     return React.createElement("div", { style: { display: 'inline-block' } }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
 };
 exports.OutputText = props => {
-    const { message } = props;
+    const { message_html } = props;
     const style = {
         display: 'inline-block',
         whiteSpace: 'pre-wrap'
     };
-    return React.createElement("div", { style: style, dangerouslySetInnerHTML: { __html: message.innerHTML } });
+    return React.createElement("div", { style: style, dangerouslySetInnerHTML: { __html: message_html } });
 };
 
 /***/ }),
@@ -863,7 +866,10 @@ class Terminal extends React.Component {
     }
     componentDidUpdate() {
         this.focus();
-        this.scrollToPrompt();
+        let that = this;
+        window.setTimeout(function () {
+            that.scrollToPrompt();
+        }, 700);
     }
     render() {
         const container_style = {
@@ -909,9 +915,9 @@ function apply_command(world, cmd) {
         if (cmd_result.message !== undefined) {
             result.message = cmd_result.message;
         }
-        if (cmd_result.history_updater !== undefined) {
-            result.history_updater = cmd_result.history_updater;
-        }
+        // if (cmd_result.history_updater !== undefined) {
+        //     result.history_updater = cmd_result.history_updater;
+        // }
         result = apply_interstitial_update(result);
     }
     return result;
@@ -929,18 +935,26 @@ function apply_interstitial_update(result) {
                 //assume they updated the original message in some way   
                 result.message = res2.message;
             }
-            if (res2.history_updater !== undefined) {
-                result.history_updater = res2.history_updater;
-            }
+            // if (res2.history_updater !== undefined) {
+            //     result.history_updater = res2.history_updater;
+            // }
         }
     }
     return result;
 }
-function apply_history_update(history, result) {
-    if (result.history_updater === undefined) {
-        return [...history, result];
+function apply_history_update(history, world) {
+    if (world.interpret_history === undefined) {
+        return history;
     } else {
-        return result.history_updater(history, result.world);
+        return history.map(result => {
+            let r = datatypes_1.unwrap(result);
+            let new_result = Object.assign({}, r);
+            let interpretted_message = world.interpret_history(r.world, r.message);
+            if (interpretted_message !== undefined) {
+                new_result.interpretted_message = datatypes_1.unwrap(interpretted_message);
+            }
+            return datatypes_1.annotate(new_result, datatypes_1.get_annotation(interpretted_message, datatypes_1.get_annotation(result, 1)));
+        });
     }
 }
 class WorldDriver {
@@ -949,15 +963,15 @@ class WorldDriver {
         let initial_result = { world: initial_world };
         initial_result = apply_interstitial_update(initial_result);
         initial_result.index = 0;
-        this.history = [initial_result];
+        this.history = apply_history_update([initial_result], initial_world);
         this.apply_command('', false); //populate this.current_state
     }
     apply_command(cmd, commit = true) {
-        let prev_state = this.history[this.history.length - 1];
+        let prev_state = datatypes_1.unwrap(this.history[this.history.length - 1]);
         let result = apply_command(prev_state.world, cmd);
         result.index = prev_state.index + 1;
         this.current_state = result;
-        this.possible_history = apply_history_update(this.history, this.current_state);
+        this.possible_history = apply_history_update([...this.history, this.current_state], this.current_state.world);
         if (commit) {
             this.commit();
         }
@@ -967,7 +981,7 @@ class WorldDriver {
         //save previous history for posterity
         this.previous_histories.push(this.history);
         //filter out any disabled history
-        this.history = this.possible_history.filter(datatypes_1.is_enabled).map(datatypes_1.unwrap);
+        this.history = this.possible_history.filter(x => datatypes_1.get_annotation(x, 1) !== 0);
         this.apply_command('', false);
         return this.current_state;
     }
@@ -1022,7 +1036,7 @@ function index_oms(oms) {
 }
 let tower_oms = index_oms([{
     id: 'base, from path',
-    message: text_tools_1.dedent`<div class="meditation-1">(Welcome to the demo! This game doesn't have a proper name yet.)</div>
+    message: text_tools_1.dedent`<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
 
         The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
     transitions: [[['approach', 'the viewing tower'], 'base, regarding tower']]
@@ -1036,9 +1050,11 @@ let tower_oms = index_oms([{
     id: 'stairs 1, ascending',
     message: text_tools_1.dedent`As you ascend, the ground below you recedes.
 
+            <div class="meditation-1">
             You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
 
-            <div class="meditation-1">"We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."</div>
+            "We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."
+            </div>
 
             The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'], [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
@@ -1046,9 +1062,11 @@ let tower_oms = index_oms([{
     id: 'platform 1, ascending',
     message: text_tools_1.dedent`You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
 
+            <div class="meditation-1">
             You continue reading:
 
-            <div class="meditation-1">"From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."</div>
+            "From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."
+            </div>
 
             The platform terminates, and another wooden stairway to the left leads further up the tower.`,
     transitions: [[['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
@@ -1056,7 +1074,9 @@ let tower_oms = index_oms([{
     id: 'stairs 2, ascending',
     message: text_tools_1.dedent`They feel solid under your feet, dull thuds sounding with each step.
 
-            <div class="meditation-1">"It can feel like a deliverance when one reaches such a vantage after much aimless wandering."</div>
+            <div class="meditation-1">
+            "It can feel like a deliverance when one reaches such a vantage after much aimless wandering."
+            </div>
 
             The stairs terminate in another left-branching platform.`,
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'], [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
@@ -1064,7 +1084,9 @@ let tower_oms = index_oms([{
     id: 'platform 2, ascending',
     message: text_tools_1.dedent`You make your way across the weathered wood.
 
-            <div class="meditation-1">"The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."</div>
+            <div class="meditation-1">
+            "The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."
+            </div>
 
             A final wooden stairway to the left leads up to the top of the tower.`,
     transitions: [[['turn', 'left', 'and climb the stairs'], 'top, arriving'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
@@ -1080,37 +1102,47 @@ let tower_oms = index_oms([{
 
             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
 
-            <div class="meditation-1">"But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."</div>`,
+            <div class="meditation-1">
+            "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
+            </div>`,
     transitions: [[['descend', 'the stairs'], 'stairs 3, descending']]
 }, {
     id: 'stairs 3, descending',
     message: text_tools_1.dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
 
-            <div class="meditation-1">"Do not fret, my dear. Return to the madness of life after your brief respite."</div>`,
+            <div class="meditation-1">
+            "Do not fret, my dear. Return to the madness of life after your brief respite."
+            </div>`,
     transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'], [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
 }, {
     id: 'platform 2, descending',
     message: text_tools_1.dedent`The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
 
-            <div class="meditation-1">"Expect to forget; to be turned around; to become tangled up."</div>`,
+            <div class="meditation-1">
+            "Expect to forget; to be turned around; to become tangled up."
+            </div>`,
     transitions: [[['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
 }, {
     id: 'stairs 2, descending',
     message: text_tools_1.dedent`The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
 
-            <div class="meditation-1">"Find some joy in it; some exhilaration."</div>`,
+            <div class="meditation-1">
+            "Find some joy in it; some exhilaration."
+            </div>`,
     transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'], [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
 }, {
     id: 'platform 1, descending',
     message: text_tools_1.dedent`You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
 
-            <div class="meditation-1">"And know that you have changed, dear. That your ascent has taught you something."</div>`,
+            <div class="meditation-1">
+            "And know that you have changed, dear. That your ascent has taught you something."
+            </div>`,
     transitions: [[['turn', 'right', 'and descend the stairs'], 'base, regarding path'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
 }, {
     id: 'base, regarding path',
     message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
 
-            <div class="meditation-1">(End of demo. Thanks for playing!)</div>`,
+            <i>(End of demo. Thanks for playing!)</i>`,
     transitions: []
 }]);
 function transitions_to_commands(transitions) {
@@ -1127,24 +1159,38 @@ function transitions_to_commands(transitions) {
     }));
 }
 class VenienceWorld {
-    constructor({ current_om, has_seen }) {
+    constructor({ prev_om, current_om, has_seen, remembered_meditation }) {
+        if (prev_om === undefined) {
+            prev_om = null;
+        }
         if (current_om === undefined) {
             current_om = 'base, from path';
         }
         if (has_seen === undefined) {
             has_seen = new datatypes_1.FuckDict();
         }
+        if (remembered_meditation === undefined) {
+            remembered_meditation = false;
+        }
+        this.prev_om = prev_om;
         this.current_om = current_om;
         this.has_seen = has_seen;
+        this.remembered_meditation = remembered_meditation;
     }
-    update({ current_om, has_seen }) {
+    update({ prev_om, current_om, has_seen, remembered_meditation }) {
+        if (prev_om === undefined) {
+            prev_om = this.prev_om;
+        }
         if (current_om === undefined) {
             current_om = this.current_om;
         }
         if (has_seen === undefined) {
             has_seen = this.has_seen;
         }
-        return new VenienceWorld({ current_om, has_seen });
+        if (remembered_meditation === undefined) {
+            remembered_meditation = this.remembered_meditation;
+        }
+        return new VenienceWorld({ prev_om, current_om, has_seen, remembered_meditation });
     }
     handle_command(parser) {
         let world = this;
@@ -1164,6 +1210,7 @@ class VenienceWorld {
                 }
             });
             return { world: world.update({
+                    prev_om: world.current_om,
                     current_om: om_id_choice
                 }) };
         })(parser);
@@ -1174,40 +1221,50 @@ class VenienceWorld {
         let message_parts = [];
         let om_descr = tower_oms.get(this.current_om).message;
         message_parts.push(om_descr);
-        if (!this.has_seen.get(this.current_om)) {
+        if (this.prev_om !== null) {
             let new_has_seen = this.has_seen.copy();
-            new_has_seen.set(this.current_om, true);
+            new_has_seen.set(this.prev_om, true);
             world_update.has_seen = new_has_seen;
-        } else {
-            //historoony
-            let world = this;
-            function update_history(history) {
-                let new_history = history.map(x => datatypes_1.set_enabled(x, true));
-                let pos;
-                for (pos = history.length - 1; pos >= 0; pos--) {
-                    if (history[pos].world.current_om == world.current_om) {
-                        break;
-                    } else {
-                        new_history[pos] = datatypes_1.set_enabled(new_history[pos], false);
-                    }
-                }
-                new_history[pos] = datatypes_1.with_disablable(new_history[pos], res => {
-                    let new_res = Object.assign({}, res); //copy it so we aren't updating the original history entry
-                    return new_res;
-                });
-                return new_history;
-            }
-            return { history_updater: update_history };
+        }
+        if (this.current_om === 'top, surveying') {
+            world_update.remembered_meditation = true;
         }
         if (message_parts.length > 0) {
             result.message = document.createElement('div');
             result.message.innerHTML = message_parts.join('\n\n');
-            // result.message = message_parts.join('\n\n');
+            // if (this.remembered_meditation) {
+            //     result.message.querySelectorAll('.meditation-1:not(.enabled)').forEach((n_div) => {
+            //         n_div.classList.add('enabled');
+            //     });
+            // }
         }
         if (Object.keys(world_update).length > 0) {
             result.world = this.update(world_update);
         }
         return result;
+    }
+    interpret_history(prev_world, prev_message) {
+        if (prev_world.has_seen.get(this.current_om)) {
+            return datatypes_1.annotate(prev_message, 0);
+        }
+        if (prev_message === undefined) {
+            return;
+        }
+        if (this.remembered_meditation) {
+            let notes = prev_message.querySelectorAll('.meditation-1');
+            if (notes.length > 0) {
+                let new_message = prev_message.cloneNode(true);
+                new_message.querySelectorAll('.meditation-1').forEach(n_div => {
+                    n_div.classList.add('enabled');
+                });
+                let edit_status = 2;
+                if (this.current_om !== 'top, surveying') {
+                    edit_status = 1;
+                }
+                return datatypes_1.annotate(new_message, edit_status);
+            }
+        }
+        return;
     }
 }
 exports.VenienceWorld = VenienceWorld;
@@ -1236,31 +1293,25 @@ const React = __webpack_require__(0);
 const ReactTransitionGroup = __webpack_require__(14);
 const Text_1 = __webpack_require__(4);
 const datatypes_1 = __webpack_require__(1);
-const fade_duration = 300,
-      height_duration = 400;
-const defaultStyle = {
-    transition: `opacity ${fade_duration}ms ease-in, max-height ${height_duration}ms linear`,
-    transitionDelay: `0ms, ${fade_duration}ms`
-};
-const transitionStyles = {
-    exiting: { opacity: 0, maxHeight: 0 }
-};
 const Fade = _a => {
     var { children } = _a,
         props = __rest(_a, ["children"]);
-    return React.createElement(ReactTransitionGroup.Transition, Object.assign({ timeout: fade_duration + height_duration, onExit: d => d.style.maxHeight = `${d.clientHeight}px` }, props), state => React.createElement("div", { style: Object.assign({}, defaultStyle, transitionStyles[state]) }, children));
+    return React.createElement(ReactTransitionGroup.CSSTransition, Object.assign({ timeout: 700, onExit: d => {
+            d.style.maxHeight = `${d.clientHeight}px`;
+        }, onEntering: d => {
+            d.style.maxHeight = `${d.scrollHeight}px`;
+        }, classNames: "fade" }, props), children);
 };
-exports.History = ({ history, possible_history }) => React.createElement(ReactTransitionGroup.TransitionGroup, null, history.map(({ parser, message, index }) => {
+exports.History = ({ history, possible_history }) => React.createElement(ReactTransitionGroup.TransitionGroup, null, history.map(hist => {
+    let hist_status = datatypes_1.get_annotation(hist, 1);
+    let { parser, message, interpretted_message, index } = datatypes_1.unwrap(hist);
+    let edit_status = datatypes_1.get_annotation(possible_history[index], 1);
+    let key = index.toString() + '_' + hist_status.toString();
+    let msg_html = interpretted_message !== undefined ? interpretted_message.innerHTML : message.innerHTML;
     if (index === 0) {
-        return React.createElement(Fade, { key: index.toString() }, React.createElement("div", null, React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))));
+        return React.createElement(Fade, { key: key }, React.createElement("div", { className: `history edit-status-${edit_status}` }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
     }
-    let hist_elt_style = {
-        marginTop: '1em'
-    };
-    if (!datatypes_1.is_enabled(possible_history[index])) {
-        hist_elt_style.opacity = '0.4';
-    }
-    return React.createElement(Fade, { key: index.toString() }, React.createElement("div", { style: hist_elt_style }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message: message }))));
+    return React.createElement(Fade, { key: key }, React.createElement("div", { className: `history edit-status-${edit_status}` }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
 }));
 
 /***/ }),

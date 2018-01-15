@@ -1,5 +1,7 @@
 TODOs
 
+- highlight status stays around even after completing execution of the history edit
+
 - overhauling outputs
     history elements get new annotation states
         not just disabled, also "edited" in a variety of styles

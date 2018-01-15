@@ -259,6 +259,9 @@ export type Annotatable<T, AT> = T | Annotated<T, AT>;
 export type Annotated<T, AT> = {value: T, annotated: true, annotation: AT};
 
 export function is_annotated<T, AT>(x: Annotatable<T, AT>): x is Annotated<T, AT>{
+    if (x === undefined) {
+        return false;
+    }
     return (<Annotated<T, AT>>x).annotated !== undefined;
 }
 
@@ -283,15 +286,15 @@ export function unwrap<T, AT>(x: Annotatable<T, AT>): T {
     }
 }
 
-export function with_annotatable<T1, T2, TA>(x: Annotatable<T1, TA>, f: (t1: T1) => Annotatable<T2, TA>): Annotatable<T2, TA> {
-    return annotate(unwrap(f(unwrap(x))), get_annotation(x));
+export function with_annotatable<T1, T2, TA>(x: Annotatable<T1, TA>, f: (t1: T1) => Annotatable<T2, TA>, default_value?: TA): Annotatable<T2, TA> {
+    return annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
 }
 
-export function get_annotation<T, TA>(x: Annotatable<T, TA>): TA {
+export function get_annotation<T, TA>(x: Annotatable<T, TA>, default_value?: TA): TA {
     if (is_annotated(x)){
         return x.annotation;
     } else {
-        return undefined;
+        return default_value;
     }
 }
 
@@ -314,3 +317,6 @@ export function is_enabled<T>(x: Disablable<T>): boolean {
 
     return result;
 }
+
+
+export type Numbered<T> = Annotatable<T, number>

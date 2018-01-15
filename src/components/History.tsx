@@ -3,67 +3,54 @@ import * as ReactTransitionGroup from 'react-transition-group';
 
 import {Prompt} from './Prompt';
 import {ParsedText, OutputText, Carat} from './Text';
-import {is_enabled} from '../typescript/datatypes';
+import {get_annotation, unwrap} from '../typescript/datatypes';
 
-
-const fade_duration = 300, height_duration = 400;
-
-const defaultStyle = {
-  transition: `opacity ${fade_duration}ms ease-in, max-height ${height_duration}ms linear`,
-  transitionDelay: `0ms, ${fade_duration}ms`
-}
-
-const transitionStyles = {
-  exiting: { opacity: 0, maxHeight: 0 },
-};
 
 const Fade = ({children, ...props}) => (
-  <ReactTransitionGroup.Transition
-    timeout={fade_duration + height_duration}
-    onExit={(d) => (
-      d.style.maxHeight = `${d.clientHeight}px`
-    )}
-    {...props}>
-    {(state) => (
-      <div style={{
-        ...defaultStyle,
-        ...transitionStyles[state]
-      }}>
+  <ReactTransitionGroup.CSSTransition
+    timeout={700}
+    onExit={(d) => {
+      d.style.maxHeight = `${d.clientHeight}px`;
+    }}
+    onEntering={(d) => {
+        d.style.maxHeight = `${d.scrollHeight}px`
+    }}
+    classNames={"fade"}
+    {...props} >
         {children}
-      </div>
-    )}
-  </ReactTransitionGroup.Transition>
+  </ReactTransitionGroup.CSSTransition>
 );
-
 
 export const History = ({history, possible_history}) => (
     <ReactTransitionGroup.TransitionGroup>
-      {history.map(({parser, message, index}) => {
+      {history.map((hist) => {
+        let hist_status = get_annotation(hist, 1);
+        
+        let {parser, message, interpretted_message, index} = unwrap(hist);
+        let edit_status = get_annotation(possible_history[index], 1);
+
+        let key = index.toString() + '_' + hist_status.toString();
+        
+        let msg_html = (interpretted_message !== undefined) ? interpretted_message.innerHTML : message.innerHTML;
+
         if (index === 0) {
           return (
-            <Fade key={index.toString()} >
-              <div>
+            <Fade key={key} >
+              <div className={`history edit-status-${edit_status}`}>
                 <p>
-                  <OutputText message={message} />
+                  <OutputText message_html={msg_html} />
                 </p>
               </div>
             </Fade>
           );
         }
-        let hist_elt_style: any = {
-          marginTop: '1em'
-        };
-
-        if (!is_enabled(possible_history[index])) {
-          hist_elt_style.opacity = '0.4';
-        }
         return (
-          <Fade key={index.toString()} >
-            <div style={hist_elt_style}>
+          <Fade key={key} >
+            <div className={`history edit-status-${edit_status}`}>
               <ParsedText parser={parser} />
               
               <p>
-                <OutputText message={message} />
+                <OutputText message_html={msg_html} />
               </p>
             </div>
           </Fade>

@@ -31,7 +31,11 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
 
   componentDidUpdate() {
     this.focus();
-    this.scrollToPrompt();
+    let that = this;
+    window.setTimeout(function() {
+      that.scrollToPrompt();  
+    }, 700)
+    
   }
 
   handleKeys = (event) => {
