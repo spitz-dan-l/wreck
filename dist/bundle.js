@@ -714,7 +714,7 @@ function get_display_color(det) {
 exports.ParsedText = props => {
     let { parser, typeaheadIndex, children } = props;
     let style = {
-        display: 'inline-block',
+        //display: 'inline-block',
         whiteSpace: 'pre-wrap',
         position: 'relative'
     };
@@ -728,21 +728,13 @@ exports.ParsedText = props => {
             style.opacity = '0.6';
         }
     }
-    const elt_style = {
-        display: 'inline-block'
-    };
-    const span_style = {
-        display: 'inline-block'
-    };
-    return React.createElement("div", { style: { display: 'inline-block' } }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
+    const elt_style = {};
+    const span_style = {};
+    return React.createElement("div", { className: "parsed-text", style: {} }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
 };
 exports.OutputText = props => {
     const { message_html } = props;
-    const style = {
-        display: 'inline-block',
-        whiteSpace: 'pre-wrap'
-    };
-    return React.createElement("div", { style: style, dangerouslySetInnerHTML: { __html: message_html } });
+    return React.createElement("div", { className: "output-text", dangerouslySetInnerHTML: { __html: message_html } });
 };
 
 /***/ }),
@@ -915,9 +907,6 @@ function apply_command(world, cmd) {
         if (cmd_result.message !== undefined) {
             result.message = cmd_result.message;
         }
-        // if (cmd_result.history_updater !== undefined) {
-        //     result.history_updater = cmd_result.history_updater;
-        // }
         result = apply_interstitial_update(result);
     }
     return result;
@@ -925,7 +914,6 @@ function apply_command(world, cmd) {
 exports.apply_command = apply_command;
 function apply_interstitial_update(result) {
     if (result.world.interstitial_update !== undefined) {
-        //confusing, but we are running pre_command for the *next* command, not the one that just ran
         let res2 = result.world.interstitial_update();
         if (res2 !== undefined) {
             if (res2.world !== undefined) {
@@ -935,26 +923,54 @@ function apply_interstitial_update(result) {
                 //assume they updated the original message in some way   
                 result.message = res2.message;
             }
-            // if (res2.history_updater !== undefined) {
-            //     result.history_updater = res2.history_updater;
-            // }
         }
     }
     return result;
 }
-function apply_history_update(history, world) {
+class HistoryInterpretationError extends Error {}
+;
+function apply_history_interpretation_op(interp, op) {
+    if (op === undefined || op.length === 0) {
+        return interp;
+    }
+    let new_interp;
+    if (interp === undefined) {
+        new_interp = [];
+    } else {
+        new_interp = [...interp];
+    }
+    for (let o of op) {
+        if (o['add'] !== undefined) {
+            let message_class = o['add'];
+            if (new_interp.indexOf(message_class) === -1) {
+                new_interp.push(message_class);
+            }
+        }
+        if (o['remove'] !== undefined) {
+            let message_class = o['remove'];
+            let idx = new_interp.indexOf(message_class);
+            if (idx !== -1) {
+                new_interp.splice(idx, 1);
+            }
+        }
+    }
+    return new_interp;
+}
+function apply_history_interpretation(history, world) {
     if (world.interpret_history === undefined) {
         return history;
     } else {
-        return history.map(result => {
-            let r = datatypes_1.unwrap(result);
-            let new_result = Object.assign({}, r);
-            let interpretted_message = world.interpret_history(r.world, r.message);
-            if (interpretted_message !== undefined) {
-                new_result.interpretted_message = datatypes_1.unwrap(interpretted_message);
-            }
-            return datatypes_1.annotate(new_result, datatypes_1.get_annotation(interpretted_message, datatypes_1.get_annotation(result, 1)));
-        });
+        let history_input = history.map(({ world, message }) => ({ world, message }));
+        let interp_ops = history_input.map(world.interpret_history, world);
+        let new_history = [];
+        for (let i = 0; i < interp_ops.length; i++) {
+            let new_elt = Object.assign({}, history[i]);
+            let msg_clss = new_elt.message_classes;
+            let op = interp_ops[i];
+            new_elt.message_classes = apply_history_interpretation_op(msg_clss, op);
+            new_history.push(new_elt);
+        }
+        return new_history;
     }
 }
 class WorldDriver {
@@ -963,7 +979,7 @@ class WorldDriver {
         let initial_result = { world: initial_world };
         initial_result = apply_interstitial_update(initial_result);
         initial_result.index = 0;
-        this.history = apply_history_update([initial_result], initial_world);
+        this.history = apply_history_interpretation([initial_result], initial_world);
         this.apply_command('', false); //populate this.current_state
     }
     apply_command(cmd, commit = true) {
@@ -971,9 +987,13 @@ class WorldDriver {
         let result = apply_command(prev_state.world, cmd);
         result.index = prev_state.index + 1;
         this.current_state = result;
-        this.possible_history = apply_history_update([...this.history, this.current_state], this.current_state.world);
-        if (commit) {
-            this.commit();
+        if (this.current_state.parser.validity === parser_1.MatchValidity.valid) {
+            this.possible_history = apply_history_interpretation([...this.history, this.current_state], this.current_state.world);
+            if (commit) {
+                this.commit();
+            }
+        } else {
+            this.possible_history = this.history;
         }
         return result;
     }
@@ -981,7 +1001,7 @@ class WorldDriver {
         //save previous history for posterity
         this.previous_histories.push(this.history);
         //filter out any disabled history
-        this.history = this.possible_history.filter(x => datatypes_1.get_annotation(x, 1) !== 0);
+        this.history = this.possible_history.filter(datatypes_1.is_enabled); //.map(x => annotate(x, 1));
         this.apply_command('', false);
         return this.current_state;
     }
@@ -1036,58 +1056,59 @@ function index_oms(oms) {
 }
 let tower_oms = index_oms([{
     id: 'base, from path',
-    message: text_tools_1.dedent`<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
-
-        The viewing tower sits twenty feet inset from the footpath, towards the Mystic River. The grass leading out to it is brown with wear.`,
+    message: `<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
+        <br /><br />
+        The viewing tower sits twenty feet inset from the footpath, towards the Mystic River.
+        The grass leading out to it is brown with wear.`,
     transitions: [[['approach', 'the viewing tower'], 'base, regarding tower']]
 }, {
     id: 'base, regarding tower',
-    message: text_tools_1.dedent`The viewing tower stands tall and straight. Its construction is one of basic, stable order. A square grid of thick wooden columns rooted deep within the ground rises up before you; the foundation of the tower.
-
+    message: `The viewing tower stands tall and straight. Its construction is one of basic, stable order. A square grid of thick wooden columns rooted deep within the ground rises up before you; the foundation of the tower.
+            <br /><br />
             A wooden stairway set between the first two rows of columns leads upward.`,
     transitions: [[['climb', 'the stairs'], 'stairs 1, ascending']]
 }, {
     id: 'stairs 1, ascending',
     message: text_tools_1.dedent`As you ascend, the ground below you recedes.
-
+            <br /><br />
             <div class="meditation-1">
-            You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
-
-            "We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."
+                You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
+                <br /><br />
+                "We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."
+                <br /> <br />
             </div>
-
             The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'], [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
 }, {
     id: 'platform 1, ascending',
     message: text_tools_1.dedent`You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
-
+            <br /><br />
             <div class="meditation-1">
             You continue reading:
-
+            <br /><br />
             "From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."
+            <br /><br />
             </div>
-
             The platform terminates, and another wooden stairway to the left leads further up the tower.`,
     transitions: [[['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
 }, {
     id: 'stairs 2, ascending',
     message: text_tools_1.dedent`They feel solid under your feet, dull thuds sounding with each step.
-
+            <br /><br />
             <div class="meditation-1">
             "It can feel like a deliverance when one reaches such a vantage after much aimless wandering."
+            <br /><br />
             </div>
-
             The stairs terminate in another left-branching platform.`,
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'], [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
 }, {
     id: 'platform 2, ascending',
     message: text_tools_1.dedent`You make your way across the weathered wood.
-
+            <br /><br />
             <div class="meditation-1">
             "The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."
+            <br /><br />
             </div>
-
             A final wooden stairway to the left leads up to the top of the tower.`,
     transitions: [[['turn', 'left', 'and climb the stairs'], 'top, arriving'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
 }, {
@@ -1097,11 +1118,11 @@ let tower_oms = index_oms([{
 }, {
     id: 'top, surveying',
     message: text_tools_1.dedent`You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
-
+            <br /><br />
             You see the path you took to reach this viewing tower. You see it continue further onward, into MacDonald Park, and branch, curving into the brush by the river.
-
+            <br /><br />
             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
-
+            <br /><br />
             <div class="meditation-1">
             "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
             </div>`,
@@ -1109,7 +1130,7 @@ let tower_oms = index_oms([{
 }, {
     id: 'stairs 3, descending',
     message: text_tools_1.dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
-
+            <br /><br />
             <div class="meditation-1">
             "Do not fret, my dear. Return to the madness of life after your brief respite."
             </div>`,
@@ -1117,85 +1138,74 @@ let tower_oms = index_oms([{
 }, {
     id: 'platform 2, descending',
     message: text_tools_1.dedent`The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
-
             <div class="meditation-1">
+            <br /><br />
             "Expect to forget; to be turned around; to become tangled up."
             </div>`,
     transitions: [[['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
 }, {
     id: 'stairs 2, descending',
     message: text_tools_1.dedent`The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
-
             <div class="meditation-1">
+            <br /><br />
             "Find some joy in it; some exhilaration."
             </div>`,
     transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'], [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
 }, {
     id: 'platform 1, descending',
     message: text_tools_1.dedent`You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
-
             <div class="meditation-1">
+            <br /><br />
             "And know that you have changed, dear. That your ascent has taught you something."
             </div>`,
     transitions: [[['turn', 'right', 'and descend the stairs'], 'base, regarding path'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
 }, {
     id: 'base, regarding path',
     message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
-
+            <br /><br />
             <i>(End of demo. Thanks for playing!)</i>`,
     transitions: []
 }]);
-function transitions_to_commands(transitions) {
-    return transitions.map(([cmd, next_om_id]) => ({
-        command_name: text_tools_1.split_tokens(cmd),
-        execute: parser_1.with_early_stopping(function* (world, parser) {
-            yield parser.done();
-            return {
-                world: world.update({
-                    current_om: next_om_id
-                })
-            };
-        })
-    }));
-}
 class VenienceWorld {
-    constructor({ prev_om, current_om, has_seen, remembered_meditation }) {
-        if (prev_om === undefined) {
-            prev_om = null;
+    constructor({ experiences, history_index, remembered_meditation }) {
+        if (experiences === undefined) {
+            experiences = ['base, from path'];
         }
-        if (current_om === undefined) {
-            current_om = 'base, from path';
-        }
-        if (has_seen === undefined) {
-            has_seen = new datatypes_1.FuckDict();
+        if (history_index === undefined) {
+            history_index = 0;
         }
         if (remembered_meditation === undefined) {
             remembered_meditation = false;
         }
-        this.prev_om = prev_om;
-        this.current_om = current_om;
-        this.has_seen = has_seen;
+        this.experiences = experiences;
+        this.history_index = history_index;
         this.remembered_meditation = remembered_meditation;
     }
-    update({ prev_om, current_om, has_seen, remembered_meditation }) {
-        if (prev_om === undefined) {
-            prev_om = this.prev_om;
+    update({ experiences, history_index, remembered_meditation }) {
+        if (experiences === undefined) {
+            experiences = this.experiences;
         }
-        if (current_om === undefined) {
-            current_om = this.current_om;
-        }
-        if (has_seen === undefined) {
-            has_seen = this.has_seen;
+        if (history_index === undefined) {
+            history_index = this.history_index;
         }
         if (remembered_meditation === undefined) {
             remembered_meditation = this.remembered_meditation;
         }
-        return new VenienceWorld({ prev_om, current_om, has_seen, remembered_meditation });
+        return new VenienceWorld({ experiences, history_index, remembered_meditation });
+    }
+    current_om() {
+        for (let i = this.experiences.length - 1; i >= 0; i--) {
+            let exp = this.experiences[i];
+            if (exp !== null) {
+                return exp;
+            }
+        }
+        throw "Somehow got a fully null history.";
     }
     handle_command(parser) {
         let world = this;
         return parser_1.with_early_stopping(function* (parser) {
-            let om = tower_oms.get(world.current_om);
+            let om = tower_oms.get(world.current_om());
             let cmd_options = om.transitions.map(([cmd, om_id]) => cmd);
             if (cmd_options.length === 0) {
                 yield parser.done();
@@ -1203,15 +1213,15 @@ class VenienceWorld {
             }
             let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
             yield parser.done();
-            let om_id_choice = world.current_om;
+            let om_id_choice = world.current_om();
             om.transitions.forEach(([cmd, om_id]) => {
                 if (cmd_choice === text_tools_1.untokenize(cmd)) {
                     om_id_choice = om_id;
                 }
             });
             return { world: world.update({
-                    prev_om: world.current_om,
-                    current_om: om_id_choice
+                    experiences: [...world.experiences, om_id_choice],
+                    history_index: world.history_index + 1
                 }) };
         })(parser);
     }
@@ -1219,52 +1229,40 @@ class VenienceWorld {
         let result = {};
         let world_update = {};
         let message_parts = [];
-        let om_descr = tower_oms.get(this.current_om).message;
+        let om_descr = tower_oms.get(this.current_om()).message;
         message_parts.push(om_descr);
-        if (this.prev_om !== null) {
-            let new_has_seen = this.has_seen.copy();
-            new_has_seen.set(this.prev_om, true);
-            world_update.has_seen = new_has_seen;
+        if (this.experiences.length > 0) {
+            let loop_idx = this.experiences.indexOf(this.current_om());
+            if (loop_idx !== this.experiences.length - 1) {
+                let new_experiences = this.experiences.slice().fill(null, loop_idx + 1);
+                world_update.experiences = new_experiences;
+            }
         }
-        if (this.current_om === 'top, surveying') {
+        if (this.current_om() === 'top, surveying') {
             world_update.remembered_meditation = true;
         }
         if (message_parts.length > 0) {
             result.message = document.createElement('div');
             result.message.innerHTML = message_parts.join('\n\n');
-            // if (this.remembered_meditation) {
-            //     result.message.querySelectorAll('.meditation-1:not(.enabled)').forEach((n_div) => {
-            //         n_div.classList.add('enabled');
-            //     });
-            // }
         }
         if (Object.keys(world_update).length > 0) {
             result.world = this.update(world_update);
         }
         return result;
     }
-    interpret_history(prev_world, prev_message) {
-        if (prev_world.has_seen.get(this.current_om)) {
-            return datatypes_1.annotate(prev_message, 0);
+    interpret_history(history_elt) {
+        let interp_op = [];
+        if (this.experiences[history_elt.world.history_index] === null) {
+            interp_op.push({ 'add': 'forgotten' });
         }
-        if (prev_message === undefined) {
-            return;
-        }
-        if (this.remembered_meditation) {
-            let notes = prev_message.querySelectorAll('.meditation-1');
+        if (this.remembered_meditation && history_elt.message !== undefined) {
+            let notes = history_elt.message.querySelectorAll('.meditation-1');
             if (notes.length > 0) {
-                let new_message = prev_message.cloneNode(true);
-                new_message.querySelectorAll('.meditation-1').forEach(n_div => {
-                    n_div.classList.add('enabled');
-                });
-                let edit_status = 2;
-                if (this.current_om !== 'top, surveying') {
-                    edit_status = 1;
-                }
-                return datatypes_1.annotate(new_message, edit_status);
+                console.log('enabling meditation on an elt');
+                interp_op.push({ 'add': 'meditation-1-enabled' });
             }
         }
-        return;
+        return interp_op;
     }
 }
 exports.VenienceWorld = VenienceWorld;
@@ -1292,7 +1290,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const ReactTransitionGroup = __webpack_require__(14);
 const Text_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(1);
 const Fade = _a => {
     var { children } = _a,
         props = __rest(_a, ["children"]);
@@ -1303,15 +1300,37 @@ const Fade = _a => {
         }, classNames: "fade" }, props), children);
 };
 exports.History = ({ history, possible_history }) => React.createElement(ReactTransitionGroup.TransitionGroup, null, history.map(hist => {
-    let hist_status = datatypes_1.get_annotation(hist, 1);
-    let { parser, message, interpretted_message, index } = datatypes_1.unwrap(hist);
-    let edit_status = datatypes_1.get_annotation(possible_history[index], 1);
-    let key = index.toString() + '_' + hist_status.toString();
-    let msg_html = interpretted_message !== undefined ? interpretted_message.innerHTML : message.innerHTML;
-    if (index === 0) {
-        return React.createElement(Fade, { key: key }, React.createElement("div", { className: `history edit-status-${edit_status}` }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
+    //let hist_status = get_annotation(hist, 1);
+    let { parser, message, message_classes, index } = hist;
+    if (message_classes === undefined) {
+        message_classes = [];
     }
-    return React.createElement(Fade, { key: key }, React.createElement("div", { className: `history edit-status-${edit_status}` }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
+    let key = index.toString();
+    if (message_classes.length > 0) {
+        key += '_' + message_classes.join(':');
+    }
+    let possible_message_classes = possible_history[index].message_classes;
+    if (possible_message_classes === undefined) {
+        possible_message_classes = [];
+    }
+    let edit_message_classes = [];
+    for (let mc of message_classes) {
+        if (possible_message_classes.indexOf(mc) === -1) {
+            edit_message_classes.push('removing-' + mc);
+        }
+    }
+    for (let pmc of possible_message_classes) {
+        if (message_classes.indexOf(pmc) === -1) {
+            edit_message_classes.push('adding-' + pmc);
+        }
+    }
+    let edit_message_class_name = edit_message_classes.join(' ');
+    let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
+    let msg_html = message.innerHTML;
+    if (index === 0) {
+        return React.createElement(Fade, { key: key }, React.createElement("div", { className: class_name }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
+    }
+    return React.createElement(Fade, { key: key }, React.createElement("div", { className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
 }));
 
 /***/ }),

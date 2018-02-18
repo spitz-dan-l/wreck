@@ -19,28 +19,3 @@
   transition: opacity 300ms ease-in, max-height 400ms linear;
   transition-delay: 0ms, 300ms;
 }
-
-
-.history {
-    margin-top: 1em;
-}
-
-/* add pulsing */
-.history.edit-status-0 {
-    opacity: 0.4;
-}
-
-/* add pulsing */
-.history.edit-status-2 {
-    background-color: midnightblue;
-}
-
-.history .meditation-1 {
-    display: none;
-}
-
-.history .meditation-1.enabled {
-    display: block;
-    font-style: italic;
-    color: gold;
-}

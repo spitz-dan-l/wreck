@@ -8,32 +8,35 @@ import {
     get_annotation,
     with_annotatable,
     with_disablable,
+    set_enabled,
+    is_enabled
 } from './datatypes';
 
-import {CommandParser, DisplayEltType, Token} from './parser';
+import {CommandParser, DisplayEltType, Token, MatchValidity} from './parser';
 
 export interface WorldType<T extends WorldType<T>> {
     handle_command(parser: CommandParser): CommandResult<T>,
     interstitial_update?(): InterstitialUpdateResult<T>,
-    interpret_history?(world: T, message: HTMLElement): Annotatable<HTMLElement, number>
+    interpret_history?(history: InterstitialUpdateResult<T>): HistoryInterpretationOp
 }
-
-export type HistoryUpdater<T extends WorldType<T>> = (history: Annotatable<CommandResult<T>, number>[], world?: T) => Annotatable<CommandResult<T>, number>[];
 
 export type InterstitialUpdateResult<T extends WorldType<T>> = {
     world?: T;
     message?: HTMLElement;
-    // history_updater?: HistoryUpdater<T>;
 } | undefined;
 
 export type CommandResult<T extends WorldType<T>> = InterstitialUpdateResult<T> & {
     parser?: CommandParser;
 } | undefined;
 
-export type PostProcessedCommandResult<T extends WorldType<T>> = Annotatable<CommandResult<T> & {
+export type HistoryInterpretation = string[];
+
+export type HistoryInterpretationOp = ({'add': string} | {'remove': string})[];
+
+export type PostProcessedCommandResult<T extends WorldType<T>> = CommandResult<T> & {
     index?: number;
-    interpretted_message?: HTMLElement;
-}, number>
+    message_classes?: HistoryInterpretation;
+}
 
 export interface Command<T extends WorldType<T>> {
     command_name: Token[];
@@ -53,9 +56,6 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
         if (cmd_result.message !== undefined) {
             result.message = cmd_result.message;
         }
-        // if (cmd_result.history_updater !== undefined) {
-        //     result.history_updater = cmd_result.history_updater;
-        // }
 
         result = apply_interstitial_update(result);
     }
@@ -65,7 +65,6 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
 
 function apply_interstitial_update<T extends WorldType<T>>(result: CommandResult<T>): CommandResult<T> {
     if (result.world.interstitial_update !== undefined) {
-        //confusing, but we are running pre_command for the *next* command, not the one that just ran
         let res2 = result.world.interstitial_update();
         if (res2 !== undefined) {
             if (res2.world !== undefined) {
@@ -75,29 +74,58 @@ function apply_interstitial_update<T extends WorldType<T>>(result: CommandResult
                 //assume they updated the original message in some way   
                 result.message = res2.message;
             }
-
-            // if (res2.history_updater !== undefined) {
-            //     result.history_updater = res2.history_updater;
-            // }
         }
     }
     return result;
 }
 
-function apply_history_update<T extends WorldType<T>>(history: PostProcessedCommandResult<T>[], world: T): PostProcessedCommandResult<T>[] {
+class HistoryInterpretationError extends Error {};
+
+function apply_history_interpretation_op(interp: HistoryInterpretation, op: HistoryInterpretationOp): HistoryInterpretation {
+    if (op === undefined || op.length === 0){
+        return interp;
+    }
+    let new_interp: HistoryInterpretation;
+    if (interp === undefined) {
+        new_interp = [];
+    } else {
+        new_interp = [...interp];
+    }
+    for (let o of op) {
+        if (o['add'] !== undefined){
+            let message_class = o['add'];
+            if (new_interp.indexOf(message_class) === -1) {
+                new_interp.push(message_class);
+            }
+        }
+        if (o['remove'] !== undefined){
+            let message_class = o['remove'];
+            let idx = new_interp.indexOf(message_class);
+            if (idx !== -1) {
+                new_interp.splice(idx, 1);
+            }
+        }
+    }
+    return new_interp;
+}
+
+function apply_history_interpretation<T extends WorldType<T>>(history: PostProcessedCommandResult<T>[], world: T): PostProcessedCommandResult<T>[] {
     if (world.interpret_history === undefined) {
         return history;
     } else {
-        return history.map((result) => {
-            let r = unwrap(result);
-            let new_result = {...r};
+        let history_input = history.map(({world, message}) => ({world, message}));
 
-            let interpretted_message = world.interpret_history(r.world, r.message);
-            if (interpretted_message !== undefined) {
-                new_result.interpretted_message = unwrap(interpretted_message);
-            } 
-            return annotate(new_result, get_annotation(interpretted_message, get_annotation(result, 1)));
-        });
+        let interp_ops = history_input.map(world.interpret_history, world);
+
+        let new_history = [];
+        for (let i = 0; i < interp_ops.length; i++) {
+            let new_elt = {...history[i]};
+            let msg_clss = new_elt.message_classes;
+            let op = interp_ops[i];
+            new_elt.message_classes = apply_history_interpretation_op(msg_clss, op);
+            new_history.push(new_elt);
+        }
+        return new_history;
     }
 }
 
@@ -113,7 +141,7 @@ export class WorldDriver<T extends WorldType<T>> {
         let initial_result: PostProcessedCommandResult<T> = {world: initial_world};
         initial_result = apply_interstitial_update(initial_result);
         initial_result.index = 0;
-        this.history = apply_history_update([initial_result], initial_world);
+        this.history = apply_history_interpretation([initial_result], initial_world);
  
         this.apply_command('', false); //populate this.current_state
     }
@@ -125,10 +153,14 @@ export class WorldDriver<T extends WorldType<T>> {
         result.index = prev_state.index + 1;
 
         this.current_state = result;
-        
-        this.possible_history = apply_history_update([...this.history, this.current_state], this.current_state.world);
-        if (commit) {
-            this.commit();
+
+        if (this.current_state.parser.validity === MatchValidity.valid) {
+            this.possible_history = apply_history_interpretation([...this.history, this.current_state], this.current_state.world);
+            if (commit) {
+                this.commit();
+            }
+        } else {
+            this.possible_history = this.history;
         }
         return result;
     }
@@ -138,7 +170,7 @@ export class WorldDriver<T extends WorldType<T>> {
         this.previous_histories.push(this.history);
 
         //filter out any disabled history
-        this.history = this.possible_history.filter(x => get_annotation(x, 1) !== 0);
+        this.history = this.possible_history.filter(is_enabled); //.map(x => annotate(x, 1));
 
         this.apply_command('', false);
         return this.current_state;

@@ -27,7 +27,7 @@ export const ParsedText = (props) => {
   let {parser, typeaheadIndex, children} = props;
 
   let style: any = {
-    display: 'inline-block',
+    //display: 'inline-block',
     whiteSpace: 'pre-wrap',
     position: 'relative'
   }
@@ -43,15 +43,15 @@ export const ParsedText = (props) => {
   }
 
   const elt_style: any = {
-    display: 'inline-block'
+    //display: 'inline-block'
   }
 
   const span_style: any = {
-    display: 'inline-block'
+    //display: 'inline-block'
   }
 
   return (
-    <div style={{display: 'inline-block'}}>
+    <div className="parsed-text" style={{/*display: 'inline-block'*/}}>
       <Carat />
       <div style={style}>
         {(parser === undefined) ? '' : 
@@ -71,12 +71,8 @@ export const ParsedText = (props) => {
 
 export const OutputText = (props) => {
   const {message_html} = props;
-  const style = {
-    display: 'inline-block',
-    whiteSpace: 'pre-wrap'
-  }
 
   return (
-    <div style={style} dangerouslySetInnerHTML={{__html: message_html}} />
+    <div className="output-text" dangerouslySetInnerHTML={{__html: message_html}} />
   );
 }
