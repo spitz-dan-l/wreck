@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import {Prompt} from './Prompt';
-import {ParsedText, OutputText, Carat} from './Text';
+import {ParsedText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
 import {History} from './History';
 
@@ -26,26 +26,13 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   }
 
   componentDidMount() {
-    this.focus();
-  }
-
-  componentDidUpdate() {
-    this.focus();
-    let that = this;
-    window.setTimeout(function() {
-      that.scrollToPrompt();  
-    }, 700)
-    
+    this.prompt.focus();
   }
 
   handleKeys = (event) => {
-    // debugger;
     let swallowed_enter = (this.typeahead_list !== null) ? this.typeahead_list.handleKeys(event) : false;
     if (!swallowed_enter) {
       this.prompt.handleKeys(event);
-    }
-    if ([37, 38, 39, 40].indexOf(event.keyCode) > -1) {
-      event.preventDefault();
     }
   }
   
@@ -66,6 +53,12 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   handlePromptChange = (input) => {
     let result = this.state.world_driver.apply_command(input, false);
     this.setState({world_driver: this.state.world_driver});
+    this.prompt.focus();
+    this.scrollToPrompt();
+    let that = this;
+    window.setTimeout(function() {
+      that.scrollToPrompt();  
+    }, 0)
   }
 
   handleTypeaheadSelection = (option) => {
@@ -121,43 +114,17 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
     return get_indenting_whitespace(parser.match[typeahead_ind].match)
   }
 
-  focus = () => {
-    this.prompt.focus();
-  }
-
-  blur = () => {
-    this.prompt.blur();
-  }
-
   scrollToPrompt = () => {
-    if ((this.contentContainer.scrollHeight - this.contentContainer.scrollTop) > this.contentContainer.clientHeight) {
-      this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
-
-    }
+    this.prompt.input.scrollIntoView({behavior: "smooth", block: "start", inline: "end"});
   }
 
   render() {
-    const container_style: any = {
-      height: '100%',
-      width: '100%',
-      overflowY: 'scroll',
-      whiteSpace: 'pre-wrap',
-      fontFamily: "'Roboto Mono'", //"'Fira Mono'",
-      fontSize: '1em',
-      fontWeight: 'light',
-      color: 'ivory',
-      background: 'black',
-      radius: 3,
-      position: 'absolute',
-      display: 'block',
-      padding: '1em',
-      marginRight: '3em'
-    };
     return (
-      <div style={container_style} tabIndex={-1} onFocus={this.focus} onBlur={this.blur} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
+      <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
         <History
           history={this.state.world_driver.history}
           possible_history={this.state.world_driver.possible_history}
+          onEntered={this.scrollToPrompt}
           />
         <Prompt
           onSubmit={this.handleSubmit}
@@ -175,8 +142,6 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
             />
           </ParsedText>
         </Prompt>
-        
-        
       </div>
     );
   }

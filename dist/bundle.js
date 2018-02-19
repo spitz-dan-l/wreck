@@ -773,13 +773,9 @@ class Terminal extends React.Component {
     constructor(props) {
         super(props);
         this.handleKeys = event => {
-            // debugger;
             let swallowed_enter = this.typeahead_list !== null ? this.typeahead_list.handleKeys(event) : false;
             if (!swallowed_enter) {
                 this.prompt.handleKeys(event);
-            }
-            if ([37, 38, 39, 40].indexOf(event.keyCode) > -1) {
-                event.preventDefault();
             }
         };
         this.handleSubmit = () => {
@@ -797,6 +793,12 @@ class Terminal extends React.Component {
         this.handlePromptChange = input => {
             let result = this.state.world_driver.apply_command(input, false);
             this.setState({ world_driver: this.state.world_driver });
+            this.prompt.focus();
+            this.scrollToPrompt();
+            let that = this;
+            window.setTimeout(function () {
+                that.scrollToPrompt();
+            }, 0);
         };
         this.handleTypeaheadSelection = option => {
             let matched_tokens = this.currentParser().match.slice(0, this.currentTypeaheadIndex() + 1).map(elt => elt.match);
@@ -840,47 +842,16 @@ class Terminal extends React.Component {
             }
             return text_tools_1.get_indenting_whitespace(parser.match[typeahead_ind].match);
         };
-        this.focus = () => {
-            this.prompt.focus();
-        };
-        this.blur = () => {
-            this.prompt.blur();
-        };
         this.scrollToPrompt = () => {
-            if (this.contentContainer.scrollHeight - this.contentContainer.scrollTop > this.contentContainer.clientHeight) {
-                this.contentContainer.scrollTop = this.contentContainer.scrollHeight;
-            }
+            this.prompt.input.scrollIntoView({ behavior: "smooth", block: "start", inline: "end" });
         };
         this.state = { world_driver: this.props.world_driver };
     }
     componentDidMount() {
-        this.focus();
-    }
-    componentDidUpdate() {
-        this.focus();
-        let that = this;
-        window.setTimeout(function () {
-            that.scrollToPrompt();
-        }, 700);
+        this.prompt.focus();
     }
     render() {
-        const container_style = {
-            height: '100%',
-            width: '100%',
-            overflowY: 'scroll',
-            whiteSpace: 'pre-wrap',
-            fontFamily: "'Roboto Mono'",
-            fontSize: '1em',
-            fontWeight: 'light',
-            color: 'ivory',
-            background: 'black',
-            radius: 3,
-            position: 'absolute',
-            display: 'block',
-            padding: '1em',
-            marginRight: '3em'
-        };
-        return React.createElement("div", { style: container_style, tabIndex: -1, onFocus: this.focus, onBlur: this.blur, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, onEntered: this.scrollToPrompt }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -1069,7 +1040,7 @@ let tower_oms = index_oms([{
     transitions: [[['climb', 'the stairs'], 'stairs 1, ascending']]
 }, {
     id: 'stairs 1, ascending',
-    message: text_tools_1.dedent`As you ascend, the ground below you recedes.
+    message: `As you ascend, the ground below you recedes.
             <br /><br />
             <div class="meditation-1">
                 You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
@@ -1081,7 +1052,7 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'], [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
 }, {
     id: 'platform 1, ascending',
-    message: text_tools_1.dedent`You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
+    message: `You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
             <br /><br />
             <div class="meditation-1">
             You continue reading:
@@ -1093,7 +1064,7 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
 }, {
     id: 'stairs 2, ascending',
-    message: text_tools_1.dedent`They feel solid under your feet, dull thuds sounding with each step.
+    message: `They feel solid under your feet, dull thuds sounding with each step.
             <br /><br />
             <div class="meditation-1">
             "It can feel like a deliverance when one reaches such a vantage after much aimless wandering."
@@ -1103,7 +1074,7 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'], [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
 }, {
     id: 'platform 2, ascending',
-    message: text_tools_1.dedent`You make your way across the weathered wood.
+    message: `You make your way across the weathered wood.
             <br /><br />
             <div class="meditation-1">
             "The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."
@@ -1113,11 +1084,11 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'left', 'and climb the stairs'], 'top, arriving'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
 }, {
     id: 'top, arriving',
-    message: text_tools_1.dedent`You reach the top. A grand visage of the Mystic River and Macdonald Park extends before you in all directions.`,
+    message: `You reach the top. A grand visage of the Mystic River and Macdonald Park extends before you in all directions.`,
     transitions: [[['survey', 'the area'], 'top, surveying'], [['descend', 'the stairs'], 'platform 2, ascending']]
 }, {
     id: 'top, surveying',
-    message: text_tools_1.dedent`You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
+    message: `You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
             <br /><br />
             You see the path you took to reach this viewing tower. You see it continue further onward, into MacDonald Park, and branch, curving into the brush by the river.
             <br /><br />
@@ -1129,7 +1100,7 @@ let tower_oms = index_oms([{
     transitions: [[['descend', 'the stairs'], 'stairs 3, descending']]
 }, {
     id: 'stairs 3, descending',
-    message: text_tools_1.dedent`Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
+    message: `Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
             <br /><br />
             <div class="meditation-1">
             "Do not fret, my dear. Return to the madness of life after your brief respite."
@@ -1137,7 +1108,7 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'], [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
 }, {
     id: 'platform 2, descending',
-    message: text_tools_1.dedent`The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
+    message: `The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
             <div class="meditation-1">
             <br /><br />
             "Expect to forget; to be turned around; to become tangled up."
@@ -1145,7 +1116,7 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
 }, {
     id: 'stairs 2, descending',
-    message: text_tools_1.dedent`The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
+    message: `The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
             <div class="meditation-1">
             <br /><br />
             "Find some joy in it; some exhilaration."
@@ -1153,7 +1124,7 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'], [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
 }, {
     id: 'platform 1, descending',
-    message: text_tools_1.dedent`You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
+    message: `You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
             <div class="meditation-1">
             <br /><br />
             "And know that you have changed, dear. That your ascent has taught you something."
@@ -1161,7 +1132,7 @@ let tower_oms = index_oms([{
     transitions: [[['turn', 'right', 'and descend the stairs'], 'base, regarding path'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
 }, {
     id: 'base, regarding path',
-    message: text_tools_1.dedent`What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
+    message: `What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
             <br /><br />
             <i>(End of demo. Thanks for playing!)</i>`,
     transitions: []
@@ -1296,42 +1267,50 @@ const Fade = _a => {
     return React.createElement(ReactTransitionGroup.CSSTransition, Object.assign({ timeout: 700, onExit: d => {
             d.style.maxHeight = `${d.clientHeight}px`;
         }, onEntering: d => {
+            // let d_output_text = d.querySelector('.output-text');
+            // d_output_text.style.maxHeight = `${d_output_text.scrollHeight}px`
             d.style.maxHeight = `${d.scrollHeight}px`;
         }, classNames: "fade" }, props), children);
 };
-exports.History = ({ history, possible_history }) => React.createElement(ReactTransitionGroup.TransitionGroup, null, history.map(hist => {
-    //let hist_status = get_annotation(hist, 1);
-    let { parser, message, message_classes, index } = hist;
-    if (message_classes === undefined) {
-        message_classes = [];
-    }
-    let key = index.toString();
-    if (message_classes.length > 0) {
-        key += '_' + message_classes.join(':');
-    }
-    let possible_message_classes = possible_history[index].message_classes;
-    if (possible_message_classes === undefined) {
-        possible_message_classes = [];
-    }
-    let edit_message_classes = [];
-    for (let mc of message_classes) {
-        if (possible_message_classes.indexOf(mc) === -1) {
-            edit_message_classes.push('removing-' + mc);
+exports.History = _a => {
+    var { history, possible_history } = _a,
+        fade_props = __rest(_a, ["history", "possible_history"]);
+    return React.createElement(ReactTransitionGroup.TransitionGroup, null, history.map(hist => {
+        let { parser, message, message_classes, index } = hist;
+        if (message_classes === undefined) {
+            message_classes = [];
         }
-    }
-    for (let pmc of possible_message_classes) {
-        if (message_classes.indexOf(pmc) === -1) {
-            edit_message_classes.push('adding-' + pmc);
+        let key = index.toString();
+        if (message_classes.length > 0) {
+            key += '_' + message_classes.join(':');
         }
-    }
-    let edit_message_class_name = edit_message_classes.join(' ');
-    let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
-    let msg_html = message.innerHTML;
-    if (index === 0) {
-        return React.createElement(Fade, { key: key }, React.createElement("div", { className: class_name }, React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
-    }
-    return React.createElement(Fade, { key: key }, React.createElement("div", { className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement("p", null, React.createElement(Text_1.OutputText, { message_html: msg_html }))));
-}));
+        let possible_message_classes = possible_history[index].message_classes;
+        if (possible_message_classes === undefined) {
+            possible_message_classes = [];
+        }
+        let edit_message_classes = [];
+        for (let mc of message_classes) {
+            if (possible_message_classes.indexOf(mc) === -1) {
+                edit_message_classes.push('removing-' + mc);
+            }
+        }
+        for (let pmc of possible_message_classes) {
+            if (message_classes.indexOf(pmc) === -1) {
+                edit_message_classes.push('adding-' + pmc);
+            }
+        }
+        let edit_message_class_name = edit_message_classes.join(' ');
+        let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
+        let msg_html = '';
+        if (message !== undefined) {
+            msg_html = message.innerHTML;
+        }
+        if (index === 0) {
+            return React.createElement(Fade, Object.assign({ key: key }, fade_props), React.createElement("div", { className: class_name }, React.createElement(Text_1.OutputText, { message_html: msg_html })));
+        }
+        return React.createElement(Fade, Object.assign({ key: key }, fade_props), React.createElement("div", { className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message_html: msg_html })));
+    }));
+};
 
 /***/ }),
 /* 11 */

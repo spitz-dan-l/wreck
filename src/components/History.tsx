@@ -13,7 +13,9 @@ const Fade = ({children, ...props}) => (
       d.style.maxHeight = `${d.clientHeight}px`;
     }}
     onEntering={(d) => {
-        d.style.maxHeight = `${d.scrollHeight}px`
+        // let d_output_text = d.querySelector('.output-text');
+        // d_output_text.style.maxHeight = `${d_output_text.scrollHeight}px`
+        d.style.maxHeight = `${d.scrollHeight}px`;
     }}
     classNames={"fade"}
     {...props} >
@@ -21,11 +23,9 @@ const Fade = ({children, ...props}) => (
   </ReactTransitionGroup.CSSTransition>
 );
 
-export const History = ({history, possible_history}) => (
+export const History = ({history, possible_history, ...fade_props}) => (
     <ReactTransitionGroup.TransitionGroup>
       {history.map((hist) => {
-        //let hist_status = get_annotation(hist, 1);
-        
         let {parser, message, message_classes, index} = hist;
         if (message_classes === undefined) {
             message_classes = [];
@@ -58,27 +58,30 @@ export const History = ({history, possible_history}) => (
         let edit_message_class_name = edit_message_classes.join(' ');
         let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
 
-        let msg_html = message.innerHTML;
+        let msg_html = '';
+        if (message !== undefined) {
+          msg_html = message.innerHTML;
+        }
 
         if (index === 0) {
           return (
-            <Fade key={key} >
+            <Fade key={key} {...fade_props}>
               <div className={class_name}>
-                <p>
+                {/*<p>*/}
                   <OutputText message_html={msg_html} />
-                </p>
+                {/*</p>*/}
               </div>
             </Fade>
           );
         }
         return (
-          <Fade key={key} >
+          <Fade key={key} {...fade_props}>
             <div className={class_name}>
               <ParsedText parser={parser} />
               
-              <p>
+              {/*<p>*/}
                 <OutputText message_html={msg_html} />
-              </p>
+              {/*</p>*/}
             </div>
           </Fade>
         )
