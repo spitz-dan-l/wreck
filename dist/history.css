@@ -27,17 +27,27 @@
 }
 
 /* add pulsing */
+.history.adding-interp-alcove-1-enabled,
+.history.adding-interp-alcove-2-enabled,
+.history.adding-interp-alcove-3-enabled,
 .history.adding-meditation-1-enabled {
     background-color: midnightblue;
 }
 
+.history .interp-alcove-1,
+.history .interp-alcove-2,
+.history .interp-alcove-3,
 .history .meditation-1 {
     display: none;
 }
 
+.history .interp,
+.history.interp-alcove-1-enabled .interp-alcove-1,
+.history.interp-alcove-2-enabled .interp-alcove-2,
+.history.interp-alcove-3-enabled .interp-alcove-3,
 .history.meditation-1-enabled .meditation-1
 {
     display: block;
-    font-style: italic;
+    /* font-style: italic; */
     color: gold;
 }
