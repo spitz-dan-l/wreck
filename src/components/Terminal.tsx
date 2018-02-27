@@ -3,7 +3,7 @@ import * as React from 'react';
 import {Prompt} from './Prompt';
 import {ParsedText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
-import {History} from './History';
+import {History, History2} from './History';
 
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
@@ -121,7 +121,7 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   render() {
     return (
       <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
-        <History
+        <History2
           history={this.state.world_driver.history}
           possible_history={this.state.world_driver.possible_history}
           onEntered={this.scrollToPrompt}

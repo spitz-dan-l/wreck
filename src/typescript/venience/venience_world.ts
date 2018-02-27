@@ -46,7 +46,6 @@ import {
 type VenienceWorldState = {
     experiences?: ObserverMomentID[],
     history_index?: number,
-    remembered_meditation?: boolean
 }
 
 export class VenienceWorld implements WorldType<VenienceWorld>{
@@ -54,36 +53,27 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
     readonly experiences: ObserverMomentID[];
     readonly history_index: number;
     
-    readonly remembered_meditation: boolean;
-
-    constructor({experiences, history_index, remembered_meditation}: VenienceWorldState) {
+    constructor({experiences, history_index}: VenienceWorldState) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
         if (history_index === undefined) {
             history_index = 0;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = false;
-        }
-
+        
         this.experiences = experiences;
         this.history_index = history_index;
-        this.remembered_meditation = remembered_meditation;
     }
 
-    update({experiences, history_index, remembered_meditation}: VenienceWorldState) {
+    update({experiences, history_index}: VenienceWorldState) {
         if (experiences === undefined) {
             experiences = this.experiences;
         }
         if (history_index === undefined) {
             history_index = this.history_index;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = this.remembered_meditation;
-        }
 
-        return new VenienceWorld({experiences, history_index, remembered_meditation});
+        return new VenienceWorld({experiences, history_index});
     }
 
     current_om(): ObserverMomentID {
@@ -144,10 +134,6 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
             }
         }
 
-        if (this.current_om() === 'top, surveying') {
-            world_update.remembered_meditation = true;
-        }
-
         if (message_parts.length > 0) {
             result.message = document.createElement('div');
             result.message.innerHTML = message_parts.join('\n\n');
@@ -200,14 +186,6 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
 
         if (this.experiences[history_elt.world.history_index] === null) {
             interp_op.push({'add': 'forgotten'});
-        }
-
-        if (this.remembered_meditation && history_elt.message !== undefined) {
-            let notes = history_elt.message.querySelectorAll('.meditation-1');
-            if (notes.length > 0){
-                console.log('enabling meditation on an elt');
-                interp_op.push({'add': 'meditation-1-enabled'});
-            }
         }
 
         return interp_op;

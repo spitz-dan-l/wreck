@@ -851,7 +851,7 @@ class Terminal extends React.Component {
         this.prompt.focus();
     }
     render() {
-        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, onEntered: this.scrollToPrompt }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History2, { history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, onEntered: this.scrollToPrompt }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -1005,31 +1005,24 @@ const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
 const observer_moments_1 = __webpack_require__(14);
 class VenienceWorld {
-    constructor({ experiences, history_index, remembered_meditation }) {
+    constructor({ experiences, history_index }) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
         if (history_index === undefined) {
             history_index = 0;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = false;
-        }
         this.experiences = experiences;
         this.history_index = history_index;
-        this.remembered_meditation = remembered_meditation;
     }
-    update({ experiences, history_index, remembered_meditation }) {
+    update({ experiences, history_index }) {
         if (experiences === undefined) {
             experiences = this.experiences;
         }
         if (history_index === undefined) {
             history_index = this.history_index;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = this.remembered_meditation;
-        }
-        return new VenienceWorld({ experiences, history_index, remembered_meditation });
+        return new VenienceWorld({ experiences, history_index });
     }
     current_om() {
         for (let i = this.experiences.length - 1; i >= 0; i--) {
@@ -1076,9 +1069,6 @@ class VenienceWorld {
                 world_update.experiences = new_experiences;
             }
         }
-        if (this.current_om() === 'top, surveying') {
-            world_update.remembered_meditation = true;
-        }
         if (message_parts.length > 0) {
             result.message = document.createElement('div');
             result.message.innerHTML = message_parts.join('\n\n');
@@ -1116,13 +1106,6 @@ class VenienceWorld {
         if (this.experiences[history_elt.world.history_index] === null) {
             interp_op.push({ 'add': 'forgotten' });
         }
-        if (this.remembered_meditation && history_elt.message !== undefined) {
-            let notes = history_elt.message.querySelectorAll('.meditation-1');
-            if (notes.length > 0) {
-                console.log('enabling meditation on an elt');
-                interp_op.push({ 'add': 'meditation-1-enabled' });
-            }
-        }
         return interp_op;
     }
 }
@@ -1151,6 +1134,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const ReactTransitionGroup = __webpack_require__(15);
 const Text_1 = __webpack_require__(4);
+class BookGuy extends React.Component {
+    // just need to set the maxHeight
+    // everything else can be done with css transitions
+    // but what to set max height to depends on whether the elt
+    // is disappearing or not
+    // answer: just check the .scrollHeight or .clientHeight
+    // attr immediately after changing the class.
+    update() {
+        this.elt.style.maxHeight = `${this.elt.scrollHeight}px`;
+        this.elt.classList.add('animating');
+        let that = this;
+        // window.setTimeout(function() {
+        //   that.elt.classList.remove('animating');
+        //   console.log('done animating');
+        // }, 700)
+        console.log('boop updated maxheight to ' + this.elt.style.maxHeight);
+    }
+    componentDidMount() {
+        this.update();
+    }
+    componentDidUpdate() {
+        this.update();
+    }
+    render() {
+        return React.createElement("div", { className: this.props.className, ref: elt => this.elt = elt }, this.props.children);
+    }
+}
+exports.BookGuy = BookGuy;
 const Fade = _a => {
     var { children } = _a,
         props = __rest(_a, ["children"]);
@@ -1199,6 +1210,45 @@ exports.History = _a => {
             return React.createElement(Fade, Object.assign({ key: key }, fade_props), React.createElement("div", { className: class_name }, React.createElement(Text_1.OutputText, { message_html: msg_html })));
         }
         return React.createElement(Fade, Object.assign({ key: key }, fade_props), React.createElement("div", { className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message_html: msg_html })));
+    }));
+};
+exports.History2 = _a => {
+    var { history, possible_history } = _a,
+        fade_props = __rest(_a, ["history", "possible_history"]);
+    return React.createElement("div", null, history.map(hist => {
+        let { parser, message, message_classes, index } = hist;
+        if (message_classes === undefined) {
+            message_classes = [];
+        }
+        let key = index.toString();
+        if (message_classes.length > 0) {
+            key += '_' + message_classes.join(':');
+        }
+        let possible_message_classes = possible_history[index].message_classes;
+        if (possible_message_classes === undefined) {
+            possible_message_classes = [];
+        }
+        let edit_message_classes = [];
+        for (let mc of message_classes) {
+            if (possible_message_classes.indexOf(mc) === -1) {
+                edit_message_classes.push('removing-' + mc);
+            }
+        }
+        for (let pmc of possible_message_classes) {
+            if (message_classes.indexOf(pmc) === -1) {
+                edit_message_classes.push('adding-' + pmc);
+            }
+        }
+        let edit_message_class_name = edit_message_classes.join(' ');
+        let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
+        let msg_html = '';
+        if (message !== undefined) {
+            msg_html = message.innerHTML;
+        }
+        if (index === 0) {
+            return React.createElement(BookGuy, { key: index, className: class_name }, React.createElement(Text_1.OutputText, { message_html: msg_html }));
+        }
+        return React.createElement(BookGuy, { key: index, className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message_html: msg_html }));
     }));
 };
 

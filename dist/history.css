@@ -1,5 +1,7 @@
 .history {
     margin-top: 1em;
+    max-height: 0px;
+    transition: max-height 400ms linear;
 }
 
 .parsed-text {
@@ -15,11 +17,25 @@
     white-space: normal;
     margin-top: 1em;
     margin-bottom: 1em;
+    opacity: 0.01;
+}
+
+.history.animating .output-text {
+    opacity: 1.0;
+    transition: opacity 300ms ease-in;
+    transition-delay: 400ms;
 }
 
 /* add pulsing */
 .history.adding-forgotten {
     opacity: 0.4;
+}
+
+.history.forgotten.animating {
+    opacity: 0.01 !important;
+    max-height: 0px !important;
+    transition: opacity 300ms ease-in, max-height 400ms linear;
+    transition-delay: 0ms, 300ms;
 }
 
 .history.forgotten div {
