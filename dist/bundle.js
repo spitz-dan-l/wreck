@@ -1149,7 +1149,8 @@ class BookGuy extends React.Component {
     // attr immediately after changing the class.
     constructor(props) {
         super(props);
-        this.do_animate = true;
+        this.do_animate = false;
+        this.entering = true;
         this.state = {
             message_classes: [],
             adding_message_classes: [],
@@ -1177,7 +1178,7 @@ class BookGuy extends React.Component {
         this.setState({ removing_message_classes, adding_message_classes });
     }
     commit() {
-        if (this.do_animate || this.state.adding_message_classes.length > 0 || this.state.removing_message_classes.length > 0) {
+        if (this.entering || this.state.adding_message_classes.length > 0 || this.state.removing_message_classes.length > 0) {
             let new_message_classes = [...this.state.message_classes];
             new_message_classes.push(...this.state.adding_message_classes);
             for (let rmc of this.state.removing_message_classes) {
@@ -1198,7 +1199,6 @@ class BookGuy extends React.Component {
         }
     }
     animate() {
-        console.log('animatin');
         function setMaxHeight(elt) {
             elt.style.maxHeight = `${elt.scrollHeight}px`;
         }
@@ -1213,19 +1213,26 @@ class BookGuy extends React.Component {
                 frontier.push(children.item(i));
             }
         }
+        if (this.entering) {
+            comp_elt.classList.add('animation-entering');
+            this.entering = false;
+        }
         comp_elt.classList.add('animation-start');
         setTimeout(() => {
             comp_elt.classList.add('animation-active');
             elts.map(setMaxHeight);
             setTimeout(() => {
-                comp_elt.classList.remove('animation-start', 'animation-active');
+                comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
+                // if (comp_elt.classList.contains('animation-entering')) {
+                //   comp_elt.classList.remove('animation-entering');
+                // }
             }, this.props.timeout);
         }, 0);
     }
     render() {
         let classList = ['history', ...this.state.message_classes];
-        classList.push(...this.state.adding_message_classes.map(s => 'adding_' + s));
-        classList.push(...this.state.removing_message_classes.map(s => 'removing_' + s));
+        classList.push(...this.state.adding_message_classes.map(s => 'adding-' + s));
+        classList.push(...this.state.removing_message_classes.map(s => 'removing-' + s));
         let className = classList.join(' ');
         return React.createElement("div", { className: className }, this.props.children);
     }

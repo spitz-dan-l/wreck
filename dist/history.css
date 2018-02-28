@@ -17,15 +17,15 @@
     margin-bottom: 1em;
 }
 
-.history.animation-start .output-text {
+.history.animation-entering.animation-start .output-text {
     opacity: 0.01;
     max-height: 0px;
 }
 
-.history.animation-active .output-text {
+.history.animation-entering.animation-start.animation-active .output-text {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
-    transition-delay: 0, 400ms;
+    transition-delay: 0ms, 400ms;
 }
 
 /* add pulsing */
@@ -33,14 +33,15 @@
     opacity: 0.4;
 }
 
-.history.forgotten.animating {
+.history.forgotten.animation-start {
+    display: block;
     opacity: 0.01 !important;
     max-height: 0px !important;
     transition: opacity 300ms ease-in, max-height 400ms linear;
     transition-delay: 0ms, 300ms;
 }
 
-.history.forgotten div {
+.history.forgotten {
     display: none;
 }
 

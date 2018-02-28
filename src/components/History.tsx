@@ -8,7 +8,8 @@ import {get_annotation, is_enabled, unwrap} from '../typescript/datatypes';
 
 
 export class BookGuy extends React.Component<any, any> {
-  do_animate: boolean = true;
+  do_animate: boolean = false;
+  entering: boolean = true;
   // just need to set the maxHeight
   // everything else can be done with css transitions
   // but what to set max height to depends on whether the elt
@@ -51,7 +52,7 @@ export class BookGuy extends React.Component<any, any> {
   }
 
   commit() {
-    if (this.do_animate
+    if (this.entering
         || this.state.adding_message_classes.length > 0
         || this.state.removing_message_classes.length > 0){
       let new_message_classes = [...this.state.message_classes];
@@ -79,7 +80,6 @@ export class BookGuy extends React.Component<any, any> {
   }
 
   animate() {
-    console.log('animatin');
     function setMaxHeight(elt) {
       elt.style.maxHeight = `${elt.scrollHeight}px`;
     }
@@ -99,21 +99,29 @@ export class BookGuy extends React.Component<any, any> {
       }
     }
 
+    if (this.entering) {
+      comp_elt.classList.add('animation-entering')
+      this.entering = false;
+    }
+
     comp_elt.classList.add('animation-start');
 
     setTimeout(() => {
       comp_elt.classList.add('animation-active');
       elts.map(setMaxHeight);
       setTimeout(() => {
-        comp_elt.classList.remove('animation-start', 'animation-active');
+        comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
+        // if (comp_elt.classList.contains('animation-entering')) {
+        //   comp_elt.classList.remove('animation-entering');
+        // }
       }, this.props.timeout)
     }, 0);
   }
 
   render() {
     let classList = ['history', ...this.state.message_classes];
-    classList.push(...this.state.adding_message_classes.map(s => 'adding_'+s));
-    classList.push(...this.state.removing_message_classes.map(s => 'removing_'+s));
+    classList.push(...this.state.adding_message_classes.map(s => 'adding-'+s));
+    classList.push(...this.state.removing_message_classes.map(s => 'removing-'+s));
     
     let className = classList.join(' ');
     
