@@ -1,7 +1,5 @@
 .history {
     margin-top: 1em;
-    max-height: 0px;
-    transition: max-height 400ms linear;
 }
 
 .parsed-text {
@@ -17,13 +15,17 @@
     white-space: normal;
     margin-top: 1em;
     margin-bottom: 1em;
-    opacity: 0.01;
 }
 
-.history.animating .output-text {
+.history.animation-start .output-text {
+    opacity: 0.01;
+    max-height: 0px;
+}
+
+.history.animation-active .output-text {
     opacity: 1.0;
-    transition: opacity 300ms ease-in;
-    transition-delay: 400ms;
+    transition: max-height 400ms linear, opacity 300ms ease-in;
+    transition-delay: 0, 400ms;
 }
 
 /* add pulsing */

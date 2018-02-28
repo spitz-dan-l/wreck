@@ -688,6 +688,12 @@ exports.dedent = dedent;
 
 /***/ }),
 /* 4 */
+/***/ (function(module, exports) {
+
+module.exports = ReactDOM;
+
+/***/ }),
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -738,7 +744,7 @@ exports.OutputText = props => {
 };
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -755,7 +761,7 @@ exports.keys = {
 };
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -764,7 +770,7 @@ exports.keys = {
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const Prompt_1 = __webpack_require__(11);
-const Text_1 = __webpack_require__(4);
+const Text_1 = __webpack_require__(5);
 const TypeaheadList_1 = __webpack_require__(12);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
@@ -782,6 +788,8 @@ class Terminal extends React.Component {
             if (this.isCurrentlyValid()) {
                 const output = this.state.world_driver.commit();
                 this.setState({ world_driver: this.state.world_driver });
+                this.history.commit_after_update = true;
+                //this.history.commit();
                 return true;
             }
             return false;
@@ -793,6 +801,8 @@ class Terminal extends React.Component {
         this.handlePromptChange = input => {
             let result = this.state.world_driver.apply_command(input, false);
             this.setState({ world_driver: this.state.world_driver });
+            this.history.edit_after_update = true;
+            //this.history.edit();
             this.prompt.focus();
             this.scrollToPrompt();
             let that = this;
@@ -850,14 +860,15 @@ class Terminal extends React.Component {
     componentDidMount() {
         this.prompt.focus();
     }
+    componentDidUpdate() {}
     render() {
-        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History2, { history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, onEntered: this.scrollToPrompt }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History3, { timeout: 700, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -993,7 +1004,7 @@ function eager_dispatch(world, parser) {
 exports.eager_dispatch = eager_dispatch;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1112,12 +1123,6 @@ class VenienceWorld {
 exports.VenienceWorld = VenienceWorld;
 
 /***/ }),
-/* 9 */
-/***/ (function(module, exports) {
-
-module.exports = ReactDOM;
-
-/***/ }),
 /* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1132,8 +1137,9 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
+const ReactDom = __webpack_require__(4);
 const ReactTransitionGroup = __webpack_require__(15);
-const Text_1 = __webpack_require__(4);
+const Text_1 = __webpack_require__(5);
 class BookGuy extends React.Component {
     // just need to set the maxHeight
     // everything else can be done with css transitions
@@ -1141,27 +1147,128 @@ class BookGuy extends React.Component {
     // is disappearing or not
     // answer: just check the .scrollHeight or .clientHeight
     // attr immediately after changing the class.
-    update() {
-        this.elt.style.maxHeight = `${this.elt.scrollHeight}px`;
-        this.elt.classList.add('animating');
-        let that = this;
-        // window.setTimeout(function() {
-        //   that.elt.classList.remove('animating');
-        //   console.log('done animating');
-        // }, 700)
-        console.log('boop updated maxheight to ' + this.elt.style.maxHeight);
+    constructor(props) {
+        super(props);
+        this.do_animate = true;
+        this.state = {
+            message_classes: [],
+            adding_message_classes: [],
+            removing_message_classes: []
+        };
     }
-    componentDidMount() {
-        this.update();
+    edit(possible_message_classes) {
+        if (possible_message_classes === undefined) {
+            possible_message_classes = [];
+        }
+        let edit_message_classes = [];
+        let message_classes = this.state.message_classes;
+        let removing_message_classes = [];
+        for (let mc of message_classes) {
+            if (possible_message_classes.indexOf(mc) === -1) {
+                removing_message_classes.push(mc);
+            }
+        }
+        let adding_message_classes = [];
+        for (let pmc of possible_message_classes) {
+            if (message_classes.indexOf(pmc) === -1) {
+                adding_message_classes.push(pmc);
+            }
+        }
+        this.setState({ removing_message_classes, adding_message_classes });
+    }
+    commit() {
+        if (this.do_animate || this.state.adding_message_classes.length > 0 || this.state.removing_message_classes.length > 0) {
+            let new_message_classes = [...this.state.message_classes];
+            new_message_classes.push(...this.state.adding_message_classes);
+            for (let rmc of this.state.removing_message_classes) {
+                new_message_classes.splice(new_message_classes.indexOf(rmc), 1);
+            }
+            this.setState({
+                message_classes: new_message_classes,
+                adding_message_classes: [],
+                removing_message_classes: []
+            });
+            this.do_animate = true;
+        }
     }
     componentDidUpdate() {
-        this.update();
+        if (this.do_animate) {
+            this.animate();
+            this.do_animate = false;
+        }
+    }
+    animate() {
+        console.log('animatin');
+        function setMaxHeight(elt) {
+            elt.style.maxHeight = `${elt.scrollHeight}px`;
+        }
+        let comp_elt = ReactDom.findDOMNode(this);
+        let elts = [];
+        let frontier = [comp_elt];
+        while (frontier.length > 0) {
+            let elt = frontier.shift();
+            elts.push(elt);
+            let children = elt.children;
+            for (let i = 0; i < children.length; i++) {
+                frontier.push(children.item(i));
+            }
+        }
+        comp_elt.classList.add('animation-start');
+        setTimeout(() => {
+            comp_elt.classList.add('animation-active');
+            elts.map(setMaxHeight);
+            setTimeout(() => {
+                comp_elt.classList.remove('animation-start', 'animation-active');
+            }, this.props.timeout);
+        }, 0);
     }
     render() {
-        return React.createElement("div", { className: this.props.className, ref: elt => this.elt = elt }, this.props.children);
+        let classList = ['history', ...this.state.message_classes];
+        classList.push(...this.state.adding_message_classes.map(s => 'adding_' + s));
+        classList.push(...this.state.removing_message_classes.map(s => 'removing_' + s));
+        let className = classList.join(' ');
+        return React.createElement("div", { className: className }, this.props.children);
     }
 }
 exports.BookGuy = BookGuy;
+class History3 extends React.Component {
+    constructor(props) {
+        super(props);
+        this.book_guys = [];
+        this.edit_after_update = false;
+        this.commit_after_update = false;
+    }
+    edit() {
+        this.props.history.forEach(hist => {
+            let { parser, message, message_classes, index } = hist;
+            let the_book_guy = this.book_guys[index];
+            the_book_guy.edit(this.props.possible_history[index].message_classes);
+        });
+    }
+    commit() {
+        this.book_guys.forEach(bg => bg.commit());
+    }
+    render() {
+        return React.createElement("div", null, this.props.history.map(hist => {
+            let msg_html = '';
+            if (hist.message !== undefined) {
+                msg_html = hist.message.innerHTML;
+            }
+            return React.createElement(BookGuy, { timeout: this.props.timeout, key: hist.index, ref: bg => this.book_guys[hist.index] = bg }, hist.index > 0 ? React.createElement(Text_1.ParsedText, { parser: hist.parser }) : '', React.createElement(Text_1.OutputText, { message_html: msg_html }));
+        }));
+    }
+    componentDidUpdate() {
+        if (this.edit_after_update) {
+            this.edit();
+            this.edit_after_update = false;
+        }
+        if (this.commit_after_update) {
+            this.commit();
+            this.commit_after_update = false;
+        }
+    }
+}
+exports.History3 = History3;
 const Fade = _a => {
     var { children } = _a,
         props = __rest(_a, ["children"]);
@@ -1267,7 +1374,7 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(5);
+const keyboard_tools_1 = __webpack_require__(6);
 const InputWrapper = props => {
     const { children } = props,
           rest = __rest(props, ["children"]);
@@ -1368,7 +1475,7 @@ exports.Prompt = Prompt;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(5);
+const keyboard_tools_1 = __webpack_require__(6);
 const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
@@ -1455,11 +1562,11 @@ exports.TypeaheadList = TypeaheadList;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const ReactDom = __webpack_require__(9);
-const Terminal_1 = __webpack_require__(6);
-const commands_1 = __webpack_require__(7);
+const ReactDom = __webpack_require__(4);
+const Terminal_1 = __webpack_require__(7);
+const commands_1 = __webpack_require__(8);
 //import {BirdWorld} from '../typescript/bird_world';
-const venience_world_1 = __webpack_require__(8);
+const venience_world_1 = __webpack_require__(9);
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -1636,23 +1743,29 @@ exports.alcove_oms = index_oms([{
     transitions: [[['begin', 'interpretation'], 'alcove, beginning interpretation']]
 }, {
     id: 'alcove, beginning interpretation',
-    message: `A nervous energy buzzes within your mind.
-        <div class="interp-alcove-1"
-        <br /><br />
+    message: `
+        A nervous energy buzzes within your mind.
+        <br />
+        <br />
+        <div class="interp-alcove-1">
         Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to sense of meaning within the world. You have a <i>compass</i>.
+        <br />
+        <br />
         </div>
-        <br /><br />
         Your notes are gone.
+        <br />
+        <br />
         <div class="interp-alcove-2">
-        <br /><br />
         Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
-        <br /><br />
+        <br />
+        <br />
         But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
+        <br />
+        <br />
         </div>
-        <br /><br />
         You are alone in a grassy alcove in the forest.
         <div class="interp-alcove-3">
-        <br /><br />
+        <br />
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
         <br /><br />
         Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
