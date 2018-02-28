@@ -266,23 +266,29 @@ export let alcove_oms = index_oms([
     },
     {
         id: 'alcove, beginning interpretation',
-        message: `A nervous energy buzzes within your mind.
-        <div class="interp-alcove-1"
-        <br /><br />
+        message: `
+        A nervous energy buzzes within your mind.
+        <br />
+        <br />
+        <div class="interp-alcove-1">
         Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to sense of meaning within the world. You have a <i>compass</i>.
+        <br />
+        <br />
         </div>
-        <br /><br />
         Your notes are gone.
+        <br />
+        <br />
         <div class="interp-alcove-2">
-        <br /><br />
         Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
-        <br /><br />
+        <br />
+        <br />
         But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
+        <br />
+        <br />
         </div>
-        <br /><br />
         You are alone in a grassy alcove in the forest.
         <div class="interp-alcove-3">
-        <br /><br />
+        <br />
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
         <br /><br />
         Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
