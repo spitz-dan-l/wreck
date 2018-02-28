@@ -133,6 +133,7 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
       <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
         <History3
           timeout={700}
+          onAnimationFinish={this.scrollToPrompt}
           history={this.state.world_driver.history}
           possible_history={this.state.world_driver.possible_history}
           ref={h => this.history = h}

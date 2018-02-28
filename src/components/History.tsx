@@ -111,6 +111,9 @@ export class BookGuy extends React.Component<any, any> {
       elts.map(setMaxHeight);
       setTimeout(() => {
         comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
+        if (this.props.onAnimationFinish){
+          this.props.onAnimationFinish();
+        }
         // if (comp_elt.classList.contains('animation-entering')) {
         //   comp_elt.classList.remove('animation-entering');
         // }
@@ -169,6 +172,7 @@ export class History3 extends React.Component<any, any> {
           return (
             <BookGuy
               timeout={this.props.timeout}
+              onAnimationFinish={this.props.onAnimationFinish}
               key={hist.index}
               ref={bg => this.book_guys[hist.index] = bg}>
               {hist.index > 0 ? (
