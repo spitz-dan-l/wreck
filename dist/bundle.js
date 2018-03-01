@@ -1199,20 +1199,29 @@ class BookGuy extends React.Component {
         }
     }
     animate() {
-        function setMaxHeight(elt) {
-            elt.style.maxHeight = `${elt.scrollHeight}px`;
-        }
-        let comp_elt = ReactDom.findDOMNode(this);
-        let elts = [];
-        let frontier = [comp_elt];
-        while (frontier.length > 0) {
-            let elt = frontier.shift();
-            elts.push(elt);
+        function updateBounds(elt) {
+            let rect = elt.getBoundingClientRect();
+            let max_bottom = rect.bottom + 10;
             let children = elt.children;
             for (let i = 0; i < children.length; i++) {
-                frontier.push(children.item(i));
+                let child = children.item(i);
+                let child_bottom = updateBounds(child);
+                if (child_bottom > max_bottom) {
+                    max_bottom = child_bottom;
+                }
             }
+            let new_max_height = Math.ceil(max_bottom - rect.top);
+            if (true) {
+                console.log('switching back');
+                new_max_height = elt.scrollHeight;
+                max_bottom = rect.top + new_max_height;
+            } // else {
+            //   console.log('no switch!');
+            // }
+            elt.style.maxHeight = `${new_max_height}px`;
+            return max_bottom;
         }
+        let comp_elt = ReactDom.findDOMNode(this);
         if (this.entering) {
             comp_elt.classList.add('animation-entering');
             this.entering = false;
@@ -1220,16 +1229,18 @@ class BookGuy extends React.Component {
         comp_elt.classList.add('animation-start');
         setTimeout(() => {
             comp_elt.classList.add('animation-active');
-            elts.map(setMaxHeight);
+            updateBounds(comp_elt);
             setTimeout(() => {
-                comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
-                if (this.props.onAnimationFinish) {
-                    this.props.onAnimationFinish();
-                }
-                // if (comp_elt.classList.contains('animation-entering')) {
-                //   comp_elt.classList.remove('animation-entering');
-                // }
-            }, this.props.timeout);
+                updateBounds(comp_elt);
+                // elts.map(setMaxHeight);
+                setTimeout(() => {
+                    comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
+                    //elts.map(setMaxHeight);  
+                    if (this.props.onAnimationFinish) {
+                        this.props.onAnimationFinish();
+                    }
+                }, this.props.timeout);
+            }, 0);
         }, 0);
     }
     render() {
@@ -1642,7 +1653,8 @@ exports.alcove_oms = index_oms([{
 }, {
     id: 'bed, awakening 1',
     message: 'You awaken in your bed.',
-    transitions: [[['sit up'], 'bed, sitting up 1']]
+    transitions: [[['sit up'], 'grass, asking 2']]
+    //[['sit up'], 'bed, sitting up 1']]
 }, {
     id: 'bed, sitting up 1',
     message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
@@ -1754,17 +1766,21 @@ exports.alcove_oms = index_oms([{
 }, {
     id: 'alcove, beginning interpretation',
     message: `
+        <div class="face-of-it">
         A nervous energy buzzes within your mind.
         <br />
         <br />
+        </div>
         <div class="interp-alcove-1">
         Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to sense of meaning within the world. You have a <i>compass</i>.
         <br />
         <br />
         </div>
+        <div class="face-of-it">
         Your notes are gone.
         <br />
         <br />
+        </div>
         <div class="interp-alcove-2">
         Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
         <br />
@@ -1773,7 +1789,9 @@ exports.alcove_oms = index_oms([{
         <br />
         <br />
         </div>
+        <div class="face-of-it">
         You are alone in a grassy alcove in the forest.
+        </div>
         <div class="interp-alcove-3">
         <br />
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
@@ -1806,7 +1824,7 @@ exports.alcove_oms = index_oms([{
     message: `What lies within the forest, and beyond? What will it be like, out there?
         <br /><br />
         <i>(End of demo. Thanks for playing!)</i>`,
-    transitions: []
+    transitions: [[['fart'], 'bed, sitting up 1']]
 }]);
 exports.tower_oms = index_oms([{
     id: 'base, from path',

@@ -80,24 +80,35 @@ export class BookGuy extends React.Component<any, any> {
   }
 
   animate() {
-    function setMaxHeight(elt) {
-      elt.style.maxHeight = `${elt.scrollHeight}px`;
-    }
+    function updateBounds(elt) {
+      let rect = elt.getBoundingClientRect()
 
-    let comp_elt = ReactDom.findDOMNode(this);
-    let elts = []
-
-    let frontier = [comp_elt];
-
-    while (frontier.length > 0) {
-      let elt = frontier.shift();
-      elts.push(elt);
+      let max_bottom = rect.bottom + 10;
 
       let children = elt.children;
       for (let i = 0; i < children.length; i++) {
-        frontier.push(children.item(i));  
+        let child = children.item(i);
+        let child_bottom = updateBounds(child);
+        if (child_bottom > max_bottom) {
+          max_bottom = child_bottom;
+        }
       }
+
+      let new_max_height = Math.ceil(max_bottom - rect.top);
+      if (true || elt.scrollHeight > new_max_height) {
+        console.log('switching back');
+        new_max_height = elt.scrollHeight;
+        max_bottom = rect.top + new_max_height;
+      } // else {
+      //   console.log('no switch!');
+      // }
+
+      elt.style.maxHeight = `${new_max_height}px`;
+
+      return max_bottom;
     }
+
+    let comp_elt = ReactDom.findDOMNode(this);
 
     if (this.entering) {
       comp_elt.classList.add('animation-entering')
@@ -108,16 +119,19 @@ export class BookGuy extends React.Component<any, any> {
 
     setTimeout(() => {
       comp_elt.classList.add('animation-active');
-      elts.map(setMaxHeight);
+      updateBounds(comp_elt);
+        
       setTimeout(() => {
-        comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
-        if (this.props.onAnimationFinish){
-          this.props.onAnimationFinish();
-        }
-        // if (comp_elt.classList.contains('animation-entering')) {
-        //   comp_elt.classList.remove('animation-entering');
-        // }
-      }, this.props.timeout)
+        updateBounds(comp_elt);
+        // elts.map(setMaxHeight);
+        setTimeout(() => {
+          comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
+          //elts.map(setMaxHeight);  
+          if (this.props.onAnimationFinish){
+            this.props.onAnimationFinish();
+          }
+        }, this.props.timeout)  
+      }, 0)
     }, 0);
   }
 

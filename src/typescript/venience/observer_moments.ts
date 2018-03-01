@@ -124,7 +124,8 @@ export let alcove_oms = index_oms([
         id: 'bed, awakening 1',
         message: 'You awaken in your bed.',
         transitions: [
-            [['sit up'], 'bed, sitting up 1']]
+            [['sit up'], 'grass, asking 2']]
+            //[['sit up'], 'bed, sitting up 1']]
     },
     {
         id: 'bed, sitting up 1',
@@ -267,17 +268,21 @@ export let alcove_oms = index_oms([
     {
         id: 'alcove, beginning interpretation',
         message: `
+        <div class="face-of-it">
         A nervous energy buzzes within your mind.
         <br />
         <br />
+        </div>
         <div class="interp-alcove-1">
         Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to sense of meaning within the world. You have a <i>compass</i>.
         <br />
         <br />
         </div>
+        <div class="face-of-it">
         Your notes are gone.
         <br />
         <br />
+        </div>
         <div class="interp-alcove-2">
         Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
         <br />
@@ -286,7 +291,9 @@ export let alcove_oms = index_oms([
         <br />
         <br />
         </div>
+        <div class="face-of-it">
         You are alone in a grassy alcove in the forest.
+        </div>
         <div class="interp-alcove-3">
         <br />
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
@@ -329,7 +336,7 @@ export let alcove_oms = index_oms([
         message: `What lies within the forest, and beyond? What will it be like, out there?
         <br /><br />
         <i>(End of demo. Thanks for playing!)</i>`,
-        transitions: []
+        transitions: [[['fart'], 'bed, sitting up 1']]
     },
 ])
 
