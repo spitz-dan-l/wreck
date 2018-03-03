@@ -124,8 +124,7 @@ export let alcove_oms = index_oms([
         id: 'bed, awakening 1',
         message: 'You awaken in your bed.',
         transitions: [
-            [['sit up'], 'grass, asking 2']]
-            //[['sit up'], 'bed, sitting up 1']]
+            [['sit up'], 'bed, sitting up 1']]
     },
     {
         id: 'bed, sitting up 1',
@@ -336,7 +335,7 @@ export let alcove_oms = index_oms([
         message: `What lies within the forest, and beyond? What will it be like, out there?
         <br /><br />
         <i>(End of demo. Thanks for playing!)</i>`,
-        transitions: [[['fart'], 'bed, sitting up 1']]
+        transitions: []
     },
 ])
 

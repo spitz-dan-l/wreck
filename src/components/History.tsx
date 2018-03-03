@@ -8,21 +8,30 @@ import {get_annotation, is_enabled, unwrap} from '../typescript/datatypes';
 
 
 export class BookGuy extends React.Component<any, any> {
-  do_animate: boolean = false;
-  entering: boolean = true;
-  // just need to set the maxHeight
-  // everything else can be done with css transitions
-  // but what to set max height to depends on whether the elt
-  // is disappearing or not
-  // answer: just check the .scrollHeight or .clientHeight
-  // attr immediately after changing the class.
+  /*
+    BookGuy is a bad component that get's the danged job done.
+
+    It encapsulates a single element of history in the game.
+
+    When a css change to the history element is "committed" (via this.commit()),
+    It triggers an idiosyncratic little animation progression that
+    adds CSS classes in a certain order and dynamically sets
+    the max-height on all elements contained by the history element
+    so that they can grow or shrink smoothly by added css transitions on
+    the max-height property.
+
+    The particulars of the animation progress are currently undocumented because
+    they are pretty bad and might change.
+  */
+
   constructor(props) {
     super(props);
 
     this.state = {
       message_classes: [],
       adding_message_classes: [],
-      removing_message_classes: []
+      removing_message_classes: [],
+      entering: true
     };
   }
 
@@ -48,11 +57,10 @@ export class BookGuy extends React.Component<any, any> {
     }
 
     this.setState({removing_message_classes, adding_message_classes});
-
   }
 
   commit() {
-    if (this.entering
+    if (this.state.entering
         || this.state.adding_message_classes.length > 0
         || this.state.removing_message_classes.length > 0){
       let new_message_classes = [...this.state.message_classes];
@@ -67,72 +75,68 @@ export class BookGuy extends React.Component<any, any> {
         message_classes: new_message_classes,
         adding_message_classes: [],
         removing_message_classes: [],
-      });
-      this.do_animate = true;
-    }
-  }
-
-  componentDidUpdate() {
-    if (this.do_animate) {
-      this.animate();
-      this.do_animate = false;
+      }, this.animate);
     }
   }
 
   animate() {
-    function updateBounds(elt) {
-      let rect = elt.getBoundingClientRect()
-
-      let max_bottom = rect.bottom + 10;
-
+    function walkElt(elt, f){
       let children = elt.children;
       for (let i = 0; i < children.length; i++) {
         let child = children.item(i);
-        let child_bottom = updateBounds(child);
-        if (child_bottom > max_bottom) {
-          max_bottom = child_bottom;
-        }
+        walkElt(child, f)
       }
-
-      let new_max_height = Math.ceil(max_bottom - rect.top);
-      if (true || elt.scrollHeight > new_max_height) {
-        console.log('switching back');
-        new_max_height = elt.scrollHeight;
-        max_bottom = rect.top + new_max_height;
-      } // else {
-      //   console.log('no switch!');
-      // }
-
-      elt.style.maxHeight = `${new_max_height}px`;
-
-      return max_bottom;
+      f(elt)
     }
 
-    let comp_elt = ReactDom.findDOMNode(this);
+    let comp_elt: any = ReactDom.findDOMNode(this);
 
-    if (this.entering) {
-      comp_elt.classList.add('animation-entering')
-      this.entering = false;
+    if (this.state.entering) {
+      comp_elt.classList.add('animation-new')
+      this.setState({entering: false});
     }
+
+    // Momentarily apply the animation-pre-compute class
+    // to accurately measure the target maxHeight
+    // and check for the custom --is-collapsing property
+    // (This is basically an abomination and I am sorry.)
+    comp_elt.classList.add('animation-pre-compute');
+    
+    walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
+    comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing'));
+
+    comp_elt.classList.remove('animation-pre-compute');
 
     comp_elt.classList.add('animation-start');
-
-    setTimeout(() => {
+    
+    // If --is-collapsing was set by the animation-pre-compute class,
+    // then apply the maxHeight update at the end of this animation frame
+    // rather than the beginning of the next one.
+    // I have no idea why this works/is necessary, but it does/is.
+    if (comp_elt.dataset.isCollapsing == 1) {
+      walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight);
+    }
+      
+    requestAnimationFrame(() => {
+      // If --is-collapsing wasn't set in the animation-pre-compute class,
+      // then apply the maxHeight update now.
+      // Websites technology keyboard mouse.
+      if (comp_elt.dataset.isCollapsing != 1) {
+        walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight);
+      }
+      
       comp_elt.classList.add('animation-active');
-      updateBounds(comp_elt);
-        
+
       setTimeout(() => {
-        updateBounds(comp_elt);
-        // elts.map(setMaxHeight);
-        setTimeout(() => {
-          comp_elt.classList.remove('animation-start', 'animation-active', 'animation-entering');
-          //elts.map(setMaxHeight);  
-          if (this.props.onAnimationFinish){
-            this.props.onAnimationFinish();
-          }
-        }, this.props.timeout)  
-      }, 0)
-    }, 0);
+        comp_elt.classList.remove('animation-new', 'animation-pre-compute', 'animation-start', 'animation-active');
+        walkElt(comp_elt, (e) => e.style.maxHeight = '');
+
+        if (this.props.onAnimationFinish){
+          this.props.onAnimationFinish();
+        }
+      }, this.props.timeout)
+      
+    });
   }
 
   render() {

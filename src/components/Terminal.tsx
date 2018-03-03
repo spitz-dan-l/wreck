@@ -41,7 +41,8 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   handleSubmit = () => {
     if (this.isCurrentlyValid()) {
       const output = this.state.world_driver.commit();
-      this.setState({world_driver: this.state.world_driver});
+      this.setState(
+        {world_driver: this.state.world_driver});
       this.history.commit_after_update = true;
       //this.history.commit();
       return true;
@@ -60,8 +61,10 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
 
   handlePromptChange = (input) => {
     let result = this.state.world_driver.apply_command(input, false);
-    this.setState({world_driver: this.state.world_driver});
-    this.history.edit_after_update = true;
+    this.setState({
+      world_driver: this.state.world_driver
+    });
+   this.history.edit_after_update = true;
     //this.history.edit();
     this.prompt.focus();
     this.scrollToPrompt();

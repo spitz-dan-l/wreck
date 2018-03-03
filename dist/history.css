@@ -18,12 +18,12 @@
     margin-bottom: 1em;
 }
 
-.history.animation-entering.animation-start .output-text {
+.history.animation-new.animation-start .output-text {
     opacity: 0.01;
-    max-height: 1px;
+    max-height: 0px;
 }
 
-.history.animation-entering.animation-start.animation-active .output-text {
+.history.animation-new.animation-start.animation-active .output-text {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;
@@ -34,16 +34,27 @@
     opacity: 0.4;
 }
 
+.history.forgotten {
+    display: none;
+}
+
+.history.forgotten.animation-pre-compute {
+    display: block;
+    opacity: 0;
+    --is-collapsing: 1;
+}
+
+/* AX2 */
 .history.forgotten.animation-start {
     display: block;
-    opacity: 0.01 !important;
+    opacity: 0.4;
+}
+
+.history.forgotten.animation-start.animation-active {
+    opacity: 0.01;
     max-height: 0px !important;
     transition: opacity 300ms ease-in, max-height 400ms linear;
     transition-delay: 0ms, 300ms;
-}
-
-.history.forgotten {
-    display: none;
 }
 
 /* add pulsing */
@@ -58,9 +69,7 @@
 .history .interp-alcove-2,
 .history .interp-alcove-3,
 .history .meditation-1 {
-    /*display: none;*/
-    max-height: 1px;
-    opacity: 0;
+    display: none;
 }
 
 .history .interp,
@@ -71,7 +80,6 @@
 {
     display: block;
     color: gold;
-    max-height: max-content;
     opacity: 1;
 }
 
@@ -79,12 +87,16 @@
 
 }
 
-.history.interp-alcove-1-enabled:not(.interp-alcove-2-enabled):not(.interp-alcove-3-enabled).animation-start .interp-alcove-1 {
+.history.interp-alcove-1-enabled:not(.interp-alcove-2-enabled):not(.interp-alcove-3-enabled).animation-start .interp-alcove-1,
+.history.interp-alcove-2-enabled:not(.interp-alcove-3-enabled).animation-start .interp-alcove-2,
+.history.interp-alcove-3-enabled.animation-start .interp-alcove-3 {
     opacity: 0.01;
-    max-height: 1px;
+    max-height: 0px;
 }
 
-.history.interp-alcove-1-enabled:not(.interp-alcove-2-enabled):not(.interp-alcove-3-enabled).animation-start.animation-active .interp-alcove-1 {
+.history.interp-alcove-1-enabled:not(.interp-alcove-2-enabled):not(.interp-alcove-3-enabled).animation-start.animation-active .interp-alcove-1,
+.history.interp-alcove-2-enabled:not(.interp-alcove-3-enabled).animation-start.animation-active .interp-alcove-2,
+.history.interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3 {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;
