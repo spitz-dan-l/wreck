@@ -3,7 +3,7 @@ import * as React from 'react';
 import {Prompt} from './Prompt';
 import {ParsedText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
-import {History} from './History';
+import {History, History2, History3} from './History';
 
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
@@ -19,6 +19,8 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   contentContainer: any;
   prompt: any;
   typeahead_list: any;
+  history: any;
+
 
   constructor(props) {
     super(props);
@@ -39,10 +41,17 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   handleSubmit = () => {
     if (this.isCurrentlyValid()) {
       const output = this.state.world_driver.commit();
-      this.setState({world_driver: this.state.world_driver});
+      this.setState(
+        {world_driver: this.state.world_driver});
+      this.history.commit_after_update = true;
+      //this.history.commit();
       return true;
     }
     return false;
+  }
+
+  componentDidUpdate() {
+
   }
 
   isCurrentlyValid = () => {
@@ -52,12 +61,16 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
 
   handlePromptChange = (input) => {
     let result = this.state.world_driver.apply_command(input, false);
-    this.setState({world_driver: this.state.world_driver});
+    this.setState({
+      world_driver: this.state.world_driver
+    });
+   this.history.edit_after_update = true;
+    //this.history.edit();
     this.prompt.focus();
     this.scrollToPrompt();
     let that = this;
     window.setTimeout(function() {
-      that.scrollToPrompt();  
+      that.scrollToPrompt();
     }, 0)
   }
 
@@ -121,10 +134,12 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   render() {
     return (
       <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
-        <History
+        <History3
+          timeout={700}
+          onAnimationFinish={this.scrollToPrompt}
           history={this.state.world_driver.history}
           possible_history={this.state.world_driver.possible_history}
-          onEntered={this.scrollToPrompt}
+          ref={h => this.history = h}
           />
         <Prompt
           onSubmit={this.handleSubmit}

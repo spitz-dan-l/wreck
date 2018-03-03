@@ -1,5 +1,10 @@
 TODOs
 
+- Overhaul animation logic when adding/removing classes
+    - No more css transition groups
+    - Custom component that just runs css class transitions instead of entirely replace elements
+        - Still need some js to do max-height so can't do pure css transitions
+    
 - fix highlighting/copy-pasting/transcripting
     - get correct line breaks
     - ability to paste 

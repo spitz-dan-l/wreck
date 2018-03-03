@@ -688,6 +688,12 @@ exports.dedent = dedent;
 
 /***/ }),
 /* 4 */
+/***/ (function(module, exports) {
+
+module.exports = ReactDOM;
+
+/***/ }),
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -738,7 +744,7 @@ exports.OutputText = props => {
 };
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -755,7 +761,7 @@ exports.keys = {
 };
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -764,7 +770,7 @@ exports.keys = {
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const Prompt_1 = __webpack_require__(11);
-const Text_1 = __webpack_require__(4);
+const Text_1 = __webpack_require__(5);
 const TypeaheadList_1 = __webpack_require__(12);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
@@ -782,6 +788,8 @@ class Terminal extends React.Component {
             if (this.isCurrentlyValid()) {
                 const output = this.state.world_driver.commit();
                 this.setState({ world_driver: this.state.world_driver });
+                this.history.commit_after_update = true;
+                //this.history.commit();
                 return true;
             }
             return false;
@@ -792,7 +800,11 @@ class Terminal extends React.Component {
         };
         this.handlePromptChange = input => {
             let result = this.state.world_driver.apply_command(input, false);
-            this.setState({ world_driver: this.state.world_driver });
+            this.setState({
+                world_driver: this.state.world_driver
+            });
+            this.history.edit_after_update = true;
+            //this.history.edit();
             this.prompt.focus();
             this.scrollToPrompt();
             let that = this;
@@ -850,14 +862,15 @@ class Terminal extends React.Component {
     componentDidMount() {
         this.prompt.focus();
     }
+    componentDidUpdate() {}
     render() {
-        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, onEntered: this.scrollToPrompt }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History3, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -993,7 +1006,7 @@ function eager_dispatch(world, parser) {
 exports.eager_dispatch = eager_dispatch;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1005,31 +1018,24 @@ const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
 const observer_moments_1 = __webpack_require__(14);
 class VenienceWorld {
-    constructor({ experiences, history_index, remembered_meditation }) {
+    constructor({ experiences, history_index }) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
         if (history_index === undefined) {
             history_index = 0;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = false;
-        }
         this.experiences = experiences;
         this.history_index = history_index;
-        this.remembered_meditation = remembered_meditation;
     }
-    update({ experiences, history_index, remembered_meditation }) {
+    update({ experiences, history_index }) {
         if (experiences === undefined) {
             experiences = this.experiences;
         }
         if (history_index === undefined) {
             history_index = this.history_index;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = this.remembered_meditation;
-        }
-        return new VenienceWorld({ experiences, history_index, remembered_meditation });
+        return new VenienceWorld({ experiences, history_index });
     }
     current_om() {
         for (let i = this.experiences.length - 1; i >= 0; i--) {
@@ -1049,14 +1055,33 @@ class VenienceWorld {
                 yield parser.done();
                 return;
             }
-            let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
-            yield parser.done();
-            let om_id_choice = world.current_om();
-            om.transitions.forEach(([cmd, om_id]) => {
-                if (cmd_choice === text_tools_1.untokenize(cmd)) {
-                    om_id_choice = om_id;
+            let om_id_choice;
+            if (cmd_options.length === 1) {
+                let cmd = cmd_options[0];
+                om_id_choice = om.transitions[0][1];
+                for (let phrase of cmd) {
+                    let display = parser_1.DisplayEltType.filler;
+                    if (phrase.charAt(0) === '*') {
+                        display = parser_1.DisplayEltType.keyword;
+                        phrase = phrase.substring(1);
+                    } else if (phrase.charAt(0) === '&') {
+                        display = parser_1.DisplayEltType.option;
+                        phrase = phrase.substring(1);
+                    }
+                    text_tools_1.tokenize(phrase);
+                    yield parser.consume_exact(text_tools_1.tokenize(phrase)[0], display);
                 }
-            });
+                yield parser.done();
+            } else {
+                let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
+                yield parser.done();
+                om_id_choice = world.current_om();
+                om.transitions.forEach(([cmd, om_id]) => {
+                    if (cmd_choice === text_tools_1.untokenize(cmd)) {
+                        om_id_choice = om_id;
+                    }
+                });
+            }
             return { world: world.update({
                     experiences: [...world.experiences, om_id_choice],
                     history_index: world.history_index + 1
@@ -1075,9 +1100,6 @@ class VenienceWorld {
                 let new_experiences = this.experiences.slice().fill(null, loop_idx + 1);
                 world_update.experiences = new_experiences;
             }
-        }
-        if (this.current_om() === 'top, surveying') {
-            world_update.remembered_meditation = true;
         }
         if (message_parts.length > 0) {
             result.message = document.createElement('div');
@@ -1116,23 +1138,10 @@ class VenienceWorld {
         if (this.experiences[history_elt.world.history_index] === null) {
             interp_op.push({ 'add': 'forgotten' });
         }
-        if (this.remembered_meditation && history_elt.message !== undefined) {
-            let notes = history_elt.message.querySelectorAll('.meditation-1');
-            if (notes.length > 0) {
-                console.log('enabling meditation on an elt');
-                interp_op.push({ 'add': 'meditation-1-enabled' });
-            }
-        }
         return interp_op;
     }
 }
 exports.VenienceWorld = VenienceWorld;
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports) {
-
-module.exports = ReactDOM;
 
 /***/ }),
 /* 10 */
@@ -1149,8 +1158,159 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
+const ReactDom = __webpack_require__(4);
 const ReactTransitionGroup = __webpack_require__(15);
-const Text_1 = __webpack_require__(4);
+const Text_1 = __webpack_require__(5);
+class BookGuy extends React.Component {
+    /*
+      BookGuy is a bad component that get's the danged job done.
+         It encapsulates a single element of history in the game.
+         When a css change to the history element is "committed" (via this.commit()),
+      It triggers an idiosyncratic little animation progression that
+      adds CSS classes in a certain order and dynamically sets
+      the max-height on all elements contained by the history element
+      so that they can grow or shrink smoothly by added css transitions on
+      the max-height property.
+         The particulars of the animation progress are currently undocumented because
+      they are pretty bad and might change.
+    */
+    constructor(props) {
+        super(props);
+        this.state = {
+            message_classes: [],
+            adding_message_classes: [],
+            removing_message_classes: [],
+            entering: true
+        };
+    }
+    edit(possible_message_classes) {
+        if (possible_message_classes === undefined) {
+            possible_message_classes = [];
+        }
+        let edit_message_classes = [];
+        let message_classes = this.state.message_classes;
+        let removing_message_classes = [];
+        for (let mc of message_classes) {
+            if (possible_message_classes.indexOf(mc) === -1) {
+                removing_message_classes.push(mc);
+            }
+        }
+        let adding_message_classes = [];
+        for (let pmc of possible_message_classes) {
+            if (message_classes.indexOf(pmc) === -1) {
+                adding_message_classes.push(pmc);
+            }
+        }
+        this.setState({ removing_message_classes, adding_message_classes });
+    }
+    commit() {
+        if (this.state.entering || this.state.adding_message_classes.length > 0 || this.state.removing_message_classes.length > 0) {
+            let new_message_classes = [...this.state.message_classes];
+            new_message_classes.push(...this.state.adding_message_classes);
+            for (let rmc of this.state.removing_message_classes) {
+                new_message_classes.splice(new_message_classes.indexOf(rmc), 1);
+            }
+            this.setState({
+                message_classes: new_message_classes,
+                adding_message_classes: [],
+                removing_message_classes: []
+            }, this.animate);
+        }
+    }
+    animate() {
+        function walkElt(elt, f) {
+            let children = elt.children;
+            for (let i = 0; i < children.length; i++) {
+                let child = children.item(i);
+                walkElt(child, f);
+            }
+            f(elt);
+        }
+        let comp_elt = ReactDom.findDOMNode(this);
+        if (this.state.entering) {
+            comp_elt.classList.add('animation-new');
+            this.setState({ entering: false });
+        }
+        // Momentarily apply the animation-pre-compute class
+        // to accurately measure the target maxHeight
+        // and check for the custom --is-collapsing property
+        // (This is basically an abomination and I am sorry.)
+        comp_elt.classList.add('animation-pre-compute');
+        walkElt(comp_elt, e => e.dataset.maxHeight = `${e.scrollHeight}px`);
+        comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing'));
+        comp_elt.classList.remove('animation-pre-compute');
+        comp_elt.classList.add('animation-start');
+        // If --is-collapsing was set by the animation-pre-compute class,
+        // then apply the maxHeight update at the end of this animation frame
+        // rather than the beginning of the next one.
+        // I have no idea why this works/is necessary, but it does/is.
+        if (comp_elt.dataset.isCollapsing == 1) {
+            walkElt(comp_elt, e => e.style.maxHeight = e.dataset.maxHeight);
+        }
+        requestAnimationFrame(() => {
+            // If --is-collapsing wasn't set in the animation-pre-compute class,
+            // then apply the maxHeight update now.
+            // Websites technology keyboard mouse.
+            if (comp_elt.dataset.isCollapsing != 1) {
+                walkElt(comp_elt, e => e.style.maxHeight = e.dataset.maxHeight);
+            }
+            comp_elt.classList.add('animation-active');
+            setTimeout(() => {
+                comp_elt.classList.remove('animation-new', 'animation-pre-compute', 'animation-start', 'animation-active');
+                walkElt(comp_elt, e => e.style.maxHeight = '');
+                if (this.props.onAnimationFinish) {
+                    this.props.onAnimationFinish();
+                }
+            }, this.props.timeout);
+        });
+    }
+    render() {
+        let classList = ['history', ...this.state.message_classes];
+        classList.push(...this.state.adding_message_classes.map(s => 'adding-' + s));
+        classList.push(...this.state.removing_message_classes.map(s => 'removing-' + s));
+        let className = classList.join(' ');
+        return React.createElement("div", { className: className }, this.props.children);
+    }
+}
+exports.BookGuy = BookGuy;
+class History3 extends React.Component {
+    constructor(props) {
+        super(props);
+        this.book_guys = [];
+        this.edit_after_update = false;
+        this.commit_after_update = false;
+    }
+    edit() {
+        this.props.history.forEach(hist => {
+            let { parser, message, message_classes, index } = hist;
+            let the_book_guy = this.book_guys[index];
+            the_book_guy.edit(this.props.possible_history[index].message_classes);
+        });
+    }
+    commit() {
+        this.book_guys.forEach(bg => bg.commit());
+    }
+    render() {
+        return React.createElement("div", null, this.props.history.map(hist => {
+            let msg_html = '';
+            if (hist.message !== undefined) {
+                msg_html = hist.message.innerHTML;
+            }
+            return React.createElement(BookGuy, { timeout: this.props.timeout, onAnimationFinish: this.props.onAnimationFinish, key: hist.index, ref: bg => this.book_guys[hist.index] = bg }, hist.index > 0 ? React.createElement(Text_1.ParsedText, { parser: hist.parser }) : '', React.createElement(Text_1.OutputText, { message_html: msg_html }));
+        }));
+    }
+    componentDidUpdate() {
+        if (this.edit_after_update) {
+            this.edit();
+            this.edit_after_update = false;
+        }
+        if (this.commit_after_update) {
+            this.commit();
+            this.commit_after_update = false;
+        }
+    }
+}
+exports.History3 = History3;
 const Fade = _a => {
     var { children } = _a,
         props = __rest(_a, ["children"]);
@@ -1171,9 +1331,6 @@ exports.History = _a => {
             message_classes = [];
         }
         let key = index.toString();
-        // if (message_classes.indexOf('forgotten') !== -1) {
-        //   key += '_forgotten';
-        // }
         if (message_classes.length > 0) {
             key += '_' + message_classes.join(':');
         }
@@ -1204,6 +1361,45 @@ exports.History = _a => {
         return React.createElement(Fade, Object.assign({ key: key }, fade_props), React.createElement("div", { className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message_html: msg_html })));
     }));
 };
+exports.History2 = _a => {
+    var { history, possible_history } = _a,
+        fade_props = __rest(_a, ["history", "possible_history"]);
+    return React.createElement("div", null, history.map(hist => {
+        let { parser, message, message_classes, index } = hist;
+        if (message_classes === undefined) {
+            message_classes = [];
+        }
+        let key = index.toString();
+        if (message_classes.length > 0) {
+            key += '_' + message_classes.join(':');
+        }
+        let possible_message_classes = possible_history[index].message_classes;
+        if (possible_message_classes === undefined) {
+            possible_message_classes = [];
+        }
+        let edit_message_classes = [];
+        for (let mc of message_classes) {
+            if (possible_message_classes.indexOf(mc) === -1) {
+                edit_message_classes.push('removing-' + mc);
+            }
+        }
+        for (let pmc of possible_message_classes) {
+            if (message_classes.indexOf(pmc) === -1) {
+                edit_message_classes.push('adding-' + pmc);
+            }
+        }
+        let edit_message_class_name = edit_message_classes.join(' ');
+        let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
+        let msg_html = '';
+        if (message !== undefined) {
+            msg_html = message.innerHTML;
+        }
+        if (index === 0) {
+            return React.createElement(BookGuy, { key: index, className: class_name }, React.createElement(Text_1.OutputText, { message_html: msg_html }));
+        }
+        return React.createElement(BookGuy, { key: index, className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message_html: msg_html }));
+    }));
+};
 
 /***/ }),
 /* 11 */
@@ -1220,7 +1416,7 @@ var __rest = this && this.__rest || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(5);
+const keyboard_tools_1 = __webpack_require__(6);
 const InputWrapper = props => {
     const { children } = props,
           rest = __rest(props, ["children"]);
@@ -1321,7 +1517,7 @@ exports.Prompt = Prompt;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(5);
+const keyboard_tools_1 = __webpack_require__(6);
 const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
@@ -1408,11 +1604,11 @@ exports.TypeaheadList = TypeaheadList;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const ReactDom = __webpack_require__(9);
-const Terminal_1 = __webpack_require__(6);
-const commands_1 = __webpack_require__(7);
+const ReactDom = __webpack_require__(4);
+const Terminal_1 = __webpack_require__(7);
+const commands_1 = __webpack_require__(8);
 //import {BirdWorld} from '../typescript/bird_world';
-const venience_world_1 = __webpack_require__(8);
+const venience_world_1 = __webpack_require__(9);
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -1471,14 +1667,17 @@ function index_oms(oms) {
 //     'grass, interpreting 3' |
 //     'grass, ending interpretation' |
 //     'alcove, entering the forest' |
+// Syntax shortcuts:
+// * = keyword
+// & = option
 exports.alcove_oms = index_oms([{
     id: 'bed, sleeping 1',
     message: '',
-    transitions: [[['awaken'], 'bed, awakening 1']]
+    transitions: [[['*awaken'], 'bed, awakening 1']]
 }, {
     id: 'bed, awakening 1',
     message: 'You awaken in your bed.',
-    transitions: [[['sit up'], 'bed, sitting up 1']]
+    transitions: [[['*sit up'], 'bed, sitting up 1']]
 }, {
     id: 'bed, sitting up 1',
     message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
@@ -1486,13 +1685,13 @@ exports.alcove_oms = index_oms([{
         Your body still feels heavy with sleep.
         <br /><br />
         Perhaps you’ll doze until the sun rises properly.`,
-    transitions: [[['lie down'], 'bed, lying down 1']]
+    transitions: [[['*lie down'], 'bed, lying down 1']]
 }, {
     id: 'bed, lying down 1',
     message: `Yes, no reason to be up now.
         <br /><br />
         You slide back under the blankets. The autumn breeze cools your face.`,
-    transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
+    transitions: [[['*sleep', 'until', '&sunrise'], 'bed, sleeping 2']]
 }, {
     id: 'bed, sleeping 2',
     message: `You dream of<br /><br />
@@ -1500,15 +1699,15 @@ exports.alcove_oms = index_oms([{
         a <i>shattered mirror,</i><br /><br />
         an <i>ice-covered mountain,</i><br /><br />
         <div class="interp">and <i>her voice.</i></div>`,
-    transitions: [[['awaken'], 'bed, awakening 2']]
+    transitions: [[['*awaken'], 'bed, awakening 2']]
 }, {
     id: 'bed, awakening 2',
     message: `You awaken in your bed.`,
-    transitions: [[['sit up'], 'bed, sitting up 2']]
+    transitions: [[['*sit', 'up'], 'bed, sitting up 2']]
 }, {
     id: 'bed, sitting up 2',
     message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
-    transitions: [[['look', 'around'], 'bed, looking around']]
+    transitions: [[['*look', '&around'], 'bed, looking around']]
 }, {
     id: 'bed, looking around',
     message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
@@ -1516,13 +1715,13 @@ exports.alcove_oms = index_oms([{
         You see your desk and chair a few paces away, in the center of the alcove.
         <br /><br />
         On all sides you are surrounded by trees.`,
-    transitions: [[['sit', 'at', 'the desk'], 'desk, sitting down']]
+    transitions: [[['*sit', 'at', '&the desk'], 'desk, sitting down']]
 }, {
     id: 'desk, sitting down',
     message: `You pace across the grass and take your seat at the leather-bound study chair.
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
-    transitions: [[['open', 'the envelope'], 'desk, opening the envelope']]
+    transitions: [[['*open', '&the envelope'], 'desk, opening the envelope']]
 }, {
     id: 'desk, opening the envelope',
     message: `You undo the twine, leaving it in a loop on the desk.
@@ -1530,13 +1729,13 @@ exports.alcove_oms = index_oms([{
         You unfold the envelope’s flap.
         <br /><br />
         It’s empty. But it shouldn’t be.`,
-    transitions: [[['try', 'to', 'understand'], 'desk, trying to understand']]
+    transitions: [[['*try', 'to', '&understand'], 'desk, trying to understand']]
 }, {
     id: 'desk, trying to understand',
     message: `A panic comes over you. Without your notes, how will you continue your work?
         <br /><br />
         How will you understand? How will you honor Katya’s memory?`,
-    transitions: [[['consider', 'the sense of', 'panic'], 'desk, considering the sense of panic']]
+    transitions: [[['*consider', 'the', 'sense of', '&panic'], 'desk, considering the sense of panic']]
 }, {
     id: 'desk, considering the sense of panic',
     message: `<div class="interp">
@@ -1544,7 +1743,7 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         It throws one particular path into relief: the path to the bottom.
         </div>`,
-    transitions: [[['search', 'for', 'the notes'], 'desk, searching for the notes']]
+    transitions: [[['*search', 'for', '&the notes'], 'desk, searching for the notes']]
 }, {
     id: 'desk, searching for the notes',
     message: `You look in the envelope again.
@@ -1556,19 +1755,19 @@ exports.alcove_oms = index_oms([{
         <div class="interp">
         You can feel yourself slipping down an icy hill.
         </div>`,
-    transitions: [[['slip', 'further'], 'grass, slipping further']]
+    transitions: [[['*slip', 'further'], 'grass, slipping further']]
 }, {
     id: 'grass, slipping further',
     message: `Thoughts of dread, of a terrible, empty future, fill your mind.
         <br /><br />
         You curl up on the grass beneath you, holding yourself.`,
-    transitions: [[['consider', 'the sense of', 'dread'], 'grass, considering the sense of dread']]
+    transitions: [[['*consider', 'the sense of', '&dread'], 'grass, considering the sense of dread']]
 }, {
     id: 'grass, considering the sense of dread',
     message: `<div class="interp">
         <i>"Catch your breath, dear,"</i> Katya would say. <i>"The mountain, the ice, they are here to tell you something."</i>
         </div>`,
-    transitions: [[['tell', 'me', 'what?'], 'grass, asking 1']]
+    transitions: [[['tell', 'me', '&what?'], 'grass, asking 1']]
 }, {
     id: 'grass, asking 1',
     message: `<div class="interp">
@@ -1576,7 +1775,7 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         That your capacity to experience meaning is as energetic as a body sliding down a mountain."</i>
         </div>`,
-    transitions: [[['what', 'should', 'I', 'do?'], 'grass, asking 2']]
+    transitions: [[['what', 'should', 'I', '&do?'], 'grass, asking 2']]
 }, {
     id: 'grass, asking 2',
     message: `<div class="interp"><i>
@@ -1586,21 +1785,25 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         "And then, choose where to go."
         </i></div>`,
-    transitions: [[['begin', 'interpretation'], 'alcove, beginning interpretation']]
+    transitions: [[['begin', '*interpretation'], 'alcove, beginning interpretation']]
 }, {
     id: 'alcove, beginning interpretation',
     message: `
+        <div class="face-of-it">
         A nervous energy buzzes within your mind.
         <br />
         <br />
+        </div>
         <div class="interp-alcove-1">
         Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to sense of meaning within the world. You have a <i>compass</i>.
         <br />
         <br />
         </div>
+        <div class="face-of-it">
         Your notes are gone.
         <br />
         <br />
+        </div>
         <div class="interp-alcove-2">
         Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
         <br />
@@ -1609,26 +1812,28 @@ exports.alcove_oms = index_oms([{
         <br />
         <br />
         </div>
+        <div class="face-of-it">
         You are alone in a grassy alcove in the forest.
+        </div>
         <div class="interp-alcove-3">
         <br />
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
         <br /><br />
         Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
         </div>`,
-    transitions: [[['judge', 'the direction of gravity'], 'alcove, interpreting 1']]
+    transitions: [[['*judge', '&the direction of gravity'], 'alcove, interpreting 1']]
 }, {
     id: 'alcove, interpreting 1',
     message: ``,
-    transitions: [[['judge', 'the slickness of the ice'], 'alcove, interpreting 2']]
+    transitions: [[['*judge', '&the slickness of the ice'], 'alcove, interpreting 2']]
 }, {
     id: 'alcove, interpreting 2',
     message: ``,
-    transitions: [[['survey', 'the horizon'], 'alcove, interpreting 3']]
+    transitions: [[['*survey', '&the horizon'], 'alcove, interpreting 3']]
 }, {
     id: 'alcove, interpreting 3',
     message: ``,
-    transitions: [[['end', 'interpretation'], 'alcove, ending interpretation']]
+    transitions: [[['end', '*interpretation'], 'alcove, ending interpretation']]
 }, {
     id: 'alcove, ending interpretation',
     message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
@@ -1636,7 +1841,7 @@ exports.alcove_oms = index_oms([{
         You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
         <br /><br />
         But your sense of purpose compels you. To go. To seek. To try to understand.`,
-    transitions: [[['enter', 'the', 'forest'], 'alcove, entering the forest']]
+    transitions: [[['*enter', 'the', '&forest'], 'alcove, entering the forest']]
 }, {
     id: 'alcove, entering the forest',
     message: `What lies within the forest, and beyond? What will it be like, out there?

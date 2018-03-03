@@ -7,6 +7,7 @@ import {
 
 import {
     CommandParser,
+    DisplayEltType,
     with_early_stopping,
     consume_option_stepwise_eager
 } from '../parser'
@@ -17,7 +18,7 @@ import {
     array_fuck_contains
 } from '../datatypes';
 
-import {untokenize} from '../text_tools';
+import {tokenize, untokenize} from '../text_tools';
 
 import {
     ObserverMomentID,
@@ -46,7 +47,6 @@ import {
 type VenienceWorldState = {
     experiences?: ObserverMomentID[],
     history_index?: number,
-    remembered_meditation?: boolean
 }
 
 export class VenienceWorld implements WorldType<VenienceWorld>{
@@ -54,36 +54,27 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
     readonly experiences: ObserverMomentID[];
     readonly history_index: number;
     
-    readonly remembered_meditation: boolean;
-
-    constructor({experiences, history_index, remembered_meditation}: VenienceWorldState) {
+    constructor({experiences, history_index}: VenienceWorldState) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
         if (history_index === undefined) {
             history_index = 0;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = false;
-        }
-
+        
         this.experiences = experiences;
         this.history_index = history_index;
-        this.remembered_meditation = remembered_meditation;
     }
 
-    update({experiences, history_index, remembered_meditation}: VenienceWorldState) {
+    update({experiences, history_index}: VenienceWorldState) {
         if (experiences === undefined) {
             experiences = this.experiences;
         }
         if (history_index === undefined) {
             history_index = this.history_index;
         }
-        if (remembered_meditation === undefined) {
-            remembered_meditation = this.remembered_meditation;
-        }
 
-        return new VenienceWorld({experiences, history_index, remembered_meditation});
+        return new VenienceWorld({experiences, history_index});
     }
 
     current_om(): ObserverMomentID {
@@ -108,16 +99,38 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
                 return;
             }
 
-            let cmd_choice = yield* consume_option_stepwise_eager(parser, cmd_options);
+            let om_id_choice: ObserverMomentID;
 
-            yield parser.done();
-
-            let om_id_choice = world.current_om();
-            om.transitions.forEach(([cmd, om_id]) => {
-                if (cmd_choice === untokenize(cmd)) {
-                    om_id_choice = om_id;
+            if (cmd_options.length === 1) {
+                let cmd = cmd_options[0];
+                om_id_choice = om.transitions[0][1];
+                for (let phrase of cmd) {
+                    let display: DisplayEltType = DisplayEltType.filler;
+                    if (phrase.charAt(0) === '*') {
+                        display = DisplayEltType.keyword;
+                        phrase = phrase.substring(1);
+                    } else if (phrase.charAt(0) === '&') {
+                        display = DisplayEltType.option;
+                        phrase = phrase.substring(1);
+                    }
+                    tokenize(phrase)
+                    yield parser.consume_exact(tokenize(phrase)[0], display);
                 }
-            });
+                yield parser.done();
+                
+            } else {
+
+                let cmd_choice = yield* consume_option_stepwise_eager(parser, cmd_options);
+
+                yield parser.done();
+
+                om_id_choice = world.current_om();
+                om.transitions.forEach(([cmd, om_id]) => {
+                    if (cmd_choice === untokenize(cmd)) {
+                        om_id_choice = om_id;
+                    }
+                });
+            }
 
             return {world: world.update({
                         experiences: [...world.experiences, om_id_choice],
@@ -142,10 +155,6 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
                 let new_experiences = this.experiences.slice().fill(null, loop_idx + 1);
                 world_update.experiences = new_experiences;
             }
-        }
-
-        if (this.current_om() === 'top, surveying') {
-            world_update.remembered_meditation = true;
         }
 
         if (message_parts.length > 0) {
@@ -200,14 +209,6 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
 
         if (this.experiences[history_elt.world.history_index] === null) {
             interp_op.push({'add': 'forgotten'});
-        }
-
-        if (this.remembered_meditation && history_elt.message !== undefined) {
-            let notes = history_elt.message.querySelectorAll('.meditation-1');
-            if (notes.length > 0){
-                console.log('enabling meditation on an elt');
-                interp_op.push({'add': 'meditation-1-enabled'});
-            }
         }
 
         return interp_op;
