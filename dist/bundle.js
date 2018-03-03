@@ -1055,14 +1055,33 @@ class VenienceWorld {
                 yield parser.done();
                 return;
             }
-            let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
-            yield parser.done();
-            let om_id_choice = world.current_om();
-            om.transitions.forEach(([cmd, om_id]) => {
-                if (cmd_choice === text_tools_1.untokenize(cmd)) {
-                    om_id_choice = om_id;
+            let om_id_choice;
+            if (cmd_options.length === 1) {
+                let cmd = cmd_options[0];
+                om_id_choice = om.transitions[0][1];
+                for (let phrase of cmd) {
+                    let display = parser_1.DisplayEltType.filler;
+                    if (phrase.charAt(0) === '*') {
+                        display = parser_1.DisplayEltType.keyword;
+                        phrase = phrase.substring(1);
+                    } else if (phrase.charAt(0) === '&') {
+                        display = parser_1.DisplayEltType.option;
+                        phrase = phrase.substring(1);
+                    }
+                    text_tools_1.tokenize(phrase);
+                    yield parser.consume_exact(text_tools_1.tokenize(phrase)[0], display);
                 }
-            });
+                yield parser.done();
+            } else {
+                let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
+                yield parser.done();
+                om_id_choice = world.current_om();
+                om.transitions.forEach(([cmd, om_id]) => {
+                    if (cmd_choice === text_tools_1.untokenize(cmd)) {
+                        om_id_choice = om_id;
+                    }
+                });
+            }
             return { world: world.update({
                     experiences: [...world.experiences, om_id_choice],
                     history_index: world.history_index + 1
@@ -1215,7 +1234,7 @@ class BookGuy extends React.Component {
         // Momentarily apply the animation-pre-compute class
         // to accurately measure the target maxHeight
         // and check for the custom --is-collapsing property
-        // (This is basically an abomination.)
+        // (This is basically an abomination and I am sorry.)
         comp_elt.classList.add('animation-pre-compute');
         walkElt(comp_elt, e => e.dataset.maxHeight = `${e.scrollHeight}px`);
         comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing'));
@@ -1648,14 +1667,17 @@ function index_oms(oms) {
 //     'grass, interpreting 3' |
 //     'grass, ending interpretation' |
 //     'alcove, entering the forest' |
+// Syntax shortcuts:
+// * = keyword
+// & = option
 exports.alcove_oms = index_oms([{
     id: 'bed, sleeping 1',
     message: '',
-    transitions: [[['awaken'], 'bed, awakening 1']]
+    transitions: [[['*awaken'], 'bed, awakening 1']]
 }, {
     id: 'bed, awakening 1',
     message: 'You awaken in your bed.',
-    transitions: [[['sit up'], 'bed, sitting up 1']]
+    transitions: [[['*sit up'], 'bed, sitting up 1']]
 }, {
     id: 'bed, sitting up 1',
     message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
@@ -1663,13 +1685,13 @@ exports.alcove_oms = index_oms([{
         Your body still feels heavy with sleep.
         <br /><br />
         Perhaps you’ll doze until the sun rises properly.`,
-    transitions: [[['lie down'], 'bed, lying down 1']]
+    transitions: [[['*lie down'], 'bed, lying down 1']]
 }, {
     id: 'bed, lying down 1',
     message: `Yes, no reason to be up now.
         <br /><br />
         You slide back under the blankets. The autumn breeze cools your face.`,
-    transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
+    transitions: [[['*sleep', 'until', '&sunrise'], 'bed, sleeping 2']]
 }, {
     id: 'bed, sleeping 2',
     message: `You dream of<br /><br />
@@ -1677,15 +1699,15 @@ exports.alcove_oms = index_oms([{
         a <i>shattered mirror,</i><br /><br />
         an <i>ice-covered mountain,</i><br /><br />
         <div class="interp">and <i>her voice.</i></div>`,
-    transitions: [[['awaken'], 'bed, awakening 2']]
+    transitions: [[['*awaken'], 'bed, awakening 2']]
 }, {
     id: 'bed, awakening 2',
     message: `You awaken in your bed.`,
-    transitions: [[['sit up'], 'bed, sitting up 2']]
+    transitions: [[['*sit', 'up'], 'bed, sitting up 2']]
 }, {
     id: 'bed, sitting up 2',
     message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
-    transitions: [[['look', 'around'], 'bed, looking around']]
+    transitions: [[['*look', '&around'], 'bed, looking around']]
 }, {
     id: 'bed, looking around',
     message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
@@ -1693,13 +1715,13 @@ exports.alcove_oms = index_oms([{
         You see your desk and chair a few paces away, in the center of the alcove.
         <br /><br />
         On all sides you are surrounded by trees.`,
-    transitions: [[['sit', 'at', 'the desk'], 'desk, sitting down']]
+    transitions: [[['*sit', 'at', '&the desk'], 'desk, sitting down']]
 }, {
     id: 'desk, sitting down',
     message: `You pace across the grass and take your seat at the leather-bound study chair.
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
-    transitions: [[['open', 'the envelope'], 'desk, opening the envelope']]
+    transitions: [[['*open', '&the envelope'], 'desk, opening the envelope']]
 }, {
     id: 'desk, opening the envelope',
     message: `You undo the twine, leaving it in a loop on the desk.
@@ -1707,13 +1729,13 @@ exports.alcove_oms = index_oms([{
         You unfold the envelope’s flap.
         <br /><br />
         It’s empty. But it shouldn’t be.`,
-    transitions: [[['try', 'to', 'understand'], 'desk, trying to understand']]
+    transitions: [[['*try', 'to', '&understand'], 'desk, trying to understand']]
 }, {
     id: 'desk, trying to understand',
     message: `A panic comes over you. Without your notes, how will you continue your work?
         <br /><br />
         How will you understand? How will you honor Katya’s memory?`,
-    transitions: [[['consider', 'the sense of', 'panic'], 'desk, considering the sense of panic']]
+    transitions: [[['*consider', 'the', 'sense of', '&panic'], 'desk, considering the sense of panic']]
 }, {
     id: 'desk, considering the sense of panic',
     message: `<div class="interp">
@@ -1721,7 +1743,7 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         It throws one particular path into relief: the path to the bottom.
         </div>`,
-    transitions: [[['search', 'for', 'the notes'], 'desk, searching for the notes']]
+    transitions: [[['*search', 'for', '&the notes'], 'desk, searching for the notes']]
 }, {
     id: 'desk, searching for the notes',
     message: `You look in the envelope again.
@@ -1733,19 +1755,19 @@ exports.alcove_oms = index_oms([{
         <div class="interp">
         You can feel yourself slipping down an icy hill.
         </div>`,
-    transitions: [[['slip', 'further'], 'grass, slipping further']]
+    transitions: [[['*slip', 'further'], 'grass, slipping further']]
 }, {
     id: 'grass, slipping further',
     message: `Thoughts of dread, of a terrible, empty future, fill your mind.
         <br /><br />
         You curl up on the grass beneath you, holding yourself.`,
-    transitions: [[['consider', 'the sense of', 'dread'], 'grass, considering the sense of dread']]
+    transitions: [[['*consider', 'the sense of', '&dread'], 'grass, considering the sense of dread']]
 }, {
     id: 'grass, considering the sense of dread',
     message: `<div class="interp">
         <i>"Catch your breath, dear,"</i> Katya would say. <i>"The mountain, the ice, they are here to tell you something."</i>
         </div>`,
-    transitions: [[['tell', 'me', 'what?'], 'grass, asking 1']]
+    transitions: [[['tell', 'me', '&what?'], 'grass, asking 1']]
 }, {
     id: 'grass, asking 1',
     message: `<div class="interp">
@@ -1753,7 +1775,7 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         That your capacity to experience meaning is as energetic as a body sliding down a mountain."</i>
         </div>`,
-    transitions: [[['what', 'should', 'I', 'do?'], 'grass, asking 2']]
+    transitions: [[['what', 'should', 'I', '&do?'], 'grass, asking 2']]
 }, {
     id: 'grass, asking 2',
     message: `<div class="interp"><i>
@@ -1763,7 +1785,7 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         "And then, choose where to go."
         </i></div>`,
-    transitions: [[['begin', 'interpretation'], 'alcove, beginning interpretation']]
+    transitions: [[['begin', '*interpretation'], 'alcove, beginning interpretation']]
 }, {
     id: 'alcove, beginning interpretation',
     message: `
@@ -1799,19 +1821,19 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
         </div>`,
-    transitions: [[['judge', 'the direction of gravity'], 'alcove, interpreting 1']]
+    transitions: [[['*judge', '&the direction of gravity'], 'alcove, interpreting 1']]
 }, {
     id: 'alcove, interpreting 1',
     message: ``,
-    transitions: [[['judge', 'the slickness of the ice'], 'alcove, interpreting 2']]
+    transitions: [[['*judge', '&the slickness of the ice'], 'alcove, interpreting 2']]
 }, {
     id: 'alcove, interpreting 2',
     message: ``,
-    transitions: [[['survey', 'the horizon'], 'alcove, interpreting 3']]
+    transitions: [[['*survey', '&the horizon'], 'alcove, interpreting 3']]
 }, {
     id: 'alcove, interpreting 3',
     message: ``,
-    transitions: [[['end', 'interpretation'], 'alcove, ending interpretation']]
+    transitions: [[['end', '*interpretation'], 'alcove, ending interpretation']]
 }, {
     id: 'alcove, ending interpretation',
     message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
@@ -1819,7 +1841,7 @@ exports.alcove_oms = index_oms([{
         You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
         <br /><br />
         But your sense of purpose compels you. To go. To seek. To try to understand.`,
-    transitions: [[['enter', 'the', 'forest'], 'alcove, entering the forest']]
+    transitions: [[['*enter', 'the', '&forest'], 'alcove, entering the forest']]
 }, {
     id: 'alcove, entering the forest',
     message: `What lies within the forest, and beyond? What will it be like, out there?

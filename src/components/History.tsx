@@ -242,6 +242,7 @@ export const History = ({history, possible_history, ...fade_props}) => (
         }
 
         let key = index.toString();
+        
         if (message_classes.length > 0) {
           key += '_' + message_classes.join(':');
         }

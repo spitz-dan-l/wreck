@@ -7,6 +7,7 @@ import {
 
 import {
     CommandParser,
+    DisplayEltType,
     with_early_stopping,
     consume_option_stepwise_eager
 } from '../parser'
@@ -17,7 +18,7 @@ import {
     array_fuck_contains
 } from '../datatypes';
 
-import {untokenize} from '../text_tools';
+import {tokenize, untokenize} from '../text_tools';
 
 import {
     ObserverMomentID,
@@ -98,16 +99,38 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
                 return;
             }
 
-            let cmd_choice = yield* consume_option_stepwise_eager(parser, cmd_options);
+            let om_id_choice: ObserverMomentID;
 
-            yield parser.done();
-
-            let om_id_choice = world.current_om();
-            om.transitions.forEach(([cmd, om_id]) => {
-                if (cmd_choice === untokenize(cmd)) {
-                    om_id_choice = om_id;
+            if (cmd_options.length === 1) {
+                let cmd = cmd_options[0];
+                om_id_choice = om.transitions[0][1];
+                for (let phrase of cmd) {
+                    let display: DisplayEltType = DisplayEltType.filler;
+                    if (phrase.charAt(0) === '*') {
+                        display = DisplayEltType.keyword;
+                        phrase = phrase.substring(1);
+                    } else if (phrase.charAt(0) === '&') {
+                        display = DisplayEltType.option;
+                        phrase = phrase.substring(1);
+                    }
+                    tokenize(phrase)
+                    yield parser.consume_exact(tokenize(phrase)[0], display);
                 }
-            });
+                yield parser.done();
+                
+            } else {
+
+                let cmd_choice = yield* consume_option_stepwise_eager(parser, cmd_options);
+
+                yield parser.done();
+
+                om_id_choice = world.current_om();
+                om.transitions.forEach(([cmd, om_id]) => {
+                    if (cmd_choice === untokenize(cmd)) {
+                        om_id_choice = om_id;
+                    }
+                });
+            }
 
             return {world: world.update({
                         experiences: [...world.experiences, om_id_choice],
