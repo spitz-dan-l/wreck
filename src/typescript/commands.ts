@@ -14,8 +14,12 @@ import {
 
 import {CommandParser, DisplayEltType, Token, MatchValidity} from './parser';
 
-export interface WorldType<T extends WorldType<T>> {
-    handle_command(parser: CommandParser): CommandResult<T>,
+export interface CommandHandler<T extends WorldType<T>> {
+    handle_command(parser: CommandParser): CommandResult<T>
+}
+
+export interface WorldType<T extends WorldType<T>> extends CommandHandler<T> {
+    // handle_command(parser: CommandParser): CommandResult<T>,
     interstitial_update?(): InterstitialUpdateResult<T>,
     interpret_history?(history: InterstitialUpdateResult<T>): HistoryInterpretationOp
 }

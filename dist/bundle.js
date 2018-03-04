@@ -1050,6 +1050,10 @@ class VenienceWorld {
         let world = this;
         return parser_1.with_early_stopping(function* (parser) {
             let om = observer_moments_1.alcove_oms.get(world.current_om());
+            if (om.transitions === null) {
+                //dispatch to a fancier handler
+                return;
+            }
             let cmd_options = om.transitions.map(([cmd, om_id]) => cmd);
             if (cmd_options.length === 0) {
                 yield parser.done();
@@ -1204,20 +1208,22 @@ class BookGuy extends React.Component {
         this.setState({ removing_message_classes, adding_message_classes });
     }
     commit() {
-        if (this.state.entering || this.state.adding_message_classes.length > 0 || this.state.removing_message_classes.length > 0) {
+        let adding_classes = this.state.adding_message_classes;
+        let removing_classes = this.state.removing_message_classes;
+        if (this.state.entering || adding_classes.length > 0 || removing_classes.length > 0) {
             let new_message_classes = [...this.state.message_classes];
-            new_message_classes.push(...this.state.adding_message_classes);
-            for (let rmc of this.state.removing_message_classes) {
+            new_message_classes.push(...adding_classes);
+            for (let rmc of removing_classes) {
                 new_message_classes.splice(new_message_classes.indexOf(rmc), 1);
             }
             this.setState({
                 message_classes: new_message_classes,
                 adding_message_classes: [],
                 removing_message_classes: []
-            }, this.animate);
+            }, () => this.animate(adding_classes, removing_classes));
         }
     }
-    animate() {
+    animate(adding_classes = [], removing_classes = []) {
         function walkElt(elt, f) {
             let children = elt.children;
             for (let i = 0; i < children.length; i++) {
@@ -1239,7 +1245,8 @@ class BookGuy extends React.Component {
         walkElt(comp_elt, e => e.dataset.maxHeight = `${e.scrollHeight}px`);
         comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing'));
         comp_elt.classList.remove('animation-pre-compute');
-        comp_elt.classList.add('animation-start');
+        let edit_classes = [...adding_classes.map(c => 'adding-' + c), ...removing_classes.map(c => 'removing-' + c)];
+        comp_elt.classList.add('animation-start', ...edit_classes);
         // If --is-collapsing was set by the animation-pre-compute class,
         // then apply the maxHeight update at the end of this animation frame
         // rather than the beginning of the next one.
@@ -1256,7 +1263,7 @@ class BookGuy extends React.Component {
             }
             comp_elt.classList.add('animation-active');
             setTimeout(() => {
-                comp_elt.classList.remove('animation-new', 'animation-pre-compute', 'animation-start', 'animation-active');
+                comp_elt.classList.remove('animation-new', 'animation-start', 'animation-active', ...edit_classes);
                 walkElt(comp_elt, e => e.style.maxHeight = '');
                 if (this.props.onAnimationFinish) {
                     this.props.onAnimationFinish();
@@ -1266,8 +1273,8 @@ class BookGuy extends React.Component {
     }
     render() {
         let classList = ['history', ...this.state.message_classes];
-        classList.push(...this.state.adding_message_classes.map(s => 'adding-' + s));
-        classList.push(...this.state.removing_message_classes.map(s => 'removing-' + s));
+        classList.push(...this.state.adding_message_classes.map(s => 'would-add-' + s));
+        classList.push(...this.state.removing_message_classes.map(s => 'would-remove-' + s));
         let className = classList.join(' ');
         return React.createElement("div", { className: className }, this.props.children);
     }
@@ -1795,7 +1802,7 @@ exports.alcove_oms = index_oms([{
         <br />
         </div>
         <div class="interp-alcove-1">
-        Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to sense of meaning within the world. You have a <i>compass</i>.
+        Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to a sense of meaning within the world. You have a <i>compass</i>.
         <br />
         <br />
         </div>

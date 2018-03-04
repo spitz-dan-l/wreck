@@ -3,10 +3,19 @@ import {
     FuckSet
 } from '../datatypes';
 
+import {
+    CommandHandler,
+    WorldType
+} from '../commands';
+
+import {
+    CommandParser
+} from '../parser';
+
 export type ObserverMoment = {
     id: ObserverMomentID,
     message: string,
-    transitions: [string[], ObserverMomentID][]
+    transitions: [string[], ObserverMomentID][] | null
 };
 
 function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMoment>{
@@ -277,7 +286,7 @@ export let alcove_oms = index_oms([
         <br />
         </div>
         <div class="interp-alcove-1">
-        Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to sense of meaning within the world. You have a <i>compass</i>.
+        Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to a sense of meaning within the world. You have a <i>compass</i>.
         <br />
         <br />
         </div>
@@ -341,7 +350,7 @@ export let alcove_oms = index_oms([
         <i>(End of demo. Thanks for playing!)</i>`,
         transitions: []
     },
-])
+]);
 
 export let tower_oms = index_oms([
     {

@@ -92,6 +92,11 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
         return with_early_stopping(function*(parser: CommandParser) {
             let om = alcove_oms.get(world.current_om());
 
+            if (om.transitions === null) {
+                //dispatch to a fancier handler
+                return;
+            }
+
             let cmd_options = om.transitions.map(([cmd, om_id]) => cmd)
 
             if (cmd_options.length === 0) {
@@ -117,7 +122,7 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
                     yield parser.consume_exact(tokenize(phrase)[0], display);
                 }
                 yield parser.done();
-                
+
             } else {
 
                 let cmd_choice = yield* consume_option_stepwise_eager(parser, cmd_options);

@@ -30,7 +30,7 @@
 }
 
 /* add pulsing */
-.history.adding-forgotten {
+.history.would-add-forgotten {
     opacity: 0.4;
 }
 
@@ -58,10 +58,10 @@
 }
 
 /* add pulsing */
-.history.adding-interp-alcove-1-enabled,
-.history.adding-interp-alcove-2-enabled,
-.history.adding-interp-alcove-3-enabled,
-.history.adding-meditation-1-enabled {
+.history.would-add-interp-alcove-1-enabled,
+.history.would-add-interp-alcove-2-enabled,
+.history.would-add-interp-alcove-3-enabled,
+.history.would-add-meditation-1-enabled {
     background-color: midnightblue;
 }
 
@@ -83,23 +83,18 @@
     opacity: 1;
 }
 
-.history.interp-alcove-1-enabled {
-
-}
-
-.history.interp-alcove-1-enabled:not(.interp-alcove-2-enabled):not(.interp-alcove-3-enabled).animation-start .interp-alcove-1,
-.history.interp-alcove-2-enabled:not(.interp-alcove-3-enabled).animation-start .interp-alcove-2,
-.history.interp-alcove-3-enabled.animation-start .interp-alcove-3 {
+.history.adding-interp-alcove-1-enabled.animation-start .interp-alcove-1,
+.history.adding-interp-alcove-2-enabled.animation-start .interp-alcove-2,
+.history.adding-interp-alcove-3-enabled.animation-start .interp-alcove-3 {
     opacity: 0.01;
     max-height: 0px;
 }
 
-.history.interp-alcove-1-enabled:not(.interp-alcove-2-enabled):not(.interp-alcove-3-enabled).animation-start.animation-active .interp-alcove-1,
-.history.interp-alcove-2-enabled:not(.interp-alcove-3-enabled).animation-start.animation-active .interp-alcove-2,
-.history.interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3 {
+.history.adding-interp-alcove-1-enabled.animation-start.animation-active .interp-alcove-1,
+.history.adding-interp-alcove-2-enabled.animation-start.animation-active .interp-alcove-2,
+.history.adding-interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3 {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;
 }
-
 

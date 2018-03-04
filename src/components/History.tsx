@@ -60,14 +60,17 @@ export class BookGuy extends React.Component<any, any> {
   }
 
   commit() {
+    let adding_classes = this.state.adding_message_classes;
+    let removing_classes = this.state.removing_message_classes;
+
     if (this.state.entering
-        || this.state.adding_message_classes.length > 0
-        || this.state.removing_message_classes.length > 0){
+        || adding_classes.length > 0
+        || removing_classes.length > 0){
       let new_message_classes = [...this.state.message_classes];
 
-      new_message_classes.push(...this.state.adding_message_classes);
+      new_message_classes.push(...adding_classes);
 
-      for (let rmc of this.state.removing_message_classes) {
+      for (let rmc of removing_classes) {
         new_message_classes.splice(new_message_classes.indexOf(rmc), 1);
       }
 
@@ -75,11 +78,11 @@ export class BookGuy extends React.Component<any, any> {
         message_classes: new_message_classes,
         adding_message_classes: [],
         removing_message_classes: [],
-      }, this.animate);
+      }, () => this.animate(adding_classes, removing_classes));
     }
   }
 
-  animate() {
+  animate(adding_classes=[], removing_classes=[]) {
     function walkElt(elt, f){
       let children = elt.children;
       for (let i = 0; i < children.length; i++) {
@@ -107,7 +110,13 @@ export class BookGuy extends React.Component<any, any> {
 
     comp_elt.classList.remove('animation-pre-compute');
 
-    comp_elt.classList.add('animation-start');
+    
+    let edit_classes = [
+      ...adding_classes.map(c => 'adding-' + c),
+      ...removing_classes.map(c => 'removing-' + c)
+    ]
+    comp_elt.classList.add('animation-start', ...edit_classes);
+
     
     // If --is-collapsing was set by the animation-pre-compute class,
     // then apply the maxHeight update at the end of this animation frame
@@ -128,7 +137,12 @@ export class BookGuy extends React.Component<any, any> {
       comp_elt.classList.add('animation-active');
 
       setTimeout(() => {
-        comp_elt.classList.remove('animation-new', 'animation-pre-compute', 'animation-start', 'animation-active');
+        comp_elt.classList.remove(
+          'animation-new',
+          'animation-start',
+          'animation-active',
+          ...edit_classes);
+
         walkElt(comp_elt, (e) => e.style.maxHeight = '');
 
         if (this.props.onAnimationFinish){
@@ -141,8 +155,8 @@ export class BookGuy extends React.Component<any, any> {
 
   render() {
     let classList = ['history', ...this.state.message_classes];
-    classList.push(...this.state.adding_message_classes.map(s => 'adding-'+s));
-    classList.push(...this.state.removing_message_classes.map(s => 'removing-'+s));
+    classList.push(...this.state.adding_message_classes.map(s => 'would-add-'+s));
+    classList.push(...this.state.removing_message_classes.map(s => 'would-remove-'+s));
     
     let className = classList.join(' ');
     
