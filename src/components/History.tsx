@@ -106,7 +106,7 @@ export class BookGuy extends React.Component<any, any> {
     comp_elt.classList.add('animation-pre-compute');
     
     walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
-    comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing'));
+    comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing')) || 0;
 
     comp_elt.classList.remove('animation-pre-compute');
 

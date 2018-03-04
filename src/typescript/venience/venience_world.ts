@@ -1,5 +1,6 @@
 import {
     CommandResult,
+    CommandHandler,
     InterstitialUpdateResult,
     HistoryInterpretationOp,
     WorldType
@@ -23,6 +24,7 @@ import {tokenize, untokenize} from '../text_tools';
 import {
     ObserverMomentID,
     ObserverMoment,
+    has_transition_list,
     alcove_oms
 } from './observer_moments';
 
@@ -48,6 +50,8 @@ type VenienceWorldState = {
     experiences?: ObserverMomentID[],
     history_index?: number,
 }
+
+export type VenienceWorldCommandHandler = CommandHandler<VenienceWorld>;
 
 export class VenienceWorld implements WorldType<VenienceWorld>{
 
@@ -92,7 +96,7 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
         return with_early_stopping(function*(parser: CommandParser) {
             let om = alcove_oms.get(world.current_om());
 
-            if (om.transitions === null) {
+            if (!has_transition_list(om)) {
                 //dispatch to a fancier handler
                 return;
             }
@@ -124,7 +128,6 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
                 yield parser.done();
 
             } else {
-
                 let cmd_choice = yield* consume_option_stepwise_eager(parser, cmd_options);
 
                 yield parser.done();

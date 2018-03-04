@@ -12,11 +12,26 @@ import {
     CommandParser
 } from '../parser';
 
+import {
+    VenienceWorldCommandHandler
+} from './venience_world';
+
+export type TransitionList = [string[], ObserverMomentID][];
+export type TransitionListI = { transitions: TransitionList };
+
+export type Transitions = TransitionListI | (
+    VenienceWorldCommandHandler
+    & { target_oms: ObserverMomentID[] }
+);
+
+export function has_transition_list(t: Transitions): t is TransitionListI {
+    return (t as TransitionListI).transitions !== undefined;
+}
+
 export type ObserverMoment = {
     id: ObserverMomentID,
-    message: string,
-    transitions: [string[], ObserverMomentID][] | null
-};
+    message: string
+} & Transitions;
 
 function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMoment>{
     let result = new FuckDict<ObserverMomentID, ObserverMoment>();
@@ -28,12 +43,20 @@ function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMo
     //second/third pass, typecheck em
     let pointed_to: FuckSet<ObserverMomentID> = new FuckDict();
     for (let om of oms) {
-        for (let [cmd, om_id] of om.transitions) {
+        let dest_oms: ObserverMomentID[];
+        if (has_transition_list(om)) {
+            dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
+        } else {
+            dest_oms = om.target_oms;
+        }
+
+        for (let om_id of dest_oms) {
             if (!result.has_key(om_id)) {
                 throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
             }
             pointed_to.set(om_id, undefined);
         }
+    
     }
 
     for (let om of oms.slice(1)) {
@@ -137,7 +160,7 @@ export let alcove_oms = index_oms([
         id: 'bed, awakening 1',
         message: 'You awaken in your bed.',
         transitions: [
-            [['*sit up'], 'bed, sitting up 1']]
+            [['*sit', '&up'], 'bed, sitting up 1']]
     },
     {
         id: 'bed, sitting up 1',
@@ -147,7 +170,7 @@ export let alcove_oms = index_oms([
         <br /><br />
         Perhaps you’ll doze until the sun rises properly.`,
         transitions: [
-            [['*lie down'], 'bed, lying down 1']]
+            [['*lie', '&down'], 'bed, lying down 1']]
     },
     {
         id: 'bed, lying down 1',
@@ -171,7 +194,7 @@ export let alcove_oms = index_oms([
         id: 'bed, awakening 2',
         message: `You awaken in your bed.`,
         transitions: [
-            [['*sit', 'up'], 'bed, sitting up 2']]
+            [['*sit', '&up'], 'bed, sitting up 2']]
     },
     {
         id: 'bed, sitting up 2',

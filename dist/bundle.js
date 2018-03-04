@@ -1050,7 +1050,7 @@ class VenienceWorld {
         let world = this;
         return parser_1.with_early_stopping(function* (parser) {
             let om = observer_moments_1.alcove_oms.get(world.current_om());
-            if (om.transitions === null) {
+            if (!observer_moments_1.has_transition_list(om)) {
                 //dispatch to a fancier handler
                 return;
             }
@@ -1243,7 +1243,7 @@ class BookGuy extends React.Component {
         // (This is basically an abomination and I am sorry.)
         comp_elt.classList.add('animation-pre-compute');
         walkElt(comp_elt, e => e.dataset.maxHeight = `${e.scrollHeight}px`);
-        comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing'));
+        comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing')) || 0;
         comp_elt.classList.remove('animation-pre-compute');
         let edit_classes = [...adding_classes.map(c => 'adding-' + c), ...removing_classes.map(c => 'removing-' + c)];
         comp_elt.classList.add('animation-start', ...edit_classes);
@@ -1628,6 +1628,10 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const datatypes_1 = __webpack_require__(1);
+function has_transition_list(t) {
+    return t.transitions !== undefined;
+}
+exports.has_transition_list = has_transition_list;
 function index_oms(oms) {
     let result = new datatypes_1.FuckDict();
     for (let om of oms) {
@@ -1636,7 +1640,13 @@ function index_oms(oms) {
     //second/third pass, typecheck em
     let pointed_to = new datatypes_1.FuckDict();
     for (let om of oms) {
-        for (let [cmd, om_id] of om.transitions) {
+        let dest_oms;
+        if (has_transition_list(om)) {
+            dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
+        } else {
+            dest_oms = om.target_oms;
+        }
+        for (let om_id of dest_oms) {
             if (!result.has_key(om_id)) {
                 throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
             }
@@ -1684,7 +1694,7 @@ exports.alcove_oms = index_oms([{
 }, {
     id: 'bed, awakening 1',
     message: 'You awaken in your bed.',
-    transitions: [[['*sit up'], 'bed, sitting up 1']]
+    transitions: [[['*sit', '&up'], 'bed, sitting up 1']]
 }, {
     id: 'bed, sitting up 1',
     message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
@@ -1692,7 +1702,7 @@ exports.alcove_oms = index_oms([{
         Your body still feels heavy with sleep.
         <br /><br />
         Perhaps you’ll doze until the sun rises properly.`,
-    transitions: [[['*lie down'], 'bed, lying down 1']]
+    transitions: [[['*lie', '&down'], 'bed, lying down 1']]
 }, {
     id: 'bed, lying down 1',
     message: `Yes, no reason to be up now.
@@ -1710,7 +1720,7 @@ exports.alcove_oms = index_oms([{
 }, {
     id: 'bed, awakening 2',
     message: `You awaken in your bed.`,
-    transitions: [[['*sit', 'up'], 'bed, sitting up 2']]
+    transitions: [[['*sit', '&up'], 'bed, sitting up 2']]
 }, {
     id: 'bed, sitting up 2',
     message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
