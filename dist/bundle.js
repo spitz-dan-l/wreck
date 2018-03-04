@@ -864,7 +864,7 @@ class Terminal extends React.Component {
     }
     componentDidUpdate() {}
     render() {
-        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History3, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -1154,16 +1154,9 @@ exports.VenienceWorld = VenienceWorld;
 "use strict";
 
 
-var __rest = this && this.__rest || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function") for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0) t[p[i]] = s[p[i]];
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(4);
-const ReactTransitionGroup = __webpack_require__(15);
 const Text_1 = __webpack_require__(5);
 class BookGuy extends React.Component {
     /*
@@ -1280,7 +1273,7 @@ class BookGuy extends React.Component {
     }
 }
 exports.BookGuy = BookGuy;
-class History3 extends React.Component {
+class History extends React.Component {
     constructor(props) {
         super(props);
         this.book_guys = [];
@@ -1317,96 +1310,7 @@ class History3 extends React.Component {
         }
     }
 }
-exports.History3 = History3;
-const Fade = _a => {
-    var { children } = _a,
-        props = __rest(_a, ["children"]);
-    return React.createElement(ReactTransitionGroup.CSSTransition, Object.assign({ timeout: 700, onExit: d => {
-            d.style.maxHeight = `${d.clientHeight}px`;
-        }, onEntering: d => {
-            // let d_output_text = d.querySelector('.output-text');
-            // d_output_text.style.maxHeight = `${d_output_text.scrollHeight}px`
-            d.style.maxHeight = `${d.scrollHeight}px`;
-        }, classNames: "fade" }, props), children);
-};
-exports.History = _a => {
-    var { history, possible_history } = _a,
-        fade_props = __rest(_a, ["history", "possible_history"]);
-    return React.createElement(ReactTransitionGroup.TransitionGroup, null, history.map(hist => {
-        let { parser, message, message_classes, index } = hist;
-        if (message_classes === undefined) {
-            message_classes = [];
-        }
-        let key = index.toString();
-        if (message_classes.length > 0) {
-            key += '_' + message_classes.join(':');
-        }
-        let possible_message_classes = possible_history[index].message_classes;
-        if (possible_message_classes === undefined) {
-            possible_message_classes = [];
-        }
-        let edit_message_classes = [];
-        for (let mc of message_classes) {
-            if (possible_message_classes.indexOf(mc) === -1) {
-                edit_message_classes.push('removing-' + mc);
-            }
-        }
-        for (let pmc of possible_message_classes) {
-            if (message_classes.indexOf(pmc) === -1) {
-                edit_message_classes.push('adding-' + pmc);
-            }
-        }
-        let edit_message_class_name = edit_message_classes.join(' ');
-        let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
-        let msg_html = '';
-        if (message !== undefined) {
-            msg_html = message.innerHTML;
-        }
-        if (index === 0) {
-            return React.createElement(Fade, Object.assign({ key: key }, fade_props), React.createElement("div", { className: class_name }, React.createElement(Text_1.OutputText, { message_html: msg_html })));
-        }
-        return React.createElement(Fade, Object.assign({ key: key }, fade_props), React.createElement("div", { className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message_html: msg_html })));
-    }));
-};
-exports.History2 = _a => {
-    var { history, possible_history } = _a,
-        fade_props = __rest(_a, ["history", "possible_history"]);
-    return React.createElement("div", null, history.map(hist => {
-        let { parser, message, message_classes, index } = hist;
-        if (message_classes === undefined) {
-            message_classes = [];
-        }
-        let key = index.toString();
-        if (message_classes.length > 0) {
-            key += '_' + message_classes.join(':');
-        }
-        let possible_message_classes = possible_history[index].message_classes;
-        if (possible_message_classes === undefined) {
-            possible_message_classes = [];
-        }
-        let edit_message_classes = [];
-        for (let mc of message_classes) {
-            if (possible_message_classes.indexOf(mc) === -1) {
-                edit_message_classes.push('removing-' + mc);
-            }
-        }
-        for (let pmc of possible_message_classes) {
-            if (message_classes.indexOf(pmc) === -1) {
-                edit_message_classes.push('adding-' + pmc);
-            }
-        }
-        let edit_message_class_name = edit_message_classes.join(' ');
-        let class_name = 'history ' + edit_message_class_name + ' ' + message_classes.join(' ');
-        let msg_html = '';
-        if (message !== undefined) {
-            msg_html = message.innerHTML;
-        }
-        if (index === 0) {
-            return React.createElement(BookGuy, { key: index, className: class_name }, React.createElement(Text_1.OutputText, { message_html: msg_html }));
-        }
-        return React.createElement(BookGuy, { key: index, className: class_name }, React.createElement(Text_1.ParsedText, { parser: parser }), React.createElement(Text_1.OutputText, { message_html: msg_html }));
-    }));
-};
+exports.History = History;
 
 /***/ }),
 /* 11 */
@@ -1978,12 +1882,6 @@ exports.tower_oms = index_oms([{
             <i>(End of demo. Thanks for playing!)</i>`,
     transitions: []
 }]);
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports) {
-
-module.exports = ReactTransitionGroup;
 
 /***/ })
 /******/ ]);

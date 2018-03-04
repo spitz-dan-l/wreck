@@ -28,7 +28,6 @@ module.exports = {
     },
     externals: {
         "react": "React",
-        "react-dom": "ReactDOM",
-        "react-transition-group": "ReactTransitionGroup"
+        "react-dom": "ReactDOM"
     },
 };
