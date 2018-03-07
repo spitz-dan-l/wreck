@@ -320,3 +320,24 @@ export function is_enabled<T>(x: Disablable<T>): boolean {
 
 
 export type Numbered<T> = Annotatable<T, number>
+
+
+enum _StringValidity {
+    valid
+}
+
+export type StringValidity = _StringValidity | string;
+
+export class StringValidator {
+    static validate<V extends StringValidator>(s: string): s is ValidString<V> {
+        return new this().is_valid(s);
+    }
+
+    is_valid(s: ValidatedString<this>): s is ValidString<this> {
+        return false;
+    }
+}
+
+export type ValidatedString<V extends StringValidator> = string & StringValidity;
+export type ValidString<V extends StringValidator> = string & _StringValidity.valid;
+

@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 13);
+/******/ 	return __webpack_require__(__webpack_require__.s = 14);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -312,6 +312,19 @@ function is_enabled(x) {
     return result;
 }
 exports.is_enabled = is_enabled;
+var _StringValidity;
+(function (_StringValidity) {
+    _StringValidity[_StringValidity["valid"] = 0] = "valid";
+})(_StringValidity || (_StringValidity = {}));
+class StringValidator {
+    static validate(s) {
+        return new this().is_valid(s);
+    }
+    is_valid(s) {
+        return false;
+    }
+}
+exports.StringValidator = StringValidator;
 
 /***/ }),
 /* 2 */
@@ -321,7 +334,134 @@ exports.is_enabled = is_enabled;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const text_tools_1 = __webpack_require__(3);
+function uncapitalize(msg) {
+    return msg[0].toLowerCase() + msg.slice(1);
+}
+exports.uncapitalize = uncapitalize;
+function capitalize(msg) {
+    return msg[0].toUpperCase() + msg.slice(1);
+}
+exports.capitalize = capitalize;
+function starts_with(str, searchString, position) {
+    position = position || 0;
+    return str.substr(position, searchString.length) === searchString;
+}
+exports.starts_with = starts_with;
+function tokens_equal(tks1, tks2) {
+    if (tks1.length !== tks2.length) {
+        return false;
+    }
+    for (let i = 0; i < tks1.length; i++) {
+        if (tks1[i] !== tks2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.tokens_equal = tokens_equal;
+function tokenize(s) {
+    let word_pat = /[\S]+/g;
+    let space_pat = /[^\S]+/g;
+    let tokens = s.split(space_pat);
+    let gaps = s.split(word_pat);
+    if (tokens.length > 0) {
+        if (tokens[0] === '') {
+            tokens.splice(0, 1);
+        }
+        if (tokens[tokens.length - 1] === '' && gaps[gaps.length - 1] === '') {
+            tokens.splice(tokens.length - 1, 1);
+        }
+    }
+    return [tokens, gaps];
+}
+exports.tokenize = tokenize;
+function split_tokens(s) {
+    let space_pat = /[^\S]+/g;
+    let tokens = s.split(space_pat);
+    if (tokens.length > 0) {
+        if (tokens[0] === '') {
+            tokens.splice(0, 1);
+        }
+        if (tokens[tokens.length - 1] === '') {
+            tokens.splice(tokens.length - 1, 1);
+        }
+    }
+    return tokens;
+}
+exports.split_tokens = split_tokens;
+function tokenize_tests() {
+    console.log('tokenize tests');
+    console.log(tokenize(' l'));
+}
+function untokenize(tokens, gaps) {
+    if (gaps === undefined) {
+        return tokens.join(' ');
+    }
+    let result = '';
+    let i = 0;
+    for (i = 0; i < gaps.length; i++) {
+        result += gaps[i];
+        if (i < tokens.length) {
+            result += tokens[i];
+        }
+    }
+    return result;
+}
+exports.untokenize = untokenize;
+function get_indenting_whitespace(s) {
+    let space_pat = /^[^\S]+/;
+    let result = space_pat.exec(s);
+    if (result === null) {
+        return '';
+    }
+    return result[0];
+}
+exports.get_indenting_whitespace = get_indenting_whitespace;
+function ends_with_whitespace(s) {
+    let last_space_pat = /\s$/;
+    return last_space_pat.exec(s) !== null;
+}
+exports.ends_with_whitespace = ends_with_whitespace;
+function normalize_whitespace(s) {
+    return s.trim().replace(/\s+/g, ' ');
+}
+exports.normalize_whitespace = normalize_whitespace;
+function last(x) {
+    return x[x.length - 1];
+}
+exports.last = last;
+function random_choice(choices) {
+    var index = Math.floor(Math.random() * choices.length);
+    return choices[index];
+}
+exports.random_choice = random_choice;
+function dedent(strs, ...args) {
+    // do interpolation
+    let result = strs[0];
+    for (let i = 0; i < args.length; i++) {
+        result += args[i] + strs[i + 1];
+    }
+    //find the first newline with whitespace after it
+    let pat = /\n +/;
+    let m = pat.exec(result);
+    if (m === null) {
+        return result;
+    }
+    let replace_pat = new RegExp(m[0], 'g');
+    let result2 = result.replace(replace_pat, '\n');
+    return result2;
+}
+exports.dedent = dedent;
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const text_tools_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
 var DisplayEltType;
 (function (DisplayEltType) {
@@ -560,133 +700,6 @@ function* consume_option_stepwise_eager(parser, options) {
 exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
 
 /***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-function uncapitalize(msg) {
-    return msg[0].toLowerCase() + msg.slice(1);
-}
-exports.uncapitalize = uncapitalize;
-function capitalize(msg) {
-    return msg[0].toUpperCase() + msg.slice(1);
-}
-exports.capitalize = capitalize;
-function starts_with(str, searchString, position) {
-    position = position || 0;
-    return str.substr(position, searchString.length) === searchString;
-}
-exports.starts_with = starts_with;
-function tokens_equal(tks1, tks2) {
-    if (tks1.length !== tks2.length) {
-        return false;
-    }
-    for (let i = 0; i < tks1.length; i++) {
-        if (tks1[i] !== tks2[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-exports.tokens_equal = tokens_equal;
-function tokenize(s) {
-    let word_pat = /[\S]+/g;
-    let space_pat = /[^\S]+/g;
-    let tokens = s.split(space_pat);
-    let gaps = s.split(word_pat);
-    if (tokens.length > 0) {
-        if (tokens[0] === '') {
-            tokens.splice(0, 1);
-        }
-        if (tokens[tokens.length - 1] === '' && gaps[gaps.length - 1] === '') {
-            tokens.splice(tokens.length - 1, 1);
-        }
-    }
-    return [tokens, gaps];
-}
-exports.tokenize = tokenize;
-function split_tokens(s) {
-    let space_pat = /[^\S]+/g;
-    let tokens = s.split(space_pat);
-    if (tokens.length > 0) {
-        if (tokens[0] === '') {
-            tokens.splice(0, 1);
-        }
-        if (tokens[tokens.length - 1] === '') {
-            tokens.splice(tokens.length - 1, 1);
-        }
-    }
-    return tokens;
-}
-exports.split_tokens = split_tokens;
-function tokenize_tests() {
-    console.log('tokenize tests');
-    console.log(tokenize(' l'));
-}
-function untokenize(tokens, gaps) {
-    if (gaps === undefined) {
-        return tokens.join(' ');
-    }
-    let result = '';
-    let i = 0;
-    for (i = 0; i < gaps.length; i++) {
-        result += gaps[i];
-        if (i < tokens.length) {
-            result += tokens[i];
-        }
-    }
-    return result;
-}
-exports.untokenize = untokenize;
-function get_indenting_whitespace(s) {
-    let space_pat = /^[^\S]+/;
-    let result = space_pat.exec(s);
-    if (result === null) {
-        return '';
-    }
-    return result[0];
-}
-exports.get_indenting_whitespace = get_indenting_whitespace;
-function ends_with_whitespace(s) {
-    let last_space_pat = /\s$/;
-    return last_space_pat.exec(s) !== null;
-}
-exports.ends_with_whitespace = ends_with_whitespace;
-function normalize_whitespace(s) {
-    return s.trim().replace(/\s+/g, ' ');
-}
-exports.normalize_whitespace = normalize_whitespace;
-function last(x) {
-    return x[x.length - 1];
-}
-exports.last = last;
-function random_choice(choices) {
-    var index = Math.floor(Math.random() * choices.length);
-    return choices[index];
-}
-exports.random_choice = random_choice;
-function dedent(strs, ...args) {
-    // do interpolation
-    let result = strs[0];
-    for (let i = 0; i < args.length; i++) {
-        result += args[i] + strs[i + 1];
-    }
-    //find the first newline with whitespace after it
-    let pat = /\n +/;
-    let m = pat.exec(result);
-    if (m === null) {
-        return result;
-    }
-    let replace_pat = new RegExp(m[0], 'g');
-    let result2 = result.replace(replace_pat, '\n');
-    return result2;
-}
-exports.dedent = dedent;
-
-/***/ }),
 /* 4 */
 /***/ (function(module, exports) {
 
@@ -701,7 +714,7 @@ module.exports = ReactDOM;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const parser_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(3);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
     switch (det) {
@@ -768,13 +781,38 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const text_tools_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(1);
+class PhraseValidator extends datatypes_1.StringValidator {
+    is_valid(s) {
+        let toks = text_tools_1.tokenize(s)[0];
+        if (toks.slice(1).some(t => t.startsWith('*') || t.startsWith('&'))) {
+            return false;
+        }
+        return true;
+    }
+}
+exports.PhraseValidator = PhraseValidator;
+function has_transition_list(t) {
+    return t.transitions !== undefined;
+}
+exports.has_transition_list = has_transition_list;
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const Prompt_1 = __webpack_require__(11);
+const Prompt_1 = __webpack_require__(12);
 const Text_1 = __webpack_require__(5);
-const TypeaheadList_1 = __webpack_require__(12);
-const History_1 = __webpack_require__(10);
-const text_tools_1 = __webpack_require__(3);
-const parser_1 = __webpack_require__(2);
+const TypeaheadList_1 = __webpack_require__(13);
+const History_1 = __webpack_require__(11);
+const text_tools_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(3);
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -806,7 +844,7 @@ class Terminal extends React.Component {
             this.history.edit_after_update = true;
             //this.history.edit();
             this.prompt.focus();
-            this.scrollToPrompt();
+            //this.scrollToPrompt();
             let that = this;
             window.setTimeout(function () {
                 that.scrollToPrompt();
@@ -855,7 +893,9 @@ class Terminal extends React.Component {
             return text_tools_1.get_indenting_whitespace(parser.match[typeahead_ind].match);
         };
         this.scrollToPrompt = () => {
-            this.prompt.input.scrollIntoView({ behavior: "smooth", block: "start", inline: "end" });
+            if (this.state.world_driver.history.length > 1) {
+                this.prompt.input.scrollIntoView({ behavior: "smooth", block: "start", inline: "end" });
+            }
         };
         this.state = { world_driver: this.props.world_driver };
     }
@@ -870,16 +910,16 @@ class Terminal extends React.Component {
 exports.Terminal = Terminal;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const text_tools_1 = __webpack_require__(3);
+const text_tools_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(3);
 function apply_command(world, cmd) {
     let parser = new parser_1.CommandParser(cmd);
     let result = { parser: parser, world: world };
@@ -1006,17 +1046,18 @@ function eager_dispatch(world, parser) {
 exports.eager_dispatch = eager_dispatch;
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const parser_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(3);
 const datatypes_1 = __webpack_require__(1);
-const text_tools_1 = __webpack_require__(3);
-const observer_moments_1 = __webpack_require__(14);
+const text_tools_1 = __webpack_require__(2);
+const observer_moments_1 = __webpack_require__(15);
+const transition_list_1 = __webpack_require__(7);
 class VenienceWorld {
     constructor({ experiences, history_index }) {
         if (experiences === undefined) {
@@ -1050,7 +1091,7 @@ class VenienceWorld {
         let world = this;
         return parser_1.with_early_stopping(function* (parser) {
             let om = observer_moments_1.alcove_oms.get(world.current_om());
-            if (!observer_moments_1.has_transition_list(om)) {
+            if (!transition_list_1.has_transition_list(om)) {
                 //dispatch to a fancier handler
                 return;
             }
@@ -1115,40 +1156,40 @@ class VenienceWorld {
         return result;
     }
     interpret_history(history_elt) {
-        let interp_op = [];
+        let interpretation_op = [];
         let current_om = this.current_om();
         let hist_om = history_elt.world.current_om();
         if (current_om === 'bed, awakening 2') {
             let to_forget = ['bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, lying down 1', 'bed, sleeping 2'];
             if (datatypes_1.array_fuck_contains(to_forget, hist_om)) {
-                interp_op.push({ 'add': 'forgotten' });
+                interpretation_op.push({ 'add': 'forgotten' });
             }
         }
         if (current_om === 'alcove, interpreting 1') {
             if (hist_om === 'alcove, beginning interpretation') {
-                interp_op.push({ 'add': 'interp-alcove-1-enabled' });
+                interpretation_op.push({ 'add': 'interp-alcove-1-enabled' });
             }
         }
         if (current_om === 'alcove, interpreting 2') {
             if (hist_om === 'alcove, beginning interpretation') {
-                interp_op.push({ 'add': 'interp-alcove-2-enabled' });
+                interpretation_op.push({ 'add': 'interp-alcove-2-enabled' });
             }
         }
         if (current_om === 'alcove, interpreting 3') {
             if (hist_om === 'alcove, beginning interpretation') {
-                interp_op.push({ 'add': 'interp-alcove-3-enabled' });
+                interpretation_op.push({ 'add': 'interp-alcove-3-enabled' });
             }
         }
         if (this.experiences[history_elt.world.history_index] === null) {
-            interp_op.push({ 'add': 'forgotten' });
+            interpretation_op.push({ 'add': 'forgotten' });
         }
-        return interp_op;
+        return interpretation_op;
     }
 }
 exports.VenienceWorld = VenienceWorld;
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1313,7 +1354,7 @@ class History extends React.Component {
 exports.History = History;
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1420,7 +1461,7 @@ class Prompt extends React.Component {
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1507,7 +1548,7 @@ class TypeaheadList extends React.Component {
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1516,15 +1557,15 @@ exports.TypeaheadList = TypeaheadList;
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(4);
-const Terminal_1 = __webpack_require__(7);
-const commands_1 = __webpack_require__(8);
+const Terminal_1 = __webpack_require__(8);
+const commands_1 = __webpack_require__(9);
 //import {BirdWorld} from '../typescript/bird_world';
-const venience_world_1 = __webpack_require__(9);
+const venience_world_1 = __webpack_require__(10);
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1532,23 +1573,29 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const datatypes_1 = __webpack_require__(1);
-function has_transition_list(t) {
-    return t.transitions !== undefined;
-}
-exports.has_transition_list = has_transition_list;
+const transition_list_1 = __webpack_require__(7);
 function index_oms(oms) {
     let result = new datatypes_1.FuckDict();
     for (let om of oms) {
+        if (transition_list_1.has_transition_list(om) && om.transitions.length === 1) {
+            for (let [cmd, dest] of om.transitions[0]) {
+                for (let phrase of cmd) {
+                    if (!transition_list_1.PhraseValidator.validate(phrase)) {
+                        throw `Phrase ${phrase} in single-transition ObserverMoment ${om.id} has * or & somewhere other than the start.`;
+                    }
+                }
+            }
+        }
         result.set(om.id, om);
     }
     //second/third pass, typecheck em
     let pointed_to = new datatypes_1.FuckDict();
     for (let om of oms) {
         let dest_oms;
-        if (has_transition_list(om)) {
+        if (transition_list_1.has_transition_list(om)) {
             dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
         } else {
-            dest_oms = om.target_oms;
+            dest_oms = om.dest_oms;
         }
         for (let om_id of dest_oms) {
             if (!result.has_key(om_id)) {

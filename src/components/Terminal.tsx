@@ -67,7 +67,7 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
    this.history.edit_after_update = true;
     //this.history.edit();
     this.prompt.focus();
-    this.scrollToPrompt();
+    //this.scrollToPrompt();
     let that = this;
     window.setTimeout(function() {
       that.scrollToPrompt();
@@ -128,7 +128,9 @@ export class Terminal<T extends WorldType<T>> extends React.Component<any, {worl
   }
 
   scrollToPrompt = () => {
-    this.prompt.input.scrollIntoView({behavior: "smooth", block: "start", inline: "end"});
+    if (this.state.world_driver.history.length > 1) {
+      this.prompt.input.scrollIntoView({behavior: "smooth", block: "start", inline: "end"});
+    }
   }
 
   render() {

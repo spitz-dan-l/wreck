@@ -16,17 +16,28 @@ import {
     VenienceWorldCommandHandler
 } from './venience_world';
 
-export type TransitionList = [string[], ObserverMomentID][];
-export type TransitionListI = { transitions: TransitionList };
+import {
+    tokenize
+} from '../text_tools';
 
-export type Transitions = TransitionListI | (
-    VenienceWorldCommandHandler
-    & { target_oms: ObserverMomentID[] }
-);
+import {
+    PhraseValidator,
+    TransitionList,
+    Transitions,
+    has_transition_list
+} from './transition_list';
 
-export function has_transition_list(t: Transitions): t is TransitionListI {
-    return (t as TransitionListI).transitions !== undefined;
-}
+// export type TransitionList = [string[], ObserverMomentID][];
+// export type TransitionListI = { transitions: TransitionList };
+
+// export type Transitions = TransitionListI | (
+//     VenienceWorldCommandHandler
+//     & { target_oms: ObserverMomentID[] }
+// );
+
+// export function has_transition_list(t: Transitions): t is TransitionListI {
+//     return (t as TransitionListI).transitions !== undefined;
+// }
 
 export type ObserverMoment = {
     id: ObserverMomentID,
@@ -37,6 +48,16 @@ function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMo
     let result = new FuckDict<ObserverMomentID, ObserverMoment>();
 
     for (let om of oms){
+        if (has_transition_list(om) && om.transitions.length === 1) {
+            for (let [cmd, dest] of om.transitions[0]) {
+                for (let phrase of cmd) {
+                    if (!PhraseValidator.validate(phrase)) {
+                        throw `Phrase ${phrase} in single-transition ObserverMoment ${om.id} has * or & somewhere other than the start.`;
+                    }
+                }
+            }
+        }
+
         result.set(om.id, om);
     }
 
@@ -47,7 +68,7 @@ function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMo
         if (has_transition_list(om)) {
             dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
         } else {
-            dest_oms = om.target_oms;
+            dest_oms = om.dest_oms;
         }
 
         for (let om_id of dest_oms) {
@@ -56,7 +77,6 @@ function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMo
             }
             pointed_to.set(om_id, undefined);
         }
-    
     }
 
     for (let om of oms.slice(1)) {

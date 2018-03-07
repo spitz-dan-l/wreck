@@ -24,10 +24,12 @@ import {tokenize, untokenize} from '../text_tools';
 import {
     ObserverMomentID,
     ObserverMoment,
-    has_transition_list,
     alcove_oms
 } from './observer_moments';
 
+import {
+    has_transition_list
+} from './transition_list';
 
 
 //instead of homes, boxes
@@ -179,7 +181,7 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
 
     interpret_history(history_elt: InterstitialUpdateResult<VenienceWorld>): HistoryInterpretationOp {
         
-        let interp_op: HistoryInterpretationOp = [];
+        let interpretation_op: HistoryInterpretationOp = [];
 
         let current_om = this.current_om();
         let hist_om = history_elt.world.current_om();
@@ -193,32 +195,32 @@ export class VenienceWorld implements WorldType<VenienceWorld>{
                 'bed, sleeping 2'
             ];
             if (array_fuck_contains(to_forget, hist_om)) {
-                interp_op.push({'add': 'forgotten'});
+                interpretation_op.push({'add': 'forgotten'});
             }
         }
 
         if (current_om === 'alcove, interpreting 1') {
             if (hist_om === 'alcove, beginning interpretation'){
-                interp_op.push({'add': 'interp-alcove-1-enabled'})
+                interpretation_op.push({'add': 'interp-alcove-1-enabled'})
             }
         }
 
         if (current_om === 'alcove, interpreting 2') {
             if (hist_om === 'alcove, beginning interpretation'){
-                interp_op.push({'add': 'interp-alcove-2-enabled'})
+                interpretation_op.push({'add': 'interp-alcove-2-enabled'})
             }
         }
 
         if (current_om === 'alcove, interpreting 3') {
             if (hist_om === 'alcove, beginning interpretation'){
-                interp_op.push({'add': 'interp-alcove-3-enabled'})
+                interpretation_op.push({'add': 'interp-alcove-3-enabled'})
             }
         }
 
         if (this.experiences[history_elt.world.history_index] === null) {
-            interp_op.push({'add': 'forgotten'});
+            interpretation_op.push({'add': 'forgotten'});
         }
 
-        return interp_op;
+        return interpretation_op;
     }
 }
