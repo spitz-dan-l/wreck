@@ -68,6 +68,12 @@
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports) {
+
+module.exports = React;
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -372,12 +378,6 @@ class StringValidator {
 exports.StringValidator = StringValidator;
 
 /***/ }),
-/* 1 */
-/***/ (function(module, exports) {
-
-module.exports = React;
-
-/***/ }),
 /* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -386,7 +386,7 @@ module.exports = React;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -516,7 +516,8 @@ class CommandParser {
             this.match[this.match.length - 1].typeahead = typeahead;
             return text_tools_1.normalize_whitespace(text_tools_1.untokenize(exact_match_spec_toks));
         }
-        if (partial_matches.filter(de => datatypes_1.is_enabled(de)).length > 0) {
+        //if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
+        if (partial_matches.length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
             let typeahead = partial_matches.map(datatypes_1.with_disablable(x => datatypes_1.unwrap(x.typeahead[0])));
@@ -649,18 +650,41 @@ function* consume_option_stepwise_eager(parser, options) {
     }
 }
 exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
-function combine(parser, gen_funcs) {
-    let gens = [];
-    for (let gf of gen_funcs) {
-        gens.push(gf(parser.subparser()));
+function combine(parser, consumers) {
+    let threads = [];
+    for (let c of consumers) {
+        let sp = parser.subparser();
+        threads.push({
+            result: c.call(this, sp),
+            subparser: sp
+        });
     }
-    let results = gens.map(stop_early);
-    while (true) {
-        for (let g of gens) {
-            let r = g.next();
+    let partial_matches = [];
+    for (let t of threads) {
+        if (t.subparser.is_done()) {
+            parser.integrate(t.subparser);
+            return t.result;
+        } else {
+            if (t.subparser.validity === MatchValidity.partial) {
+                partial_matches.push(t);
+            }
         }
     }
+    if (partial_matches.length > 0) {
+        //integrate the first one
+        parser.integrate(partial_matches[0].subparser);
+        for (let t of partial_matches.slice(1)) {
+            let typeahead = t.subparser.match[t.subparser.match.length - 1].typeahead;
+            parser.match[parser.match.length - 1].typeahead.push(...typeahead);
+        }
+    } else {
+        // set to invalid
+        // return false
+        parser.done();
+    }
+    return false;
 }
+exports.combine = combine;
 
 /***/ }),
 /* 3 */
@@ -805,7 +829,7 @@ exports.wrap_in_div = wrap_in_div;
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(5);
 const parser_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
 const observer_moments_1 = __webpack_require__(16);
 const _00_prologue_1 = __webpack_require__(14);
@@ -894,8 +918,12 @@ class VenienceWorld extends commands_1.World {
             return this.transition_to(om_id_choice);
         });
     }
-    look_handler(look_options) {
+    make_look_handler(look_options) {
         return exports.wrap_handler(function* (parser) {
+            if (look_options.every(([cmd, t]) => this.state.has_regarded[t])) {
+                yield parser.consume_option([datatypes_1.annotate(['look'], { enabled: false, display: parser_1.DisplayEltType.keyword })]);
+            }
+            yield parser.consume_exact(['look']);
             let options = look_options.map(([opt_toks, t]) => datatypes_1.set_enabled(opt_toks, !(this.state.has_regarded[t] || false)));
             let opt = yield parser.consume_option(options);
             yield parser.done();
@@ -976,7 +1004,7 @@ exports.VenienceWorld = VenienceWorld;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
 class World {
     constructor(state) {
@@ -1131,7 +1159,7 @@ module.exports = ReactDOM;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const parser_1 = __webpack_require__(2);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
@@ -1199,7 +1227,7 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const Prompt_1 = __webpack_require__(11);
 const Text_1 = __webpack_require__(7);
 const TypeaheadList_1 = __webpack_require__(12);
@@ -1311,7 +1339,7 @@ exports.Terminal = Terminal;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Text_1 = __webpack_require__(7);
 class BookGuy extends React.Component {
@@ -1482,7 +1510,7 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
 const InputWrapper = props => {
     const { children } = props,
@@ -1583,9 +1611,9 @@ exports.Prompt = Prompt;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1670,7 +1698,7 @@ exports.TypeaheadList = TypeaheadList;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Terminal_1 = __webpack_require__(9);
 //import {WorldDriver} from "../typescript/commands";
@@ -1689,7 +1717,7 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
 let prologue_oms = () => [{
     id: 'bed, sleeping 1',
@@ -1729,20 +1757,27 @@ let prologue_oms = () => [{
     id: 'bed, sitting up 2',
     enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let look_options = ['alcove, general', 'self, 1'];
-        let cmd_options = [];
-        cmd_options.push(datatypes_1.annotate(['look'], {
-            enabled: !look_options.every(p => this.state.has_regarded[p]),
-            display: parser_1.DisplayEltType.keyword
-        }));
-        cmd_options.push(datatypes_1.annotate(['approach'], { display: parser_1.DisplayEltType.keyword }));
-        let cmd = yield parser.consume_option(cmd_options);
-        if (cmd === 'look') {
-            return this.look_handler([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]).call(this, parser);
-        }
-        yield parser.consume_filler(['the', 'desk']);
-        yield parser.done();
-        return this.transition_to('desk, sitting down');
+        let look_handler = this.make_look_handler([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
+        let other_handler = venience_world_1.wrap_handler(function* (parser) {
+            yield parser.consume_exact(['approach']);
+            yield parser.consume_filler(['the', 'desk']);
+            yield parser.done();
+            return this.transition_to('desk, sitting down');
+        });
+        return parser_1.combine.call(this, parser, [look_handler, other_handler]);
+        // let cmd_options = []
+        // cmd_options.push(annotate(['look'], {
+        //     enabled: look_handler !== false,
+        //     display: DisplayEltType.keyword
+        // }));
+        // cmd_options.push(annotate(['approach'], {display: DisplayEltType.keyword}));
+        // let cmd = yield parser.consume_option(cmd_options);
+        // if (cmd === 'look' && look_handler !== false) {
+        //     return look_handler.call(this, parser);
+        // }
+        // yield parser.consume_filler(['the', 'desk']);
+        // yield parser.done();
+        // return this.transition_to('desk, sitting down');
     }),
     dest_oms: ['desk, sitting down']
     // transitions: [
@@ -1964,7 +1999,7 @@ exports.default = {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(2);
 let ch1_oms = () => [{
     id: 'alone in the woods',
     enter_message: `Chapter 1 - A Sense Of Direction
@@ -1972,23 +2007,19 @@ let ch1_oms = () => [{
         <br />
         You are alone in the woods in midmorning.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        // let state = this.state.om_state['alone in the woods'] || {};
-        // let has_looked: {[key: string]: boolean} = state.has_looked || {};
-        // let look_options = ['around', 'at myself'].map(c =>
-        //     set_enabled(tokenize(c)[0], !(has_looked[c] || false))
-        // );
-        let cmd_options = [];
-        let display;
-        let look_options = ['forest, general', 'self, 1'];
-        if (look_options.every(x => this.state.has_regarded[x])) {
-            cmd_options.push(datatypes_1.annotate(['look'], { enabled: false, display }));
-        } else {
-            cmd_options.push(datatypes_1.annotate(['look'], { enabled: true, display }));
-        }
-        cmd_options.push(['go']);
-        yield parser.consume_option(cmd_options);
-        //if command is look
-        return this.look_handler([[['around'], 'forest, general'], [['at', 'myself'], 'self, 1']]).call(this, parser);
+        // let cmd_options = [];
+        // let display: DisplayEltType.keyword;
+        let look_handler = this.make_look_handler([[['around'], 'forest, general'], [['at', 'myself'], 'self, 1']]);
+        let other_handler = venience_world_1.wrap_handler(function* (parser) {
+            yield parser.consume_exact(['go']);
+        });
+        return parser_1.combine.call(this, parser, [look_handler, other_handler]);
+        // cmd_options.push(annotate(['look'], {enabled: look_handler !== false, display}));
+        // cmd_options.push(annotate(['go'], {display}));
+        // let cmd = yield parser.consume_option(cmd_options);
+        // if (cmd === 'look' && look_handler !== false) {
+        //     return look_handler.call(this, parser);
+        // }
         // let option = yield parser.consume_option(look_options);
         // yield parser.done();
         // let result2: VenienceWorldCommandResult = {};
@@ -2036,7 +2067,7 @@ exports.default = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
 class PhraseValidator extends datatypes_1.StringValidator {
     is_valid(s) {

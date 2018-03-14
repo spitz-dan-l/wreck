@@ -22,7 +22,8 @@ import {
 
 import {
     CommandParser,
-    DisplayEltType
+    DisplayEltType,
+    combine
 } from '../../parser';
 
 let prologue_oms: () => ObserverMoment[] = () => [
@@ -76,30 +77,39 @@ let prologue_oms: () => ObserverMoment[] = () => [
         id: 'bed, sitting up 2',
         enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
         handle_command: wrap_handler(function*(parser: CommandParser) {
-            let look_options: PerceptionID[] = ['alcove, general', 'self, 1'];
+            let look_handler = this.make_look_handler([
+                [['around'], 'alcove, general'],
+                [['at', 'myself'], 'self, 1']
+            ])
 
+            let other_handler = wrap_handler(function*(parser: CommandParser) {
+                yield parser.consume_exact(['approach']);
+                yield parser.consume_filler(['the', 'desk']);
+                yield parser.done();
 
-            let cmd_options = []
-            cmd_options.push(annotate(['look'], {
-                enabled: !look_options.every(p => this.state.has_regarded[p]),
-                display: DisplayEltType.keyword
-            }));
+                return this.transition_to('desk, sitting down');
+            })
 
-            cmd_options.push(annotate(['approach'], {display: DisplayEltType.keyword}));
+            return combine.call(this, parser, [look_handler, other_handler]);
 
-            let cmd = yield parser.consume_option(cmd_options);
+            // let cmd_options = []
+            // cmd_options.push(annotate(['look'], {
+            //     enabled: look_handler !== false,
+            //     display: DisplayEltType.keyword
+            // }));
 
-            if (cmd === 'look') {
-                return this.look_handler([
-                    [['around'], 'alcove, general'],
-                    [['at', 'myself'], 'self, 1']
-                ]).call(this, parser);
-            }
+            // cmd_options.push(annotate(['approach'], {display: DisplayEltType.keyword}));
 
-            yield parser.consume_filler(['the', 'desk']);
-            yield parser.done();
+            // let cmd = yield parser.consume_option(cmd_options);
 
-            return this.transition_to('desk, sitting down');
+            // if (cmd === 'look' && look_handler !== false) {
+            //     return look_handler.call(this, parser);
+            // }
+
+            // yield parser.consume_filler(['the', 'desk']);
+            // yield parser.done();
+
+            // return this.transition_to('desk, sitting down');
         }),
         dest_oms: ['desk, sitting down']
         // transitions: [

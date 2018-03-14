@@ -176,7 +176,8 @@ export class CommandParser {
             return <S>normalize_whitespace(untokenize(exact_match_spec_toks));
         }
 
-        if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
+        //if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
+        if (partial_matches.length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
             let typeahead = partial_matches.map(with_disablable((x) => unwrap(x.typeahead[0])));
@@ -326,19 +327,47 @@ export function* consume_option_stepwise_eager(parser: CommandParser, options: D
     }
 }
 
+export function combine<R>(parser: CommandParser, consumers: ((parser: CommandParser) => (R | false))[]) {
+    type Thread = {
+        result: R | false,
+        subparser: CommandParser
+    }
+    let threads: Thread[] = [];
 
-function combine(parser: CommandParser, gen_funcs: ((parser: CommandParser) => IterableIterator<any>)[]) {
-    let gens: IterableIterator<any>[] = [];
-
-    for (let gf of gen_funcs) {
-        gens.push(gf(parser.subparser()));
+    for (let c of consumers) {
+        let sp = parser.subparser();
+        threads.push({
+            result: c.call(this, sp),
+            subparser: sp,
+        });
     }
 
-    let results = gens.map(stop_early);
+    let partial_matches: Thread[] = [];
 
-    while (true) {
-        for (let g of gens) {
-            let r = g.next()
+    for (let t of threads) {
+        if (t.subparser.is_done()) {
+            parser.integrate(t.subparser);
+            return t.result;
+        } else {
+            if (t.subparser.validity === MatchValidity.partial) {
+                partial_matches.push(t);
+            }
         }
     }
+
+    if (partial_matches.length > 0) {
+
+        //integrate the first one
+        parser.integrate(partial_matches[0].subparser);
+
+        for (let t of partial_matches.slice(1)) {
+            let typeahead = t.subparser.match[t.subparser.match.length - 1].typeahead;
+            parser.match[parser.match.length - 1].typeahead.push(...typeahead);
+        }
+    } else {
+        // set to invalid
+        // return false
+        parser.done();
+    }
+    return false;
 }

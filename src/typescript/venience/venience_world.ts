@@ -17,7 +17,8 @@ import {
     FuckDict,
     FuckSet,
     array_fuck_contains,
-    set_enabled
+    set_enabled,
+    annotate
 } from '../datatypes';
 
 import {
@@ -177,8 +178,14 @@ export class VenienceWorld extends World<VenienceWorldState>{
         });
     }
 
-    look_handler(look_options: [string[], PerceptionID][]) {
+    make_look_handler(look_options: [string[], PerceptionID][]) {
         return wrap_handler(function*(parser: CommandParser){
+            if (look_options.every(([cmd, t]) => this.state.has_regarded[t])) {
+                yield parser.consume_option([annotate(['look'], {enabled: false, display: DisplayEltType.keyword})]);
+            }
+
+            yield parser.consume_exact(['look']);
+
             let options = look_options.map(([opt_toks, t]) =>
                 set_enabled(opt_toks, !(this.state.has_regarded[t] || false))
             );
