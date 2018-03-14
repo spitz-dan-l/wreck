@@ -7,7 +7,8 @@ import {History} from './History';
 
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
-import {WorldType, WorldDriver} from "../typescript/commands";
+import {World, WorldDriver} from "../typescript/commands";
+// import {WorldType, WorldDriver} from "../typescript/commands";
 
 import {MatchValidity} from '../typescript/parser';
 
@@ -15,7 +16,7 @@ import {is_enabled} from '../typescript/datatypes';
 
 import * as ReactTransitionGroup from 'react-transition-group';
 
-export class Terminal<T extends WorldType<T>> extends React.Component<any, {world_driver: WorldDriver<T>}> {
+export class Terminal<T> extends React.Component<any, {world_driver: WorldDriver<T>}> {
   contentContainer: any;
   prompt: any;
   typeahead_list: any;

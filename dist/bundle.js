@@ -63,17 +63,11 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 13);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports) {
-
-module.exports = React;
-
-/***/ }),
-/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -98,9 +92,20 @@ class FuckDict {
         this.size = this.keys_map.size;
         return this;
     }
-    get(k) {
+    get(k, default_value) {
+        if (!this.has_key(k) && default_value !== undefined) {
+            this.set(k, default_value);
+            return default_value;
+        }
         let s = k.toString();
         return this.values_map.get(s);
+    }
+    update(a) {
+        let updated = this.copy();
+        for (let [k, v] of a) {
+            updated.set(k, v);
+        }
+        return updated;
     }
     has_key(k) {
         return this.keys_map.has(k.toString());
@@ -157,6 +162,39 @@ class FuckDict {
     }
 }
 exports.FuckDict = FuckDict;
+function chain_object(src) {
+    return new Proxy(src, {
+        get: function (target, key) {
+            if (target[key] === undefined) {
+                target[key] = {};
+            }
+            let v = target[key];
+            if (typeof v === 'object' && !(v instanceof Array)) {
+                return chain_object(v);
+            } else {
+                return v;
+            }
+        }
+    });
+}
+exports.chain_object = chain_object;
+function chain_update(target, source, inplace = false) {
+    let updated;
+    if (inplace) {
+        updated = target || {};
+    } else {
+        updated = Object.assign({}, target);
+    }
+    for (let [n, v] of Object.entries(source)) {
+        if (typeof v === 'object' && !(v instanceof Array)) {
+            updated[n] = chain_update(updated[n], v, inplace);
+        } else {
+            updated[n] = v;
+        }
+    }
+    return updated;
+}
+exports.chain_update = chain_update;
 function arrays_fuck_equal(ar1, ar2) {
     if (ar1.length !== ar2.length) {
         return false;
@@ -257,6 +295,8 @@ function counter_order(counter, include_zero = false) {
     return result.map(([t, i]) => t);
 }
 exports.counter_order = counter_order;
+//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
+//export type MergeAnnotations<T, > = 
 function is_annotated(x) {
     if (x === undefined) {
         return false;
@@ -265,10 +305,11 @@ function is_annotated(x) {
 }
 exports.is_annotated = is_annotated;
 function annotate(x, annotation) {
+    if (annotation === undefined) {
+        annotation = {};
+    }
     if (is_annotated(x)) {
-        if (x.annotation !== annotation) {
-            x.annotation = annotation; //could do check here for enabled being set properly already
-        }
+        Object.assign(x.annotation, annotation);
         return x;
     } else {
         let result = { value: x, annotated: true, annotation };
@@ -284,24 +325,28 @@ function unwrap(x) {
     }
 }
 exports.unwrap = unwrap;
-function with_annotatable(x, f, default_value) {
-    return annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
+function with_annotatable(f, default_value) {
+    return x => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
 }
 exports.with_annotatable = with_annotatable;
 function get_annotation(x, default_value) {
     if (is_annotated(x)) {
-        return x.annotation;
+        if (default_value !== undefined) {
+            return Object.assign({}, default_value, x.annotation);
+        } else {
+            return x.annotation;
+        }
     } else {
         return default_value;
     }
 }
 exports.get_annotation = get_annotation;
 function set_enabled(x, enabled = true) {
-    return annotate(x, enabled);
+    return annotate(x, { enabled });
 }
 exports.set_enabled = set_enabled;
-function with_disablable(x, f) {
-    return with_annotatable(x, f);
+function with_disablable(f) {
+    return with_annotatable(f, { enabled: true });
 }
 exports.with_disablable = with_disablable;
 function is_enabled(x) {
@@ -309,7 +354,7 @@ function is_enabled(x) {
     if (result === undefined) {
         return true;
     }
-    return result;
+    return result.enabled;
 }
 exports.is_enabled = is_enabled;
 var _StringValidity;
@@ -327,7 +372,286 @@ class StringValidator {
 exports.StringValidator = StringValidator;
 
 /***/ }),
+/* 1 */
+/***/ (function(module, exports) {
+
+module.exports = React;
+
+/***/ }),
 /* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const text_tools_1 = __webpack_require__(3);
+const datatypes_1 = __webpack_require__(0);
+var DisplayEltType;
+(function (DisplayEltType) {
+    DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
+    DisplayEltType[DisplayEltType["option"] = 1] = "option";
+    DisplayEltType[DisplayEltType["filler"] = 2] = "filler";
+    DisplayEltType[DisplayEltType["partial"] = 3] = "partial";
+    DisplayEltType[DisplayEltType["error"] = 4] = "error";
+})(DisplayEltType = exports.DisplayEltType || (exports.DisplayEltType = {}));
+function set_display(x, display) {
+    return datatypes_1.annotate(x, { display });
+}
+exports.set_display = set_display;
+var MatchValidity;
+(function (MatchValidity) {
+    MatchValidity[MatchValidity["valid"] = 0] = "valid";
+    MatchValidity[MatchValidity["partial"] = 1] = "partial";
+    MatchValidity[MatchValidity["invalid"] = 2] = "invalid";
+})(MatchValidity = exports.MatchValidity || (exports.MatchValidity = {}));
+class CommandParser {
+    constructor(command) {
+        this.position = 0;
+        this.validity = MatchValidity.valid;
+        this.match = [];
+        this.tail_padding = '';
+        this.command = command;
+        [this.tokens, this.token_gaps] = text_tools_1.tokenize(command);
+    }
+    consume_exact(spec_tokens, display = DisplayEltType.keyword, name) {
+        if (spec_tokens.length === 0) {
+            throw new Error("Can't consume an empty spec.");
+        }
+        let match_tokens = [];
+        let match_gaps = [];
+        let pos_offset = 0;
+        for (let spec_tok of spec_tokens) {
+            if (this.position + pos_offset === this.tokens.length) {
+                this.validity = MatchValidity.partial;
+                break; //partial validity
+            }
+            let next_tok = this.tokens[this.position + pos_offset];
+            let next_gap = this.token_gaps[this.position + pos_offset];
+            if (spec_tok.toLowerCase() === next_tok.toLowerCase()) {
+                match_tokens.push(next_tok);
+                match_gaps.push(next_gap);
+                pos_offset++;
+                continue;
+            }
+            if (text_tools_1.starts_with(spec_tok.toLowerCase(), next_tok.toLowerCase())) {
+                match_tokens.push(next_tok);
+                match_gaps.push(next_gap);
+                this.validity = MatchValidity.partial;
+                pos_offset++;
+                break;
+            }
+            this.validity = MatchValidity.invalid;
+            break;
+        }
+        this.position += pos_offset;
+        if (this.validity === MatchValidity.valid) {
+            this.match.push({
+                display: display,
+                match: text_tools_1.untokenize(match_tokens, match_gaps),
+                name: name
+            });
+            return true;
+        }
+        if (this.validity === MatchValidity.partial) {
+            if (this.position === this.tokens.length) {
+                this.match.push({
+                    display: DisplayEltType.partial,
+                    match: text_tools_1.untokenize(match_tokens, match_gaps),
+                    typeahead: [text_tools_1.untokenize(spec_tokens)],
+                    name: name
+                });
+                return false;
+            } else {
+                this.validity = MatchValidity.invalid;
+            }
+        }
+        match_tokens.push(...this.tokens.slice(this.position));
+        match_gaps.push(...this.token_gaps.slice(this.position, this.tokens.length));
+        this.position = this.tokens.length;
+        this.match.push({
+            display: DisplayEltType.error,
+            match: text_tools_1.untokenize(match_tokens, match_gaps),
+            name: name
+        });
+        return false;
+    }
+    subparser() {
+        return new CommandParser(text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
+    }
+    integrate(subparser) {
+        this.position += subparser.position;
+        this.match.push(...subparser.match);
+        this.validity = subparser.validity;
+    }
+    consume_option(option_spec_tokens, name) {
+        let partial_matches = [];
+        let exact_match_subparser = null;
+        let exact_match_spec_toks = null;
+        for (let spec_toks of option_spec_tokens) {
+            let subparser = this.subparser();
+            let annotation = datatypes_1.get_annotation(spec_toks, { display: DisplayEltType.option, enabled: true });
+            let display = annotation.display;
+            let is_exact_match = subparser.consume_exact(datatypes_1.unwrap(spec_toks), annotation.display, name);
+            if (annotation.enabled) {
+                if (is_exact_match) {
+                    exact_match_subparser = subparser;
+                    exact_match_spec_toks = datatypes_1.unwrap(spec_toks);
+                    continue;
+                }
+                if (subparser.validity === MatchValidity.partial) {
+                    partial_matches.push(subparser.match[0]);
+                }
+            } else {
+                if (is_exact_match || subparser.validity === MatchValidity.partial) {
+                    let disabled_match = datatypes_1.set_enabled(subparser.match[0], false);
+                    partial_matches.push(disabled_match);
+                }
+            }
+        }
+        if (exact_match_subparser !== null) {
+            let typeahead = partial_matches.map(datatypes_1.with_disablable(x => datatypes_1.unwrap(x.typeahead[0])));
+            // let typeahead = partial_matches.map( (de) => with_disablable(de, (x) => x.typeahead[0]));
+            this.integrate(exact_match_subparser);
+            this.match[this.match.length - 1].typeahead = typeahead;
+            return text_tools_1.normalize_whitespace(text_tools_1.untokenize(exact_match_spec_toks));
+        }
+        if (partial_matches.filter(de => datatypes_1.is_enabled(de)).length > 0) {
+            this.validity = MatchValidity.partial;
+            this.position = this.tokens.length - 1;
+            let typeahead = partial_matches.map(datatypes_1.with_disablable(x => datatypes_1.unwrap(x.typeahead[0])));
+            this.match.push({
+                display: DisplayEltType.partial,
+                match: datatypes_1.unwrap(partial_matches[0]).match,
+                typeahead: typeahead,
+                name: name
+            });
+            return false;
+        }
+        this.validity = MatchValidity.invalid;
+        let match_tokens = this.tokens.slice(this.position);
+        let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
+        this.match.push({
+            display: DisplayEltType.error,
+            match: text_tools_1.untokenize(match_tokens, match_token_gaps),
+            name: name
+        });
+        return false;
+    }
+    consume_filler(spec_tokens) {
+        return this.consume_exact(spec_tokens, DisplayEltType.filler);
+    }
+    is_done() {
+        if (this.position === this.tokens.length - 1 && this.tokens[this.tokens.length - 1] === '') {
+            return this.validity === MatchValidity.valid;
+        }
+        if (this.position !== this.tokens.length) {
+            return false;
+        }
+        return this.validity === MatchValidity.valid;
+    }
+    done() {
+        if (!this.is_done() /*this.position !== this.tokens.length */) {
+                this.validity = MatchValidity.invalid;
+                this.match.push({
+                    display: DisplayEltType.error,
+                    match: text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
+                });
+                this.position = this.tokens.length;
+            } else {
+            if (this.position === this.tokens.length - 1) {
+                this.tail_padding = this.token_gaps[this.token_gaps.length - 1];
+            }
+        }
+        return this.validity === MatchValidity.valid;
+    }
+    get_match(name) {
+        for (let m of this.match) {
+            if (m.name === name) {
+                return m;
+            }
+        }
+        return null;
+    }
+}
+exports.CommandParser = CommandParser;
+function stop_early(gen) {
+    let value = undefined;
+    let done = false;
+    while (!done) {
+        let result = gen.next(value);
+        value = result.value;
+        done = result.done;
+        if (value === false) {
+            return;
+        }
+    }
+    return value;
+}
+exports.stop_early = stop_early;
+exports.with_early_stopping = gen_func => {
+    let inner = (...args) => {
+        let gen = gen_func(...args);
+        return stop_early(gen);
+    };
+    return inner;
+};
+function with_early_stopping2(gen_func) {
+    let inner = (...args) => {
+        let gen = gen_func.call(this, ...args);
+        return stop_early(gen);
+    };
+    return inner;
+}
+exports.with_early_stopping2 = with_early_stopping2;
+function* consume_option_stepwise_eager(parser, options) {
+    // assumption: no option is a prefix of any other option
+    let current_cmd = [];
+    let pos = 0;
+    while (true) {
+        let remaining_options = options.filter(datatypes_1.with_disablable(toks => toks.slice(0, pos).every((tok, i) => tok === current_cmd[i])));
+        if (remaining_options.length === 0) {
+            return text_tools_1.untokenize(current_cmd);
+        }
+        let next_tokens = [];
+        for (let opt of remaining_options) {
+            let { value, annotation: { enabled } } = datatypes_1.annotate(opt);
+            if (pos < value.length) {
+                let tok = value[pos];
+                let found = false;
+                for (let i = 0; i < next_tokens.length; i++) {
+                    let nt = next_tokens[i];
+                    if (datatypes_1.unwrap(nt) === tok) {
+                        if (enabled) {
+                            next_tokens[i] = datatypes_1.set_enabled(nt, true);
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    next_tokens.push(datatypes_1.set_enabled(tok, enabled));
+                }
+            } else {
+                return text_tools_1.untokenize(current_cmd);
+            }
+        }
+        let display_type;
+        if (pos === 0) {
+            display_type = DisplayEltType.keyword;
+        } else {
+            display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
+        }
+        let next_options = next_tokens.map(datatypes_1.with_disablable(text_tools_1.split_tokens)).map(o => datatypes_1.annotate(o, { display: display_type }));
+        let next_tok = yield parser.consume_option(next_options);
+        current_cmd.push(next_tok);
+        pos++;
+    }
+}
+exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
+
+/***/ }),
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -452,258 +776,158 @@ function dedent(strs, ...args) {
     return result2;
 }
 exports.dedent = dedent;
+function wrap_in_div(message) {
+    let elt = document.createElement('div');
+    elt.innerHTML = message;
+    return elt;
+}
+exports.wrap_in_div = wrap_in_div;
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const text_tools_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
-var DisplayEltType;
-(function (DisplayEltType) {
-    DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
-    DisplayEltType[DisplayEltType["option"] = 1] = "option";
-    DisplayEltType[DisplayEltType["filler"] = 2] = "filler";
-    DisplayEltType[DisplayEltType["partial"] = 3] = "partial";
-    DisplayEltType[DisplayEltType["error"] = 4] = "error";
-})(DisplayEltType = exports.DisplayEltType || (exports.DisplayEltType = {}));
-var MatchValidity;
-(function (MatchValidity) {
-    MatchValidity[MatchValidity["valid"] = 0] = "valid";
-    MatchValidity[MatchValidity["partial"] = 1] = "partial";
-    MatchValidity[MatchValidity["invalid"] = 2] = "invalid";
-})(MatchValidity = exports.MatchValidity || (exports.MatchValidity = {}));
-class CommandParser {
-    constructor(command) {
-        this.position = 0;
-        this.validity = MatchValidity.valid;
-        this.match = [];
-        this.tail_padding = '';
-        this.command = command;
-        [this.tokens, this.token_gaps] = text_tools_1.tokenize(command);
+const commands_1 = __webpack_require__(5);
+const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(0);
+const text_tools_1 = __webpack_require__(3);
+const observer_moments_1 = __webpack_require__(16);
+const _00_prologue_1 = __webpack_require__(14);
+const _01_chapter_1_1 = __webpack_require__(15);
+exports.wrap_handler = handler => function (parser) {
+    return parser_1.with_early_stopping(handler.bind(this))(parser);
+};
+class VenienceWorld extends commands_1.World {
+    constructor({ experiences, history_index, om_state }) {
+        if (experiences === undefined) {
+            experiences = ['bed, sleeping 1']; //['alcove, entering the forest'];
+        }
+        if (history_index === undefined) {
+            history_index = 0;
+        }
+        if (om_state === undefined) {
+            om_state = {};
+        }
+        super({ experiences, history_index, om_state });
     }
-    consume_exact(spec_tokens, display = DisplayEltType.keyword, name) {
-        if (spec_tokens.length === 0) {
-            throw new Error("Can't consume an empty spec.");
-        }
-        let match_tokens = [];
-        let match_gaps = [];
-        let pos_offset = 0;
-        for (let spec_tok of spec_tokens) {
-            if (this.position + pos_offset === this.tokens.length) {
-                this.validity = MatchValidity.partial;
-                break; //partial validity
+    current_om() {
+        for (let i = this.state.experiences.length - 1; i >= 0; i--) {
+            let exp = this.state.experiences[i];
+            if (exp !== null) {
+                return exp;
             }
-            let next_tok = this.tokens[this.position + pos_offset];
-            let next_gap = this.token_gaps[this.position + pos_offset];
-            if (spec_tok.toLowerCase() === next_tok.toLowerCase()) {
-                match_tokens.push(next_tok);
-                match_gaps.push(next_gap);
-                pos_offset++;
-                continue;
-            }
-            if (text_tools_1.starts_with(spec_tok.toLowerCase(), next_tok.toLowerCase())) {
-                match_tokens.push(next_tok);
-                match_gaps.push(next_gap);
-                this.validity = MatchValidity.partial;
-                pos_offset++;
-                break;
-            }
-            this.validity = MatchValidity.invalid;
-            break;
         }
-        this.position += pos_offset;
-        if (this.validity === MatchValidity.valid) {
-            this.match.push({
-                display: display,
-                match: text_tools_1.untokenize(match_tokens, match_gaps),
-                name: name
-            });
-            return true;
+        throw "Somehow got a fully null history.";
+    }
+    transition_to(dest, include_enter_message = true) {
+        let result = {
+            world: this.update({
+                experiences: [...this.state.experiences, dest],
+                history_index: this.state.history_index + 1
+            })
+        };
+        if (include_enter_message) {
+            let msg = VenienceWorld.oms.get(dest).enter_message;
+            if (msg !== undefined) {
+                result.message = text_tools_1.wrap_in_div(msg);
+            }
         }
-        if (this.validity === MatchValidity.partial) {
-            if (this.position === this.tokens.length) {
-                this.match.push({
-                    display: DisplayEltType.partial,
-                    match: text_tools_1.untokenize(match_tokens, match_gaps),
-                    typeahead: [text_tools_1.untokenize(spec_tokens)],
-                    name: name
+        return result;
+    }
+    get handle_command() {
+        return exports.wrap_handler(function* (parser) {
+            let om = VenienceWorld.oms.get(this.current_om());
+            if (!observer_moments_1.is_declarative(om)) {
+                //dispatch to a more specific handler
+                return om.handle_command.call(this, parser);
+            }
+            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd);
+            if (cmd_options.length === 0) {
+                yield parser.done();
+                return;
+            }
+            let om_id_choice;
+            if (cmd_options.length === 1) {
+                let cmd = cmd_options[0];
+                om_id_choice = om.transitions[0][1];
+                for (let phrase of cmd) {
+                    let display = parser_1.DisplayEltType.filler;
+                    if (phrase.charAt(0) === '*') {
+                        display = parser_1.DisplayEltType.keyword;
+                        phrase = phrase.substring(1);
+                    } else if (phrase.charAt(0) === '&') {
+                        display = parser_1.DisplayEltType.option;
+                        phrase = phrase.substring(1);
+                    }
+                    yield parser.consume_exact(text_tools_1.tokenize(phrase)[0], display);
+                }
+                yield parser.done();
+            } else {
+                let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
+                yield parser.done();
+                om_id_choice = this.current_om();
+                om.transitions.forEach(([cmd, om_id]) => {
+                    if (cmd_choice === text_tools_1.untokenize(cmd)) {
+                        om_id_choice = om_id;
+                    }
                 });
-                return false;
-            } else {
-                this.validity = MatchValidity.invalid;
             }
-        }
-        match_tokens.push(...this.tokens.slice(this.position));
-        match_gaps.push(...this.token_gaps.slice(this.position, this.tokens.length));
-        this.position = this.tokens.length;
-        this.match.push({
-            display: DisplayEltType.error,
-            match: text_tools_1.untokenize(match_tokens, match_gaps),
-            name: name
+            return this.transition_to(om_id_choice);
         });
-        return false;
     }
-    subparser() {
-        return new CommandParser(text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
-    }
-    integrate(subparser) {
-        this.position += subparser.position;
-        this.match.push(...subparser.match);
-        this.validity = subparser.validity;
-    }
-    consume_option(option_spec_tokens, name, display = DisplayEltType.option) {
-        let partial_matches = [];
-        let exact_match_subparser = null;
-        let exact_match_spec_toks = null;
-        for (let spec_toks of option_spec_tokens) {
-            let subparser = this.subparser();
-            let is_exact_match = subparser.consume_exact(datatypes_1.unwrap(spec_toks), display, name);
-            if (datatypes_1.is_enabled(spec_toks)) {
-                if (is_exact_match) {
-                    exact_match_subparser = subparser;
-                    exact_match_spec_toks = datatypes_1.unwrap(spec_toks);
-                    continue;
-                }
-                if (subparser.validity === MatchValidity.partial) {
-                    partial_matches.push(subparser.match[0]);
-                }
-            } else {
-                if (is_exact_match || subparser.validity === MatchValidity.partial) {
-                    let disabled_match = datatypes_1.set_enabled(subparser.match[0], false);
-                    partial_matches.push(disabled_match);
-                }
+    interstitial_update(message) {
+        let result = {};
+        let world_update = {};
+        let om = VenienceWorld.oms.get(this.current_om());
+        if (this.state.experiences.length > 0) {
+            let loop_idx = this.state.experiences.indexOf(this.current_om());
+            if (loop_idx !== this.state.experiences.length - 1) {
+                let new_experiences = this.state.experiences.slice().fill(null, loop_idx + 1);
+                world_update.experiences = new_experiences;
             }
         }
-        if (exact_match_subparser !== null) {
-            let typeahead = partial_matches.map(de => datatypes_1.with_disablable(de, x => x.typeahead[0]));
-            this.integrate(exact_match_subparser);
-            this.match[this.match.length - 1].typeahead = typeahead;
-            return text_tools_1.normalize_whitespace(text_tools_1.untokenize(exact_match_spec_toks));
+        if (Object.keys(world_update).length > 0) {
+            result.world = this.update(world_update);
         }
-        if (partial_matches.filter(de => datatypes_1.is_enabled(de)).length > 0) {
-            this.validity = MatchValidity.partial;
-            this.position = this.tokens.length - 1;
-            let typeahead = partial_matches.map(de => datatypes_1.with_disablable(de, x => x.typeahead[0]));
-            this.match.push({
-                display: DisplayEltType.partial,
-                match: datatypes_1.unwrap(partial_matches[0]).match,
-                typeahead: typeahead,
-                name: name
-            });
-            return false;
-        }
-        this.validity = MatchValidity.invalid;
-        let match_tokens = this.tokens.slice(this.position);
-        let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
-        this.match.push({
-            display: DisplayEltType.error,
-            match: text_tools_1.untokenize(match_tokens, match_token_gaps),
-            name: name
-        });
-        return false;
+        return result;
     }
-    consume_filler(spec_tokens) {
-        return this.consume_exact(spec_tokens, DisplayEltType.filler);
-    }
-    is_done() {
-        if (this.position === this.tokens.length - 1 && this.tokens[this.tokens.length - 1] === '') {
-            return this.validity === MatchValidity.valid;
-        }
-        if (this.position !== this.tokens.length) {
-            return false;
-        }
-        return this.validity === MatchValidity.valid;
-    }
-    done() {
-        if (!this.is_done() /*this.position !== this.tokens.length */) {
-                this.validity = MatchValidity.invalid;
-                this.match.push({
-                    display: DisplayEltType.error,
-                    match: text_tools_1.untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
-                });
-                this.position = this.tokens.length;
-            } else {
-            if (this.position === this.tokens.length - 1) {
-                this.tail_padding = this.token_gaps[this.token_gaps.length - 1];
+    interpret_history(history_elt) {
+        let interpretation_op = [];
+        let current_om = this.current_om();
+        let hist_om = history_elt.world.current_om();
+        if (current_om === 'bed, awakening 2') {
+            let to_forget = ['bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, lying down 1', 'bed, sleeping 2'];
+            if (datatypes_1.array_fuck_contains(to_forget, hist_om)) {
+                interpretation_op.push({ 'add': 'forgotten' });
             }
         }
-        return this.validity === MatchValidity.valid;
-    }
-    get_match(name) {
-        for (let m of this.match) {
-            if (m.name === name) {
-                return m;
+        if (current_om === 'alcove, interpreting 1') {
+            if (hist_om === 'alcove, beginning interpretation') {
+                interpretation_op.push({ 'add': 'interp-alcove-1-enabled' });
             }
         }
-        return null;
-    }
-}
-exports.CommandParser = CommandParser;
-function stop_early(gen) {
-    let value = undefined;
-    let done = false;
-    while (!done) {
-        let result = gen.next(value);
-        value = result.value;
-        done = result.done;
-        if (value === false) {
-            return;
-        }
-    }
-    return value;
-}
-exports.stop_early = stop_early;
-function with_early_stopping(gen_func) {
-    function inner(...args) {
-        let gen = gen_func(...args);
-        return stop_early(gen);
-    }
-    return inner;
-}
-exports.with_early_stopping = with_early_stopping;
-function* consume_option_stepwise_eager(parser, options) {
-    // assumption: no option is a prefix of any other option
-    let current_cmd = [];
-    let pos = 0;
-    while (true) {
-        let remaining_options = options.filter(toks => toks.slice(0, pos).every((tok, i) => tok === current_cmd[i]));
-        if (remaining_options.length === 0) {
-            return text_tools_1.untokenize(current_cmd);
-        }
-        let next_tokens = [];
-        for (let opt of remaining_options) {
-            if (pos < opt.length) {
-                let tok = opt[pos];
-                if (next_tokens.indexOf(tok) === -1) {
-                    next_tokens.push(tok);
-                }
-            } else {
-                return text_tools_1.untokenize(current_cmd);
+        if (current_om === 'alcove, interpreting 2') {
+            if (hist_om === 'alcove, beginning interpretation') {
+                interpretation_op.push({ 'add': 'interp-alcove-2-enabled' });
             }
         }
-        let display_type;
-        if (pos === 0) {
-            display_type = DisplayEltType.keyword;
-        } else {
-            display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
+        if (current_om === 'alcove, interpreting 3') {
+            if (hist_om === 'alcove, beginning interpretation') {
+                interpretation_op.push({ 'add': 'interp-alcove-3-enabled' });
+            }
         }
-        let next_tok = yield parser.consume_option(next_tokens.map(text_tools_1.split_tokens), undefined, display_type);
-        current_cmd.push(next_tok);
-        pos++;
+        if (this.state.experiences[history_elt.world.state.history_index] === null) {
+            interpretation_op.push({ 'add': 'forgotten' });
+        }
+        return interpretation_op;
     }
 }
-exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports) {
-
-module.exports = ReactDOM;
+VenienceWorld.oms = observer_moments_1.index_oms([..._00_prologue_1.default(), ..._01_chapter_1_1.default()]);
+exports.VenienceWorld = VenienceWorld;
 
 /***/ }),
 /* 5 */
@@ -713,213 +937,18 @@ module.exports = ReactDOM;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const parser_1 = __webpack_require__(3);
-exports.Carat = () => React.createElement("span", null, ">\u00A0");
-function get_display_color(det) {
-    switch (det) {
-        case parser_1.DisplayEltType.keyword:
-            return 'aqua';
-        case parser_1.DisplayEltType.option:
-            return 'orange';
-        case parser_1.DisplayEltType.filler:
-            return 'ivory';
-        case parser_1.DisplayEltType.partial:
-            return 'silver';
-        case parser_1.DisplayEltType.error:
-            return 'red';
+const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(2);
+class World {
+    constructor(state) {
+        this.state = state;
+    }
+    update(state_updates) {
+        let new_state = datatypes_1.chain_update(this.state, state_updates);
+        return new this.constructor(new_state);
     }
 }
-exports.ParsedText = props => {
-    let { parser, typeaheadIndex, children } = props;
-    let style = {
-        //display: 'inline-block',
-        whiteSpace: 'pre-wrap',
-        position: 'relative'
-    };
-    let validity = parser.validity;
-    if (validity === parser_1.MatchValidity.valid) {
-        style.fontWeight = '900';
-        style.fontStyle = 'italic';
-    } else {
-        style.fontWeight = '100';
-        if (validity === parser_1.MatchValidity.invalid) {
-            style.opacity = '0.6';
-        }
-    }
-    const elt_style = {};
-    const span_style = {};
-    return React.createElement("div", { className: "parsed-text", style: {} }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
-};
-exports.OutputText = props => {
-    const { message_html } = props;
-    return React.createElement("div", { className: "output-text", dangerouslySetInnerHTML: { __html: message_html } });
-};
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.keys = {
-    tab: 9,
-    enter: 13,
-    left: 37,
-    up: 38,
-    right: 39,
-    down: 40
-};
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const text_tools_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
-class PhraseValidator extends datatypes_1.StringValidator {
-    is_valid(s) {
-        let toks = text_tools_1.tokenize(s)[0];
-        if (toks.slice(1).some(t => t.startsWith('*') || t.startsWith('&'))) {
-            return false;
-        }
-        return true;
-    }
-}
-exports.PhraseValidator = PhraseValidator;
-function has_transition_list(t) {
-    return t.transitions !== undefined;
-}
-exports.has_transition_list = has_transition_list;
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const Prompt_1 = __webpack_require__(12);
-const Text_1 = __webpack_require__(5);
-const TypeaheadList_1 = __webpack_require__(13);
-const History_1 = __webpack_require__(11);
-const text_tools_1 = __webpack_require__(2);
-const parser_1 = __webpack_require__(3);
-class Terminal extends React.Component {
-    constructor(props) {
-        super(props);
-        this.handleKeys = event => {
-            let swallowed_enter = this.typeahead_list !== null ? this.typeahead_list.handleKeys(event) : false;
-            if (!swallowed_enter) {
-                this.prompt.handleKeys(event);
-            }
-        };
-        this.handleSubmit = () => {
-            if (this.isCurrentlyValid()) {
-                const output = this.state.world_driver.commit();
-                this.setState({ world_driver: this.state.world_driver });
-                this.history.commit_after_update = true;
-                //this.history.commit();
-                return true;
-            }
-            return false;
-        };
-        this.isCurrentlyValid = () => {
-            let parser = this.currentParser();
-            return parser.validity === parser_1.MatchValidity.valid && parser.is_done();
-        };
-        this.handlePromptChange = input => {
-            let result = this.state.world_driver.apply_command(input, false);
-            this.setState({
-                world_driver: this.state.world_driver
-            });
-            this.history.edit_after_update = true;
-            //this.history.edit();
-            this.prompt.focus();
-            //this.scrollToPrompt();
-            let that = this;
-            window.setTimeout(function () {
-                that.scrollToPrompt();
-            }, 0);
-        };
-        this.handleTypeaheadSelection = option => {
-            let matched_tokens = this.currentParser().match.slice(0, this.currentTypeaheadIndex() + 1).map(elt => elt.match);
-            let current_indentation = this.currentIndentation();
-            if (current_indentation === '' && matched_tokens.length > 1) {
-                current_indentation = ' ';
-            }
-            let new_last_token = current_indentation + option;
-            matched_tokens[matched_tokens.length - 1] = new_last_token;
-            let new_command = ''.concat(...matched_tokens) + ' ';
-            this.handlePromptChange(new_command);
-            this.prompt.setState({ value: new_command });
-        };
-        this.currentParser = () => this.state.world_driver.current_state.parser;
-        this.currentTypeaheadIndex = () => {
-            let parser = this.currentParser();
-            let typeahead_ind = parser.match.length - 1;
-            let last_match = parser.match[typeahead_ind];
-            if (parser.match.length > 1 && last_match.match === '') {
-                typeahead_ind--;
-            }
-            return typeahead_ind;
-        };
-        this.currentTypeahead = () => {
-            let parser = this.currentParser();
-            let typeahead_ind = this.currentTypeaheadIndex();
-            if (typeahead_ind === -1) {
-                return [];
-            }
-            let typeahead = parser.match[typeahead_ind].typeahead;
-            if (typeahead === undefined) {
-                return [];
-            }
-            return typeahead;
-        };
-        this.currentIndentation = () => {
-            let parser = this.currentParser();
-            let typeahead_ind = this.currentTypeaheadIndex();
-            if (typeahead_ind === -1) {
-                return '';
-            }
-            return text_tools_1.get_indenting_whitespace(parser.match[typeahead_ind].match);
-        };
-        this.scrollToPrompt = () => {
-            if (this.state.world_driver.history.length > 1) {
-                this.prompt.input.scrollIntoView({ behavior: "smooth", block: "start", inline: "end" });
-            }
-        };
-        this.state = { world_driver: this.props.world_driver };
-    }
-    componentDidMount() {
-        this.prompt.focus();
-    }
-    componentDidUpdate() {}
-    render() {
-        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
-    }
-}
-exports.Terminal = Terminal;
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const text_tools_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(3);
+exports.World = World;
 function apply_command(world, cmd) {
     let parser = new parser_1.CommandParser(cmd);
     let result = { parser: parser, world: world };
@@ -1031,19 +1060,209 @@ class WorldDriver {
     }
 }
 exports.WorldDriver = WorldDriver;
-function eager_dispatch(world, parser) {
-    let commands = world.get_commands();
-    let options = commands.map(cmd => datatypes_1.with_disablable(cmd, c => c.command_name));
-    let cmd_name = parser.consume_option(options, 'command', parser_1.DisplayEltType.keyword);
-    let result = { parser: parser, world: world };
-    if (!cmd_name) {
-        return result;
+// eager dispatch
+// type WorldWithEagerDispatch<T> = World<T> & {
+//     get_commands(): Disablable<Command<T>>[],
+// }
+// export function eager_dispatch<T>(world: WorldWithEagerDispatch<T>, parser: CommandParser) {
+//     let commands = world.get_commands();
+//     let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
+//     let cmd_name = parser.consume_option(options, 'command');
+//     let result: CommandResult<T> = {parser: parser, world: world};
+//     if (!cmd_name) {
+//         return result;
+//     }
+//     let command = unwrap(commands[commands.findIndex((cmd) => (
+//         cmd_name === untokenize(unwrap(cmd).command_name)))]);
+//     let cmd_result = command.execute(world, parser);
+//     return cmd_result
+// }
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports) {
+
+module.exports = ReactDOM;
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
+exports.Carat = () => React.createElement("span", null, ">\u00A0");
+function get_display_color(det) {
+    switch (det) {
+        case parser_1.DisplayEltType.keyword:
+            return 'aqua';
+        case parser_1.DisplayEltType.option:
+            return 'orange';
+        case parser_1.DisplayEltType.filler:
+            return 'ivory';
+        case parser_1.DisplayEltType.partial:
+            return 'silver';
+        case parser_1.DisplayEltType.error:
+            return 'red';
     }
-    let command = datatypes_1.unwrap(commands[commands.findIndex(cmd => cmd_name === text_tools_1.untokenize(datatypes_1.unwrap(cmd).command_name))]);
-    let cmd_result = command.execute(world, parser);
-    return cmd_result;
 }
-exports.eager_dispatch = eager_dispatch;
+exports.ParsedText = props => {
+    let { parser, typeaheadIndex, children } = props;
+    let style = {
+        //display: 'inline-block',
+        whiteSpace: 'pre-wrap',
+        position: 'relative'
+    };
+    let validity = parser.validity;
+    if (validity === parser_1.MatchValidity.valid) {
+        style.fontWeight = '900';
+        style.fontStyle = 'italic';
+    } else {
+        style.fontWeight = '100';
+        if (validity === parser_1.MatchValidity.invalid) {
+            style.opacity = '0.6';
+        }
+    }
+    const elt_style = {};
+    const span_style = {};
+    return React.createElement("div", { className: "parsed-text", style: {} }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
+};
+exports.OutputText = props => {
+    const { message_html } = props;
+    return React.createElement("div", { className: "output-text", dangerouslySetInnerHTML: { __html: message_html } });
+};
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.keys = {
+    tab: 9,
+    enter: 13,
+    left: 37,
+    up: 38,
+    right: 39,
+    down: 40
+};
+
+/***/ }),
+/* 9 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(1);
+const Prompt_1 = __webpack_require__(11);
+const Text_1 = __webpack_require__(7);
+const TypeaheadList_1 = __webpack_require__(12);
+const History_1 = __webpack_require__(10);
+const text_tools_1 = __webpack_require__(3);
+// import {WorldType, WorldDriver} from "../typescript/commands";
+const parser_1 = __webpack_require__(2);
+class Terminal extends React.Component {
+    constructor(props) {
+        super(props);
+        this.handleKeys = event => {
+            let swallowed_enter = this.typeahead_list !== null ? this.typeahead_list.handleKeys(event) : false;
+            if (!swallowed_enter) {
+                this.prompt.handleKeys(event);
+            }
+        };
+        this.handleSubmit = () => {
+            if (this.isCurrentlyValid()) {
+                const output = this.state.world_driver.commit();
+                this.setState({ world_driver: this.state.world_driver });
+                this.history.commit_after_update = true;
+                //this.history.commit();
+                return true;
+            }
+            return false;
+        };
+        this.isCurrentlyValid = () => {
+            let parser = this.currentParser();
+            return parser.validity === parser_1.MatchValidity.valid && parser.is_done();
+        };
+        this.handlePromptChange = input => {
+            let result = this.state.world_driver.apply_command(input, false);
+            this.setState({
+                world_driver: this.state.world_driver
+            });
+            this.history.edit_after_update = true;
+            //this.history.edit();
+            this.prompt.focus();
+            //this.scrollToPrompt();
+            let that = this;
+            window.setTimeout(function () {
+                that.scrollToPrompt();
+            }, 0);
+        };
+        this.handleTypeaheadSelection = option => {
+            let matched_tokens = this.currentParser().match.slice(0, this.currentTypeaheadIndex() + 1).map(elt => elt.match);
+            let current_indentation = this.currentIndentation();
+            if (current_indentation === '' && matched_tokens.length > 1) {
+                current_indentation = ' ';
+            }
+            let new_last_token = current_indentation + option;
+            matched_tokens[matched_tokens.length - 1] = new_last_token;
+            let new_command = ''.concat(...matched_tokens) + ' ';
+            this.handlePromptChange(new_command);
+            this.prompt.setState({ value: new_command });
+        };
+        this.currentParser = () => this.state.world_driver.current_state.parser;
+        this.currentTypeaheadIndex = () => {
+            let parser = this.currentParser();
+            let typeahead_ind = parser.match.length - 1;
+            let last_match = parser.match[typeahead_ind];
+            if (parser.match.length > 1 && last_match.match === '') {
+                typeahead_ind--;
+            }
+            return typeahead_ind;
+        };
+        this.currentTypeahead = () => {
+            let parser = this.currentParser();
+            let typeahead_ind = this.currentTypeaheadIndex();
+            if (typeahead_ind === -1) {
+                return [];
+            }
+            let typeahead = parser.match[typeahead_ind].typeahead;
+            if (typeahead === undefined) {
+                return [];
+            }
+            return typeahead;
+        };
+        this.currentIndentation = () => {
+            let parser = this.currentParser();
+            let typeahead_ind = this.currentTypeaheadIndex();
+            if (typeahead_ind === -1) {
+                return '';
+            }
+            return text_tools_1.get_indenting_whitespace(parser.match[typeahead_ind].match);
+        };
+        this.scrollToPrompt = () => {
+            if (this.state.world_driver.history.length > 1) {
+                this.prompt.input.scrollIntoView({ behavior: "smooth", block: "start", inline: "end" });
+            }
+        };
+        this.state = { world_driver: this.props.world_driver };
+    }
+    componentDidMount() {
+        this.prompt.focus();
+    }
+    componentDidUpdate() {}
+    render() {
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+    }
+}
+exports.Terminal = Terminal;
 
 /***/ }),
 /* 10 */
@@ -1053,152 +1272,9 @@ exports.eager_dispatch = eager_dispatch;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const parser_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(1);
-const text_tools_1 = __webpack_require__(2);
-const observer_moments_1 = __webpack_require__(15);
-const transition_list_1 = __webpack_require__(7);
-class VenienceWorld {
-    constructor({ experiences, history_index }) {
-        if (experiences === undefined) {
-            experiences = ['bed, sleeping 1'];
-        }
-        if (history_index === undefined) {
-            history_index = 0;
-        }
-        this.experiences = experiences;
-        this.history_index = history_index;
-    }
-    update({ experiences, history_index }) {
-        if (experiences === undefined) {
-            experiences = this.experiences;
-        }
-        if (history_index === undefined) {
-            history_index = this.history_index;
-        }
-        return new VenienceWorld({ experiences, history_index });
-    }
-    current_om() {
-        for (let i = this.experiences.length - 1; i >= 0; i--) {
-            let exp = this.experiences[i];
-            if (exp !== null) {
-                return exp;
-            }
-        }
-        throw "Somehow got a fully null history.";
-    }
-    handle_command(parser) {
-        let world = this;
-        return parser_1.with_early_stopping(function* (parser) {
-            let om = observer_moments_1.alcove_oms.get(world.current_om());
-            if (!transition_list_1.has_transition_list(om)) {
-                //dispatch to a fancier handler
-                return;
-            }
-            let cmd_options = om.transitions.map(([cmd, om_id]) => cmd);
-            if (cmd_options.length === 0) {
-                yield parser.done();
-                return;
-            }
-            let om_id_choice;
-            if (cmd_options.length === 1) {
-                let cmd = cmd_options[0];
-                om_id_choice = om.transitions[0][1];
-                for (let phrase of cmd) {
-                    let display = parser_1.DisplayEltType.filler;
-                    if (phrase.charAt(0) === '*') {
-                        display = parser_1.DisplayEltType.keyword;
-                        phrase = phrase.substring(1);
-                    } else if (phrase.charAt(0) === '&') {
-                        display = parser_1.DisplayEltType.option;
-                        phrase = phrase.substring(1);
-                    }
-                    text_tools_1.tokenize(phrase);
-                    yield parser.consume_exact(text_tools_1.tokenize(phrase)[0], display);
-                }
-                yield parser.done();
-            } else {
-                let cmd_choice = yield* parser_1.consume_option_stepwise_eager(parser, cmd_options);
-                yield parser.done();
-                om_id_choice = world.current_om();
-                om.transitions.forEach(([cmd, om_id]) => {
-                    if (cmd_choice === text_tools_1.untokenize(cmd)) {
-                        om_id_choice = om_id;
-                    }
-                });
-            }
-            return { world: world.update({
-                    experiences: [...world.experiences, om_id_choice],
-                    history_index: world.history_index + 1
-                }) };
-        })(parser);
-    }
-    interstitial_update() {
-        let result = {};
-        let world_update = {};
-        let message_parts = [];
-        let om_descr = observer_moments_1.alcove_oms.get(this.current_om()).message;
-        message_parts.push(om_descr);
-        if (this.experiences.length > 0) {
-            let loop_idx = this.experiences.indexOf(this.current_om());
-            if (loop_idx !== this.experiences.length - 1) {
-                let new_experiences = this.experiences.slice().fill(null, loop_idx + 1);
-                world_update.experiences = new_experiences;
-            }
-        }
-        if (message_parts.length > 0) {
-            result.message = document.createElement('div');
-            result.message.innerHTML = message_parts.join('\n\n');
-        }
-        if (Object.keys(world_update).length > 0) {
-            result.world = this.update(world_update);
-        }
-        return result;
-    }
-    interpret_history(history_elt) {
-        let interpretation_op = [];
-        let current_om = this.current_om();
-        let hist_om = history_elt.world.current_om();
-        if (current_om === 'bed, awakening 2') {
-            let to_forget = ['bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, lying down 1', 'bed, sleeping 2'];
-            if (datatypes_1.array_fuck_contains(to_forget, hist_om)) {
-                interpretation_op.push({ 'add': 'forgotten' });
-            }
-        }
-        if (current_om === 'alcove, interpreting 1') {
-            if (hist_om === 'alcove, beginning interpretation') {
-                interpretation_op.push({ 'add': 'interp-alcove-1-enabled' });
-            }
-        }
-        if (current_om === 'alcove, interpreting 2') {
-            if (hist_om === 'alcove, beginning interpretation') {
-                interpretation_op.push({ 'add': 'interp-alcove-2-enabled' });
-            }
-        }
-        if (current_om === 'alcove, interpreting 3') {
-            if (hist_om === 'alcove, beginning interpretation') {
-                interpretation_op.push({ 'add': 'interp-alcove-3-enabled' });
-            }
-        }
-        if (this.experiences[history_elt.world.history_index] === null) {
-            interpretation_op.push({ 'add': 'forgotten' });
-        }
-        return interpretation_op;
-    }
-}
-exports.VenienceWorld = VenienceWorld;
-
-/***/ }),
-/* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const ReactDom = __webpack_require__(4);
-const Text_1 = __webpack_require__(5);
+const React = __webpack_require__(1);
+const ReactDom = __webpack_require__(6);
+const Text_1 = __webpack_require__(7);
 class BookGuy extends React.Component {
     /*
       BookGuy is a bad component that get's the danged job done.
@@ -1354,7 +1430,7 @@ class History extends React.Component {
 exports.History = History;
 
 /***/ }),
-/* 12 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1367,8 +1443,8 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(6);
+const React = __webpack_require__(1);
+const keyboard_tools_1 = __webpack_require__(8);
 const InputWrapper = props => {
     const { children } = props,
           rest = __rest(props, ["children"]);
@@ -1461,16 +1537,16 @@ class Prompt extends React.Component {
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 13 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const keyboard_tools_1 = __webpack_require__(6);
-const datatypes_1 = __webpack_require__(1);
+const React = __webpack_require__(1);
+const keyboard_tools_1 = __webpack_require__(8);
+const datatypes_1 = __webpack_require__(0);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1548,6 +1624,24 @@ class TypeaheadList extends React.Component {
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(1);
+const ReactDom = __webpack_require__(6);
+const Terminal_1 = __webpack_require__(9);
+//import {WorldDriver} from "../typescript/commands";
+const commands_1 = __webpack_require__(5);
+//import {BirdWorld} from '../typescript/bird_world';
+const venience_world_1 = __webpack_require__(4);
+let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
+ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
+
+/***/ }),
 /* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1555,100 +1649,20 @@ exports.TypeaheadList = TypeaheadList;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const ReactDom = __webpack_require__(4);
-const Terminal_1 = __webpack_require__(8);
-const commands_1 = __webpack_require__(9);
-//import {BirdWorld} from '../typescript/bird_world';
-const venience_world_1 = __webpack_require__(10);
-let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld({}));
-ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
-
-/***/ }),
-/* 15 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(1);
-const transition_list_1 = __webpack_require__(7);
-function index_oms(oms) {
-    let result = new datatypes_1.FuckDict();
-    for (let om of oms) {
-        if (transition_list_1.has_transition_list(om) && om.transitions.length === 1) {
-            for (let [cmd, dest] of om.transitions[0]) {
-                for (let phrase of cmd) {
-                    if (!transition_list_1.PhraseValidator.validate(phrase)) {
-                        throw `Phrase ${phrase} in single-transition ObserverMoment ${om.id} has * or & somewhere other than the start.`;
-                    }
-                }
-            }
-        }
-        result.set(om.id, om);
-    }
-    //second/third pass, typecheck em
-    let pointed_to = new datatypes_1.FuckDict();
-    for (let om of oms) {
-        let dest_oms;
-        if (transition_list_1.has_transition_list(om)) {
-            dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
-        } else {
-            dest_oms = om.dest_oms;
-        }
-        for (let om_id of dest_oms) {
-            if (!result.has_key(om_id)) {
-                throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
-            }
-            pointed_to.set(om_id, undefined);
-        }
-    }
-    for (let om of oms.slice(1)) {
-        if (!pointed_to.has_key(om.id)) {
-            throw `om "${om.id}" is unreachable (and not the first in the list).`;
-        }
-    }
-    return result;
-}
-// // Alcove
-//     'bed, sleeping 1' |
-//     'bed, awakening 1' |
-//     'bed, sitting up 1' |
-//     'bed, lying down 1' |
-//     'bed, sleeping 2' |
-//     'bed, awakening 2' |
-//     'bed, sitting up 2' |
-//     'bed, looking around' |
-//     'desk, sitting down' |
-//     'desk, opening the envelope' |
-//     'desk, trying to understand' |
-//     'desk, considering the sense of panic' |
-//     'desk, searching for the notes' |
-//     'grass, slipping further' |
-//     'grass, considering the sense of dread' |
-//     'grass, asking 1' |
-//     'grass, asking 2' |
-//     'grass, beginning interpretation' |
-//     'grass, interpreting 1' |
-//     'grass, interpreting 2' |
-//     'grass, interpreting 3' |
-//     'grass, ending interpretation' |
-//     'alcove, entering the forest' |
-// Syntax shortcuts:
-// * = keyword
-// & = option
-exports.alcove_oms = index_oms([{
+const venience_world_1 = __webpack_require__(4);
+const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(2);
+let prologue_oms = () => [{
     id: 'bed, sleeping 1',
-    message: '',
+    enter_message: '',
     transitions: [[['*awaken'], 'bed, awakening 1']]
 }, {
     id: 'bed, awakening 1',
-    message: 'You awaken in your bed.',
+    enter_message: 'You awaken in your bed.',
     transitions: [[['*sit', '&up'], 'bed, sitting up 1']]
 }, {
     id: 'bed, sitting up 1',
-    message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
+    enter_message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
         <br /><br />
         Your body still feels heavy with sleep.
         <br /><br />
@@ -1656,13 +1670,13 @@ exports.alcove_oms = index_oms([{
     transitions: [[['*lie', '&down'], 'bed, lying down 1']]
 }, {
     id: 'bed, lying down 1',
-    message: `Yes, no reason to be up now.
+    enter_message: `Yes, no reason to be up now.
         <br /><br />
         You slide back under the blankets. The autumn breeze cools your face.`,
     transitions: [[['*sleep', 'until', '&sunrise'], 'bed, sleeping 2']]
 }, {
     id: 'bed, sleeping 2',
-    message: `You dream of<br /><br />
+    enter_message: `You dream of<br /><br />
         <i>calamity,</i><br /><br />
         a <i>shattered mirror,</i><br /><br />
         an <i>ice-covered mountain,</i><br /><br />
@@ -1670,15 +1684,15 @@ exports.alcove_oms = index_oms([{
     transitions: [[['*awaken'], 'bed, awakening 2']]
 }, {
     id: 'bed, awakening 2',
-    message: `You awaken in your bed.`,
+    enter_message: `You awaken in your bed again.`,
     transitions: [[['*sit', '&up'], 'bed, sitting up 2']]
 }, {
     id: 'bed, sitting up 2',
-    message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
+    enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
     transitions: [[['*look', '&around'], 'bed, looking around']]
 }, {
     id: 'bed, looking around',
-    message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
+    enter_message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
         <br /><br />
         You see your desk and chair a few paces away, in the center of the alcove.
         <br /><br />
@@ -1686,13 +1700,13 @@ exports.alcove_oms = index_oms([{
     transitions: [[['*sit', 'at', '&the desk'], 'desk, sitting down']]
 }, {
     id: 'desk, sitting down',
-    message: `You pace across the grass and take your seat at the leather-bound study chair.
+    enter_message: `You pace across the grass and take your seat at the leather-backed study chair.
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
     transitions: [[['*open', '&the envelope'], 'desk, opening the envelope']]
 }, {
     id: 'desk, opening the envelope',
-    message: `You undo the twine, leaving it in a loop on the desk.
+    enter_message: `You undo the twine, leaving it in a loop on the desk.
         <br /><br />
         You unfold the envelope’s flap.
         <br /><br />
@@ -1700,13 +1714,13 @@ exports.alcove_oms = index_oms([{
     transitions: [[['*try', 'to', '&understand'], 'desk, trying to understand']]
 }, {
     id: 'desk, trying to understand',
-    message: `A panic comes over you. Without your notes, how will you continue your work?
+    enter_message: `A panic comes over you. Without your notes, how will you continue your work?
         <br /><br />
         How will you understand? How will you honor Katya’s memory?`,
     transitions: [[['*consider', 'the', 'sense of', '&panic'], 'desk, considering the sense of panic']]
 }, {
     id: 'desk, considering the sense of panic',
-    message: `<div class="interp">
+    enter_message: `<div class="interp">
         Katya used to say that panic was like slipping down an ice-covered mountain face.
         <br /><br />
         It throws one particular path into relief: the path to the bottom.
@@ -1714,7 +1728,7 @@ exports.alcove_oms = index_oms([{
     transitions: [[['*search', 'for', '&the notes'], 'desk, searching for the notes']]
 }, {
     id: 'desk, searching for the notes',
-    message: `You look in the envelope again.
+    enter_message: `You look in the envelope again.
         <br /><br />
         You look in the grass under the desk, under the chair.
         <br /><br />
@@ -1726,37 +1740,46 @@ exports.alcove_oms = index_oms([{
     transitions: [[['*slip', 'further'], 'grass, slipping further']]
 }, {
     id: 'grass, slipping further',
-    message: `Thoughts of dread, of a terrible, empty future, fill your mind.
+    enter_message: `Thoughts of dread, of a terrible, empty future, fill your mind.
         <br /><br />
         You curl up on the grass beneath you, holding yourself.`,
-    transitions: [[['*consider', 'the sense of', '&dread'], 'grass, considering the sense of dread']]
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        yield parser.consume_exact(['consider']);
+        yield parser.consume_filler(['the', 'sense', 'of']);
+        yield parser.consume_option([datatypes_1.set_enabled(['panic'], false), datatypes_1.set_enabled(['dread'], true)]);
+        yield parser.done();
+        return this.transition_to('grass, considering the sense of dread');
+    }),
+    dest_oms: ['grass, considering the sense of dread']
+    // transitions: [
+    //     [['*consider', 'the sense of', '&dread'], 'grass, considering the sense of dread']]
 }, {
     id: 'grass, considering the sense of dread',
-    message: `<div class="interp">
+    enter_message: `<div class="interp">
         <i>"Catch your breath, dear,"</i> Katya would say. <i>"The mountain, the ice, they are here to tell you something."</i>
         </div>`,
-    transitions: [[['tell', 'me', '&what?'], 'grass, asking 1']]
+    transitions: [[['tell', 'me', 'what?'], 'grass, asking 1']]
 }, {
     id: 'grass, asking 1',
-    message: `<div class="interp">
+    enter_message: `<div class="interp">
         <i>"That you are capable of a great deal of care, my dear.
         <br /><br />
         That your capacity to experience meaning is as energetic as a body sliding down a mountain."</i>
         </div>`,
-    transitions: [[['what', 'should', 'I', '&do?'], 'grass, asking 2']]
+    transitions: [[['what', 'should', 'I', 'do?'], 'grass, asking 2']]
 }, {
     id: 'grass, asking 2',
-    message: `<div class="interp"><i>
+    enter_message: `<div class="interp"><i>
         "Judge the direction of gravity. Judge the slickness of the ice.
         <br /><br />
         "Survey the horizon.
         <br /><br />
         "And then, choose where to go."
         </i></div>`,
-    transitions: [[['begin', '*interpretation'], 'alcove, beginning interpretation']]
+    transitions: [[['*begin', '*interpretation'], 'alcove, beginning interpretation']]
 }, {
     id: 'alcove, beginning interpretation',
-    message: `
+    enter_message: `
         <div class="face-of-it">
         A nervous energy buzzes within your mind.
         <br />
@@ -1789,22 +1812,53 @@ exports.alcove_oms = index_oms([{
         <br /><br />
         Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
         </div>`,
-    transitions: [[['*judge', '&the direction of gravity'], 'alcove, interpreting 1']]
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        let display = parser_1.DisplayEltType.keyword;
+        yield parser.consume_option([datatypes_1.annotate(['judge'], { enabled: true, display }), datatypes_1.annotate(['survey'], { enabled: false, display })]);
+        yield parser.consume_option([datatypes_1.set_enabled(['the', 'direction', 'of', 'gravity'], true), datatypes_1.set_enabled(['the', 'slickness', 'of', 'the', 'ice'], false)]);
+        yield parser.done();
+        return this.transition_to('alcove, interpreting 1');
+    }),
+    dest_oms: ['alcove, interpreting 1']
+    // transitions: [
+    //     [['*judge', '&the direction of gravity'], 'alcove, interpreting 1']]
 }, {
     id: 'alcove, interpreting 1',
-    message: ``,
-    transitions: [[['*judge', '&the slickness of the ice'], 'alcove, interpreting 2']]
+    enter_message: ``,
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        let display = parser_1.DisplayEltType.keyword;
+        yield parser.consume_option([datatypes_1.annotate(['judge'], { enabled: true, display }), datatypes_1.annotate(['survey'], { enabled: false, display })]);
+        yield parser.consume_option([datatypes_1.set_enabled(['the', 'direction', 'of', 'gravity'], false), datatypes_1.set_enabled(['the', 'slickness', 'of', 'the', 'ice'], true)]);
+        yield parser.done();
+        return this.transition_to('alcove, interpreting 2');
+    }),
+    dest_oms: ['alcove, interpreting 2']
+    // transitions: [
+    //     [['*judge', '&the slickness of the ice'], 'alcove, interpreting 2']]
 }, {
     id: 'alcove, interpreting 2',
-    message: ``,
-    transitions: [[['*survey', '&the horizon'], 'alcove, interpreting 3']]
+    enter_message: ``,
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        let display = parser_1.DisplayEltType.keyword;
+        yield parser.consume_option([datatypes_1.annotate(['judge'], { enabled: false, display }), datatypes_1.annotate(['survey'], { enabled: true, display })]);
+        yield parser.consume_exact(['the', 'horizon'], parser_1.DisplayEltType.option);
+        // yield parser.consume_option([
+        //     set_enabled(['the', 'direction', 'of', 'gravity'], false),
+        //     set_enabled(['the', 'slickness', 'of', 'the', 'ice'], true),
+        // ]);
+        yield parser.done();
+        return this.transition_to('alcove, interpreting 3');
+    }),
+    dest_oms: ['alcove, interpreting 3']
+    // transitions: [
+    //     [['*survey', '&the horizon'], 'alcove, interpreting 3']]
 }, {
     id: 'alcove, interpreting 3',
-    message: ``,
-    transitions: [[['end', '*interpretation'], 'alcove, ending interpretation']]
+    enter_message: ``,
+    transitions: [[['*end', '*interpretation'], 'alcove, ending interpretation']]
 }, {
     id: 'alcove, ending interpretation',
-    message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
+    enter_message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
         <br /><br />
         You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
         <br /><br />
@@ -1812,123 +1866,288 @@ exports.alcove_oms = index_oms([{
     transitions: [[['*enter', 'the', '&forest'], 'alcove, entering the forest']]
 }, {
     id: 'alcove, entering the forest',
-    message: `What lies within the forest, and beyond? What will it be like, out there?
-        <br /><br />
-        <i>(End of demo. Thanks for playing!)</i>`,
-    transitions: []
-}]);
-exports.tower_oms = index_oms([{
-    id: 'base, from path',
-    message: `<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
-        <br /><br />
-        The viewing tower sits twenty feet inset from the footpath, towards the Mystic River.
-        The grass leading out to it is brown with wear.`,
-    transitions: [[['approach', 'the viewing tower'], 'base, regarding tower']]
+    enter_message: `What lies within the forest, and beyond? What will it be like, out there?`,
+    transitions: [[['continue'], 'title']]
 }, {
-    id: 'base, regarding tower',
-    message: `The viewing tower stands tall and straight. Its construction is one of basic, stable order. A square grid of thick wooden columns rooted deep within the ground rises up before you; the foundation of the tower.
-            <br /><br />
-            A wooden stairway set between the first two rows of columns leads upward.`,
-    transitions: [[['climb', 'the stairs'], 'stairs 1, ascending']]
-}, {
-    id: 'stairs 1, ascending',
-    message: `As you ascend, the ground below you recedes.
-            <br /><br />
-            <div class="meditation-1">
-                You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
-                <br /><br />
-                "We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."
-                <br /> <br />
-            </div>
-            The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
-    transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'], [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
-}, {
-    id: 'platform 1, ascending',
-    message: `You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
-            <br /><br />
-            <div class="meditation-1">
-            You continue reading:
-            <br /><br />
-            "From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."
-            <br /><br />
-            </div>
-            The platform terminates, and another wooden stairway to the left leads further up the tower.`,
-    transitions: [[['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
-}, {
-    id: 'stairs 2, ascending',
-    message: `They feel solid under your feet, dull thuds sounding with each step.
-            <br /><br />
-            <div class="meditation-1">
-            "It can feel like a deliverance when one reaches such a vantage after much aimless wandering."
-            <br /><br />
-            </div>
-            The stairs terminate in another left-branching platform.`,
-    transitions: [[['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'], [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
-}, {
-    id: 'platform 2, ascending',
-    message: `You make your way across the weathered wood.
-            <br /><br />
-            <div class="meditation-1">
-            "The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."
-            <br /><br />
-            </div>
-            A final wooden stairway to the left leads up to the top of the tower.`,
-    transitions: [[['turn', 'left', 'and climb the stairs'], 'top, arriving'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
-}, {
-    id: 'top, arriving',
-    message: `You reach the top. A grand visage of the Mystic River and Macdonald Park extends before you in all directions.`,
-    transitions: [[['survey', 'the area'], 'top, surveying'], [['descend', 'the stairs'], 'platform 2, ascending']]
-}, {
-    id: 'top, surveying',
-    message: `You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
-            <br /><br />
-            You see the path you took to reach this viewing tower. You see it continue further onward, into MacDonald Park, and branch, curving into the brush by the river.
-            <br /><br />
-            You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
-            <br /><br />
-            <div class="meditation-1">
-            "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
-            </div>`,
-    transitions: [[['descend', 'the stairs'], 'stairs 3, descending']]
-}, {
-    id: 'stairs 3, descending',
-    message: `Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
-            <br /><br />
-            <div class="meditation-1">
-            "Do not fret, my dear. Return to the madness of life after your brief respite."
-            </div>`,
-    transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'], [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
-}, {
-    id: 'platform 2, descending',
-    message: `The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
-            <div class="meditation-1">
-            <br /><br />
-            "Expect to forget; to be turned around; to become tangled up."
-            </div>`,
-    transitions: [[['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'], [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
-}, {
-    id: 'stairs 2, descending',
-    message: `The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
-            <div class="meditation-1">
-            <br /><br />
-            "Find some joy in it; some exhilaration."
-            </div>`,
-    transitions: [[['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'], [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
-}, {
-    id: 'platform 1, descending',
-    message: `You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
-            <div class="meditation-1">
-            <br /><br />
-            "And know that you have changed, dear. That your ascent has taught you something."
-            </div>`,
-    transitions: [[['turn', 'right', 'and descend the stairs'], 'base, regarding path'], [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
-}, {
-    id: 'base, regarding path',
-    message: `What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
-            <br /><br />
-            <i>(End of demo. Thanks for playing!)</i>`,
-    transitions: []
-}]);
+    id: 'title',
+    enter_message: `VENIENCE WORLD
+        <br />
+        <br />
+        An Interactive Fiction by Daniel Spitz`,
+    transitions: [[['continue'], 'alone in the woods']]
+}];
+exports.default = prologue_oms;
+
+/***/ }),
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const venience_world_1 = __webpack_require__(4);
+const text_tools_1 = __webpack_require__(3);
+const datatypes_1 = __webpack_require__(0);
+let ch1_oms = () => [{
+    id: 'alone in the woods',
+    enter_message: `Chapter 1 - A Sense Of Direction
+        <br />
+        <br />
+        You are alone in the woods in midmorning.`,
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        let state = this.state.om_state['alone in the woods'] || {};
+        let has_looked = state.has_looked || {};
+        let look_options = ['around', 'at myself'].map(c => datatypes_1.set_enabled(text_tools_1.tokenize(c)[0], !(has_looked[c] || false)));
+        let cmd_options = [];
+        let display;
+        if (look_options.every(x => !datatypes_1.is_enabled(x))) {
+            cmd_options.push(datatypes_1.annotate(['look'], { enabled: false, display }));
+        } else {
+            cmd_options.push(datatypes_1.annotate(['look'], { enabled: true, display }));
+        }
+        cmd_options.push(['go']);
+        yield parser.consume_option(cmd_options);
+        let option = yield parser.consume_option(look_options);
+        yield parser.done();
+        let result = {};
+        if (option === 'around') {
+            result.message = text_tools_1.wrap_in_div(`
+                The sun trickles through the thick brush.
+                <br />
+                <br />
+                The growth of the forest surrounds you in every direction.`);
+        } else {
+            result.message = text_tools_1.wrap_in_div(`
+                You are wearing a perfectly dignified pair of silk pajamas.`);
+        }
+        result.world = this.update({
+            om_state: {
+                ['alone in the woods']: {
+                    has_looked: {
+                        [option]: true
+                    }
+                }
+            }
+        });
+        return result;
+    }),
+    dest_oms: ['alone in the woods']
+}];
+exports.default = ch1_oms;
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const datatypes_1 = __webpack_require__(0);
+const text_tools_1 = __webpack_require__(3);
+class PhraseValidator extends datatypes_1.StringValidator {
+    is_valid(s) {
+        let toks = text_tools_1.tokenize(s)[0];
+        if (toks.slice(1).some(t => t.startsWith('*') || t.startsWith('&'))) {
+            return false;
+        }
+        return true;
+    }
+}
+exports.PhraseValidator = PhraseValidator;
+function is_declarative(t) {
+    return t.transitions !== undefined;
+}
+exports.is_declarative = is_declarative;
+function index_oms(oms) {
+    let result = new datatypes_1.FuckDict();
+    for (let om of oms) {
+        if (is_declarative(om) && om.transitions.length === 1) {
+            for (let [cmd, dest] of om.transitions[0]) {
+                for (let phrase of cmd) {
+                    if (!PhraseValidator.validate(phrase)) {
+                        throw `Phrase ${phrase} in single-transition ObserverMoment ${om.id} has * or & somewhere other than the start.`;
+                    }
+                }
+            }
+        }
+        result.set(om.id, om);
+    }
+    //second/third pass, typecheck em
+    let pointed_to = new datatypes_1.FuckDict();
+    for (let om of oms) {
+        let dest_oms;
+        if (is_declarative(om)) {
+            dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
+        } else {
+            dest_oms = om.dest_oms;
+        }
+        for (let om_id of dest_oms) {
+            if (!result.has_key(om_id)) {
+                throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+            }
+            pointed_to.set(om_id, undefined);
+        }
+    }
+    for (let om of oms.slice(1)) {
+        if (!pointed_to.has_key(om.id)) {
+            throw `om "${om.id}" is unreachable (and not the first in the list).`;
+        }
+    }
+    return result;
+}
+exports.index_oms = index_oms;
+// Syntax shortcuts:
+// * = keyword
+// & = option
+// export let tower_oms = index_oms([
+//     {
+//         id: 'base, from path',
+//         enter_message: `<i>(Welcome to the demo! This game doesn't have a proper name yet.)</i>
+//         <br /><br />
+//         The viewing tower sits twenty feet inset from the footpath, towards the Mystic River.
+//         The grass leading out to it is brown with wear.`,
+//         transitions: [
+//             [['approach', 'the viewing tower'], 'base, regarding tower']]
+//     },
+//     {
+//         id: 'base, regarding tower',
+//         enter_message: `The viewing tower stands tall and straight. Its construction is one of basic, stable order. A square grid of thick wooden columns rooted deep within the ground rises up before you; the foundation of the tower.
+//             <br /><br />
+//             A wooden stairway set between the first two rows of columns leads upward.`,
+//         transitions: [
+//             [['climb', 'the stairs'], 'stairs 1, ascending']]
+//     },
+//     {
+//         id: 'stairs 1, ascending',
+//         enter_message: `As you ascend, the ground below you recedes.
+//             <br /><br />
+//             <div class="meditation-1">
+//                 You rifle through your notes to another of Katya’s meditations, this one on Vantage Points:
+//                 <br /><br />
+//                 "We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."
+//                 <br /> <br />
+//             </div>
+//             The stairway terminates at a flat wooden platform leading around a corner to the left, along the next edge of the tower.`,
+//         transitions: [
+//             [['turn', 'left', 'and proceed along the platform'], 'platform 1, ascending'],
+//             [['turn', 'around', 'and descend the stairs'], 'base, regarding tower']]
+//     },
+//     {
+//         id: 'platform 1, ascending',
+//         enter_message: `You catch glimpses of the grass, trees, and the Mystic River as you make your way across.
+//             <br /><br />
+//             <div class="meditation-1">
+//             You continue reading:
+//             <br /><br />
+//             "From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."
+//             <br /><br />
+//             </div>
+//             The platform terminates, and another wooden stairway to the left leads further up the tower.`,
+//         transitions: [
+//             [['turn', 'left', 'and climb the stairs'], 'stairs 2, ascending'],
+//             [['turn', 'around', 'and proceed along the platform'], 'stairs 1, ascending']]
+//     },
+//     {
+//         id: 'stairs 2, ascending',
+//         enter_message: `They feel solid under your feet, dull thuds sounding with each step.
+//             <br /><br />
+//             <div class="meditation-1">
+//             "It can feel like a deliverance when one reaches such a vantage after much aimless wandering."
+//             <br /><br />
+//             </div>
+//             The stairs terminate in another left-branching platform.`,
+//         transitions: [
+//             [['turn', 'left', 'and proceed along the platform'], 'platform 2, ascending'],
+//             [['turn', 'around', 'and descend the stairs'], 'platform 1, ascending']]
+//     },
+//     {
+//         id: 'platform 2, ascending',
+//         enter_message: `You make your way across the weathered wood.
+//             <br /><br />
+//             <div class="meditation-1">
+//             "The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."
+//             <br /><br />
+//             </div>
+//             A final wooden stairway to the left leads up to the top of the tower.`,
+//         transitions: [
+//             [['turn', 'left', 'and climb the stairs'], 'top, arriving'],
+//             [['turn', 'around', 'and proceed along the platform'], 'stairs 2, ascending']]
+//     },
+//     {
+//         id: 'top, arriving',
+//         enter_message: `You reach the top. A grand visage of the Mystic River and Macdonald Park extends before you in all directions.`,
+//         transitions: [
+//             [['survey', 'the area'], 'top, surveying'],
+//             [['descend', 'the stairs'], 'platform 2, ascending']]
+//     },
+//     {
+//         id: 'top, surveying',
+//         enter_message: `You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
+//             <br /><br />
+//             You see the path you took to reach this viewing tower. You see it continue further onward, into MacDonald Park, and branch, curving into the brush by the river.
+//             <br /><br />
+//             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
+//             <br /><br />
+//             <div class="meditation-1">
+//             "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
+//             </div>`,
+//         transitions: [
+//             [['descend', 'the stairs'], 'stairs 3, descending']]
+//     },
+//     {
+//         id: 'stairs 3, descending',
+//         enter_message: `Your view of the surrounding park and river is once again obscured by the weathered wood of the viewing tower, rising up around you.
+//             <br /><br />
+//             <div class="meditation-1">
+//             "Do not fret, my dear. Return to the madness of life after your brief respite."
+//             </div>`,
+//         transitions: [
+//             [['turn', 'right', 'and proceed along the platform'], 'platform 2, descending'],
+//             [['turn', 'around', 'and ascend the stairs'], 'top, surveying']]
+//     },
+//     {
+//         id: 'platform 2, descending',
+//         enter_message: `The wooden beams of the viewing tower seem more like a maze now than an orderly construction. They branch off of each other and reconnect at odd angles.
+//             <div class="meditation-1">
+//             <br /><br />
+//             "Expect to forget; to be turned around; to become tangled up."
+//             </div>`,
+//         transitions: [
+//             [['turn', 'right', 'and descend the stairs'], 'stairs 2, descending'],
+//             [['turn', 'around', 'and proceed along the platform'], 'stairs 3, descending']]
+//     },
+//     {
+//         id: 'stairs 2, descending',
+//         enter_message: `The light of the sun pokes through odd gaps in the tangles of wood, making you squint at irregular intervals.
+//             <div class="meditation-1">
+//             <br /><br />
+//             "Find some joy in it; some exhilaration."
+//             </div>`,
+//         transitions: [
+//             [['turn', 'right', 'and proceed along the platform'], 'platform 1, descending'],
+//             [['turn', 'around', 'and ascend the stairs'], 'platform 2, descending']]
+//     },
+//     {
+//         id: 'platform 1, descending',
+//         enter_message: `You know where you must go from here, roughly. The footpath will branch into thick brush up ahead. And a ways beyond that brush, a wooden footbridge.
+//             <div class="meditation-1">
+//             <br /><br />
+//             "And know that you have changed, dear. That your ascent has taught you something."
+//             </div>`,
+//         transitions: [
+//             [['turn', 'right', 'and descend the stairs'], 'base, regarding path'],
+//             [['turn', 'around', 'and proceed along the platform'], 'stairs 2, descending']]
+//     },
+//     {
+//         id: 'base, regarding path',
+//         enter_message: `What lies within the brush you know you will enter, but which you can no longer see from this low vantage? What will it be like to walk across the footbridge?
+//             <br /><br />
+//             <i>(End of demo. Thanks for playing!)</i>`,
+//         transitions: []
+//     }
+// ]);
 
 /***/ })
 /******/ ]);

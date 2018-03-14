@@ -3,6 +3,7 @@ import * as ReactDom from "react-dom";
 
 import {Terminal} from "../components/Terminal";
 
+//import {WorldDriver} from "../typescript/commands";
 import {WorldDriver} from "../typescript/commands";
 
 //import {BirdWorld} from '../typescript/bird_world';

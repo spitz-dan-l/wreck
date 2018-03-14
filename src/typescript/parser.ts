@@ -1,6 +1,13 @@
 import {starts_with, tokenize, untokenize, normalize_whitespace, split_tokens} from './text_tools';
 
 import {
+    Annotatable,
+    Annotated,
+    annotate,
+    is_annotated,
+    with_annotatable,
+    get_annotation,
+    ADisablable,
     Disablable,
     unwrap,
     is_enabled,
@@ -19,6 +26,13 @@ export enum DisplayEltType {
     partial = 3,
     error = 4
 }
+
+export type ADisplayable = {display: DisplayEltType};
+export type Displayable<T> = Annotatable<T, ADisplayable>;
+export function set_display<T>(x: Displayable<T>, display: DisplayEltType){
+    return annotate(x, {display});
+}
+export type AMatch = (ADisplayable & ADisablable);
 
 export interface DisplayElt {
     display: DisplayEltType, // the intended display style for this element
@@ -125,20 +139,20 @@ export class CommandParser {
         this.validity = subparser.validity;
     }
 
-    consume_option<S extends string>(option_spec_tokens: Disablable<Token[]>[], name?: string, display: DisplayEltType=DisplayEltType.option): S | false{
+    consume_option<S extends string>(option_spec_tokens: (Annotatable<Token[], AMatch>)[], name?: string): S | false{
         let partial_matches: Disablable<DisplayElt>[] = [];
         let exact_match_subparser: CommandParser = null;
         let exact_match_spec_toks: Token[] = null;
         for (let spec_toks of option_spec_tokens) {
             let subparser = this.subparser();
-            let is_exact_match = subparser.consume_exact(unwrap(spec_toks), display, name);
+            let annotation = get_annotation(spec_toks, {display: DisplayEltType.option, enabled: true})
+            let display = annotation.display;
+            let is_exact_match = subparser.consume_exact(unwrap(spec_toks), annotation.display, name);
 
-            if (is_enabled(spec_toks)){
+            if (annotation.enabled){
                 if (is_exact_match) {
-                    
                     exact_match_subparser = subparser;
                     exact_match_spec_toks = unwrap(spec_toks);
-                    
                     continue;
                 }
 
@@ -154,8 +168,8 @@ export class CommandParser {
         }
         
         if (exact_match_subparser !== null) {
-            
-            let typeahead = partial_matches.map((de) => with_disablable(de, (x) => x.typeahead[0]));
+            let typeahead = partial_matches.map(with_disablable((x) => unwrap(x.typeahead[0])));
+            // let typeahead = partial_matches.map( (de) => with_disablable(de, (x) => x.typeahead[0]));
             this.integrate(exact_match_subparser);
             this.match[this.match.length-1].typeahead = typeahead;
 
@@ -165,7 +179,7 @@ export class CommandParser {
         if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
-            let typeahead = partial_matches.map((de) => with_disablable(de, (x) => x.typeahead[0]));
+            let typeahead = partial_matches.map(with_disablable((x) => unwrap(x.typeahead[0])));
             this.match.push({
                 display: DisplayEltType.partial,
                 match: unwrap(partial_matches[0]).match,
@@ -244,34 +258,55 @@ export function stop_early<R>(gen: IterableIterator<string | boolean>): R | unde
     return <R>value;
 }
 
-export function with_early_stopping<R>(gen_func: (...any) => IterableIterator<any>): (...any) => R {
-    function inner(...args) {
+export let with_early_stopping = <R>(gen_func: (...args: any[]) => IterableIterator<any>): (...args: any[]) => R => {
+    let inner = (...args) => {
         let gen = gen_func(...args);
         return <R>stop_early(gen);
     }
-    return <(...any) => R>inner;
+    return <(...args: any[]) => R>inner;
 }
 
-export function* consume_option_stepwise_eager(parser: CommandParser, options: string[][]) {
+export function with_early_stopping2<R, T>(gen_func: (this: T, ...args: any[]) => IterableIterator<any>): (...args: any[]) => R {
+    let inner = (...args) => {
+        let gen = gen_func.call(this, ...args);
+        return <R>stop_early(gen);
+    }
+    return <(...args: any[]) => R>inner;
+}
+
+export function* consume_option_stepwise_eager(parser: CommandParser, options: Disablable<string[]>[]) {
     // assumption: no option is a prefix of any other option
 
     let current_cmd = [];
     let pos = 0;
     while (true) {
-        let remaining_options = options.filter((toks) => 
+        let remaining_options = options.filter(with_disablable((toks) =>
             toks.slice(0, pos).every((tok, i) => tok === current_cmd[i])
-        );
+        ));
 
         if (remaining_options.length === 0) {
             return untokenize(current_cmd);
         }
 
-        let next_tokens: Token[] = [];
+        let next_tokens: Disablable<Token>[] = [];
         for (let opt of remaining_options) {
-            if (pos < opt.length) {
-                let tok = opt[pos];
-                if (next_tokens.indexOf(tok) === -1) {
-                    next_tokens.push(tok);
+            let {value, annotation:{enabled}} = annotate(opt);
+
+            if (pos < value.length) {
+                let tok = value[pos];
+                let found = false;
+                for (let i = 0; i < next_tokens.length; i++) {
+                    let nt = next_tokens[i];
+                    if (unwrap(nt) === tok) {
+                        if (enabled) {
+                            next_tokens[i] = set_enabled(nt, true);
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    next_tokens.push(set_enabled(tok, enabled));
                 }
             } else {
                 return untokenize(current_cmd);
@@ -283,8 +318,9 @@ export function* consume_option_stepwise_eager(parser: CommandParser, options: s
         } else {
             display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
         }
+        let next_options: Annotatable<string[], AMatch>[] = next_tokens.map(with_disablable(split_tokens)).map((o: Annotatable<string[], AMatch>) => annotate(o, {display: display_type}));
         
-        let next_tok = yield parser.consume_option(next_tokens.map(split_tokens), undefined, display_type);
+        let next_tok = yield parser.consume_option(next_options);
         current_cmd.push(next_tok);
         pos++;
     }

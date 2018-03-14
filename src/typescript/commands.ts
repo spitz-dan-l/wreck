@@ -9,27 +9,39 @@ import {
     with_annotatable,
     with_disablable,
     set_enabled,
-    is_enabled
+    is_enabled,
+    chain_update,
+    chain_object
 } from './datatypes';
 
 import {CommandParser, DisplayEltType, Token, MatchValidity} from './parser';
 
-export interface CommandHandler<T extends WorldType<T>> {
-    handle_command(parser: CommandParser): CommandResult<T>
+export interface CommandHandler<T> {
+    handle_command(this: World<T>, parser: CommandParser): CommandResult<T>
 }
 
-export interface WorldType<T extends WorldType<T>> extends CommandHandler<T> {
-    // handle_command(parser: CommandParser): CommandResult<T>,
-    interstitial_update?(): InterstitialUpdateResult<T>,
-    interpret_history?(history: InterstitialUpdateResult<T>): HistoryInterpretationOp
+export abstract class World<T> implements CommandHandler<T> {
+    abstract handle_command: (this: World<T>, parser: CommandParser) => CommandResult<T>;
+    abstract interstitial_update?(command_message?: HTMLElement): InterstitialUpdateResult<T>;
+    abstract interpret_history?(history: InterstitialUpdateResult<T>): HistoryInterpretationOp;
+
+    readonly state: T;
+    constructor(state?: T){
+        this.state = state;
+    }
+
+    update(state_updates: T): this {
+        let new_state = chain_update(this.state, state_updates);
+        return new (this.constructor as any)(new_state);
+    }
 }
 
-export type InterstitialUpdateResult<T extends WorldType<T>> = {
-    world?: T;
+export type InterstitialUpdateResult<T> = {
+    world?: World<T>;
     message?: HTMLElement;
 } | undefined;
 
-export type CommandResult<T extends WorldType<T>> = InterstitialUpdateResult<T> & {
+export type CommandResult<T> = InterstitialUpdateResult<T> & {
     parser?: CommandParser;
 } | undefined;
 
@@ -37,17 +49,17 @@ export type HistoryInterpretation = string[];
 
 export type HistoryInterpretationOp = ({'add': string} | {'remove': string})[];
 
-export type PostProcessedCommandResult<T extends WorldType<T>> = CommandResult<T> & {
+export type PostProcessedCommandResult<T> = CommandResult<T> & {
     index?: number;
     message_classes?: HistoryInterpretation;
 }
 
-export interface Command<T extends WorldType<T>> {
+export interface Command<T> {
     command_name: Token[];
-    execute: (world: T, parser: CommandParser) => CommandResult<T>;
+    execute: (world: World<T>, parser: CommandParser) => CommandResult<T>;
 }
 
-export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
+export function apply_command<T> (world: World<T>, cmd: string) {
     let parser = new CommandParser(cmd);
 
     let result: CommandResult<T> = {parser: parser, world: world};
@@ -67,7 +79,7 @@ export function apply_command<T extends WorldType<T>> (world: T, cmd: string) {
     return result;
 }
 
-function apply_interstitial_update<T extends WorldType<T>>(result: CommandResult<T>): CommandResult<T> {
+function apply_interstitial_update<T>(result: CommandResult<T>): CommandResult<T> {
     if (result.world.interstitial_update !== undefined) {
         let res2 = result.world.interstitial_update();
         if (res2 !== undefined) {
@@ -113,7 +125,7 @@ function apply_history_interpretation_op(interp: HistoryInterpretation, op: Hist
     return new_interp;
 }
 
-function apply_history_interpretation<T extends WorldType<T>>(history: PostProcessedCommandResult<T>[], world: T): PostProcessedCommandResult<T>[] {
+function apply_history_interpretation<T>(history: PostProcessedCommandResult<T>[], world: World<T>): PostProcessedCommandResult<T>[] {
     if (world.interpret_history === undefined) {
         return history;
     } else {
@@ -133,7 +145,7 @@ function apply_history_interpretation<T extends WorldType<T>>(history: PostProce
     }
 }
 
-export class WorldDriver<T extends WorldType<T>> {
+export class WorldDriver<T> {
     previous_histories: PostProcessedCommandResult<T>[][] = [];
 
     history: PostProcessedCommandResult<T>[];
@@ -141,7 +153,7 @@ export class WorldDriver<T extends WorldType<T>> {
     possible_history: PostProcessedCommandResult<T>[];
     current_state: CommandResult<T>;
 
-    constructor (initial_world: T) {
+    constructor (initial_world: World<T>) {
         let initial_result: PostProcessedCommandResult<T> = {world: initial_world};
         initial_result = apply_interstitial_update(initial_result);
         initial_result.index = 0;
@@ -183,25 +195,25 @@ export class WorldDriver<T extends WorldType<T>> {
 
 // eager dispatch
 
-type WorldWithEagerDispatch<T extends WorldType<T>> = WorldType<T> & {
-    get_commands(): Disablable<Command<T>>[],
-}
+// type WorldWithEagerDispatch<T> = World<T> & {
+//     get_commands(): Disablable<Command<T>>[],
+// }
 
-export function eager_dispatch<T extends WorldWithEagerDispatch<T>>(world: T, parser: CommandParser) {
-    let commands = world.get_commands();
-    let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
+// export function eager_dispatch<T>(world: WorldWithEagerDispatch<T>, parser: CommandParser) {
+//     let commands = world.get_commands();
+//     let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
     
-    let cmd_name = parser.consume_option(options, 'command', DisplayEltType.keyword);
-    let result: CommandResult<T> = {parser: parser, world: world};
+//     let cmd_name = parser.consume_option(options, 'command');
+//     let result: CommandResult<T> = {parser: parser, world: world};
 
-    if (!cmd_name) {
-        return result;
-    }
+//     if (!cmd_name) {
+//         return result;
+//     }
 
-    let command = unwrap(commands[commands.findIndex((cmd) => (
-        cmd_name === untokenize(unwrap(cmd).command_name)))]);
+//     let command = unwrap(commands[commands.findIndex((cmd) => (
+//         cmd_name === untokenize(unwrap(cmd).command_name)))]);
 
-    let cmd_result = command.execute(world, parser);
+//     let cmd_result = command.execute(world, parser);
 
-    return cmd_result
-}
+//     return cmd_result
+// }

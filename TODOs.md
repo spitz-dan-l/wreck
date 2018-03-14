@@ -1,21 +1,34 @@
 TODOs
 
-- Overhaul animation logic when adding/removing classes
-    - No more css transition groups
-    - Custom component that just runs css class transitions instead of entirely replace elements
-        - Still need some js to do max-height so can't do pure css transitions
+- When all consume options are disabled, still show them in the interface
+
+- consume_option accepts different display types for each option
+
+- punctuation in commands
+
+- add "carriage return" token?
+
+- enter when incomplete command should act like tab
+
+- repeated tabs should cycle thru current token/phrase option
+
+- indicate tabbing/autocomplete to player
+
+- more consistent use of command colors
+
+- demonstrate multiple option commands in prologue
+
+- "you awaken again"
+- "leather-backed" chair
+
+- save/load
     
 - fix highlighting/copy-pasting/transcripting
     - get correct line breaks
     - ability to paste 
 
-- safari keyboard doesn't work
-
 - add The End
 
-- punctuation in commands
-
-- add "carriage return" token?
 
 - make erased loops collapse/expandable
 

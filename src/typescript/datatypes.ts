@@ -23,9 +23,21 @@ export class FuckDict<K, V> {
         return this;
     }
 
-    get(k: K) {
+    get(k: K, default_value?: V): V {
+        if (!this.has_key(k) && default_value !== undefined) {
+            this.set(k, default_value);
+            return default_value;
+        }
         let s = k.toString();
         return this.values_map.get(s);
+    }
+
+    update(a: [K, V][]): FuckDict<K, V> {
+        let updated = this.copy();
+        for (let [k, v] of a) {
+            updated.set(k, v);
+        }
+        return updated;
     }
 
     has_key(k: K) {
@@ -95,6 +107,40 @@ export class FuckDict<K, V> {
 }
 
 export type FuckSet<T> = FuckDict<T, undefined>;
+
+export function chain_object<T extends object>(src: T) {
+    return new Proxy<T>(src, {
+        get: function (target, key) {
+            if (target[key] === undefined) {
+                target[key] = {};
+            }
+            let v = target[key];
+            if (typeof v === 'object' && !(v instanceof Array)) {
+                return chain_object(v);
+            } else {
+                return v;    
+            }  
+        }    
+    });
+} 
+
+export function chain_update(target: Object, source: Object, inplace=false) {
+    let updated: Object;
+    if (inplace) {
+        updated = target || {};
+    } else {
+        updated = {...target};
+    }
+
+    for (let [n, v] of Object.entries(source)) {
+        if (typeof v === 'object' && !(v instanceof Array)) {
+            updated[n] = chain_update(updated[n], v, inplace);
+        } else {
+            updated[n] = v;
+        }
+    }
+    return updated;
+}
 
 export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
     if (ar1.length !== ar2.length) {
@@ -256,7 +302,10 @@ export function counter_order<T>(counter: Counter<T>, include_zero=false){
 // }
 
 export type Annotatable<T, AT> = T | Annotated<T, AT>;
-export type Annotated<T, AT> = {value: T, annotated: true, annotation: AT};
+export type Annotated<T, AT> = {value: T, annotated: true, annotation: Partial<AT>};
+
+//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
+//export type MergeAnnotations<T, > = 
 
 export function is_annotated<T, AT>(x: Annotatable<T, AT>): x is Annotated<T, AT>{
     if (x === undefined) {
@@ -265,11 +314,12 @@ export function is_annotated<T, AT>(x: Annotatable<T, AT>): x is Annotated<T, AT
     return (<Annotated<T, AT>>x).annotated !== undefined;
 }
 
-export function annotate<T, AT>(x: Annotatable<T, AT>, annotation: AT): Annotatable<T, AT>{
+export function annotate<T, AT>(x: Annotatable<T, AT>, annotation?: Partial<AT>): Annotated<T, AT>{
+    if (annotation === undefined) {
+        annotation = {};
+    }
     if (is_annotated(x)) {
-        if (x.annotation !== annotation) {
-            x.annotation = annotation; //could do check here for enabled being set properly already
-        }
+        Object.assign(x.annotation, annotation);
         return x;
     } else {
         let result: Annotated<T, AT> = {value: x, annotated: true, annotation};
@@ -286,27 +336,32 @@ export function unwrap<T, AT>(x: Annotatable<T, AT>): T {
     }
 }
 
-export function with_annotatable<T1, T2, TA>(x: Annotatable<T1, TA>, f: (t1: T1) => Annotatable<T2, TA>, default_value?: TA): Annotatable<T2, TA> {
-    return annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
+export function with_annotatable<T1, T2, TA>(f: (t1: T1) => T2, default_value?: TA): (x: Annotatable<T1, TA>) => Annotatable<T2, TA> {
+    return (x: Annotatable<T1, TA>) => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
 }
 
-export function get_annotation<T, TA>(x: Annotatable<T, TA>, default_value?: TA): TA {
+export function get_annotation<T, TA>(x: Annotatable<T, TA>, default_value?: TA): Partial<TA> {
     if (is_annotated(x)){
-        return x.annotation;
+        if (default_value !== undefined) {
+            return {...<any>default_value, ...<any>x.annotation};
+        } else {
+            return x.annotation;
+        }
+        
     } else {
         return default_value;
     }
 }
 
-
-export type Disablable<T> = Annotatable<T, boolean>
+export type ADisablable = {enabled: boolean};
+export type Disablable<T> = Annotatable<T, ADisablable>;
 
 export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true){
-    return annotate(x, enabled);
+    return annotate(x, {enabled});
 }
 
-export function with_disablable<T1, T2>(x: Disablable<T1>, f: (t1: T1) => Disablable<T2>): Disablable<T2> {
-    return with_annotatable(x, f);
+export function with_disablable<T1, T2>(f: (t1: T1) => T2): (x: Disablable<T1>) => Disablable<T2> {
+    return with_annotatable(f, {enabled: true});
 }
 
 export function is_enabled<T>(x: Disablable<T>): boolean {
@@ -315,7 +370,7 @@ export function is_enabled<T>(x: Disablable<T>): boolean {
         return true;
     }
 
-    return result;
+    return result.enabled;
 }
 
 

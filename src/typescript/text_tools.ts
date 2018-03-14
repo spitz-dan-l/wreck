@@ -130,3 +130,9 @@ export function dedent(strs: TemplateStringsArray, ...args) {
     
    return result2;
 }
+
+export function wrap_in_div(message: string): HTMLElement {
+    let elt = document.createElement('div');
+    elt.innerHTML = message;
+    return elt;
+} 
