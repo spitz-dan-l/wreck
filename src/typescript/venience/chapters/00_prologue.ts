@@ -77,12 +77,12 @@ let prologue_oms: () => ObserverMoment[] = () => [
         id: 'bed, sitting up 2',
         enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
         handle_command: wrap_handler(function*(parser: CommandParser) {
-            let look_handler = this.make_look_handler([
+            let look_consumer = this.make_look_consumer([
                 [['around'], 'alcove, general'],
                 [['at', 'myself'], 'self, 1']
             ])
 
-            let other_handler = wrap_handler(function*(parser: CommandParser) {
+            let other_consumer = wrap_handler(function*(parser: CommandParser) {
                 yield parser.consume_exact(['approach']);
                 yield parser.consume_filler(['the', 'desk']);
                 yield parser.done();
@@ -90,7 +90,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
                 return this.transition_to('desk, sitting down');
             })
 
-            return combine.call(this, parser, [look_handler, other_handler]);
+            return combine.call(this, parser, [look_consumer, other_consumer]);
 
             // let cmd_options = []
             // cmd_options.push(annotate(['look'], {

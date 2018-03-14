@@ -176,7 +176,6 @@ export class CommandParser {
             return <S>normalize_whitespace(untokenize(exact_match_spec_toks));
         }
 
-        //if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
         if (partial_matches.length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
@@ -190,6 +189,18 @@ export class CommandParser {
             return false;
         }
 
+        return this.invalidate();
+        // this.validity = MatchValidity.invalid;
+        // let match_tokens = this.tokens.slice(this.position);
+        // let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
+        // this.match.push({
+        //     display: DisplayEltType.error,
+        //     match: untokenize(match_tokens, match_token_gaps),
+        //     name: name});
+        // return false;
+    }
+
+    invalidate(): false {
         this.validity = MatchValidity.invalid;
         let match_tokens = this.tokens.slice(this.position);
         let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
@@ -197,6 +208,7 @@ export class CommandParser {
             display: DisplayEltType.error,
             match: untokenize(match_tokens, match_token_gaps),
             name: name});
+        this.position = this.tokens.length;
         return false;
     }
 
@@ -356,18 +368,17 @@ export function combine<R>(parser: CommandParser, consumers: ((parser: CommandPa
     }
 
     if (partial_matches.length > 0) {
-
         //integrate the first one
         parser.integrate(partial_matches[0].subparser);
 
         for (let t of partial_matches.slice(1)) {
+            //extend the typeahead with the rest
             let typeahead = t.subparser.match[t.subparser.match.length - 1].typeahead;
             parser.match[parser.match.length - 1].typeahead.push(...typeahead);
         }
     } else {
         // set to invalid
-        // return false
-        parser.done();
+        parser.invalidate();
     }
     return false;
 }

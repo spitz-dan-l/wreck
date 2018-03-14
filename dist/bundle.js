@@ -516,7 +516,6 @@ class CommandParser {
             this.match[this.match.length - 1].typeahead = typeahead;
             return text_tools_1.normalize_whitespace(text_tools_1.untokenize(exact_match_spec_toks));
         }
-        //if (partial_matches.filter((de) => is_enabled(de)).length > 0) {
         if (partial_matches.length > 0) {
             this.validity = MatchValidity.partial;
             this.position = this.tokens.length - 1;
@@ -529,6 +528,17 @@ class CommandParser {
             });
             return false;
         }
+        return this.invalidate();
+        // this.validity = MatchValidity.invalid;
+        // let match_tokens = this.tokens.slice(this.position);
+        // let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
+        // this.match.push({
+        //     display: DisplayEltType.error,
+        //     match: untokenize(match_tokens, match_token_gaps),
+        //     name: name});
+        // return false;
+    }
+    invalidate() {
         this.validity = MatchValidity.invalid;
         let match_tokens = this.tokens.slice(this.position);
         let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
@@ -537,6 +547,7 @@ class CommandParser {
             match: text_tools_1.untokenize(match_tokens, match_token_gaps),
             name: name
         });
+        this.position = this.tokens.length;
         return false;
     }
     consume_filler(spec_tokens) {
@@ -674,13 +685,13 @@ function combine(parser, consumers) {
         //integrate the first one
         parser.integrate(partial_matches[0].subparser);
         for (let t of partial_matches.slice(1)) {
+            //extend the typeahead with the rest
             let typeahead = t.subparser.match[t.subparser.match.length - 1].typeahead;
             parser.match[parser.match.length - 1].typeahead.push(...typeahead);
         }
     } else {
         // set to invalid
-        // return false
-        parser.done();
+        parser.invalidate();
     }
     return false;
 }
@@ -918,7 +929,7 @@ class VenienceWorld extends commands_1.World {
             return this.transition_to(om_id_choice);
         });
     }
-    make_look_handler(look_options) {
+    make_look_consumer(look_options) {
         return exports.wrap_handler(function* (parser) {
             if (look_options.every(([cmd, t]) => this.state.has_regarded[t])) {
                 yield parser.consume_option([datatypes_1.annotate(['look'], { enabled: false, display: parser_1.DisplayEltType.keyword })]);
@@ -927,20 +938,20 @@ class VenienceWorld extends commands_1.World {
             let options = look_options.map(([opt_toks, t]) => datatypes_1.set_enabled(opt_toks, !(this.state.has_regarded[t] || false)));
             let opt = yield parser.consume_option(options);
             yield parser.done();
-            let targ = null;
+            let target = null;
             for (let [opt_toks, t] of look_options) {
                 if (text_tools_1.untokenize(opt_toks) === opt) {
-                    targ = t;
+                    target = t;
                     break;
                 }
             }
             let result = {
                 world: this.update({
                     has_regarded: {
-                        [targ]: true
+                        [target]: true
                     }
                 }),
-                message: text_tools_1.wrap_in_div(VenienceWorld.perceptions[targ].content)
+                message: text_tools_1.wrap_in_div(VenienceWorld.perceptions[target].content)
             };
             return result;
         });
@@ -1757,14 +1768,14 @@ let prologue_oms = () => [{
     id: 'bed, sitting up 2',
     enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let look_handler = this.make_look_handler([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
-        let other_handler = venience_world_1.wrap_handler(function* (parser) {
+        let look_consumer = this.make_look_consumer([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
+        let other_consumer = venience_world_1.wrap_handler(function* (parser) {
             yield parser.consume_exact(['approach']);
             yield parser.consume_filler(['the', 'desk']);
             yield parser.done();
             return this.transition_to('desk, sitting down');
         });
-        return parser_1.combine.call(this, parser, [look_handler, other_handler]);
+        return parser_1.combine.call(this, parser, [look_consumer, other_consumer]);
         // let cmd_options = []
         // cmd_options.push(annotate(['look'], {
         //     enabled: look_handler !== false,
@@ -2007,42 +2018,12 @@ let ch1_oms = () => [{
         <br />
         You are alone in the woods in midmorning.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        // let cmd_options = [];
-        // let display: DisplayEltType.keyword;
-        let look_handler = this.make_look_handler([[['around'], 'forest, general'], [['at', 'myself'], 'self, 1']]);
-        let other_handler = venience_world_1.wrap_handler(function* (parser) {
+        let look_consumer = this.make_look_consumer([[['around'], 'forest, general'], [['at', 'myself'], 'self, 1']]);
+        let other_consumer = venience_world_1.wrap_handler(function* (parser) {
             yield parser.consume_exact(['go']);
+            yield parser.invalidate();
         });
-        return parser_1.combine.call(this, parser, [look_handler, other_handler]);
-        // cmd_options.push(annotate(['look'], {enabled: look_handler !== false, display}));
-        // cmd_options.push(annotate(['go'], {display}));
-        // let cmd = yield parser.consume_option(cmd_options);
-        // if (cmd === 'look' && look_handler !== false) {
-        //     return look_handler.call(this, parser);
-        // }
-        // let option = yield parser.consume_option(look_options);
-        // yield parser.done();
-        // let result2: VenienceWorldCommandResult = {};
-        // if (option === 'around') {
-        //     result.message = wrap_in_div(`
-        //     The sun trickles through the thick brush.
-        //     <br />
-        //     <br />
-        //     The growth of the forest surrounds you in every direction.`);
-        // } else {
-        //     result.message = wrap_in_div(`
-        //     You are wearing a perfectly dignified pair of silk pajamas.`);
-        // }
-        // result.world = this.update({
-        //     om_state: {
-        //         ['alone in the woods']: {
-        //             has_looked: {
-        //                 [option]: true
-        //             }
-        //         }
-        //     }
-        // });
-        // return result;
+        return parser_1.combine.call(this, parser, [look_consumer, other_consumer]);
     }),
     dest_oms: ['alone in the woods']
 }];

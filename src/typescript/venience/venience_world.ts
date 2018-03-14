@@ -178,7 +178,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
         });
     }
 
-    make_look_handler(look_options: [string[], PerceptionID][]) {
+    make_look_consumer(look_options: [string[], PerceptionID][]) {
         return wrap_handler(function*(parser: CommandParser){
             if (look_options.every(([cmd, t]) => this.state.has_regarded[t])) {
                 yield parser.consume_option([annotate(['look'], {enabled: false, display: DisplayEltType.keyword})]);
@@ -193,10 +193,10 @@ export class VenienceWorld extends World<VenienceWorldState>{
             let opt = yield parser.consume_option(options);
             yield parser.done();
 
-            let targ: PerceptionID = null;
+            let target: PerceptionID = null;
             for (let [opt_toks, t] of look_options) {
                 if (untokenize(opt_toks) === opt) {
-                    targ = t;
+                    target = t;
                     break;
                 }
             } 
@@ -204,10 +204,10 @@ export class VenienceWorld extends World<VenienceWorldState>{
             let result: VenienceWorldCommandResult = {
                 world: this.update({
                     has_regarded: {
-                        [targ]: true
+                        [target]: true
                     }
                 }),
-                message: wrap_in_div(VenienceWorld.perceptions[targ].content)
+                message: wrap_in_div(VenienceWorld.perceptions[target].content)
             };
             return result;
         });
