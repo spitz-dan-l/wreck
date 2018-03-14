@@ -1,5 +1,7 @@
 import {
-    ObserverMoment
+    ObserverMoment,
+    Perception,
+    PerceptionID
 } from '../observer_moments';
 
 import {
@@ -28,13 +30,13 @@ let prologue_oms: () => ObserverMoment[] = () => [
         id: 'bed, sleeping 1',
         enter_message: '',
         transitions: [
-            [['*awaken'], 'bed, awakening 1']]
+            [['awaken'], 'bed, awakening 1']]
     },
     {
         id: 'bed, awakening 1',
         enter_message: 'You awaken in your bed.',
         transitions: [
-            [['*sit', '&up'], 'bed, sitting up 1']]
+            [['sit', 'up'], 'bed, sitting up 1']]
     },
     {
         id: 'bed, sitting up 1',
@@ -44,7 +46,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br /><br />
         Perhaps you’ll doze until the sun rises properly.`,
         transitions: [
-            [['*lie', '&down'], 'bed, lying down 1']]
+            [['lie', 'down'], 'bed, lying down 1']]
     },
     {
         id: 'bed, lying down 1',
@@ -52,7 +54,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br /><br />
         You slide back under the blankets. The autumn breeze cools your face.`,
         transitions: [
-            [['*sleep', 'until', '&sunrise'], 'bed, sleeping 2']]
+            [['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
     },
     {
         id: 'bed, sleeping 2',
@@ -62,37 +64,64 @@ let prologue_oms: () => ObserverMoment[] = () => [
         an <i>ice-covered mountain,</i><br /><br />
         <div class="interp">and <i>her voice.</i></div>`,
         transitions: [
-            [['*awaken'], 'bed, awakening 2']]
+            [['awaken'], 'bed, awakening 2']]
     },
     {
         id: 'bed, awakening 2',
         enter_message: `You awaken in your bed again.`,
         transitions: [
-            [['*sit', '&up'], 'bed, sitting up 2']]
+            [['sit', 'up'], 'bed, sitting up 2']]
     },
     {
         id: 'bed, sitting up 2',
         enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
-        transitions: [
-            [['*look', '&around'], 'bed, looking around']]
+        handle_command: wrap_handler(function*(parser: CommandParser) {
+            let look_options: PerceptionID[] = ['alcove, general', 'self, 1'];
+
+
+            let cmd_options = []
+            cmd_options.push(annotate(['look'], {
+                enabled: !look_options.every(p => this.state.has_regarded[p]),
+                display: DisplayEltType.keyword
+            }));
+
+            cmd_options.push(annotate(['approach'], {display: DisplayEltType.keyword}));
+
+            let cmd = yield parser.consume_option(cmd_options);
+
+            if (cmd === 'look') {
+                return this.look_handler([
+                    [['around'], 'alcove, general'],
+                    [['at', 'myself'], 'self, 1']
+                ]).call(this, parser);
+            }
+
+            yield parser.consume_filler(['the', 'desk']);
+            yield parser.done();
+
+            return this.transition_to('desk, sitting down');
+        }),
+        dest_oms: ['desk, sitting down']
+        // transitions: [
+        //     [['look', '&around'], 'bed, looking around']]
     },
-    {
-        id: 'bed, looking around',
-        enter_message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
-        <br /><br />
-        You see your desk and chair a few paces away, in the center of the alcove.
-        <br /><br />
-        On all sides you are surrounded by trees.`,
-        transitions: [
-            [['*sit', 'at', '&the desk'], 'desk, sitting down']]
-    },
+    // {
+    //     id: 'bed, looking around',
+    //     enter_message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
+    //     <br /><br />
+    //     You see your desk and chair a few paces away, in the center of the alcove.
+    //     <br /><br />
+    //     On all sides you are surrounded by trees.`,
+    //     transitions: [
+    //         [['sit', 'at', 'the', 'desk'], 'desk, sitting down']]
+    // },
     {
         id: 'desk, sitting down',
         enter_message: `You pace across the grass and take your seat at the leather-backed study chair.
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
         transitions: [
-            [['*open', '&the envelope'], 'desk, opening the envelope']]
+            [['open', 'the', 'envelope'], 'desk, opening the envelope']]
     },
     {
         id: 'desk, opening the envelope',
@@ -102,7 +131,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br /><br />
         It’s empty. But it shouldn’t be.`,
         transitions: [
-            [['*try', 'to', '&understand'], 'desk, trying to understand']]
+            [['try', 'to', '*understand'], 'desk, trying to understand']]
     },
     {
         id: 'desk, trying to understand',
@@ -120,7 +149,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         It throws one particular path into relief: the path to the bottom.
         </div>`,
         transitions: [
-            [['*search', 'for', '&the notes'], 'desk, searching for the notes']]
+            [['search', 'for', 'the', 'notes'], 'desk, searching for the notes']]
     },
     {
         id: 'desk, searching for the notes',
@@ -134,7 +163,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         You can feel yourself slipping down an icy hill.
         </div>`,
         transitions: [
-            [['*slip', 'further'], 'grass, slipping further']]
+            [['slip', 'further'], 'grass, slipping further']]
     },
     {
         id: 'grass, slipping further',
@@ -143,7 +172,8 @@ let prologue_oms: () => ObserverMoment[] = () => [
         You curl up on the grass beneath you, holding yourself.`,
         handle_command: wrap_handler(function* (parser: CommandParser) {
             yield parser.consume_exact(['consider']);
-            yield parser.consume_filler(['the', 'sense', 'of'])
+            yield parser.consume_filler(['the']);
+            yield parser.consume_filler(['sense', 'of']);
             yield parser.consume_option([
                 set_enabled(['panic'], false),
                 set_enabled(['dread'], true)
@@ -184,7 +214,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         "And then, choose where to go."
         </i></div>`,
         transitions: [
-            [['*begin', '*interpretation'], 'alcove, beginning interpretation']]
+            [['begin', '*interpretation'], 'alcove, beginning interpretation']]
     },
     {
         id: 'alcove, beginning interpretation',
@@ -285,7 +315,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         id: 'alcove, interpreting 3',
         enter_message: ``,
         transitions: [
-            [['*end', '*interpretation'], 'alcove, ending interpretation']]
+            [['end', '*interpretation'], 'alcove, ending interpretation']]
     },
     {
         id: 'alcove, ending interpretation',
@@ -295,7 +325,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br /><br />
         But your sense of purpose compels you. To go. To seek. To try to understand.`,
         transitions: [
-            [['*enter', 'the', '&forest'], 'alcove, entering the forest']]
+            [['enter', 'the', 'forest'], 'alcove, entering the forest']]
     },
     {
         id: 'alcove, entering the forest',
@@ -312,4 +342,24 @@ let prologue_oms: () => ObserverMoment[] = () => [
     }
 ];
 
-export default prologue_oms;
+let prologue_perceptions: () => Perception[] = () => [
+    {
+        id: 'alcove, general',
+        content: `
+        You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
+        <br /><br />
+        You see your desk and chair a few paces away, in the center of the alcove.
+        <br /><br />
+        On all sides you are surrounded by trees.`
+    },
+    {
+        id: 'self, 1',
+        content: `
+        You are wearing a perfectly dignified pair of silk pajamas.`
+    }
+];
+
+export default {
+    observer_moments: prologue_oms,
+    perceptions: prologue_perceptions
+};

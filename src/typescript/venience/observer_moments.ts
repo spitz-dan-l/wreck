@@ -77,7 +77,9 @@ export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, Obs
                 }
             }
         }
-
+        if (result.has_key(om.id)) {
+            throw `Duplicate ObserverMoment provided for ${om.id}`;
+        }
         result.set(om.id, om);
     }
 
@@ -106,6 +108,11 @@ export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, Obs
     }
     
     return result;
+}
+
+export type Perception = {
+    id: PerceptionID,
+    content: string
 }
 
 export type ObserverMomentID = (
@@ -162,6 +169,25 @@ export type ObserverMomentID = (
     // 'base, regarding path'
 );
 
+
+export type PerceptionID = (
+    'alcove, general' |
+    'self, 1' |
+    'forest, general'
+)
+
+export function index_perceptions(perceptions: Perception[]): {[K in PerceptionID]: Perception} {
+    let result: any = {};
+    for (let p of perceptions) {
+        if (!(p.id in result)) {
+            result[p.id] = p;
+        } else {
+            throw `Duplicate perception definition for ${p.id}`;
+        }
+    }
+
+    return result;
+}
 // Syntax shortcuts:
 // * = keyword
 // & = option

@@ -1,5 +1,7 @@
 import {
-    ObserverMoment
+    ObserverMoment,
+    Perception,
+    PerceptionID
 } from '../observer_moments';
 
 import {
@@ -31,16 +33,21 @@ let ch1_oms: () => ObserverMoment[] = () => [
         <br />
         You are alone in the woods in midmorning.`,
         handle_command: wrap_handler(function*(parser: CommandParser) {
-            let state = this.state.om_state['alone in the woods'] || {};
-            let has_looked: {[key: string]: boolean} = state.has_looked || {};
+            // let state = this.state.om_state['alone in the woods'] || {};
+            // let has_looked: {[key: string]: boolean} = state.has_looked || {};
             
-            let look_options = ['around', 'at myself'].map(c =>
-                set_enabled(tokenize(c)[0], !(has_looked[c] || false))
-            );
+            // let look_options = ['around', 'at myself'].map(c =>
+            //     set_enabled(tokenize(c)[0], !(has_looked[c] || false))
+            // );
 
             let cmd_options = [];
             let display: DisplayEltType.keyword;
-            if (look_options.every(x => !is_enabled(x))) {
+
+            let look_options: PerceptionID[] = [
+                'forest, general',
+                'self, 1'
+            ];
+            if (look_options.every(x => this.state.has_regarded[x])) {
                 cmd_options.push(annotate(['look'], {enabled: false, display}));
             } else {
                 cmd_options.push(annotate(['look'], {enabled: true, display}));
@@ -48,35 +55,58 @@ let ch1_oms: () => ObserverMoment[] = () => [
             cmd_options.push(['go']);
 
             yield parser.consume_option(cmd_options);
-            let option = yield parser.consume_option(look_options);
-            yield parser.done();
 
-            let result: VenienceWorldCommandResult = {};
-            if (option === 'around') {
-                result.message = wrap_in_div(`
-                The sun trickles through the thick brush.
-                <br />
-                <br />
-                The growth of the forest surrounds you in every direction.`);
-            } else {
-                result.message = wrap_in_div(`
-                You are wearing a perfectly dignified pair of silk pajamas.`);
-            }
+            //if command is look
+            return this.look_handler([
+                [['around'], 'forest, general'],
+                [['at', 'myself'], 'self, 1']
+            ]).call(this, parser);
+
+
+
+            // let option = yield parser.consume_option(look_options);
+            // yield parser.done();
+
+            // let result2: VenienceWorldCommandResult = {};
+            // if (option === 'around') {
+            //     result.message = wrap_in_div(`
+            //     The sun trickles through the thick brush.
+            //     <br />
+            //     <br />
+            //     The growth of the forest surrounds you in every direction.`);
+            // } else {
+            //     result.message = wrap_in_div(`
+            //     You are wearing a perfectly dignified pair of silk pajamas.`);
+            // }
             
-            result.world = this.update({
-                om_state: {
-                    ['alone in the woods']: {
-                        has_looked: {
-                            [option]: true
-                        }
-                    }
-                }
-            });
+            // result.world = this.update({
+            //     om_state: {
+            //         ['alone in the woods']: {
+            //             has_looked: {
+            //                 [option]: true
+            //             }
+            //         }
+            //     }
+            // });
 
-            return result;
+            // return result;
         }),
         dest_oms: ['alone in the woods']
     }
 ];
 
-export default ch1_oms;
+let ch1_perceptions: () => Perception[] = () => [
+    {
+        id: 'forest, general',
+        content: `
+        The sun trickles through the thick brush.
+        <br />
+        <br />
+        The growth of the forest surrounds you in every direction.`
+    }
+]
+
+export default {
+    observer_moments: ch1_oms,
+    perceptions: ch1_perceptions
+};

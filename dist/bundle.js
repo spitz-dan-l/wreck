@@ -649,6 +649,18 @@ function* consume_option_stepwise_eager(parser, options) {
     }
 }
 exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
+function combine(parser, gen_funcs) {
+    let gens = [];
+    for (let gf of gen_funcs) {
+        gens.push(gf(parser.subparser()));
+    }
+    let results = gens.map(stop_early);
+    while (true) {
+        for (let g of gens) {
+            let r = g.next();
+        }
+    }
+}
 
 /***/ }),
 /* 3 */
@@ -802,9 +814,9 @@ exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
 class VenienceWorld extends commands_1.World {
-    constructor({ experiences, history_index, om_state }) {
+    constructor({ experiences, history_index, om_state, has_regarded }) {
         if (experiences === undefined) {
-            experiences = ['bed, sleeping 1']; //['alcove, entering the forest'];
+            experiences = ['bed, sleeping 1']; //['alcove, entering the forest']; 
         }
         if (history_index === undefined) {
             history_index = 0;
@@ -812,7 +824,10 @@ class VenienceWorld extends commands_1.World {
         if (om_state === undefined) {
             om_state = {};
         }
-        super({ experiences, history_index, om_state });
+        if (has_regarded === undefined) {
+            has_regarded = {};
+        }
+        super({ experiences, history_index, om_state, has_regarded });
     }
     current_om() {
         for (let i = this.state.experiences.length - 1; i >= 0; i--) {
@@ -821,7 +836,7 @@ class VenienceWorld extends commands_1.World {
                 return exp;
             }
         }
-        throw "Somehow got a fully null history.";
+        throw "Somehow got a fully null or empty history.";
     }
     transition_to(dest, include_enter_message = true) {
         let result = {
@@ -831,7 +846,7 @@ class VenienceWorld extends commands_1.World {
             })
         };
         if (include_enter_message) {
-            let msg = VenienceWorld.oms.get(dest).enter_message;
+            let msg = VenienceWorld.observer_moments.get(dest).enter_message;
             if (msg !== undefined) {
                 result.message = text_tools_1.wrap_in_div(msg);
             }
@@ -840,7 +855,7 @@ class VenienceWorld extends commands_1.World {
     }
     get handle_command() {
         return exports.wrap_handler(function* (parser) {
-            let om = VenienceWorld.oms.get(this.current_om());
+            let om = VenienceWorld.observer_moments.get(this.current_om());
             if (!observer_moments_1.is_declarative(om)) {
                 //dispatch to a more specific handler
                 return om.handle_command.call(this, parser);
@@ -879,10 +894,33 @@ class VenienceWorld extends commands_1.World {
             return this.transition_to(om_id_choice);
         });
     }
+    look_handler(look_options) {
+        return exports.wrap_handler(function* (parser) {
+            let options = look_options.map(([opt_toks, t]) => datatypes_1.set_enabled(opt_toks, !(this.state.has_regarded[t] || false)));
+            let opt = yield parser.consume_option(options);
+            yield parser.done();
+            let targ = null;
+            for (let [opt_toks, t] of look_options) {
+                if (text_tools_1.untokenize(opt_toks) === opt) {
+                    targ = t;
+                    break;
+                }
+            }
+            let result = {
+                world: this.update({
+                    has_regarded: {
+                        [targ]: true
+                    }
+                }),
+                message: text_tools_1.wrap_in_div(VenienceWorld.perceptions[targ].content)
+            };
+            return result;
+        });
+    }
     interstitial_update(message) {
         let result = {};
         let world_update = {};
-        let om = VenienceWorld.oms.get(this.current_om());
+        let om = VenienceWorld.observer_moments.get(this.current_om());
         if (this.state.experiences.length > 0) {
             let loop_idx = this.state.experiences.indexOf(this.current_om());
             if (loop_idx !== this.state.experiences.length - 1) {
@@ -926,7 +964,8 @@ class VenienceWorld extends commands_1.World {
         return interpretation_op;
     }
 }
-VenienceWorld.oms = observer_moments_1.index_oms([..._00_prologue_1.default(), ..._01_chapter_1_1.default()]);
+VenienceWorld.observer_moments = observer_moments_1.index_oms([..._00_prologue_1.default.observer_moments(), ..._01_chapter_1_1.default.observer_moments()]);
+VenienceWorld.perceptions = observer_moments_1.index_perceptions([..._00_prologue_1.default.perceptions(), ..._01_chapter_1_1.default.perceptions()]);
 exports.VenienceWorld = VenienceWorld;
 
 /***/ }),
@@ -1655,11 +1694,11 @@ const parser_1 = __webpack_require__(2);
 let prologue_oms = () => [{
     id: 'bed, sleeping 1',
     enter_message: '',
-    transitions: [[['*awaken'], 'bed, awakening 1']]
+    transitions: [[['awaken'], 'bed, awakening 1']]
 }, {
     id: 'bed, awakening 1',
     enter_message: 'You awaken in your bed.',
-    transitions: [[['*sit', '&up'], 'bed, sitting up 1']]
+    transitions: [[['sit', 'up'], 'bed, sitting up 1']]
 }, {
     id: 'bed, sitting up 1',
     enter_message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
@@ -1667,13 +1706,13 @@ let prologue_oms = () => [{
         Your body still feels heavy with sleep.
         <br /><br />
         Perhaps you’ll doze until the sun rises properly.`,
-    transitions: [[['*lie', '&down'], 'bed, lying down 1']]
+    transitions: [[['lie', 'down'], 'bed, lying down 1']]
 }, {
     id: 'bed, lying down 1',
     enter_message: `Yes, no reason to be up now.
         <br /><br />
         You slide back under the blankets. The autumn breeze cools your face.`,
-    transitions: [[['*sleep', 'until', '&sunrise'], 'bed, sleeping 2']]
+    transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
 }, {
     id: 'bed, sleeping 2',
     enter_message: `You dream of<br /><br />
@@ -1681,29 +1720,50 @@ let prologue_oms = () => [{
         a <i>shattered mirror,</i><br /><br />
         an <i>ice-covered mountain,</i><br /><br />
         <div class="interp">and <i>her voice.</i></div>`,
-    transitions: [[['*awaken'], 'bed, awakening 2']]
+    transitions: [[['awaken'], 'bed, awakening 2']]
 }, {
     id: 'bed, awakening 2',
     enter_message: `You awaken in your bed again.`,
-    transitions: [[['*sit', '&up'], 'bed, sitting up 2']]
+    transitions: [[['sit', 'up'], 'bed, sitting up 2']]
 }, {
     id: 'bed, sitting up 2',
     enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
-    transitions: [[['*look', '&around'], 'bed, looking around']]
-}, {
-    id: 'bed, looking around',
-    enter_message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
-        <br /><br />
-        You see your desk and chair a few paces away, in the center of the alcove.
-        <br /><br />
-        On all sides you are surrounded by trees.`,
-    transitions: [[['*sit', 'at', '&the desk'], 'desk, sitting down']]
-}, {
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        let look_options = ['alcove, general', 'self, 1'];
+        let cmd_options = [];
+        cmd_options.push(datatypes_1.annotate(['look'], {
+            enabled: !look_options.every(p => this.state.has_regarded[p]),
+            display: parser_1.DisplayEltType.keyword
+        }));
+        cmd_options.push(datatypes_1.annotate(['approach'], { display: parser_1.DisplayEltType.keyword }));
+        let cmd = yield parser.consume_option(cmd_options);
+        if (cmd === 'look') {
+            return this.look_handler([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]).call(this, parser);
+        }
+        yield parser.consume_filler(['the', 'desk']);
+        yield parser.done();
+        return this.transition_to('desk, sitting down');
+    }),
+    dest_oms: ['desk, sitting down']
+    // transitions: [
+    //     [['look', '&around'], 'bed, looking around']]
+},
+// {
+//     id: 'bed, looking around',
+//     enter_message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
+//     <br /><br />
+//     You see your desk and chair a few paces away, in the center of the alcove.
+//     <br /><br />
+//     On all sides you are surrounded by trees.`,
+//     transitions: [
+//         [['sit', 'at', 'the', 'desk'], 'desk, sitting down']]
+// },
+{
     id: 'desk, sitting down',
     enter_message: `You pace across the grass and take your seat at the leather-backed study chair.
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
-    transitions: [[['*open', '&the envelope'], 'desk, opening the envelope']]
+    transitions: [[['open', 'the', 'envelope'], 'desk, opening the envelope']]
 }, {
     id: 'desk, opening the envelope',
     enter_message: `You undo the twine, leaving it in a loop on the desk.
@@ -1711,7 +1771,7 @@ let prologue_oms = () => [{
         You unfold the envelope’s flap.
         <br /><br />
         It’s empty. But it shouldn’t be.`,
-    transitions: [[['*try', 'to', '&understand'], 'desk, trying to understand']]
+    transitions: [[['try', 'to', '*understand'], 'desk, trying to understand']]
 }, {
     id: 'desk, trying to understand',
     enter_message: `A panic comes over you. Without your notes, how will you continue your work?
@@ -1725,7 +1785,7 @@ let prologue_oms = () => [{
         <br /><br />
         It throws one particular path into relief: the path to the bottom.
         </div>`,
-    transitions: [[['*search', 'for', '&the notes'], 'desk, searching for the notes']]
+    transitions: [[['search', 'for', 'the', 'notes'], 'desk, searching for the notes']]
 }, {
     id: 'desk, searching for the notes',
     enter_message: `You look in the envelope again.
@@ -1737,7 +1797,7 @@ let prologue_oms = () => [{
         <div class="interp">
         You can feel yourself slipping down an icy hill.
         </div>`,
-    transitions: [[['*slip', 'further'], 'grass, slipping further']]
+    transitions: [[['slip', 'further'], 'grass, slipping further']]
 }, {
     id: 'grass, slipping further',
     enter_message: `Thoughts of dread, of a terrible, empty future, fill your mind.
@@ -1745,7 +1805,8 @@ let prologue_oms = () => [{
         You curl up on the grass beneath you, holding yourself.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
         yield parser.consume_exact(['consider']);
-        yield parser.consume_filler(['the', 'sense', 'of']);
+        yield parser.consume_filler(['the']);
+        yield parser.consume_filler(['sense', 'of']);
         yield parser.consume_option([datatypes_1.set_enabled(['panic'], false), datatypes_1.set_enabled(['dread'], true)]);
         yield parser.done();
         return this.transition_to('grass, considering the sense of dread');
@@ -1776,7 +1837,7 @@ let prologue_oms = () => [{
         <br /><br />
         "And then, choose where to go."
         </i></div>`,
-    transitions: [[['*begin', '*interpretation'], 'alcove, beginning interpretation']]
+    transitions: [[['begin', '*interpretation'], 'alcove, beginning interpretation']]
 }, {
     id: 'alcove, beginning interpretation',
     enter_message: `
@@ -1855,7 +1916,7 @@ let prologue_oms = () => [{
 }, {
     id: 'alcove, interpreting 3',
     enter_message: ``,
-    transitions: [[['*end', '*interpretation'], 'alcove, ending interpretation']]
+    transitions: [[['end', '*interpretation'], 'alcove, ending interpretation']]
 }, {
     id: 'alcove, ending interpretation',
     enter_message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
@@ -1863,7 +1924,7 @@ let prologue_oms = () => [{
         You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
         <br /><br />
         But your sense of purpose compels you. To go. To seek. To try to understand.`,
-    transitions: [[['*enter', 'the', '&forest'], 'alcove, entering the forest']]
+    transitions: [[['enter', 'the', 'forest'], 'alcove, entering the forest']]
 }, {
     id: 'alcove, entering the forest',
     enter_message: `What lies within the forest, and beyond? What will it be like, out there?`,
@@ -1876,7 +1937,23 @@ let prologue_oms = () => [{
         An Interactive Fiction by Daniel Spitz`,
     transitions: [[['continue'], 'alone in the woods']]
 }];
-exports.default = prologue_oms;
+let prologue_perceptions = () => [{
+    id: 'alcove, general',
+    content: `
+        You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
+        <br /><br />
+        You see your desk and chair a few paces away, in the center of the alcove.
+        <br /><br />
+        On all sides you are surrounded by trees.`
+}, {
+    id: 'self, 1',
+    content: `
+        You are wearing a perfectly dignified pair of silk pajamas.`
+}];
+exports.default = {
+    observer_moments: prologue_oms,
+    perceptions: prologue_perceptions
+};
 
 /***/ }),
 /* 15 */
@@ -1887,7 +1964,6 @@ exports.default = prologue_oms;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
-const text_tools_1 = __webpack_require__(3);
 const datatypes_1 = __webpack_require__(0);
 let ch1_oms = () => [{
     id: 'alone in the woods',
@@ -1896,45 +1972,61 @@ let ch1_oms = () => [{
         <br />
         You are alone in the woods in midmorning.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let state = this.state.om_state['alone in the woods'] || {};
-        let has_looked = state.has_looked || {};
-        let look_options = ['around', 'at myself'].map(c => datatypes_1.set_enabled(text_tools_1.tokenize(c)[0], !(has_looked[c] || false)));
+        // let state = this.state.om_state['alone in the woods'] || {};
+        // let has_looked: {[key: string]: boolean} = state.has_looked || {};
+        // let look_options = ['around', 'at myself'].map(c =>
+        //     set_enabled(tokenize(c)[0], !(has_looked[c] || false))
+        // );
         let cmd_options = [];
         let display;
-        if (look_options.every(x => !datatypes_1.is_enabled(x))) {
+        let look_options = ['forest, general', 'self, 1'];
+        if (look_options.every(x => this.state.has_regarded[x])) {
             cmd_options.push(datatypes_1.annotate(['look'], { enabled: false, display }));
         } else {
             cmd_options.push(datatypes_1.annotate(['look'], { enabled: true, display }));
         }
         cmd_options.push(['go']);
         yield parser.consume_option(cmd_options);
-        let option = yield parser.consume_option(look_options);
-        yield parser.done();
-        let result = {};
-        if (option === 'around') {
-            result.message = text_tools_1.wrap_in_div(`
-                The sun trickles through the thick brush.
-                <br />
-                <br />
-                The growth of the forest surrounds you in every direction.`);
-        } else {
-            result.message = text_tools_1.wrap_in_div(`
-                You are wearing a perfectly dignified pair of silk pajamas.`);
-        }
-        result.world = this.update({
-            om_state: {
-                ['alone in the woods']: {
-                    has_looked: {
-                        [option]: true
-                    }
-                }
-            }
-        });
-        return result;
+        //if command is look
+        return this.look_handler([[['around'], 'forest, general'], [['at', 'myself'], 'self, 1']]).call(this, parser);
+        // let option = yield parser.consume_option(look_options);
+        // yield parser.done();
+        // let result2: VenienceWorldCommandResult = {};
+        // if (option === 'around') {
+        //     result.message = wrap_in_div(`
+        //     The sun trickles through the thick brush.
+        //     <br />
+        //     <br />
+        //     The growth of the forest surrounds you in every direction.`);
+        // } else {
+        //     result.message = wrap_in_div(`
+        //     You are wearing a perfectly dignified pair of silk pajamas.`);
+        // }
+        // result.world = this.update({
+        //     om_state: {
+        //         ['alone in the woods']: {
+        //             has_looked: {
+        //                 [option]: true
+        //             }
+        //         }
+        //     }
+        // });
+        // return result;
     }),
     dest_oms: ['alone in the woods']
 }];
-exports.default = ch1_oms;
+let ch1_perceptions = () => [{
+    id: 'forest, general',
+    content: `
+        The sun trickles through the thick brush.
+        <br />
+        <br />
+        The growth of the forest surrounds you in every direction.`
+}];
+exports.default = {
+    observer_moments: ch1_oms,
+    perceptions: ch1_perceptions
+};
 
 /***/ }),
 /* 16 */
@@ -1972,6 +2064,9 @@ function index_oms(oms) {
                 }
             }
         }
+        if (result.has_key(om.id)) {
+            throw `Duplicate ObserverMoment provided for ${om.id}`;
+        }
         result.set(om.id, om);
     }
     //second/third pass, typecheck em
@@ -1998,6 +2093,18 @@ function index_oms(oms) {
     return result;
 }
 exports.index_oms = index_oms;
+function index_perceptions(perceptions) {
+    let result = {};
+    for (let p of perceptions) {
+        if (!(p.id in result)) {
+            result[p.id] = p;
+        } else {
+            throw `Duplicate perception definition for ${p.id}`;
+        }
+    }
+    return result;
+}
+exports.index_perceptions = index_perceptions;
 // Syntax shortcuts:
 // * = keyword
 // & = option

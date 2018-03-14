@@ -325,3 +325,20 @@ export function* consume_option_stepwise_eager(parser: CommandParser, options: D
         pos++;
     }
 }
+
+
+function combine(parser: CommandParser, gen_funcs: ((parser: CommandParser) => IterableIterator<any>)[]) {
+    let gens: IterableIterator<any>[] = [];
+
+    for (let gf of gen_funcs) {
+        gens.push(gf(parser.subparser()));
+    }
+
+    let results = gens.map(stop_early);
+
+    while (true) {
+        for (let g of gens) {
+            let r = g.next()
+        }
+    }
+}

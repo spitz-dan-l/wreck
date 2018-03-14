@@ -16,7 +16,8 @@ import {
 import {
     FuckDict,
     FuckSet,
-    array_fuck_contains
+    array_fuck_contains,
+    set_enabled
 } from '../datatypes';
 
 import {
@@ -30,7 +31,9 @@ import {
     ObserverMoment,
     //venience_world_oms,
     is_declarative,
-    index_oms
+    index_oms,
+    index_perceptions,
+    PerceptionID
 } from './observer_moments';
 
 import prologue from './chapters/00_prologue';
@@ -55,7 +58,8 @@ import chapter_1 from './chapters/01_chapter_1';
 type VenienceWorldState = {
     experiences?: ObserverMomentID[],
     history_index?: number,
-    om_state?: {[K in ObserverMomentID]?: any}
+    om_state?: {[K in ObserverMomentID]?: any},
+    has_regarded?: {[K in PerceptionID]?: boolean}
 }
 
 export type VenienceWorldCommandHandler = CommandHandler<VenienceWorldState>;
@@ -67,14 +71,19 @@ export let wrap_handler = (handler: (this: VenienceWorld, parser: CommandParser)
 
 export class VenienceWorld extends World<VenienceWorldState>{
 
-    static oms = index_oms([
-        ...prologue(),
-        ...chapter_1()
+    static observer_moments = index_oms([
+        ...prologue.observer_moments(),
+        ...chapter_1.observer_moments()
+    ]);
+
+    static perceptions = index_perceptions([
+        ...prologue.perceptions(),
+        ...chapter_1.perceptions()
     ]);
     
-    constructor({experiences, history_index, om_state}: VenienceWorldState) {
+    constructor({experiences, history_index, om_state, has_regarded}: VenienceWorldState) {
         if (experiences === undefined) {
-            experiences = ['bed, sleeping 1']; //['alcove, entering the forest'];
+            experiences = ['bed, sleeping 1']; //['alcove, entering the forest']; 
         }
         if (history_index === undefined) {
             history_index = 0;
@@ -82,8 +91,11 @@ export class VenienceWorld extends World<VenienceWorldState>{
         if (om_state === undefined) {
             om_state = {};
         }
+        if (has_regarded === undefined) {
+            has_regarded = {};
+        }
         
-        super({experiences, history_index, om_state});
+        super({experiences, history_index, om_state, has_regarded});
     }
 
     current_om(): ObserverMomentID {
@@ -93,7 +105,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
                 return exp;
             }
         }
-        throw "Somehow got a fully null history.";
+        throw "Somehow got a fully null or empty history.";
     }
 
     transition_to(dest: ObserverMomentID, include_enter_message=true) {
@@ -104,7 +116,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
             })
         };
         if (include_enter_message) {
-            let msg = VenienceWorld.oms.get(dest).enter_message;
+            let msg = VenienceWorld.observer_moments.get(dest).enter_message;
             if (msg !== undefined) {
                 result.message = wrap_in_div(msg);
             }
@@ -114,7 +126,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
 
     get handle_command() {
         return wrap_handler(function*(parser: CommandParser) {
-            let om = VenienceWorld.oms.get(this.current_om());
+            let om = VenienceWorld.observer_moments.get(this.current_om());
 
             if (!is_declarative(om)) {
                 //dispatch to a more specific handler
@@ -165,11 +177,40 @@ export class VenienceWorld extends World<VenienceWorldState>{
         });
     }
 
+    look_handler(look_options: [string[], PerceptionID][]) {
+        return wrap_handler(function*(parser: CommandParser){
+            let options = look_options.map(([opt_toks, t]) =>
+                set_enabled(opt_toks, !(this.state.has_regarded[t] || false))
+            );
+
+            let opt = yield parser.consume_option(options);
+            yield parser.done();
+
+            let targ: PerceptionID = null;
+            for (let [opt_toks, t] of look_options) {
+                if (untokenize(opt_toks) === opt) {
+                    targ = t;
+                    break;
+                }
+            } 
+
+            let result: VenienceWorldCommandResult = {
+                world: this.update({
+                    has_regarded: {
+                        [targ]: true
+                    }
+                }),
+                message: wrap_in_div(VenienceWorld.perceptions[targ].content)
+            };
+            return result;
+        });
+    }
+
     interstitial_update(message?: HTMLElement) {
         let result: CommandResult<VenienceWorldState> = {};
         let world_update: VenienceWorldState = {};
 
-        let om = VenienceWorld.oms.get(this.current_om());
+        let om = VenienceWorld.observer_moments.get(this.current_om());
 
         if (this.state.experiences.length > 0) {
             let loop_idx = this.state.experiences.indexOf(this.current_om());
