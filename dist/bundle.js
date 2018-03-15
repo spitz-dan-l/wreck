@@ -2081,6 +2081,11 @@ function index_oms(oms) {
         }
         result.set(om.id, om);
     }
+    for (let om of ObserverMomentIDs) {
+        if (!result.has_key(om)) {
+            throw `Missing ObserverMoment: ${om}`;
+        }
+    }
     //second/third pass, typecheck em
     let pointed_to = new datatypes_1.FuckDict();
     for (let om of oms) {
@@ -2114,9 +2119,18 @@ function index_perceptions(perceptions) {
             throw `Duplicate perception definition for ${p.id}`;
         }
     }
+    for (let p of PerceptionIDs) {
+        if (!(p in result)) {
+            throw `Missing PerceptionID: ${p}`;
+        }
+    }
     return result;
 }
 exports.index_perceptions = index_perceptions;
+const ObserverMomentIDs = ['bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, trying to understand', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, interpreting 1', 'alcove, interpreting 2', 'alcove, interpreting 3', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
+//ch1
+'alone in the woods'];
+const PerceptionIDs = ['alcove, general', 'self, 1', 'forest, general'];
 // Syntax shortcuts:
 // * = keyword
 // & = option

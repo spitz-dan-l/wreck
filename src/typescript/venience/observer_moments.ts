@@ -64,6 +64,11 @@ export type ObserverMoment = {
     enter_message?: string,
 } & Transitions;
 
+export type Perception = {
+    id: PerceptionID,
+    content: string
+}
+
 export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMoment>{
     let result = new FuckDict<ObserverMomentID, ObserverMoment>();
 
@@ -81,6 +86,12 @@ export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, Obs
             throw `Duplicate ObserverMoment provided for ${om.id}`;
         }
         result.set(om.id, om);
+    }
+
+    for (let om of ObserverMomentIDs) {
+        if (!result.has_key(om)) {
+            throw `Missing ObserverMoment: ${om}`;
+        }
     }
 
     //second/third pass, typecheck em
@@ -110,74 +121,8 @@ export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, Obs
     return result;
 }
 
-export type Perception = {
-    id: PerceptionID,
-    content: string
-}
-
-export type ObserverMomentID = (
-    // Prologue
-    'bed, sleeping 1' |
-    'bed, awakening 1' |
-    'bed, sitting up 1' |
-    'bed, lying down 1' |
-
-    'bed, sleeping 2' |
-    'bed, awakening 2' |
-    'bed, sitting up 2' |
-    'bed, looking around' |
-    
-    'desk, sitting down' |
-    'desk, opening the envelope' |
-    'desk, trying to understand' |
-    'desk, considering the sense of panic' |
-    'desk, searching for the notes' |
-    
-    'grass, slipping further' |
-    'grass, considering the sense of dread' |
-    'grass, asking 1' |
-    'grass, asking 2' |
-    
-    'alcove, beginning interpretation' |
-    'alcove, interpreting 1' |
-    'alcove, interpreting 2' |
-    'alcove, interpreting 3' |
-    'alcove, ending interpretation' |
-    
-    'alcove, entering the forest' |
-
-    'title' |
-
-    //ch1
-    'alone in the woods' |
-
-    'woods, 1'
-
-    // Tower
-    // 'base, from path' | 
-    // 'base, regarding tower' |
-    // 'stairs 1, ascending' |
-    // 'platform 1, ascending' |
-    // 'stairs 2, ascending' |
-    // 'platform 2, ascending' |
-    // 'top, arriving' |
-    // 'top, surveying' |
-    // 'stairs 3, descending' |
-    // 'platform 2, descending' |
-    // 'stairs 2, descending' |
-    // 'platform 1, descending' |
-    // 'base, regarding path'
-);
-
-
-export type PerceptionID = (
-    'alcove, general' |
-    'self, 1' |
-    'forest, general'
-)
-
 export function index_perceptions(perceptions: Perception[]): {[K in PerceptionID]: Perception} {
-    let result: any = {};
+    let result: Partial<{[K in PerceptionID]: Perception}> = {};
     for (let p of perceptions) {
         if (!(p.id in result)) {
             result[p.id] = p;
@@ -186,8 +131,103 @@ export function index_perceptions(perceptions: Perception[]): {[K in PerceptionI
         }
     }
 
-    return result;
+    for (let p of PerceptionIDs) {
+        if (!(p in result)) {
+            throw `Missing PerceptionID: ${p}`;
+        }
+    }
+
+    return <{[K in PerceptionID]: Perception}>result;
 }
+
+type ObserverMomentIDs = [
+    'bed, sleeping 1',
+    'bed, awakening 1',
+    'bed, sitting up 1',
+    'bed, lying down 1',
+
+    'bed, sleeping 2',
+    'bed, awakening 2',
+    'bed, sitting up 2',
+    
+    'desk, sitting down',
+    'desk, opening the envelope',
+    'desk, trying to understand',
+    'desk, considering the sense of panic',
+    'desk, searching for the notes',
+    
+    'grass, slipping further',
+    'grass, considering the sense of dread',
+    'grass, asking 1',
+    'grass, asking 2',
+    
+    'alcove, beginning interpretation',
+    'alcove, interpreting 1',
+    'alcove, interpreting 2',
+    'alcove, interpreting 3',
+    'alcove, ending interpretation',
+    
+    'alcove, entering the forest',
+
+    'title',
+
+    //ch1
+    'alone in the woods'
+
+];
+
+const ObserverMomentIDs: ObserverMomentIDs = [
+    'bed, sleeping 1',
+    'bed, awakening 1',
+    'bed, sitting up 1',
+    'bed, lying down 1',
+
+    'bed, sleeping 2',
+    'bed, awakening 2',
+    'bed, sitting up 2',
+    
+    'desk, sitting down',
+    'desk, opening the envelope',
+    'desk, trying to understand',
+    'desk, considering the sense of panic',
+    'desk, searching for the notes',
+    
+    'grass, slipping further',
+    'grass, considering the sense of dread',
+    'grass, asking 1',
+    'grass, asking 2',
+    
+    'alcove, beginning interpretation',
+    'alcove, interpreting 1',
+    'alcove, interpreting 2',
+    'alcove, interpreting 3',
+    'alcove, ending interpretation',
+    
+    'alcove, entering the forest',
+
+    'title',
+
+    //ch1
+    'alone in the woods'
+]
+
+export type ObserverMomentID = ObserverMomentIDs[number];
+
+
+type PerceptionIDs = [
+    'alcove, general',
+    'self, 1',
+    'forest, general'
+];
+
+const PerceptionIDs: PerceptionIDs = [
+    'alcove, general',
+    'self, 1',
+    'forest, general'
+];
+
+export type PerceptionID = PerceptionIDs[number];
+
 // Syntax shortcuts:
 // * = keyword
 // & = option
