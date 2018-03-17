@@ -377,7 +377,7 @@ export function is_enabled<T>(x: Disablable<T>): boolean {
 export type Numbered<T> = Annotatable<T, number>
 
 
-enum _StringValidity {
+const enum _StringValidity {
     valid
 }
 

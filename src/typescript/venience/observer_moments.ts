@@ -1,7 +1,6 @@
 import {
     FuckDict,
     FuckSet,
-    StringValidator,
     ValidatedString,
     ValidString,
     set_enabled,
@@ -11,6 +10,7 @@ import {
 
 import {
     CommandHandler,
+    HistoryInterpretationOp,
     World
 } from '../commands';
 
@@ -18,12 +18,15 @@ import {
     CommandParser,
     DisplayEltType,
     with_early_stopping,
-    consume_option_stepwise_eager
+    consume_option_stepwise_eager,
+    PhraseDSLValidator
 } from '../parser'
 
 import {
     VenienceWorldCommandHandler,
     VenienceWorldCommandResult,
+    // VenienceWorldInterstitialUpdateResult,
+    VenienceWorldHistoryInterpreter,
     wrap_handler
 } from './venience_world';
 
@@ -32,19 +35,8 @@ import {
     wrap_in_div
 } from '../text_tools';
 
-export class PhraseValidator extends StringValidator {
-    is_valid(s: ValidatedString<this>): s is ValidString<this> {
-        let toks = tokenize(s)[0];
-        if (toks.slice(1).some(t => 
-            t.startsWith('*') || t.startsWith('&'))) {
-            return false;
-        }
-        return true;
-    }
-}
-
 export type TransitionList = (
-    [ValidatedString<PhraseValidator>[], ObserverMomentID][]
+    [ValidatedString<PhraseDSLValidator>[], ObserverMomentID][]
 );
 export type TransitionListI = {
     transitions: TransitionList,
@@ -55,14 +47,30 @@ export type Transitions = TransitionListI | (
     & { dest_oms: ObserverMomentID[] }
 );
 
-export function is_declarative(t: Transitions): t is TransitionListI {
+export function are_transitions_declarative(t: Transitions): t is TransitionListI {
     return (t as TransitionListI).transitions !== undefined;
+}
+
+export type InterpretationList = {ObserverMomentID: HistoryInterpretationOp};
+
+export type InterpretationListI = {
+    interpretations: InterpretationList
+};
+
+export type Interpretations = InterpretationListI | VenienceWorldHistoryInterpreter;
+
+export function has_interpretations(i: Partial<Interpretations>): i is Interpretations {
+    return (i as any).interpretations !== undefined || (i as any).interpret_history !== undefined;
+}
+
+export function are_interpretations_declarative(i: Interpretations): i is InterpretationListI {
+    return (i as InterpretationListI).interpretations !== undefined;
 }
 
 export type ObserverMoment = {
     id: ObserverMomentID,
     enter_message?: string,
-} & Transitions;
+} & Transitions & Partial<Interpretations>;
 
 export type Perception = {
     id: PerceptionID,
@@ -73,11 +81,11 @@ export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, Obs
     let result = new FuckDict<ObserverMomentID, ObserverMoment>();
 
     for (let om of oms){
-        if (is_declarative(om) && om.transitions.length === 1) {
-            for (let [cmd, dest] of om.transitions[0]) {
+        if (are_transitions_declarative(om)) {
+            for (let [cmd, dest] of om.transitions) {
                 for (let phrase of cmd) {
-                    if (!PhraseValidator.validate(phrase)) {
-                        throw `Phrase ${phrase} in single-transition ObserverMoment ${om.id} has * or & somewhere other than the start.`;
+                    if (!PhraseDSLValidator.validate(phrase)) {
+                        throw `Transition phrase "${phrase}" in ObserverMoment ${om.id} has ~ or * or & somewhere other than the start.`;
                     }
                 }
             }
@@ -95,10 +103,10 @@ export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, Obs
     }
 
     //second/third pass, typecheck em
-    let pointed_to: FuckSet<ObserverMomentID> = new FuckDict();
+    let pointed_to: FuckSet<ObserverMomentID> = new FuckDict<ObserverMomentID, undefined>();
     for (let om of oms) {
         let dest_oms: ObserverMomentID[];
-        if (is_declarative(om)) {
+        if (are_transitions_declarative(om)) {
             dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
         } else {
             dest_oms = om.dest_oms;
@@ -140,7 +148,16 @@ export function index_perceptions(perceptions: Perception[]): {[K in PerceptionI
     return <{[K in PerceptionID]: Perception}>result;
 }
 
-type ObserverMomentIDs = [
+// Holy dang this is cool:
+// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
+//
+// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
+// as a constant, and get string literal typechecking elsewhere in the code.
+function infer_literal_array<T extends string>(...arr: T[]): T[] {
+  return arr;
+}
+
+const ObserverMomentIDs = infer_literal_array(
     'bed, sleeping 1',
     'bed, awakening 1',
     'bed, sitting up 1',
@@ -162,9 +179,6 @@ type ObserverMomentIDs = [
     'grass, asking 2',
     
     'alcove, beginning interpretation',
-    'alcove, interpreting 1',
-    'alcove, interpreting 2',
-    'alcove, interpreting 3',
     'alcove, ending interpretation',
     
     'alcove, entering the forest',
@@ -172,61 +186,27 @@ type ObserverMomentIDs = [
     'title',
 
     //ch1
-    'alone in the woods'
-
-];
-
-const ObserverMomentIDs: ObserverMomentIDs = [
-    'bed, sleeping 1',
-    'bed, awakening 1',
-    'bed, sitting up 1',
-    'bed, lying down 1',
-
-    'bed, sleeping 2',
-    'bed, awakening 2',
-    'bed, sitting up 2',
-    
-    'desk, sitting down',
-    'desk, opening the envelope',
-    'desk, trying to understand',
-    'desk, considering the sense of panic',
-    'desk, searching for the notes',
-    
-    'grass, slipping further',
-    'grass, considering the sense of dread',
-    'grass, asking 1',
-    'grass, asking 2',
-    
-    'alcove, beginning interpretation',
-    'alcove, interpreting 1',
-    'alcove, interpreting 2',
-    'alcove, interpreting 3',
-    'alcove, ending interpretation',
-    
-    'alcove, entering the forest',
-
-    'title',
-
-    //ch1
-    'alone in the woods'
-]
-
-export type ObserverMomentID = ObserverMomentIDs[number];
+    'alone in the woods',
+    'woods, trying to understand',
+    'woods, considering the sense of uncertainty',
+    'woods, asking 1',
+    'woods, asking 2',
+    'woods, beginning interpretation',
+    'woods, ending interpretation',
+    'woods, considering remaining',
+    'woods, crossing the boundary'
+)
 
 
-type PerceptionIDs = [
+export type ObserverMomentID = typeof ObserverMomentIDs[number];
+
+const PerceptionIDs = infer_literal_array(
     'alcove, general',
     'self, 1',
     'forest, general'
-];
+);
 
-const PerceptionIDs: PerceptionIDs = [
-    'alcove, general',
-    'self, 1',
-    'forest, general'
-];
-
-export type PerceptionID = PerceptionIDs[number];
+export type PerceptionID = typeof PerceptionIDs[number];
 
 // Syntax shortcuts:
 // * = keyword

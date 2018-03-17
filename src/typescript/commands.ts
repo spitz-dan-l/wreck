@@ -20,7 +20,11 @@ export interface CommandHandler<T> {
     handle_command(this: World<T>, parser: CommandParser): CommandResult<T>
 }
 
-export abstract class World<T> implements CommandHandler<T> {
+export interface HistoryInterpreter<T> {
+    interpret_history(this: World<T>, history_elt: InterstitialUpdateResult<T>): HistoryInterpretationOp
+}
+
+export abstract class World<T> implements CommandHandler<T>, Partial<HistoryInterpreter<T>> {
     abstract handle_command: (this: World<T>, parser: CommandParser) => CommandResult<T>;
     abstract interstitial_update?(command_message?: HTMLElement): InterstitialUpdateResult<T>;
     abstract interpret_history?(history: InterstitialUpdateResult<T>): HistoryInterpretationOp;

@@ -1,4 +1,8 @@
 import {
+    HistoryInterpretationOp
+} from '../../commands';
+
+import {
     ObserverMoment,
     Perception,
     PerceptionID
@@ -6,7 +10,8 @@ import {
 
 import {
     wrap_handler,
-    VenienceWorldCommandResult
+    VenienceWorldCommandResult,
+    VenienceWorldInterstitialUpdateResult
 } from '../venience_world';
 
 import {
@@ -37,7 +42,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         id: 'bed, awakening 1',
         enter_message: 'You awaken in your bed.',
         transitions: [
-            [['sit', 'up'], 'bed, sitting up 1']]
+            [['sit', 'up'], 'bed, sitting up 1']],
     },
     {
         id: 'bed, sitting up 1',
@@ -71,7 +76,14 @@ let prologue_oms: () => ObserverMoment[] = () => [
         id: 'bed, awakening 2',
         enter_message: `You awaken in your bed again.`,
         transitions: [
-            [['sit', 'up'], 'bed, sitting up 2']]
+            [['sit', 'up'], 'bed, sitting up 2']],
+        interpretations: {
+            'bed, sleeping 1': [{'add': 'forgotten'}],
+            'bed, awakening 1': [{'add': 'forgotten'}],
+            'bed, sitting up 1': [{'add': 'forgotten'}],
+            'bed, lying down 1': [{'add': 'forgotten'}],
+            'bed, sleeping 2': [{'add': 'forgotten'}]
+        }
     },
     {
         id: 'bed, sitting up 2',
@@ -91,40 +103,9 @@ let prologue_oms: () => ObserverMoment[] = () => [
             })
 
             return combine.call(this, parser, [look_consumer, other_consumer]);
-
-            // let cmd_options = []
-            // cmd_options.push(annotate(['look'], {
-            //     enabled: look_handler !== false,
-            //     display: DisplayEltType.keyword
-            // }));
-
-            // cmd_options.push(annotate(['approach'], {display: DisplayEltType.keyword}));
-
-            // let cmd = yield parser.consume_option(cmd_options);
-
-            // if (cmd === 'look' && look_handler !== false) {
-            //     return look_handler.call(this, parser);
-            // }
-
-            // yield parser.consume_filler(['the', 'desk']);
-            // yield parser.done();
-
-            // return this.transition_to('desk, sitting down');
         }),
         dest_oms: ['desk, sitting down']
-        // transitions: [
-        //     [['look', '&around'], 'bed, looking around']]
     },
-    // {
-    //     id: 'bed, looking around',
-    //     enter_message: `You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
-    //     <br /><br />
-    //     You see your desk and chair a few paces away, in the center of the alcove.
-    //     <br /><br />
-    //     On all sides you are surrounded by trees.`,
-    //     transitions: [
-    //         [['sit', 'at', 'the', 'desk'], 'desk, sitting down']]
-    // },
     {
         id: 'desk, sitting down',
         enter_message: `You pace across the grass and take your seat at the leather-backed study chair.
@@ -192,9 +173,6 @@ let prologue_oms: () => ObserverMoment[] = () => [
             return this.transition_to('grass, considering the sense of dread');
         }),
         dest_oms: ['grass, considering the sense of dread']
-
-        // transitions: [
-        //     [['*consider', 'the sense of', '&dread'], 'grass, considering the sense of dread']]
     },
     {
         id: 'grass, considering the sense of dread',
@@ -231,101 +209,102 @@ let prologue_oms: () => ObserverMoment[] = () => [
         enter_message: `
         <div class="face-of-it">
         A nervous energy buzzes within your mind.
-        <br />
-        <br />
+        <br/><br/>
         </div>
         <div class="interp-alcove-1">
         Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to a sense of meaning within the world. You have a <i>compass</i>.
-        <br />
-        <br />
+        <br/><br/>
         </div>
         <div class="face-of-it">
         Your notes are gone.
-        <br />
-        <br />
+        <br/><br/>
         </div>
         <div class="interp-alcove-2">
         Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
-        <br />
-        <br />
+        <br/><br/>
         But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
-        <br />
-        <br />
+        <br/><br/>
         </div>
         <div class="face-of-it">
         You are alone in a grassy alcove in the forest.
         </div>
         <div class="interp-alcove-3">
-        <br />
+        <br/>
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
-        <br /><br />
+        <br/><br/>
         Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
         </div>`,
         handle_command: wrap_handler(function* (parser: CommandParser) {
-            let display = DisplayEltType.keyword;
-            yield parser.consume_option([
-                annotate(['judge'], {enabled: true, display}),
-                annotate(['survey'], {enabled: false, display})
-            ]);
-            yield parser.consume_option([
-                set_enabled(['the', 'direction', 'of', 'gravity'], true),
-                set_enabled(['the', 'slickness', 'of', 'the', 'ice'], false),
-            ]);
-            yield parser.done();
-            return this.transition_to('alcove, interpreting 1');
-        }),
-        dest_oms: ['alcove, interpreting 1']
+            let {interp_step = 0} = this.get_om_state('alcove, beginning interpretation');
 
-        // transitions: [
-        //     [['*judge', '&the direction of gravity'], 'alcove, interpreting 1']]
-    },
-    {
-        id: 'alcove, interpreting 1',
-        enter_message: ``,
-        handle_command: wrap_handler(function* (parser: CommandParser) {
-            let display = DisplayEltType.keyword;
-            yield parser.consume_option([
-                annotate(['judge'], {enabled: true, display}),
-                annotate(['survey'], {enabled: false, display})
-            ]);
-            yield parser.consume_option([
-                set_enabled(['the', 'direction', 'of', 'gravity'], false),
-                set_enabled(['the', 'slickness', 'of', 'the', 'ice'], true),
-            ]);
-            yield parser.done();
-            return this.transition_to('alcove, interpreting 2');
-        }),
-        dest_oms: ['alcove, interpreting 2']
-        // transitions: [
-        //     [['*judge', '&the slickness of the ice'], 'alcove, interpreting 2']]
-    },
-    {
-        id: 'alcove, interpreting 2',
-        enter_message: ``,
-        handle_command: wrap_handler(function* (parser: CommandParser) {
-            let display = DisplayEltType.keyword;
-            yield parser.consume_option([
-                annotate(['judge'], {enabled: false, display}),
-                annotate(['survey'], {enabled: true, display})
-            ]);
-            yield parser.consume_exact(['the', 'horizon'], DisplayEltType.option);
+            let next_interp = () => ({
+                world: this.update({
+                    om_state: {
+                        ['alcove, beginning interpretation']: {
+                            interp_step: interp_step + 1
+                        }
+                    }
+                })
+            });
 
-            // yield parser.consume_option([
-            //     set_enabled(['the', 'direction', 'of', 'gravity'], false),
-            //     set_enabled(['the', 'slickness', 'of', 'the', 'ice'], true),
-            // ]);
-            yield parser.done();
-            return this.transition_to('alcove, interpreting 3');
+            let judge_consumer = wrap_handler(function*(parser: CommandParser) {
+                yield parser.consume_option([annotate(['judge'], {
+                    display: DisplayEltType.keyword,
+                    enabled: interp_step < 2})]);
+
+                yield parser.consume_option([
+                    annotate(['the', 'direction', 'of', 'gravity'], {enabled: interp_step === 0}),
+                    annotate(['the', 'slickness', 'of', 'the', 'ice'], {enabled: interp_step === 1}),
+                ]);
+
+                yield parser.done();
+
+                return next_interp();
+            });
+
+            let survey_consumer = wrap_handler(function*(parser: CommandParser) {
+                yield parser.consume_option([annotate(['survey'], {
+                    display: DisplayEltType.keyword,
+                    enabled: interp_step === 2
+                })]);
+
+                yield parser.consume_exact(['the', 'horizon'], DisplayEltType.option);
+                yield parser.done();
+
+                return next_interp();
+            });
+
+            let end_consumer = wrap_handler(function*(parser: CommandParser) {
+                if (interp_step < 3) {
+                    yield parser.invalidate();
+                }
+
+                yield parser.consume_filler(['end']);
+                yield parser.consume_exact(['interpretation']);
+                yield parser.done();
+
+                return this.transition_to('alcove, ending interpretation');
+            });
+
+            return combine.call(this, parser, [
+                judge_consumer,
+                survey_consumer,
+                end_consumer]);
         }),
-        dest_oms: ['alcove, interpreting 3']
-        // transitions: [
-        //     [['*survey', '&the horizon'], 'alcove, interpreting 3']]
-    },
-    {
-        id: 'alcove, interpreting 3',
-        enter_message: ``,
-        transitions: [
-            [['end', '*interpretation'], 'alcove, ending interpretation']]
+        dest_oms: ['alcove, ending interpretation'],
+
+        interpret_history(history_elt: VenienceWorldInterstitialUpdateResult): HistoryInterpretationOp {
+            let hist_om = history_elt.world.current_om();
+            if (hist_om === 'alcove, beginning interpretation') {
+                let {interp_step: hist_interp_step = 0} = history_elt.world.get_om_state('alcove, beginning interpretation');    
+                if (hist_interp_step === 0) {
+                    let {interp_step = 0} = this.get_om_state('alcove, beginning interpretation');
+                    if (interp_step > 0) {
+                        return [{'add': `interp-alcove-${interp_step}-enabled`}];
+                    }
+                }
+            }
+        }
     },
     {
         id: 'alcove, ending interpretation',

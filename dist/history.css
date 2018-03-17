@@ -58,43 +58,73 @@
 }
 
 /* add pulsing */
+/* Alcove */
 .history.would-add-interp-alcove-1-enabled,
 .history.would-add-interp-alcove-2-enabled,
 .history.would-add-interp-alcove-3-enabled,
-.history.would-add-meditation-1-enabled {
+/* Woods */
+.history.would-add-interp-woods-1-enabled,
+.history.would-add-interp-woods-2-enabled,
+.history.would-add-interp-woods-3-enabled
+{
     background-color: midnightblue;
 }
 
 .history .interp-alcove-1,
 .history .interp-alcove-2,
 .history .interp-alcove-3,
-.history .meditation-1 {
+.history .interp-woods-1,
+.history .interp-woods-2,
+.history .interp-woods-3
+{
     display: none;
 }
 
 .history .interp,
+/* Alcove interp */
 .history.interp-alcove-1-enabled .interp-alcove-1,
 .history.interp-alcove-2-enabled .interp-alcove-2,
 .history.interp-alcove-3-enabled .interp-alcove-3,
-.history.meditation-1-enabled .meditation-1
+/* Woods interp */
+.history.interp-woods-1-enabled .interp-woods-1,
+.history.interp-woods-2-enabled .interp-woods-2,
+.history.interp-woods-3-enabled .interp-woods-3
 {
     display: block;
     color: gold;
     opacity: 1;
 }
 
+/* Alcove interp */
 .history.adding-interp-alcove-1-enabled.animation-start .interp-alcove-1,
 .history.adding-interp-alcove-2-enabled.animation-start .interp-alcove-2,
-.history.adding-interp-alcove-3-enabled.animation-start .interp-alcove-3 {
+.history.adding-interp-alcove-3-enabled.animation-start .interp-alcove-3,
+/* Woods interp */
+.history.adding-interp-woods-1-enabled.animation-start .interp-woods-1,
+.history.adding-interp-woods-2-enabled.animation-start .interp-woods-2,
+.history.adding-interp-woods-3-enabled.animation-start .interp-woods-3
+{
     opacity: 0.01;
     max-height: 0px;
 }
 
+/* Alcove interp */
 .history.adding-interp-alcove-1-enabled.animation-start.animation-active .interp-alcove-1,
 .history.adding-interp-alcove-2-enabled.animation-start.animation-active .interp-alcove-2,
-.history.adding-interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3 {
+.history.adding-interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3,
+/* Woods interp */
+.history.adding-interp-woods-1-enabled.animation-start.animation-active .interp-woods-1,
+.history.adding-interp-woods-2-enabled.animation-start.animation-active .interp-woods-2,
+.history.adding-interp-woods-3-enabled.animation-start.animation-active .interp-woods-3
+{
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;
+}
+
+.history .alien-interp {
+    display: block;
+    color: crimson;
+    opacity: 1;
 }
 

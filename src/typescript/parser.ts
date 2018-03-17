@@ -13,7 +13,10 @@ import {
     is_enabled,
     set_enabled,
     with_disablable,
-    array_fuck_contains
+    array_fuck_contains,
+    StringValidator,
+    ValidatedString,
+    ValidString
 } from './datatypes';
 
 
@@ -190,14 +193,6 @@ export class CommandParser {
         }
 
         return this.invalidate();
-        // this.validity = MatchValidity.invalid;
-        // let match_tokens = this.tokens.slice(this.position);
-        // let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
-        // this.match.push({
-        //     display: DisplayEltType.error,
-        //     match: untokenize(match_tokens, match_token_gaps),
-        //     name: name});
-        // return false;
     }
 
     invalidate(): false {
@@ -287,58 +282,6 @@ export function with_early_stopping2<R, T>(gen_func: (this: T, ...args: any[]) =
     return <(...args: any[]) => R>inner;
 }
 
-export function* consume_option_stepwise_eager(parser: CommandParser, options: Disablable<string[]>[]) {
-    // assumption: no option is a prefix of any other option
-
-    let current_cmd = [];
-    let pos = 0;
-    while (true) {
-        let remaining_options = options.filter(with_disablable((toks) =>
-            toks.slice(0, pos).every((tok, i) => tok === current_cmd[i])
-        ));
-
-        if (remaining_options.length === 0) {
-            return untokenize(current_cmd);
-        }
-
-        let next_tokens: Disablable<Token>[] = [];
-        for (let opt of remaining_options) {
-            let {value, annotation:{enabled}} = annotate(opt);
-
-            if (pos < value.length) {
-                let tok = value[pos];
-                let found = false;
-                for (let i = 0; i < next_tokens.length; i++) {
-                    let nt = next_tokens[i];
-                    if (unwrap(nt) === tok) {
-                        if (enabled) {
-                            next_tokens[i] = set_enabled(nt, true);
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    next_tokens.push(set_enabled(tok, enabled));
-                }
-            } else {
-                return untokenize(current_cmd);
-            }
-        }
-        let display_type: DisplayEltType;
-        if (pos === 0) {
-            display_type = DisplayEltType.keyword;
-        } else {
-            display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
-        }
-        let next_options: Annotatable<string[], AMatch>[] = next_tokens.map(with_disablable(split_tokens)).map((o: Annotatable<string[], AMatch>) => annotate(o, {display: display_type}));
-        
-        let next_tok = yield parser.consume_option(next_options);
-        current_cmd.push(next_tok);
-        pos++;
-    }
-}
-
 export function combine<R>(parser: CommandParser, consumers: ((parser: CommandParser) => (R | false))[]) {
     type Thread = {
         result: R | false,
@@ -382,3 +325,107 @@ export function combine<R>(parser: CommandParser, consumers: ((parser: CommandPa
     }
     return false;
 }
+
+// Validator for the mini-language applying to transitions for syntax highlighting
+export class PhraseDSLValidator extends StringValidator {
+    is_valid(s: ValidatedString<this>): s is ValidString<this> {
+        let toks = tokenize(s)[0];
+        if (toks.slice(1).some(t => 
+            t.startsWith('~') || t.startsWith('*') || t.startsWith('&'))) {
+            return false;
+        }
+        return true;
+    }
+}
+
+export function consume_option_stepwise_eager(parser: CommandParser, options: ValidatedString<PhraseDSLValidator>[][]) {
+    // assumption: no option is a prefix of any other option
+    let consumers = [];
+
+    for (let option of options) {
+        let opt_consumer = with_early_stopping(function *(parser) {
+            for (let o of option) {
+                let enabled = true;
+                if (o.startsWith('~')) {
+                    enabled = false;
+                    o = o.slice(1);
+                }
+
+                let display: DisplayEltType = DisplayEltType.filler;
+                if (o.startsWith('*')) {
+                    display = DisplayEltType.keyword;
+                    o = o.slice(1);
+                } else if (o.startsWith('&')) {
+                    display = DisplayEltType.option;
+                    o = o.slice(1);
+                }
+
+                let toks = tokenize(o)[0];
+                yield parser.consume_option([annotate(toks, {enabled, display})]);
+            }
+
+            return untokenize(option);
+        });
+
+        consumers.push(opt_consumer);
+    }
+
+    let result = combine.call(this, parser, consumers);
+    // debugger;
+
+    return result;
+}
+
+
+
+// export function* consume_option_stepwise_eager(parser: CommandParser, options: Disablable<Displayable<string>[]>[]) {
+//     // assumption: no option is a prefix of any other option
+
+//     let current_cmd = [];
+//     let pos = 0;
+//     while (true) {
+//         let remaining_options = options.filter(with_disablable((toks) =>
+//             toks.slice(0, pos).every((tok, i) => tok === current_cmd[i])
+//         ));
+
+//         if (remaining_options.length === 0) {
+//             return untokenize(current_cmd);
+//         }
+
+//         let next_tokens: Disablable<Token>[] = [];
+//         for (let opt of remaining_options) {
+//             let {value, annotation:{enabled}} = annotate(opt);
+
+//             if (pos < value.length) {
+//                 let tok = value[pos];
+//                 let found = false;
+//                 for (let i = 0; i < next_tokens.length; i++) {
+//                     let nt = next_tokens[i];
+//                     if (unwrap(nt) === tok) {
+//                         if (enabled) {
+//                             next_tokens[i] = set_enabled(nt, true);
+//                         }
+//                         found = true;
+//                         break;
+//                     }
+//                 }
+//                 if (!found) {
+//                     next_tokens.push(set_enabled(tok, enabled));
+//                 }
+//             } else {
+//                 return untokenize(current_cmd);
+//             }
+//         }
+//         let display_type: DisplayEltType;
+//         if (pos === 0) {
+//             display_type = DisplayEltType.keyword;
+//         } else {
+//             display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
+//         }
+//         let next_options: Annotatable<string[], AMatch>[] = next_tokens.map(with_disablable(split_tokens)).map((o: Annotatable<string[], AMatch>) => annotate(o, {display: display_type}));
+        
+//         let next_tok = yield parser.consume_option(next_options);
+//         current_cmd.push(next_tok);
+//         pos++;
+//     }
+// }
