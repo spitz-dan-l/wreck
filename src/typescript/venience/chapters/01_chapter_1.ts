@@ -240,8 +240,8 @@ let ch1_oms: () => ObserverMoment[] = () => [
                     display: DisplayEltType.keyword,
                     enabled: interp_step === 0
                 })]);
-
-                yield parser.consume_exact(['the', 'circle', 'in', 'terms', 'of', 'the', 'world'], DisplayEltType.option);
+                yield parser.consume_filler(['the', 'circle']);
+                yield parser.consume_filler(['in', 'terms', 'of', 'the', 'world']);
                 yield parser.done()
 
                 return next_interp();
@@ -253,7 +253,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
                     enabled: interp_step === 1
                 })]);
 
-                yield parser.consume_exact(['the', 'its', 'circlehood'], DisplayEltType.option);
+                yield parser.consume_exact(['its', 'circlehood'], DisplayEltType.option);
                 yield parser.done()
 
                 return next_interp();
@@ -265,7 +265,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
                     enabled: interp_step === 2
                 })]);
 
-                yield parser.consume_exact(['the', 'only', 'path', 'forward'], DisplayEltType.option);
+                yield parser.consume_filler(['the', 'only', 'path', 'forward']);
                 yield parser.done()
 
                 return next_interp();
@@ -312,21 +312,116 @@ let ch1_oms: () => ObserverMoment[] = () => [
         <br/><br/>
         The proliferation of possibly-wrong paths forward has collapsed to a single, binary choice:`,
         transitions: [
-            [['*remain', '&within the boundary'], 'woods, considering remaining'],
-            [['*cross', '&the boundary'], 'woods, crossing the boundary']
+            [['*remain', 'within the boundary'], 'woods, considering remaining'],
+            [['*cross', 'the boundary'], 'woods, crossing the boundary 1']
         ]
     },
     {
         id: 'woods, considering remaining',
-        enter_message: `
-        or...`,
+        enter_message: `or...`,
         transitions: [
-            [['~*remain', '&within the boundary'], 'woods, considering remaining'],
-            [['*cross', '&the boundary'], 'woods, crossing the boundary']]
+            [['~*remain', 'within the boundary'], 'woods, considering remaining'],
+            [['*cross', 'the boundary'], 'woods, crossing the boundary 1']]
     },
     {
-        id: 'woods, crossing the boundary',
-        enter_message: `You are cross the boundary.`,
+        id: 'woods, crossing the boundary 1',
+        enter_message: `
+        The particular direction of travel is unimportant.
+        <br/><br/>
+        <div class="interp">
+        <i>"Our world is one in which most degrees of freedom are accompanied by entropy production;
+        <br/><br/>
+        that is to say, arbitrariness is rarely scarce, my dear."</i>
+        <br/><br/>
+        </div>
+        You choose a direction <span class="interp-inline">(Arbitrarily! <i>"Thanks, <a href="https://arxiv.org/abs/cond-mat/0005382">Dewar</a>!"</i>)</span> and take it.
+        <br/><br/>
+        The forest around you remains an undifferentiated boundary of New England brush and flora...`,
+        transitions: [
+            [['continue'], 'woods, crossing the boundary 2']],
+        interpretations: {
+            'woods, considering remaining': [{'add': 'forgotten'}]
+        }
+    },
+    {
+        id: 'woods, crossing the boundary 2',
+        enter_message: `
+        ...until it begins to change.
+        <br/><br/>
+        You notice that the brown trunks of Oak are peppered with the white of Birch, here and there...`,
+        transitions: [
+            [['continue'], 'woods, crossing the boundary 3']]
+    },
+    {
+        id: 'woods, crossing the boundary 3',
+        enter_message: `
+        ...and now it is mostly Birch...`,
+        transitions: [
+            [['continue'], 'woods, crossing the boundary 4']]
+    },
+    {
+        id: 'woods, crossing the boundary 4',
+        enter_message: `
+        ...and now the white bark of the Birch trees blurs into a continuum of etched parchment.`,
+        handle_command: wrap_handler(function*(parser: CommandParser) {
+            let look_consumer = this.make_look_consumer([
+                [['at', 'the', 'parchment'], 'forest, parchment trees']]);
+
+            let {read_state = 0} = this.get_om_state('woods, crossing the boundary 4');
+            let read_consumer = wrap_handler(function*(parser: CommandParser) {
+                let apply_read_update = (world=this) => world.update({
+                    om_state: {
+                        ['woods, crossing the boundary 4']: {
+                            read_state: read_state + 1
+                        }
+                    }
+                });
+
+                yield parser.consume_option([
+                    annotate(['read'], {
+                        display: DisplayEltType.keyword,
+                        enabled: this.state.has_regarded['forest, parchment trees']
+                    })
+                ]);
+
+                if (read_state === 0){
+                    yield parser.done();
+
+                    return {
+                        world: apply_read_update(),
+                        message: wrap_in_div(`
+                        Your eyes skim over the vast text laid out before you for a moment,
+                        <br/><br/>
+                        searching.
+                        <br/><br/>
+                        Then, you come to rest on one particular story.`)
+                    };
+                }
+
+                yield parser.consume_filler(['the', 'story', 'of']);
+                yield parser.consume_exact(['Charlotte'], DisplayEltType.option);
+                yield parser.done();
+
+                let result = this.transition_to('reading the story of charlotte');
+                result.world = apply_read_update(result.world);
+                return result;
+            });
+
+            return combine.call(this, parser, [
+                look_consumer, read_consumer
+            ]);
+
+        }),
+        dest_oms: ['woods, crossing the boundary 4', 'reading the story of charlotte']
+    },
+    {
+        id: 'reading the story of charlotte',
+        enter_message: `
+        <i>You have reached the end of the demo.
+        <br/><br/>
+        Charlotte's story will be told in Chapter 2.
+        <br/><br/>
+        Thanks for playing Venience World!</i>`,
         transitions: []
     }
 ];
@@ -339,6 +434,21 @@ let ch1_perceptions: () => Perception[] = () => [
         <br />
         <br />
         The growth of the forest surrounds you in every direction.`
+    },
+    {
+        id: 'forest, parchment trees',
+        content: `
+        The parchment teems with scrawlings of
+        <br/><br/>
+        stories,
+        <br/><br/>
+        transcripts,
+        <br/><br/>
+        annotations,
+        <br/><br/>
+        <div class="interp">
+        and interpretations.
+        </div>`
     }
 ]
 

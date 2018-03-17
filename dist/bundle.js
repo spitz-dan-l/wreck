@@ -1722,7 +1722,8 @@ const commands_1 = __webpack_require__(5);
 const venience_world_1 = __webpack_require__(4);
 let start = {};
 //start.experiences = ['grass, asking 2'];
-start.experiences = ['alcove, entering the forest'];
+//start.experiences = ['alcove, entering the forest']; 
+// start.experiences = ['woods, ending interpretation'];
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld(start));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -1925,7 +1926,7 @@ let prologue_oms = () => [{
                 display: parser_1.DisplayEltType.keyword,
                 enabled: interp_step === 2
             })]);
-            yield parser.consume_exact(['the', 'horizon'], parser_1.DisplayEltType.option);
+            yield parser.consume_filler(['the', 'horizon']);
             yield parser.done();
             return next_interp();
         });
@@ -2176,7 +2177,8 @@ let ch1_oms = () => [{
                 display: parser_1.DisplayEltType.keyword,
                 enabled: interp_step === 0
             })]);
-            yield parser.consume_exact(['the', 'circle', 'in', 'terms', 'of', 'the', 'world'], parser_1.DisplayEltType.option);
+            yield parser.consume_filler(['the', 'circle']);
+            yield parser.consume_filler(['in', 'terms', 'of', 'the', 'world']);
             yield parser.done();
             return next_interp();
         });
@@ -2185,7 +2187,7 @@ let ch1_oms = () => [{
                 display: parser_1.DisplayEltType.keyword,
                 enabled: interp_step === 1
             })]);
-            yield parser.consume_exact(['the', 'its', 'circlehood'], parser_1.DisplayEltType.option);
+            yield parser.consume_exact(['its', 'circlehood'], parser_1.DisplayEltType.option);
             yield parser.done();
             return next_interp();
         });
@@ -2194,7 +2196,7 @@ let ch1_oms = () => [{
                 display: parser_1.DisplayEltType.keyword,
                 enabled: interp_step === 2
             })]);
-            yield parser.consume_exact(['the', 'only', 'path', 'forward'], parser_1.DisplayEltType.option);
+            yield parser.consume_filler(['the', 'only', 'path', 'forward']);
             yield parser.done();
             return next_interp();
         });
@@ -2229,15 +2231,90 @@ let ch1_oms = () => [{
         And yet, the world around you seems to have been reshaped.
         <br/><br/>
         The proliferation of possibly-wrong paths forward has collapsed to a single, binary choice:`,
-    transitions: [[['*remain', '&within the boundary'], 'woods, considering remaining'], [['*cross', '&the boundary'], 'woods, crossing the boundary']]
+    transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['*cross', 'the boundary'], 'woods, crossing the boundary 1']]
 }, {
     id: 'woods, considering remaining',
-    enter_message: `
-        or...`,
-    transitions: [[['~*remain', '&within the boundary'], 'woods, considering remaining'], [['*cross', '&the boundary'], 'woods, crossing the boundary']]
+    enter_message: `or...`,
+    transitions: [[['~*remain', 'within the boundary'], 'woods, considering remaining'], [['*cross', 'the boundary'], 'woods, crossing the boundary 1']]
 }, {
-    id: 'woods, crossing the boundary',
-    enter_message: `You are cross the boundary.`,
+    id: 'woods, crossing the boundary 1',
+    enter_message: `
+        The particular direction of travel is unimportant.
+        <br/><br/>
+        <div class="interp">
+        <i>"Our world is one in which most degrees of freedom are accompanied by entropy production;
+        <br/><br/>
+        that is to say, arbitrariness is rarely scarce, my dear."</i>
+        <br/><br/>
+        </div>
+        You choose a direction <span class="interp-inline">(Arbitrarily! <i>"Thanks, <a href="https://arxiv.org/abs/cond-mat/0005382">Dewar</a>!"</i>)</span> and take it.
+        <br/><br/>
+        The forest around you remains an undifferentiated boundary of New England brush and flora...`,
+    transitions: [[['continue'], 'woods, crossing the boundary 2']],
+    interpretations: {
+        'woods, considering remaining': [{ 'add': 'forgotten' }]
+    }
+}, {
+    id: 'woods, crossing the boundary 2',
+    enter_message: `
+        ...until it begins to change.
+        <br/><br/>
+        You notice that the brown trunks of Oak are peppered with the white of Birch, here and there...`,
+    transitions: [[['continue'], 'woods, crossing the boundary 3']]
+}, {
+    id: 'woods, crossing the boundary 3',
+    enter_message: `
+        ...and now it is mostly Birch...`,
+    transitions: [[['continue'], 'woods, crossing the boundary 4']]
+}, {
+    id: 'woods, crossing the boundary 4',
+    enter_message: `
+        ...and now the white bark of the Birch trees blurs into a continuum of etched parchment.`,
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        let look_consumer = this.make_look_consumer([[['at', 'the', 'parchment'], 'forest, parchment trees']]);
+        let { read_state = 0 } = this.get_om_state('woods, crossing the boundary 4');
+        let read_consumer = venience_world_1.wrap_handler(function* (parser) {
+            let apply_read_update = (world = this) => world.update({
+                om_state: {
+                    ['woods, crossing the boundary 4']: {
+                        read_state: read_state + 1
+                    }
+                }
+            });
+            yield parser.consume_option([datatypes_1.annotate(['read'], {
+                display: parser_1.DisplayEltType.keyword,
+                enabled: this.state.has_regarded['forest, parchment trees']
+            })]);
+            if (read_state === 0) {
+                yield parser.done();
+                return {
+                    world: apply_read_update(),
+                    message: text_tools_1.wrap_in_div(`
+                        Your eyes skim over the vast text laid out before you for a moment,
+                        <br/><br/>
+                        searching.
+                        <br/><br/>
+                        Then, you come to rest on one particular story.`)
+                };
+            }
+            yield parser.consume_filler(['the', 'story', 'of']);
+            yield parser.consume_exact(['Charlotte'], parser_1.DisplayEltType.option);
+            yield parser.done();
+            let result = this.transition_to('reading the story of charlotte');
+            result.world = apply_read_update(result.world);
+            return result;
+        });
+        return parser_1.combine.call(this, parser, [look_consumer, read_consumer]);
+    }),
+    dest_oms: ['woods, crossing the boundary 4', 'reading the story of charlotte']
+}, {
+    id: 'reading the story of charlotte',
+    enter_message: `
+        <i>You have reached the end of the demo.
+        <br/><br/>
+        Charlotte's story will be told in Chapter 2.
+        <br/><br/>
+        Thanks for playing Venience World!</i>`,
     transitions: []
 }];
 let ch1_perceptions = () => [{
@@ -2247,6 +2324,20 @@ let ch1_perceptions = () => [{
         <br />
         <br />
         The growth of the forest surrounds you in every direction.`
+}, {
+    id: 'forest, parchment trees',
+    content: `
+        The parchment teems with scrawlings of
+        <br/><br/>
+        stories,
+        <br/><br/>
+        transcripts,
+        <br/><br/>
+        annotations,
+        <br/><br/>
+        <div class="interp">
+        and interpretations.
+        </div>`
 }];
 exports.default = {
     observer_moments: ch1_oms,
@@ -2348,8 +2439,8 @@ function infer_literal_array(...arr) {
 }
 const ObserverMomentIDs = infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, trying to understand', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
 //ch1
-'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary');
-const PerceptionIDs = infer_literal_array('alcove, general', 'self, 1', 'forest, general');
+'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, crossing the boundary 4', 'reading the story of charlotte');
+const PerceptionIDs = infer_literal_array('alcove, general', 'self, 1', 'forest, general', 'forest, parchment trees');
 // Syntax shortcuts:
 // * = keyword
 // & = option

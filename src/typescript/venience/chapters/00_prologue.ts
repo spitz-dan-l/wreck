@@ -268,7 +268,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
                     enabled: interp_step === 2
                 })]);
 
-                yield parser.consume_exact(['the', 'horizon'], DisplayEltType.option);
+                yield parser.consume_filler(['the', 'horizon']);
                 yield parser.done();
 
                 return next_interp();

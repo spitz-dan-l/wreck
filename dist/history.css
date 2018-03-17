@@ -80,6 +80,13 @@
     display: none;
 }
 
+.history .interp-inline {
+    color: gold;
+    opacity: 1;
+    display: inline;
+}
+
+
 .history .interp,
 /* Alcove interp */
 .history.interp-alcove-1-enabled .interp-alcove-1,

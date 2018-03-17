@@ -51,10 +51,10 @@ export function are_transitions_declarative(t: Transitions): t is TransitionList
     return (t as TransitionListI).transitions !== undefined;
 }
 
-export type InterpretationList = {ObserverMomentID: HistoryInterpretationOp};
+export type InterpretationList = {[key in ObserverMomentID]?: HistoryInterpretationOp};
 
 export type InterpretationListI = {
-    interpretations: InterpretationList
+    interpretations?: InterpretationList
 };
 
 export type Interpretations = InterpretationListI | VenienceWorldHistoryInterpreter;
@@ -70,7 +70,7 @@ export function are_interpretations_declarative(i: Interpretations): i is Interp
 export type ObserverMoment = {
     id: ObserverMomentID,
     enter_message?: string,
-} & Transitions & Partial<Interpretations>;
+} & Transitions & Interpretations;
 
 export type Perception = {
     id: PerceptionID,
@@ -194,7 +194,13 @@ const ObserverMomentIDs = infer_literal_array(
     'woods, beginning interpretation',
     'woods, ending interpretation',
     'woods, considering remaining',
-    'woods, crossing the boundary'
+    'woods, crossing the boundary 1',
+    'woods, crossing the boundary 2',
+    'woods, crossing the boundary 3',
+    'woods, crossing the boundary 4',
+
+
+    'reading the story of charlotte'
 )
 
 
@@ -203,7 +209,8 @@ export type ObserverMomentID = typeof ObserverMomentIDs[number];
 const PerceptionIDs = infer_literal_array(
     'alcove, general',
     'self, 1',
-    'forest, general'
+    'forest, general',
+    'forest, parchment trees'
 );
 
 export type PerceptionID = typeof PerceptionIDs[number];
