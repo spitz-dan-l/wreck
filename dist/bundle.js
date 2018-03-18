@@ -2039,7 +2039,7 @@ let prologue_oms = () => [{
         <br/>
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
         <br/><br/>
-        Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
+        Your view of the horizon is occluded by the trees from in here. Set out, seeking <i>new vantages.</i>
         </div>`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
         let { interp_step = 0 } = this.get_om_state('alcove, beginning interpretation');
@@ -2160,18 +2160,18 @@ let ch1_oms = () => [{
         You are alone in the woods in midmorning.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
         let { has_travelled = [] } = this.get_om_state('alone in the woods');
-        let look_consumer = this.make_look_consumer([[['around'], 'forest, general'], [['at', 'myself'], 'self, 1']]);
+        let look_consumer = this.make_look_consumer([[['around'], 'forest, general'], [['at', 'myself'], 'self, 2']]);
         let go_consumer = venience_world_1.wrap_handler(function* (parser) {
             yield parser.consume_option([datatypes_1.annotate(['go'], {
-                enabled: has_travelled.length < 4,
+                enabled: has_travelled.length < 4 && this.state.has_regarded['self, 2'] && this.state.has_regarded['forest, general'],
                 display: parser_1.DisplayEltType.keyword
             })]);
-            let dir = yield parser.consume_option([['north'], ['east'], ['south'], ['west']].map(d => datatypes_1.set_enabled(d, has_travelled.indexOf(d[0]) === -1)));
+            let dir = yield parser.consume_option([['north?'], ['east?'], ['south?'], ['west?']].map(d => datatypes_1.set_enabled(d, has_travelled.indexOf(d[0]) === -1)));
             yield parser.done();
             let message;
             if (has_travelled.length === 0) {
                 message = text_tools_1.wrap_in_div(`
-                    You take a few steps ${dir}.
+                    You take a few steps ${dir.slice(0, -1)}.
                     <br/><br/>
                     Your surroundings appear similar.
                     <br/><br/>
@@ -2222,7 +2222,7 @@ let ch1_oms = () => [{
             };
         });
         let understand_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (!(has_travelled.length >= 3)) {
+            if (!(has_travelled.length >= 4)) {
                 yield parser.invalidate();
             }
             yield parser.consume_filler(['try']);
@@ -2335,7 +2335,7 @@ let ch1_oms = () => [{
                 display: parser_1.DisplayEltType.keyword,
                 enabled: interp_step === 1
             })]);
-            yield parser.consume_exact(['its', 'circlehood'], parser_1.DisplayEltType.option);
+            yield parser.consume_filler(['its', 'circlehood']);
             yield parser.done();
             return next_interp();
         });
@@ -2378,7 +2378,7 @@ let ch1_oms = () => [{
         <br/><br/>
         And yet, the world around you seems to have been reshaped.
         <br/><br/>
-        The proliferation of possibly-wrong paths forward has collapsed to a single, binary choice:`,
+        The proliferation of possibly-wrong paths forward has collapsed to a single binary choice:`,
     transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']]
 }, {
     id: 'woods, considering remaining',
@@ -2472,6 +2472,14 @@ let ch1_perceptions = () => [{
         <br />
         <br />
         The growth of the forest surrounds you in every direction.`
+}, {
+    id: 'self, 2',
+    content: `
+        Your silk pajamas glisten in the midmorning sun.
+        <br/><br/>
+        You are determined to continue your life's work.
+        <br/><br/>
+        To find or rewrite your missing notes.`
 }, {
     id: 'forest, parchment trees',
     content: `
@@ -2590,7 +2598,7 @@ function infer_literal_array(...arr) {
 const ObserverMomentIDs = infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
 //ch1
 'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, crossing the boundary 4', 'reading the story of charlotte');
-const PerceptionIDs = infer_literal_array('alcove, general', 'self, 1', 'alcove, envelope', 'forest, general', 'forest, parchment trees');
+const PerceptionIDs = infer_literal_array('alcove, general', 'self, 1', 'alcove, envelope', 'forest, general', 'self, 2', 'forest, parchment trees');
 // Syntax shortcuts:
 // * = keyword
 // & = option

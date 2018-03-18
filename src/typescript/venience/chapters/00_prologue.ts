@@ -391,7 +391,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br/>
         Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
         <br/><br/>
-        Your view of the horizon is occluded by the trees, from in here. Set out, seeking <i>new vantages.</i>
+        Your view of the horizon is occluded by the trees from in here. Set out, seeking <i>new vantages.</i>
         </div>`,
         handle_command: wrap_handler(function* (parser: CommandParser) {
             let {interp_step = 0} = this.get_om_state('alcove, beginning interpretation');

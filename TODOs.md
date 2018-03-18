@@ -2,12 +2,10 @@ TODOs
 
 **Spring Thing**
 
-- pre-dream scene involving writing notes
-
-- introduce Katya a little more
-    - call her "Dr. Something" instead?
 
 - Need a beat between going into woods & getting lost
+
+- Need a beat between getting lost and getting birch parchment
 
 - enter when incomplete command should act like tab
 

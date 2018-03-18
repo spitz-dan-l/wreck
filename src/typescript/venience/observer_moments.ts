@@ -223,6 +223,7 @@ const PerceptionIDs = infer_literal_array(
     'self, 1',
     'alcove, envelope',
     'forest, general',
+    'self, 2',
     'forest, parchment trees'
 );
 

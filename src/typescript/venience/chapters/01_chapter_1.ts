@@ -43,29 +43,31 @@ let ch1_oms: () => ObserverMoment[] = () => [
 
             let look_consumer = this.make_look_consumer([
                 [['around'], 'forest, general'],
-                [['at', 'myself'], 'self, 1']
+                [['at', 'myself'], 'self, 2']
             ]);
 
             let go_consumer = wrap_handler(function*(parser: CommandParser){
                 
                 yield parser.consume_option([
                     annotate(['go'], {
-                        enabled: has_travelled.length < 4,
+                        enabled: (has_travelled.length < 4
+                                  && this.state.has_regarded['self, 2']
+                                  && this.state.has_regarded['forest, general']),
                         display: DisplayEltType.keyword
                     })]);
                 
                 let dir = yield parser.consume_option([
-                    ['north'],
-                    ['east'],
-                    ['south'],
-                    ['west']
+                    ['north?'],
+                    ['east?'],
+                    ['south?'],
+                    ['west?']
                 ].map(d => set_enabled(d, has_travelled.indexOf(d[0]) === -1)));
                 yield parser.done();
 
                 let message: HTMLElement;
                 if (has_travelled.length === 0){
                     message = wrap_in_div(`
-                    You take a few steps ${dir}.
+                    You take a few steps ${dir.slice(0, -1)}.
                     <br/><br/>
                     Your surroundings appear similar.
                     <br/><br/>
@@ -117,7 +119,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
             });
 
             let understand_consumer = wrap_handler(function*(parser: CommandParser) {
-                if (!(has_travelled.length >= 3)) {
+                if (!(has_travelled.length >= 4)) {
                     yield parser.invalidate();
                 }
                 yield parser.consume_filler(['try']);
@@ -253,7 +255,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
                     enabled: interp_step === 1
                 })]);
 
-                yield parser.consume_exact(['its', 'circlehood'], DisplayEltType.option);
+                yield parser.consume_filler(['its', 'circlehood']);
                 yield parser.done()
 
                 return next_interp();
@@ -310,7 +312,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
         <br/><br/>
         And yet, the world around you seems to have been reshaped.
         <br/><br/>
-        The proliferation of possibly-wrong paths forward has collapsed to a single, binary choice:`,
+        The proliferation of possibly-wrong paths forward has collapsed to a single binary choice:`,
         transitions: [
             [['*remain', 'within the boundary'], 'woods, considering remaining'],
             [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']
@@ -434,6 +436,15 @@ let ch1_perceptions: () => Perception[] = () => [
         <br />
         <br />
         The growth of the forest surrounds you in every direction.`
+    },
+    {
+        id: 'self, 2',
+        content: `
+        Your silk pajamas glisten in the midmorning sun.
+        <br/><br/>
+        You are determined to continue your life's work.
+        <br/><br/>
+        To find or rewrite your missing notes.`
     },
     {
         id: 'forest, parchment trees',
