@@ -187,6 +187,17 @@ export class VenienceWorld extends World<VenienceWorldState>{
                 display: DisplayEltType.keyword
             })]);
 
+            // let options = look_options.map(([opt_toks, t]) => {
+            //     if (this.state.has_regarded[t]) {
+            //         return ['~' + opt_toks[0], ...opt_toks.slice(1)];
+            //     } else {
+            //         return opt_toks;
+            //     }
+            // });
+
+            // let opt = yield consume_option_stepwise_eager(parser, options);
+            // yield parser.done();
+
             let options = look_options.map(([opt_toks, t]) =>
                 set_enabled(opt_toks, !(this.state.has_regarded[t] || false))
             );

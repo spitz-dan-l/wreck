@@ -95,11 +95,11 @@ let ch1_oms: () => ObserverMoment[] = () => [
                     You miss the security of your alcove.
                     <br/><br/>
                     <div class="alien-interp">
-                    <i>"You were a fool to leave,
+                    <i>"You were a fool to leave
                     <br/><br/>
-                    too fragile,
+                    too fragile
                     <br/><br/>
-                    too sensitive,
+                    too sensitive
                     <br/><br/>
                     to find your own way."</i>
                     </div>`)
@@ -140,7 +140,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
         enter_message: `
         You are overwhelmed by the number of indistinct options.
         <br/><br/>
-        The trees surrounding you are like a wall, made of irrelevance and uncertainty, rather than impermeability.
+        The trees surrounding you are like a wall, made of irrelevance and uncertainty rather than impermeability.
         <br/><br/>
         You are unsure of what your heading should be.`,
         transitions: [
@@ -313,7 +313,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
         The proliferation of possibly-wrong paths forward has collapsed to a single, binary choice:`,
         transitions: [
             [['*remain', 'within the boundary'], 'woods, considering remaining'],
-            [['*cross', 'the boundary'], 'woods, crossing the boundary 1']
+            [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']
         ]
     },
     {

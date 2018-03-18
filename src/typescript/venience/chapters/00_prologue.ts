@@ -46,18 +46,91 @@ let prologue_oms: () => ObserverMoment[] = () => [
     },
     {
         id: 'bed, sitting up 1',
-        enter_message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
+        enter_message: `You push yourself upright, blankets falling to your waist.
+        You squint and see only the palest light of dawn.
+        Crickets chirp in the forest bordering your alcove.
         <br /><br />
         Your body still feels heavy with sleep.
         <br /><br />
-        Perhaps you’ll doze until the sun rises properly.`,
+        Something important nags quietly at you from the back of your mind.`,
+        transitions: [
+            [['try', 'to', '*remember'], 'bed, trying to remember 1']]
+    },
+    {
+        id: 'bed, trying to remember 1',
+        enter_message: `
+        Something to do with Katya's twelfth sequence.`,
+        transitions: [
+            [['remember', 'the', 'twelfth', 'sequence'], 'bed, trying to remember 2']]
+    },
+    {
+        id: 'bed, trying to remember 2',
+        enter_message: `
+        The twelfth sequence was the first purely numeric one in Katya's notes.
+        <br/><br/>
+        None of the greek symbols, none of the allusions to physical constants.
+        <br/><br/>
+        Just numbers. Eighty-seven of them.`,
+        transitions: [
+            [['remember', 'the', 'numbers'], 'bed, trying to remember 3']]
+    },
+    {
+        id: 'bed, trying to remember 3',
+        enter_message: `
+        For years, the meaning of this sequence has eluded you.
+        <br/><br/>
+        It begins:
+        <br/><br/>
+        57 44 35
+        <br/><br/>
+        and continues:`,
+        transitions: [
+            [['20', '699', '319'], 'bed, trying to remember 4']]
+    },
+    {
+        id: 'bed, trying to remember 4',
+        enter_message: `
+        Your favorite bit is positions fifty-one through fifty-three:`,
+        transitions: [
+            [['936', '5223', '2717'], 'bed, trying to remember 5']]
+    },
+    {
+        id: 'bed, trying to remember 5',
+        enter_message: `
+        Such strange poetry in these numbers.
+        <br/><br/>
+        You know they must mean <i>something.</i>
+        <br/><br/>
+        Katya was brilliant, after all.
+        <br/><br/>
+        Sometimes frighteningly so.`,
+        transitions: [
+            [['remember', 'Katya'], 'bed, trying to remember 6']]
+    },
+    {
+        id: 'bed, trying to remember 6',
+        enter_message: `
+        She was your advisor.
+        <br/><br/>
+        But she treated you like family.
+        <br/><br/>
+        You miss her.
+        <br/><br/>
+        <div class="interp">
+        <i>"Go back to sleep, my dear.
+        <br/><br/>
+        Number Twelve can wait til morning,"</i> you imagine she'd say.
+        </div>`,
         transitions: [
             [['lie', 'down'], 'bed, lying down 1']]
     },
     {
         id: 'bed, lying down 1',
-        enter_message: `Yes, no reason to be up now.
-        <br /><br />
+        enter_message: `
+        Yes, no reason to be up now.
+        <br/><br/>
+        You can update your notes first thing tomorrow.
+        <br/><br/>
         You slide back under the blankets. The autumn breeze cools your face.`,
         transitions: [
             [['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
@@ -65,9 +138,9 @@ let prologue_oms: () => ObserverMoment[] = () => [
     {
         id: 'bed, sleeping 2',
         enter_message: `You dream of<br /><br />
-        <i>calamity,</i><br /><br />
-        a <i>shattered mirror,</i><br /><br />
-        an <i>ice-covered mountain,</i><br /><br />
+        <div class="alien-interp"><i>calamity</i><br /><br /></div>
+        a <i>shattered mirror</i><br /><br />
+        an <i>ice-covered mountain</i><br /><br />
         <div class="interp">and <i>her voice.</i></div>`,
         transitions: [
             [['awaken'], 'bed, awakening 2']]
@@ -81,6 +154,12 @@ let prologue_oms: () => ObserverMoment[] = () => [
             'bed, sleeping 1': [{'add': 'forgotten'}],
             'bed, awakening 1': [{'add': 'forgotten'}],
             'bed, sitting up 1': [{'add': 'forgotten'}],
+            'bed, trying to remember 1': [{'add': 'forgotten'}],
+            'bed, trying to remember 2': [{'add': 'forgotten'}],
+            'bed, trying to remember 3': [{'add': 'forgotten'}],
+            'bed, trying to remember 4': [{'add': 'forgotten'}],
+            'bed, trying to remember 5': [{'add': 'forgotten'}],
+            'bed, trying to remember 6': [{'add': 'forgotten'}],
             'bed, lying down 1': [{'add': 'forgotten'}],
             'bed, sleeping 2': [{'add': 'forgotten'}]
         }
@@ -95,7 +174,10 @@ let prologue_oms: () => ObserverMoment[] = () => [
             ])
 
             let other_consumer = wrap_handler(function*(parser: CommandParser) {
-                yield parser.consume_exact(['approach']);
+                yield parser.consume_option([annotate(['approach'], {
+                    enabled: this.state.has_regarded['alcove, general'],
+                    display: DisplayEltType.keyword
+                })]);
                 yield parser.consume_filler(['the', 'desk']);
                 yield parser.done();
 
@@ -111,8 +193,37 @@ let prologue_oms: () => ObserverMoment[] = () => [
         enter_message: `You pace across the grass and take your seat at the leather-backed study chair.
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
-        transitions: [
-            [['open', 'the', 'envelope'], 'desk, opening the envelope']]
+        handle_command: wrap_handler(function*(parser: CommandParser) {
+            let look_consumer = this.make_look_consumer([
+                [['around'], 'alcove, general'],
+                [['at', 'the', 'envelope'], 'alcove, envelope'],
+                [['at', 'myself'], 'self, 1']]);
+
+            let open_consumer = wrap_handler(function*(parser: CommandParser) {
+                yield parser.consume_option([
+                    annotate(['open'], {
+                        enabled: this.state.has_regarded['alcove, envelope'] || false,
+                        display: DisplayEltType.keyword
+                    })
+                ]);
+
+                yield parser.consume_filler(['the']);
+                yield parser.consume_filler(['envelope']);
+                yield parser.done();
+
+                return this.transition_to('desk, opening the envelope');
+            });
+
+            return combine.call(this, parser, [
+                look_consumer,
+                open_consumer
+            ]);
+        }),
+        dest_oms: ['desk, sitting down', 'desk, opening the envelope']
+
+
+        // transitions: [
+        //     [['open', 'the', 'envelope'], 'desk, opening the envelope']]
     },
     {
         id: 'desk, opening the envelope',
@@ -120,15 +231,63 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br /><br />
         You unfold the envelope’s flap.
         <br /><br />
-        It’s empty. But it shouldn’t be.`,
+        It’s empty.`,
         transitions: [
-            [['try', 'to', '*understand'], 'desk, trying to understand']]
+            [['what?'], 'desk, reacting']]
     },
     {
-        id: 'desk, trying to understand',
-        enter_message: `A panic comes over you. Without your notes, how will you continue your work?
+        id: 'desk, reacting',
+        enter_message: `
+        <i>Empty?</i>
+        <br/><br/>
+        No, it can't be empty.
+        <br/><br/>
+        You closed it up last night, bound it in twine and went to sleep.
+        <br/><br/>
+        <i>Empty?</i>`,
+        transitions: [
+            [['try', 'to', '~*remember'], null],
+            [['try', 'to', '*understand'], 'desk, trying to understand 1']]
+    },
+    {
+        id: 'desk, trying to understand 1',
+        enter_message: `
+        Years of work.
+        <br/><br/>
+        Sequence Number Twelve.
+        </br><br/>
+        How does it go?`,
+        handle_command: wrap_handler(function*(parser: CommandParser) {
+            const r = [
+                [9735, 4130, 3261],
+                [3538, 8177, 3424],
+                [6930, 3134, 2822]
+            ];
+
+            for (let i = 0; i < 3; i++){
+                let options = [];
+                for (let j = 0; j < 3; j++){
+                    let n = r[i][j]
+                    let opt = annotate([n.toString() + '?'], {
+                        display: DisplayEltType.filler
+                    });
+                    options.push(opt);
+                }
+                yield parser.consume_option(options);
+            }
+            yield parser.done();
+
+            return this.transition_to('desk, trying to understand 2');
+        }),
+        dest_oms: ['desk, trying to understand 2']
+
+    },
+    {
+        id: 'desk, trying to understand 2',
+        enter_message: `        
+        A panic comes over you. Without your notes, how will you continue your work?
         <br /><br />
-        How will you understand? How will you honor Katya’s memory?`,
+        How will you possibly understand? How will you honor Katya’s memory?`,
         transitions: [
             [['*consider', 'the', 'sense of', '&panic'], 'desk, considering the sense of panic']]
     },
@@ -220,7 +379,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br/><br/>
         </div>
         <div class="interp-alcove-2">
-        Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
+        Your effort to organize and understand everything Katya taught you over the years. If your notes are truly gone, it is a great setback.
         <br/><br/>
         But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
         <br/><br/>
@@ -345,6 +504,15 @@ let prologue_perceptions: () => Perception[] = () => [
         id: 'self, 1',
         content: `
         You are wearing a perfectly dignified pair of silk pajamas.`
+    },
+    {
+        id: 'alcove, envelope',
+        content: `
+        You keep your research in this thick envelope.
+        <br/><br/>
+        You've been analyzing Katya's work for years now.
+        <br/><br/>
+        Your career is built in reverence of hers.`
     }
 ];
 

@@ -621,10 +621,18 @@ function combine(parser, consumers) {
     if (partial_matches.length > 0) {
         //integrate the first one
         parser.integrate(partial_matches[0].subparser);
-        for (let t of partial_matches.slice(1)) {
+        let final_typeahead = parser.match[parser.match.length - 1].typeahead;
+        let final_t_strings = final_typeahead.map(datatypes_1.unwrap);
+        for (let p of partial_matches.slice(1)) {
             //extend the typeahead with the rest
-            let typeahead = t.subparser.match[t.subparser.match.length - 1].typeahead;
-            parser.match[parser.match.length - 1].typeahead.push(...typeahead);
+            let typeahead = p.subparser.match[p.subparser.match.length - 1].typeahead;
+            for (let t of typeahead) {
+                let t_string = datatypes_1.unwrap(t);
+                if (!final_t_strings.includes(t_string)) {
+                    final_typeahead.push(t);
+                    final_t_strings.push(t_string);
+                }
+            }
         }
     } else {
         // set to invalid
@@ -956,6 +964,15 @@ class VenienceWorld extends commands_1.World {
                 enabled: cmd_enabled,
                 display: parser_1.DisplayEltType.keyword
             })]);
+            // let options = look_options.map(([opt_toks, t]) => {
+            //     if (this.state.has_regarded[t]) {
+            //         return ['~' + opt_toks[0], ...opt_toks.slice(1)];
+            //     } else {
+            //         return opt_toks;
+            //     }
+            // });
+            // let opt = yield consume_option_stepwise_eager(parser, options);
+            // yield parser.done();
             let options = look_options.map(([opt_toks, t]) => datatypes_1.set_enabled(opt_toks, !(this.state.has_regarded[t] || false)));
             let opt = yield parser.consume_option(options);
             yield parser.done();
@@ -1250,7 +1267,6 @@ const Text_1 = __webpack_require__(7);
 const TypeaheadList_1 = __webpack_require__(12);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
-// import {WorldType, WorldDriver} from "../typescript/commands";
 const parser_1 = __webpack_require__(1);
 class Terminal extends React.Component {
     constructor(props) {
@@ -1615,7 +1631,7 @@ class Prompt extends React.Component {
             zIndex: -1,
             overflow: 'hidden'
         };
-        return React.createElement(InputWrapper, { onClick: () => this.focus() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, this.state.is_focused ? React.createElement(Cursor, { onClick: () => this.handleSubmit() }) : ''));
+        return React.createElement(InputWrapper, { onClick: () => this.focus(), onBlur: () => this.blur() }, React.createElement("input", { onChange: this.handleChange, value: this.state.value, style: input_style, ref: i => this.input = i }), React.createElement(InputDisplay, null, this.props.children, this.state.is_focused ? React.createElement(Cursor, { onClick: () => this.handleSubmit() }) : ''));
     }
 }
 exports.Prompt = Prompt;
@@ -1724,6 +1740,7 @@ let start = {};
 //start.experiences = ['grass, asking 2'];
 //start.experiences = ['alcove, entering the forest']; 
 // start.experiences = ['woods, ending interpretation'];
+// start.experiences = ['bed, sitting up 2'];
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld(start));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -1748,24 +1765,85 @@ let prologue_oms = () => [{
     transitions: [[['sit', 'up'], 'bed, sitting up 1']]
 }, {
     id: 'bed, sitting up 1',
-    enter_message: `You push yourself upright, blankets falling to your waist. You squint and see only the palest light of dawn. Crickets chirp in the forest bordering your alcove.
+    enter_message: `You push yourself upright, blankets falling to your waist.
+        You squint and see only the palest light of dawn.
+        Crickets chirp in the forest bordering your alcove.
         <br /><br />
         Your body still feels heavy with sleep.
         <br /><br />
-        Perhaps you’ll doze until the sun rises properly.`,
+        Something important nags quietly at you from the back of your mind.`,
+    transitions: [[['try', 'to', '*remember'], 'bed, trying to remember 1']]
+}, {
+    id: 'bed, trying to remember 1',
+    enter_message: `
+        Something to do with Katya's twelfth sequence.`,
+    transitions: [[['remember', 'the', 'twelfth', 'sequence'], 'bed, trying to remember 2']]
+}, {
+    id: 'bed, trying to remember 2',
+    enter_message: `
+        The twelfth sequence was the first purely numeric one in Katya's notes.
+        <br/><br/>
+        None of the greek symbols, none of the allusions to physical constants.
+        <br/><br/>
+        Just numbers. Eighty-seven of them.`,
+    transitions: [[['remember', 'the', 'numbers'], 'bed, trying to remember 3']]
+}, {
+    id: 'bed, trying to remember 3',
+    enter_message: `
+        For years, the meaning of this sequence has eluded you.
+        <br/><br/>
+        It begins:
+        <br/><br/>
+        57 44 35
+        <br/><br/>
+        and continues:`,
+    transitions: [[['20', '699', '319'], 'bed, trying to remember 4']]
+}, {
+    id: 'bed, trying to remember 4',
+    enter_message: `
+        Your favorite bit is positions fifty-one through fifty-three:`,
+    transitions: [[['936', '5223', '2717'], 'bed, trying to remember 5']]
+}, {
+    id: 'bed, trying to remember 5',
+    enter_message: `
+        Such strange poetry in these numbers.
+        <br/><br/>
+        You know they must mean <i>something.</i>
+        <br/><br/>
+        Katya was brilliant, after all.
+        <br/><br/>
+        Sometimes frighteningly so.`,
+    transitions: [[['remember', 'Katya'], 'bed, trying to remember 6']]
+}, {
+    id: 'bed, trying to remember 6',
+    enter_message: `
+        She was your advisor.
+        <br/><br/>
+        But she treated you like family.
+        <br/><br/>
+        You miss her.
+        <br/><br/>
+        <div class="interp">
+        <i>"Go back to sleep, my dear.
+        <br/><br/>
+        Number Twelve can wait til morning,"</i> you imagine she'd say.
+        </div>`,
     transitions: [[['lie', 'down'], 'bed, lying down 1']]
 }, {
     id: 'bed, lying down 1',
-    enter_message: `Yes, no reason to be up now.
-        <br /><br />
+    enter_message: `
+        Yes, no reason to be up now.
+        <br/><br/>
+        You can update your notes first thing tomorrow.
+        <br/><br/>
         You slide back under the blankets. The autumn breeze cools your face.`,
     transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
 }, {
     id: 'bed, sleeping 2',
     enter_message: `You dream of<br /><br />
-        <i>calamity,</i><br /><br />
-        a <i>shattered mirror,</i><br /><br />
-        an <i>ice-covered mountain,</i><br /><br />
+        <div class="alien-interp"><i>calamity</i><br /><br /></div>
+        a <i>shattered mirror</i><br /><br />
+        an <i>ice-covered mountain</i><br /><br />
         <div class="interp">and <i>her voice.</i></div>`,
     transitions: [[['awaken'], 'bed, awakening 2']]
 }, {
@@ -1776,6 +1854,12 @@ let prologue_oms = () => [{
         'bed, sleeping 1': [{ 'add': 'forgotten' }],
         'bed, awakening 1': [{ 'add': 'forgotten' }],
         'bed, sitting up 1': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 1': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 2': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 3': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 4': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 5': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 6': [{ 'add': 'forgotten' }],
         'bed, lying down 1': [{ 'add': 'forgotten' }],
         'bed, sleeping 2': [{ 'add': 'forgotten' }]
     }
@@ -1785,7 +1869,10 @@ let prologue_oms = () => [{
     handle_command: venience_world_1.wrap_handler(function* (parser) {
         let look_consumer = this.make_look_consumer([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
         let other_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_exact(['approach']);
+            yield parser.consume_option([datatypes_1.annotate(['approach'], {
+                enabled: this.state.has_regarded['alcove, general'],
+                display: parser_1.DisplayEltType.keyword
+            })]);
             yield parser.consume_filler(['the', 'desk']);
             yield parser.done();
             return this.transition_to('desk, sitting down');
@@ -1798,20 +1885,73 @@ let prologue_oms = () => [{
     enter_message: `You pace across the grass and take your seat at the leather-backed study chair.
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
-    transitions: [[['open', 'the', 'envelope'], 'desk, opening the envelope']]
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        let look_consumer = this.make_look_consumer([[['around'], 'alcove, general'], [['at', 'the', 'envelope'], 'alcove, envelope'], [['at', 'myself'], 'self, 1']]);
+        let open_consumer = venience_world_1.wrap_handler(function* (parser) {
+            yield parser.consume_option([datatypes_1.annotate(['open'], {
+                enabled: this.state.has_regarded['alcove, envelope'] || false,
+                display: parser_1.DisplayEltType.keyword
+            })]);
+            yield parser.consume_filler(['the']);
+            yield parser.consume_filler(['envelope']);
+            yield parser.done();
+            return this.transition_to('desk, opening the envelope');
+        });
+        return parser_1.combine.call(this, parser, [look_consumer, open_consumer]);
+    }),
+    dest_oms: ['desk, sitting down', 'desk, opening the envelope']
+    // transitions: [
+    //     [['open', 'the', 'envelope'], 'desk, opening the envelope']]
 }, {
     id: 'desk, opening the envelope',
     enter_message: `You undo the twine, leaving it in a loop on the desk.
         <br /><br />
         You unfold the envelope’s flap.
         <br /><br />
-        It’s empty. But it shouldn’t be.`,
-    transitions: [[['try', 'to', '*understand'], 'desk, trying to understand']]
+        It’s empty.`,
+    transitions: [[['what?'], 'desk, reacting']]
 }, {
-    id: 'desk, trying to understand',
-    enter_message: `A panic comes over you. Without your notes, how will you continue your work?
+    id: 'desk, reacting',
+    enter_message: `
+        <i>Empty?</i>
+        <br/><br/>
+        No, it can't be empty.
+        <br/><br/>
+        You closed it up last night, bound it in twine and went to sleep.
+        <br/><br/>
+        <i>Empty?</i>`,
+    transitions: [[['try', 'to', '~*remember'], null], [['try', 'to', '*understand'], 'desk, trying to understand 1']]
+}, {
+    id: 'desk, trying to understand 1',
+    enter_message: `
+        Years of work.
+        <br/><br/>
+        Sequence Number Twelve.
+        </br><br/>
+        How does it go?`,
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        const r = [[9735, 4130, 3261], [3538, 8177, 3424], [6930, 3134, 2822]];
+        for (let i = 0; i < 3; i++) {
+            let options = [];
+            for (let j = 0; j < 3; j++) {
+                let n = r[i][j];
+                let opt = datatypes_1.annotate([n.toString() + '?'], {
+                    display: parser_1.DisplayEltType.filler
+                });
+                options.push(opt);
+            }
+            yield parser.consume_option(options);
+        }
+        yield parser.done();
+        return this.transition_to('desk, trying to understand 2');
+    }),
+    dest_oms: ['desk, trying to understand 2']
+}, {
+    id: 'desk, trying to understand 2',
+    enter_message: `        
+        A panic comes over you. Without your notes, how will you continue your work?
         <br /><br />
-        How will you understand? How will you honor Katya’s memory?`,
+        How will you possibly understand? How will you honor Katya’s memory?`,
     transitions: [[['*consider', 'the', 'sense of', '&panic'], 'desk, considering the sense of panic']]
 }, {
     id: 'desk, considering the sense of panic',
@@ -1887,7 +2027,7 @@ let prologue_oms = () => [{
         <br/><br/>
         </div>
         <div class="interp-alcove-2">
-        Your effort to organize and understand everything Katya taught you, over the years. If they are truly gone, it is a great setback.
+        Your effort to organize and understand everything Katya taught you over the years. If your notes are truly gone, it is a great setback.
         <br/><br/>
         But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
         <br/><br/>
@@ -1986,6 +2126,14 @@ let prologue_perceptions = () => [{
     id: 'self, 1',
     content: `
         You are wearing a perfectly dignified pair of silk pajamas.`
+}, {
+    id: 'alcove, envelope',
+    content: `
+        You keep your research in this thick envelope.
+        <br/><br/>
+        You've been analyzing Katya's work for years now.
+        <br/><br/>
+        Your career is built in reverence of hers.`
 }];
 exports.default = {
     observer_moments: prologue_oms,
@@ -2053,11 +2201,11 @@ let ch1_oms = () => [{
                     You miss the security of your alcove.
                     <br/><br/>
                     <div class="alien-interp">
-                    <i>"You were a fool to leave,
+                    <i>"You were a fool to leave
                     <br/><br/>
-                    too fragile,
+                    too fragile
                     <br/><br/>
-                    too sensitive,
+                    too sensitive
                     <br/><br/>
                     to find your own way."</i>
                     </div>`);
@@ -2091,7 +2239,7 @@ let ch1_oms = () => [{
     enter_message: `
         You are overwhelmed by the number of indistinct options.
         <br/><br/>
-        The trees surrounding you are like a wall, made of irrelevance and uncertainty, rather than impermeability.
+        The trees surrounding you are like a wall, made of irrelevance and uncertainty rather than impermeability.
         <br/><br/>
         You are unsure of what your heading should be.`,
     transitions: [[['*consider', 'the', 'sense of', '&uncertainty'], 'woods, considering the sense of uncertainty']]
@@ -2231,7 +2379,7 @@ let ch1_oms = () => [{
         And yet, the world around you seems to have been reshaped.
         <br/><br/>
         The proliferation of possibly-wrong paths forward has collapsed to a single, binary choice:`,
-    transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['*cross', 'the boundary'], 'woods, crossing the boundary 1']]
+    transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']]
 }, {
     id: 'woods, considering remaining',
     enter_message: `or...`,
@@ -2398,10 +2546,12 @@ function index_oms(oms) {
             dest_oms = om.dest_oms;
         }
         for (let om_id of dest_oms) {
-            if (!result.has_key(om_id)) {
-                throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+            if (om_id !== null) {
+                if (!result.has_key(om_id)) {
+                    throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+                }
+                pointed_to.set(om_id, undefined);
             }
-            pointed_to.set(om_id, undefined);
         }
     }
     for (let om of oms.slice(1)) {
@@ -2437,10 +2587,10 @@ exports.index_perceptions = index_perceptions;
 function infer_literal_array(...arr) {
     return arr;
 }
-const ObserverMomentIDs = infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, trying to understand', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
+const ObserverMomentIDs = infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
 //ch1
 'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, crossing the boundary 4', 'reading the story of charlotte');
-const PerceptionIDs = infer_literal_array('alcove, general', 'self, 1', 'forest, general', 'forest, parchment trees');
+const PerceptionIDs = infer_literal_array('alcove, general', 'self, 1', 'alcove, envelope', 'forest, general', 'forest, parchment trees');
 // Syntax shortcuts:
 // * = keyword
 // & = option

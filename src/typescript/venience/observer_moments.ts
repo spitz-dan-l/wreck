@@ -113,10 +113,12 @@ export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, Obs
         }
 
         for (let om_id of dest_oms) {
-            if (!result.has_key(om_id)) {
-                throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+            if (om_id !== null) {
+                if (!result.has_key(om_id)) {
+                    throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+                }
+                pointed_to.set(om_id, undefined);
             }
-            pointed_to.set(om_id, undefined);
         }
     }
 
@@ -161,6 +163,14 @@ const ObserverMomentIDs = infer_literal_array(
     'bed, sleeping 1',
     'bed, awakening 1',
     'bed, sitting up 1',
+
+    'bed, trying to remember 1',
+    'bed, trying to remember 2',
+    'bed, trying to remember 3',
+    'bed, trying to remember 4',
+    'bed, trying to remember 5',
+    'bed, trying to remember 6',
+
     'bed, lying down 1',
 
     'bed, sleeping 2',
@@ -169,7 +179,9 @@ const ObserverMomentIDs = infer_literal_array(
     
     'desk, sitting down',
     'desk, opening the envelope',
-    'desk, trying to understand',
+    'desk, reacting',
+    'desk, trying to understand 1',
+    'desk, trying to understand 2',
     'desk, considering the sense of panic',
     'desk, searching for the notes',
     
@@ -209,6 +221,7 @@ export type ObserverMomentID = typeof ObserverMomentIDs[number];
 const PerceptionIDs = infer_literal_array(
     'alcove, general',
     'self, 1',
+    'alcove, envelope',
     'forest, general',
     'forest, parchment trees'
 );

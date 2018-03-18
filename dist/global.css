@@ -1,15 +1,17 @@
-.terminal {
+#terminal {
       height: 100%;
       width: 100%;
       overflow-y: scroll;
       white-space: pre-wrap;
       font-family: 'Roboto Mono';
-      font-size: 0.7em;
+      font-size: 0.75em;
       font-weight: 300;
       color: ivory;
       background: black;
       position: absolute;
       display: block;
-      padding: 1em;
-      margin-right: 3em;
+}
+
+.terminal {
+      padding: 3em;
 }

@@ -313,11 +313,18 @@ export function combine<R>(parser: CommandParser, consumers: ((parser: CommandPa
     if (partial_matches.length > 0) {
         //integrate the first one
         parser.integrate(partial_matches[0].subparser);
-
-        for (let t of partial_matches.slice(1)) {
+        let final_typeahead = parser.match[parser.match.length - 1].typeahead;
+        let final_t_strings = final_typeahead.map(unwrap);
+        for (let p of partial_matches.slice(1)) {
             //extend the typeahead with the rest
-            let typeahead = t.subparser.match[t.subparser.match.length - 1].typeahead;
-            parser.match[parser.match.length - 1].typeahead.push(...typeahead);
+            let typeahead = p.subparser.match[p.subparser.match.length - 1].typeahead;
+            for (let t of typeahead) {
+                let t_string = unwrap(t);
+                if (!final_t_strings.includes(t_string)) {
+                    final_typeahead.push(t);
+                    final_t_strings.push(t_string);
+                }
+            }
         }
     } else {
         // set to invalid

@@ -8,7 +8,6 @@ import {History} from './History';
 import {get_indenting_whitespace, ends_with_whitespace} from '../typescript/text_tools';
 
 import {World, WorldDriver} from "../typescript/commands";
-// import {WorldType, WorldDriver} from "../typescript/commands";
 
 import {MatchValidity} from '../typescript/parser';
 
@@ -164,3 +163,5 @@ export class Terminal<T> extends React.Component<any, {world_driver: WorldDriver
     );
   }
 }
+
+

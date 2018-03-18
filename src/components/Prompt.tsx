@@ -112,7 +112,7 @@ export class Prompt extends React.Component<any, any> {
       overflow: 'hidden'
     };
     return (
-        <InputWrapper onClick={() => this.focus()}>
+        <InputWrapper onClick={() => this.focus()} onBlur={() => this.blur()}>
             <input onChange={this.handleChange} value={this.state.value} style={input_style} ref={i => this.input = i} />
             <InputDisplay>
               {this.props.children}

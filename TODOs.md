@@ -1,25 +1,38 @@
 TODOs
 
-- When all consume options are disabled, still show them in the interface
+**Spring Thing**
 
-- consume_option accepts different display types for each option
+- pre-dream scene involving writing notes
 
-- punctuation in commands
+- introduce Katya a little more
+    - call her "Dr. Something" instead?
 
-- add "carriage return" token?
+- Need a beat between going into woods & getting lost
 
 - enter when incomplete command should act like tab
 
-- repeated tabs should cycle thru current token/phrase option
-
-- indicate tabbing/autocomplete to player
+- Author's Preface:
+    - Explain that tab/arrow keys/enter work for autocomplete
+    - No saving/reloading yet
+    - Player will not be incentivized to reset for hidden content
 
 - more consistent use of command colors
 
-- demonstrate multiple option commands in prologue
+- fewer oxford commas
 
-- "you awaken again"
-- "leather-backed" chair
+
+**Later**
+
+- consume_option_stepwise_eager bugs out when used to implement make_look_consumer().
+
+- add "carriage return" option in typeahead?
+- add "delete most recent token" option in typeahead
+
+- repeated tabs should cycle thru current token/phrase option
+
+- When all consume options are disabled, still show them in the interface (?)
+
+- punctuation in commands
 
 - save/load
     
@@ -28,7 +41,6 @@ TODOs
     - ability to paste 
 
 - add The End
-
 
 - make erased loops collapse/expandable
 
