@@ -84,7 +84,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
                     <br/><br/>
                     doubt,
                     <br/><br/>
-                    confusion,
+                    confusion
                     <br/><br/>
                     and disorientation
                     <br/><br/>

@@ -1220,7 +1220,7 @@ exports.ParsedText = props => {
     let validity = parser.validity;
     if (validity === parser_1.MatchValidity.valid) {
         style.fontWeight = '900';
-        style.fontStyle = 'italic';
+        //style.fontStyle = 'italic'
     } else {
         style.fontWeight = '100';
         if (validity === parser_1.MatchValidity.invalid) {
@@ -1837,7 +1837,14 @@ let prologue_oms = () => [{
         You can update your notes first thing tomorrow.
         <br/><br/>
         You slide back under the blankets. The autumn breeze cools your face.`,
-    transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
+    transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']],
+    interpretations: {
+        'bed, trying to remember 1': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 2': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 3': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 4': [{ 'add': 'forgotten' }],
+        'bed, trying to remember 5': [{ 'add': 'forgotten' }]
+    }
 }, {
     id: 'bed, sleeping 2',
     enter_message: `You dream of<br /><br />
@@ -1870,7 +1877,7 @@ let prologue_oms = () => [{
         let look_consumer = this.make_look_consumer([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
         let other_consumer = venience_world_1.wrap_handler(function* (parser) {
             yield parser.consume_option([datatypes_1.annotate(['approach'], {
-                enabled: this.state.has_regarded['alcove, general'],
+                enabled: ['alcove, general', 'self, 1'].every(p => this.state.has_regarded[p]),
                 display: parser_1.DisplayEltType.keyword
             })]);
             yield parser.consume_filler(['the', 'desk']);
@@ -1886,7 +1893,7 @@ let prologue_oms = () => [{
         <br /><br />
         On the desk is a large parchment envelope, bound in twine.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let look_consumer = this.make_look_consumer([[['around'], 'alcove, general'], [['at', 'the', 'envelope'], 'alcove, envelope'], [['at', 'myself'], 'self, 1']]);
+        let look_consumer = this.make_look_consumer([[['at', 'the', 'envelope'], 'alcove, envelope'], [['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
         let open_consumer = venience_world_1.wrap_handler(function* (parser) {
             yield parser.consume_option([datatypes_1.annotate(['open'], {
                 enabled: this.state.has_regarded['alcove, envelope'] || false,
@@ -1913,7 +1920,7 @@ let prologue_oms = () => [{
 }, {
     id: 'desk, reacting',
     enter_message: `
-        <i>Empty?</i>
+        Empty?
         <br/><br/>
         No, it can't be empty.
         <br/><br/>
@@ -2188,7 +2195,7 @@ let ch1_oms = () => [{
                     <br/><br/>
                     doubt,
                     <br/><br/>
-                    confusion,
+                    confusion
                     <br/><br/>
                     and disorientation
                     <br/><br/>

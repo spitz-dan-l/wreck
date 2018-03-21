@@ -133,7 +133,14 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br/><br/>
         You slide back under the blankets. The autumn breeze cools your face.`,
         transitions: [
-            [['sleep', 'until', 'sunrise'], 'bed, sleeping 2']]
+            [['sleep', 'until', 'sunrise'], 'bed, sleeping 2']],
+        interpretations: {
+            'bed, trying to remember 1': [{'add': 'forgotten'}],
+            'bed, trying to remember 2': [{'add': 'forgotten'}],
+            'bed, trying to remember 3': [{'add': 'forgotten'}],
+            'bed, trying to remember 4': [{'add': 'forgotten'}],
+            'bed, trying to remember 5': [{'add': 'forgotten'}]
+        }
     },
     {
         id: 'bed, sleeping 2',
@@ -175,7 +182,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
 
             let other_consumer = wrap_handler(function*(parser: CommandParser) {
                 yield parser.consume_option([annotate(['approach'], {
-                    enabled: this.state.has_regarded['alcove, general'],
+                    enabled: ['alcove, general', 'self, 1'].every(p => this.state.has_regarded[p]), //this.state.has_regarded['alcove, general'],
                     display: DisplayEltType.keyword
                 })]);
                 yield parser.consume_filler(['the', 'desk']);
@@ -195,8 +202,8 @@ let prologue_oms: () => ObserverMoment[] = () => [
         On the desk is a large parchment envelope, bound in twine.`,
         handle_command: wrap_handler(function*(parser: CommandParser) {
             let look_consumer = this.make_look_consumer([
-                [['around'], 'alcove, general'],
                 [['at', 'the', 'envelope'], 'alcove, envelope'],
+                [['around'], 'alcove, general'],
                 [['at', 'myself'], 'self, 1']]);
 
             let open_consumer = wrap_handler(function*(parser: CommandParser) {
@@ -238,7 +245,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
     {
         id: 'desk, reacting',
         enter_message: `
-        <i>Empty?</i>
+        Empty?
         <br/><br/>
         No, it can't be empty.
         <br/><br/>

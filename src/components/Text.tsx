@@ -34,7 +34,7 @@ export const ParsedText = (props) => {
   let validity = parser.validity;
   if (validity === MatchValidity.valid) {
     style.fontWeight = '900';
-    style.fontStyle = 'italic'
+    //style.fontStyle = 'italic'
   } else {
     style.fontWeight = '100';
     if (validity === MatchValidity.invalid) {
