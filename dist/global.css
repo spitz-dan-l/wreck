@@ -15,3 +15,16 @@
 .terminal {
       padding: 3em;
 }
+
+.preface {
+      position: absolute;
+      z-index: 1;
+      background: black;
+      left: 0;
+      top: 0;
+      margin: 2em;
+}
+
+.preface h1 {
+      float: right;
+}

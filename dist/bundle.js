@@ -63,11 +63,17 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 13);
+/******/ 	return __webpack_require__(__webpack_require__.s = 14);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports) {
+
+module.exports = React;
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -368,7 +374,7 @@ class StringValidator {
 exports.StringValidator = StringValidator;
 
 /***/ }),
-/* 1 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -376,7 +382,7 @@ exports.StringValidator = StringValidator;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -731,12 +737,6 @@ exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
 // }
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
-module.exports = React;
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -878,12 +878,12 @@ exports.wrap_in_div = wrap_in_div;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(5);
-const parser_1 = __webpack_require__(1);
-const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
-const observer_moments_1 = __webpack_require__(16);
-const _00_prologue_1 = __webpack_require__(14);
-const _01_chapter_1_1 = __webpack_require__(15);
+const observer_moments_1 = __webpack_require__(17);
+const _00_prologue_1 = __webpack_require__(15);
+const _01_chapter_1_1 = __webpack_require__(16);
 exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
@@ -1038,8 +1038,8 @@ exports.VenienceWorld = VenienceWorld;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 class World {
     constructor(state) {
         this.state = state;
@@ -1193,8 +1193,8 @@ module.exports = ReactDOM;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
-const parser_1 = __webpack_require__(1);
+const React = __webpack_require__(0);
+const parser_1 = __webpack_require__(2);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
     switch (det) {
@@ -1261,13 +1261,14 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
-const Prompt_1 = __webpack_require__(11);
+const React = __webpack_require__(0);
+const Preface_1 = __webpack_require__(11);
+const Prompt_1 = __webpack_require__(12);
 const Text_1 = __webpack_require__(7);
-const TypeaheadList_1 = __webpack_require__(12);
+const TypeaheadList_1 = __webpack_require__(13);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
-const parser_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -1359,7 +1360,7 @@ class Terminal extends React.Component {
     }
     componentDidUpdate() {}
     render() {
-        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(Preface_1.Preface, { on_start_game: () => this.prompt.focus() }), React.createElement(History_1.History, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -1372,7 +1373,7 @@ exports.Terminal = Terminal;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Text_1 = __webpack_require__(7);
 class BookGuy extends React.Component {
@@ -1536,6 +1537,29 @@ exports.History = History;
 "use strict";
 
 
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(0);
+class Preface extends React.Component {
+    constructor() {
+        super(...arguments);
+        this.start_game = () => {
+            this.div.style.display = 'none';
+            this.props.on_start_game();
+        };
+    }
+    render() {
+        return React.createElement("div", { className: "preface", ref: d => this.div = d }, React.createElement("h1", { onClick: this.start_game }, React.createElement("a", { href: '#' }, "Start Venience World")), React.createElement("h3", null, "Welcome to Venience World!"), React.createElement("section", null, React.createElement("h3", null, "How to play"), "Venience World uses a new parser interface with command highlighting, animated text and autocomplete.", React.createElement("br", null), React.createElement("br", null), "Use tab, enter, the arrow keys or the mouse to select autocompletions of your commands as you play.", React.createElement("br", null), React.createElement("br", null), "I hope you enjoy playing!", React.createElement("br", null), React.createElement("br", null), React.createElement("strong", null, "Warning:"), " Currently there is ", React.createElement("i", null, "no way to save or load"), " your game. If you need to take a break, leave Venience World open in a tab. Save/Load will certainly be added in a future release."), React.createElement("section", null, React.createElement("h3", null, "Replaying"), "Venience World is designed to make all content accessible in a single playthrough.", React.createElement("br", null), React.createElement("br", null), "This means you will ", React.createElement("i", null, "never be expected"), " to reset the game and repeat yourself in order to explore a missed branch.", React.createElement("br", null), React.createElement("br", null), "Have faith in this as you play through the game. Replaying a game is often worthwhile; in this case, just know it is not ", React.createElement("i", null, "required"), " to get the full experience."), React.createElement("section", null, React.createElement("h3", null, "Browser compatibility"), "Venience World has been tested to work on the Chrome and Firefox browsers.", React.createElement("br", null), React.createElement("br", null), "It definitely doesn't work on Safari.", React.createElement("br", null), React.createElement("br", null), "I haven't tested it on IE/Edge, Opera, or others."), React.createElement("section", null, React.createElement("h3", null, "Development progress"), "This is a playable demo with a prologue and partial first chapter.", React.createElement("br", null), React.createElement("br", null), "Most of what you see will be subject to change for the final release.", React.createElement("br", null), React.createElement("br", null), "I'm not sure when the final release will be."), React.createElement("section", null, React.createElement("h3", null, "Contact"), "If you are interested in updates on the game, follow the ", React.createElement("a", { href: "https://twitter.com/VenienceWorld" }, "@VenienceWorld"), " twitter account, or ", React.createElement("a", { href: "mailto:spitz.dan.L+venience@gmail.com" }, "email me"), ".", React.createElement("br", null), React.createElement("br", null), "I would love to hear about your experience playing Venience World!"), React.createElement("section", null, React.createElement("h3", null, "Open source"), "Venience World is open source.", React.createElement("br", null), React.createElement("br", null), "The project can be found at ", React.createElement("a", { href: "https://github.com/spitz-dan-l/wreck/" }, "https://github.com/spitz-dan-l/wreck/"), ".", React.createElement("br", null), React.createElement("br", null), "It is written in Typescript.", React.createElement("br", null), React.createElement("br", null), "If you are interested in learning how it works, or using or extending the interface, please reach out!", React.createElement("br", null), React.createElement("br", null), "If there is sufficient interest I may spend some time on refactoring the code into a proper engine."), React.createElement("section", null, React.createElement("h3", null, "The name"), "The name \"Venience World\" is a play on \"", React.createElement("a", { href: "https://plato.stanford.edu/entries/supervenience/" }, "Supervenience"), "\", and the trope for games to have names of the form \"Super ", React.createElement("i", null, "X"), " World\".", React.createElement("br", null), React.createElement("br", null), "The game is thematically about seeking an understanding about what is going on. Supervenience as a concept is one of the philosophical tools that has been developed for doing that."));
+    }
+}
+exports.Preface = Preface;
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 var __rest = this && this.__rest || function (s, e) {
     var t = {};
     for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
@@ -1543,7 +1567,7 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
 const InputWrapper = props => {
     const { children } = props,
@@ -1637,16 +1661,16 @@ class Prompt extends React.Component {
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1727,14 +1751,14 @@ class TypeaheadList extends React.Component {
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Terminal_1 = __webpack_require__(9);
 const commands_1 = __webpack_require__(5);
@@ -1749,7 +1773,7 @@ let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1757,8 +1781,8 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 let prologue_oms = () => [{
     id: 'bed, sleeping 1',
     enter_message: '',
@@ -2152,7 +2176,7 @@ exports.default = {
 };
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2161,8 +2185,8 @@ exports.default = {
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 let ch1_oms = () => [{
     id: 'alone in the woods',
     enter_message: `Chapter 1 - A Sense Of Direction
@@ -2522,15 +2546,15 @@ exports.default = {
 };
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 function are_transitions_declarative(t) {
     return t.transitions !== undefined;
 }

@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import {Preface} from './Preface';
 import {Prompt} from './Prompt';
 import {ParsedText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
@@ -136,6 +137,7 @@ export class Terminal<T> extends React.Component<any, {world_driver: WorldDriver
   render() {
     return (
       <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
+        <Preface on_start_game={() => this.prompt.focus()} />
         <History
           timeout={700}
           onAnimationFinish={this.scrollToPrompt}
