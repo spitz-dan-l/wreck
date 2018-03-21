@@ -363,9 +363,9 @@ let prologue_oms: () => ObserverMoment[] = () => [
         enter_message: `<div class="interp"><i>
         "Judge the direction of gravity. Judge the slickness of the ice.
         <br /><br />
-        "Survey the horizon.
+        Survey the horizon.
         <br /><br />
-        "And then, choose where to go."
+        And then, choose where to go."
         </i></div>`,
         transitions: [
             [['begin', '*interpretation'], 'alcove, beginning interpretation']]

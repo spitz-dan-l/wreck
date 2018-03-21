@@ -221,7 +221,7 @@ let ch1_oms: () => ObserverMoment[] = () => [
         <br/><br/>
         You’re either within it, or you’re free of it.
         <br/><br/>
-        In, or Out.
+        In or Out.
         <br/><br/>
         Perhaps there is only a single way forward after all.
         </div>

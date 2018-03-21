@@ -17,16 +17,19 @@ export class Preface extends React.Component<any, any> {
         <h3>
         Welcome to Venience World!
         </h3>
-
+        <br/><br/>
         <section>
         <h3>How to play</h3>
-        Venience World uses a new parser interface with command highlighting, animated text and autocomplete.
+        Venience World is an incomplete game that uses a new kind of parser interface.
         <br/><br/>
         Use tab, enter, the arrow keys or the mouse to select autocompletions of your commands as you play.
         <br/><br/>
-        I hope you enjoy playing!
+        Play time is about 10 to 20 minutes. I hope you enjoy playing!
         <br/><br/>
-        <strong>Warning:</strong> Currently there is <i>no way to save or load</i> your game. If you need to take a break, leave Venience World open in a tab. Save/Load will certainly be added in a future release.
+        <strong>Warning:</strong> Currently there is <i>no way to save or load</i> your game. If you need to take a break, leave Venience World open in a tab. Save/Load will be added in a future release.
+        <br/><br/>
+        To get started now, click the Start Venience World button up top.
+        <br/><br/>
         </section>
         
         <section>
@@ -35,7 +38,8 @@ export class Preface extends React.Component<any, any> {
         <br/><br/>
         This means you will <i>never be expected</i> to reset the game and repeat yourself in order to explore a missed branch.
         <br/><br/>
-        Have faith in this as you play through the game. Replaying a game is often worthwhile; in this case, just know it is not <i>required</i> to get the full experience.
+        Have faith in this as you play through the game. Replaying a game is often worthwhile; in this case, just know it is <i>not required</i> to get the full experience.
+        <br/><br/>
         </section>
 
         <section>
@@ -45,15 +49,19 @@ export class Preface extends React.Component<any, any> {
         It definitely doesn't work on Safari.
         <br/><br/>
         I haven't tested it on IE/Edge, Opera, or others.
+        <br/><br/>
         </section>
 
         <section>
         <h3>Development progress</h3>
-        This is a playable demo with a prologue and partial first chapter.
+        This is a playable demo with a prologue and partial first chapter with no puzzle elements.
+        <br/><br/>
+        The final release will complete the story and contain mild puzzle elements surrounding the interpretation of aphorisms.
         <br/><br/>
         Most of what you see will be subject to change for the final release.
         <br/><br/>
-        I'm not sure when the final release will be.
+        I'm not sure when it will be finished.
+        <br/><br/>
         </section>
 
         <section>
@@ -61,6 +69,7 @@ export class Preface extends React.Component<any, any> {
         If you are interested in updates on the game, follow the <a href="https://twitter.com/VenienceWorld">@VenienceWorld</a> twitter account, or <a href="mailto:spitz.dan.L+venience@gmail.com">email me</a>.
         <br/><br/>
         I would love to hear about your experience playing Venience World!
+        <br/><br/>
         </section>
 
         <section>
@@ -69,16 +78,11 @@ export class Preface extends React.Component<any, any> {
         <br/><br/>
         The project can be found at <a href="https://github.com/spitz-dan-l/wreck/">https://github.com/spitz-dan-l/wreck/</a>.
         <br/><br/>
-        It is written in Typescript.
-        <br/><br/>
-        If you are interested in learning how it works, or using or extending the interface, please reach out!
-        <br/><br/>
-        If there is sufficient interest I may spend some time on refactoring the code into a proper engine.
         </section>
 
         <section>
         <h3>The name</h3>
-        The name "Venience World" is a play on "<a href="https://plato.stanford.edu/entries/supervenience/">Supervenience</a>", and the trope for games to have names of the form "Super <i>X</i> World".
+        The name "Venience World" is a play on "<a href="https://plato.stanford.edu/entries/supervenience/">Supervenience</a>", and the trope wherein games have names of the form "Super <i>X</i> World".
         <br/><br/>
         The game is thematically about seeking an understanding about what is going on. Supervenience as a concept is one of the philosophical tools that has been developed for doing that.
         </section>
