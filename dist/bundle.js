@@ -1667,10 +1667,13 @@ class TypeaheadList extends React.Component {
         let swallowed_enter = false;
         top: switch (event.keyCode) {
             case keyboard_tools_1.keys.enter:
-                if (this.state.selection_index === -1) {
-                    break;
+                // if (this.state.selection_index === -1) {
+                //   break;
+                // }
+                if (this.props.typeahead.length > 0) {
+                    swallowed_enter = true;
                 }
-                swallowed_enter = true;
+            // swallowed_enter = true;
             case keyboard_tools_1.keys.tab:
                 event.preventDefault();
             case keyboard_tools_1.keys.right:
@@ -1741,6 +1744,7 @@ let start = {};
 //start.experiences = ['alcove, entering the forest']; 
 // start.experiences = ['woods, ending interpretation'];
 // start.experiences = ['bed, sitting up 2'];
+// start.experiences = ['woods, crossing the boundary 3'];
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld(start));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -1771,7 +1775,7 @@ let prologue_oms = () => [{
         <br /><br />
         Your body still feels heavy with sleep.
         <br /><br />
-        Something important nags quietly at you from the back of your mind.`,
+        Something important nags quietly at you from the back of your mind...`,
     transitions: [[['try', 'to', '*remember'], 'bed, trying to remember 1']]
 }, {
     id: 'bed, trying to remember 1',
@@ -2428,19 +2432,23 @@ let ch1_oms = () => [{
     handle_command: venience_world_1.wrap_handler(function* (parser) {
         let look_consumer = this.make_look_consumer([[['at', 'the', 'parchment'], 'forest, parchment trees']]);
         let { read_state = 0 } = this.get_om_state('woods, crossing the boundary 4');
-        let read_consumer = venience_world_1.wrap_handler(function* (parser) {
-            let apply_read_update = (world = this) => world.update({
-                om_state: {
-                    ['woods, crossing the boundary 4']: {
-                        read_state: read_state + 1
-                    }
+        let apply_read_update = (world = this) => world.update({
+            om_state: {
+                ['woods, crossing the boundary 4']: {
+                    read_state: read_state + 1
                 }
-            });
+            }
+        });
+        let read_consumer = venience_world_1.wrap_handler(function* (parser) {
             yield parser.consume_option([datatypes_1.annotate(['read'], {
                 display: parser_1.DisplayEltType.keyword,
                 enabled: this.state.has_regarded['forest, parchment trees']
             })]);
-            if (read_state === 0) {
+            let read_0_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['the', 'parchment'], {
+                    display: parser_1.DisplayEltType.filler,
+                    enabled: read_state === 0
+                })]);
                 yield parser.done();
                 return {
                     world: apply_read_update(),
@@ -2451,13 +2459,19 @@ let ch1_oms = () => [{
                         <br/><br/>
                         Then, you come to rest on one particular story.`)
                 };
-            }
-            yield parser.consume_filler(['the', 'story', 'of']);
-            yield parser.consume_exact(['Charlotte'], parser_1.DisplayEltType.option);
-            yield parser.done();
-            let result = this.transition_to('reading the story of charlotte');
-            result.world = apply_read_update(result.world);
-            return result;
+            });
+            let read_1_consumer = venience_world_1.wrap_handler(function* (parser) {
+                if (read_state < 1) {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_filler(['the', 'story', 'of']);
+                yield parser.consume_exact(['Charlotte'], parser_1.DisplayEltType.option);
+                yield parser.done();
+                let result = this.transition_to('reading the story of charlotte');
+                result.world = apply_read_update(result.world);
+                return result;
+            });
+            return parser_1.combine.call(this, parser, [read_0_consumer, read_1_consumer]);
         });
         return parser_1.combine.call(this, parser, [look_consumer, read_consumer]);
     }),

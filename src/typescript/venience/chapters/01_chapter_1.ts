@@ -22,12 +22,14 @@ import {
 import {
     set_enabled,
     is_enabled,
-    annotate
+    annotate,
+    Annotatable
 } from '../../datatypes';
 
 import {
     CommandParser,
     DisplayEltType,
+    AMatch,
     combine
 } from '../../parser';
 
@@ -369,16 +371,18 @@ let ch1_oms: () => ObserverMoment[] = () => [
             let look_consumer = this.make_look_consumer([
                 [['at', 'the', 'parchment'], 'forest, parchment trees']]);
 
-            let {read_state = 0} = this.get_om_state('woods, crossing the boundary 4');
-            let read_consumer = wrap_handler(function*(parser: CommandParser) {
-                let apply_read_update = (world=this) => world.update({
-                    om_state: {
-                        ['woods, crossing the boundary 4']: {
-                            read_state: read_state + 1
-                        }
-                    }
-                });
+            let {read_state = 0}: {read_state: number} = this.get_om_state('woods, crossing the boundary 4');
+            
 
+            let apply_read_update = (world=this) => world.update({
+                om_state: {
+                    ['woods, crossing the boundary 4']: {
+                        read_state: read_state + 1
+                    }
+                }
+            });
+
+            let read_consumer = wrap_handler(function*(parser: CommandParser) {
                 yield parser.consume_option([
                     annotate(['read'], {
                         display: DisplayEltType.keyword,
@@ -386,7 +390,14 @@ let ch1_oms: () => ObserverMoment[] = () => [
                     })
                 ]);
 
-                if (read_state === 0){
+                let read_0_consumer = wrap_handler(function*(parser: CommandParser) {
+                    yield parser.consume_option([
+                        annotate(['the', 'parchment'], {
+                            display: DisplayEltType.filler,
+                            enabled: read_state === 0
+                        })
+                    ]);
+
                     yield parser.done();
 
                     return {
@@ -398,20 +409,30 @@ let ch1_oms: () => ObserverMoment[] = () => [
                         <br/><br/>
                         Then, you come to rest on one particular story.`)
                     };
-                }
+                });
 
-                yield parser.consume_filler(['the', 'story', 'of']);
-                yield parser.consume_exact(['Charlotte'], DisplayEltType.option);
-                yield parser.done();
+                let read_1_consumer = wrap_handler(function*(parser: CommandParser) {
+                    if (read_state < 1) {
+                        yield parser.invalidate();
+                    }
 
-                let result = this.transition_to('reading the story of charlotte');
-                result.world = apply_read_update(result.world);
-                return result;
+                    yield parser.consume_filler(['the', 'story', 'of']);
+                    yield parser.consume_exact(['Charlotte'], DisplayEltType.option);
+
+                    yield parser.done();
+
+                    let result = this.transition_to('reading the story of charlotte');
+                    result.world = apply_read_update(result.world);
+                    return result;
+                });
+
+                return combine.call(this, parser, [
+                    read_0_consumer, read_1_consumer
+                ]);
+
             });
 
-            return combine.call(this, parser, [
-                look_consumer, read_consumer
-            ]);
+            return combine.call(this, parser, [look_consumer, read_consumer]);
 
         }),
         dest_oms: ['woods, crossing the boundary 4', 'reading the story of charlotte']

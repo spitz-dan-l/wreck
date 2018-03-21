@@ -52,7 +52,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br /><br />
         Your body still feels heavy with sleep.
         <br /><br />
-        Something important nags quietly at you from the back of your mind.`,
+        Something important nags quietly at you from the back of your mind...`,
         transitions: [
             [['try', 'to', '*remember'], 'bed, trying to remember 1']]
     },

@@ -13,6 +13,7 @@ let start: VenienceWorldState = {};
 //start.experiences = ['alcove, entering the forest']; 
 // start.experiences = ['woods, ending interpretation'];
 // start.experiences = ['bed, sitting up 2'];
+// start.experiences = ['woods, crossing the boundary 3'];
 
 let world_driver = new WorldDriver(new VenienceWorld(start))
 
