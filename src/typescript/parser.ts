@@ -378,61 +378,6 @@ export function consume_option_stepwise_eager(parser: CommandParser, options: Va
     }
 
     let result = combine.call(this, parser, consumers);
-    // debugger;
 
     return result;
 }
-
-
-
-// export function* consume_option_stepwise_eager(parser: CommandParser, options: Disablable<Displayable<string>[]>[]) {
-//     // assumption: no option is a prefix of any other option
-
-//     let current_cmd = [];
-//     let pos = 0;
-//     while (true) {
-//         let remaining_options = options.filter(with_disablable((toks) =>
-//             toks.slice(0, pos).every((tok, i) => tok === current_cmd[i])
-//         ));
-
-//         if (remaining_options.length === 0) {
-//             return untokenize(current_cmd);
-//         }
-
-//         let next_tokens: Disablable<Token>[] = [];
-//         for (let opt of remaining_options) {
-//             let {value, annotation:{enabled}} = annotate(opt);
-
-//             if (pos < value.length) {
-//                 let tok = value[pos];
-//                 let found = false;
-//                 for (let i = 0; i < next_tokens.length; i++) {
-//                     let nt = next_tokens[i];
-//                     if (unwrap(nt) === tok) {
-//                         if (enabled) {
-//                             next_tokens[i] = set_enabled(nt, true);
-//                         }
-//                         found = true;
-//                         break;
-//                     }
-//                 }
-//                 if (!found) {
-//                     next_tokens.push(set_enabled(tok, enabled));
-//                 }
-//             } else {
-//                 return untokenize(current_cmd);
-//             }
-//         }
-//         let display_type: DisplayEltType;
-//         if (pos === 0) {
-//             display_type = DisplayEltType.keyword;
-//         } else {
-//             display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
-//         }
-//         let next_options: Annotatable<string[], AMatch>[] = next_tokens.map(with_disablable(split_tokens)).map((o: Annotatable<string[], AMatch>) => annotate(o, {display: display_type}));
-        
-//         let next_tok = yield parser.consume_option(next_options);
-//         current_cmd.push(next_tok);
-//         pos++;
-//     }
-// }
