@@ -65,7 +65,11 @@
 /* Woods */
 .history.would-add-interp-woods-1-enabled,
 .history.would-add-interp-woods-2-enabled,
-.history.would-add-interp-woods-3-enabled
+.history.would-add-interp-woods-3-enabled,
+/* Tangle */
+.history.would-add-reif-tangle-1-enabled,
+.history.would-add-reif-tangle-2-enabled,
+.history.would-add-reif-tangle-3-enabled
 {
     background-color: midnightblue;
 }
@@ -75,7 +79,10 @@
 .history .interp-alcove-3,
 .history .interp-woods-1,
 .history .interp-woods-2,
-.history .interp-woods-3
+.history .interp-woods-3,
+.history .reif-tangle-1,
+.history .reif-tangle-2,
+.history .reif-tangle-3
 {
     display: none;
 }
@@ -102,6 +109,16 @@
     opacity: 1;
 }
 
+/* Tangle interp */
+.history.reif-tangle-1-enabled .reif-tangle-1,
+.history.reif-tangle-2-enabled .reif-tangle-2,
+.history.reif-tangle-3-enabled .reif-tangle-3
+{
+    display: block;
+    opacity: 1;
+}
+
+
 /* Alcove interp */
 .history.adding-interp-alcove-1-enabled.animation-start .interp-alcove-1,
 .history.adding-interp-alcove-2-enabled.animation-start .interp-alcove-2,
@@ -109,7 +126,11 @@
 /* Woods interp */
 .history.adding-interp-woods-1-enabled.animation-start .interp-woods-1,
 .history.adding-interp-woods-2-enabled.animation-start .interp-woods-2,
-.history.adding-interp-woods-3-enabled.animation-start .interp-woods-3
+.history.adding-interp-woods-3-enabled.animation-start .interp-woods-3,
+/* Tangle interp */
+.history.adding-reif-tangle-1-enabled.animation-start .reif-tangle-1,
+.history.adding-reif-tangle-2-enabled.animation-start .reif-tangle-2,
+.history.adding-reif-tangle-3-enabled.animation-start .reif-tangle-3
 {
     opacity: 0.01;
     max-height: 0px;
@@ -122,7 +143,11 @@
 /* Woods interp */
 .history.adding-interp-woods-1-enabled.animation-start.animation-active .interp-woods-1,
 .history.adding-interp-woods-2-enabled.animation-start.animation-active .interp-woods-2,
-.history.adding-interp-woods-3-enabled.animation-start.animation-active .interp-woods-3
+.history.adding-interp-woods-3-enabled.animation-start.animation-active .interp-woods-3,
+/* Tangle interp */
+.history.adding-reif-tangle-1-enabled.animation-start.animation-active .reif-tangle-1,
+.history.adding-reif-tangle-2-enabled.animation-start.animation-active .reif-tangle-2,
+.history.adding-reif-tangle-3-enabled.animation-start.animation-active .reif-tangle-3
 {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;

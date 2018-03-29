@@ -2,12 +2,27 @@ TODOs
 
 **Spring Thing**
 
+- Puzzle uno
+    - Cycling thru notes during an interp
+        - "consider the first fragment"
+    - Appropriate loop erasure
+    - ability to go directly to next relevant place if you've been already?
+        (perhaps not as this would affect the redescription/laying the groundwork for tying the environment to the notes?)
+
+    - need a danged verb/set of verbs for "try interpreting this particular note in the present location"
+        "identify the tangle/outside vantage/dance"
+        "reify"
+
+    - error messages indicate:
+        - wrong location for this note
+        - not enough previous context to fully connect the dots
+
+
+
 
 - Need a beat between going into woods & getting lost
 
 - Need a beat between getting lost and getting birch parchment
-
-- enter when incomplete command should act like tab
 
 - Author's Preface:
     - Explain that tab/arrow keys/enter work for autocomplete

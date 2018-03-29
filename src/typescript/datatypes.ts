@@ -124,7 +124,7 @@ export function chain_object<T extends object>(src: T) {
     });
 } 
 
-export function chain_update(target: Object, source: Object, inplace=false) {
+export function chain_update(target: Object, source: Object, replace_keys: string[]=[], inplace=false) {
     let updated: Object;
     if (inplace) {
         updated = target || {};
@@ -133,8 +133,8 @@ export function chain_update(target: Object, source: Object, inplace=false) {
     }
 
     for (let [n, v] of Object.entries(source)) {
-        if (typeof v === 'object' && !(v instanceof Array)) {
-            updated[n] = chain_update(updated[n], v, inplace);
+        if (!replace_keys.includes(n) && typeof v === 'object' && !(v instanceof Array)) {
+            updated[n] = chain_update(updated[n], v, replace_keys, inplace);
         } else {
             updated[n] = v;
         }

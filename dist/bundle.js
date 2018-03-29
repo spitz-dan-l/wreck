@@ -80,309 +80,8 @@ module.exports = React;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-class FuckDict {
-    constructor(a) {
-        this.size = 0;
-        this.keys_map = new Map();
-        this.values_map = new Map();
-        if (a !== undefined) {
-            for (let [k, v] of a) {
-                this.set(k, v);
-            }
-        }
-    }
-    set(k, v) {
-        let s = k.toString();
-        this.keys_map.set(s, k);
-        this.values_map.set(s, v);
-        this.size = this.keys_map.size;
-        return this;
-    }
-    get(k, default_value) {
-        if (!this.has_key(k) && default_value !== undefined) {
-            this.set(k, default_value);
-            return default_value;
-        }
-        let s = k.toString();
-        return this.values_map.get(s);
-    }
-    update(a) {
-        let updated = this.copy();
-        for (let [k, v] of a) {
-            updated.set(k, v);
-        }
-        return updated;
-    }
-    has_key(k) {
-        return this.keys_map.has(k.toString());
-    }
-    keys_array() {
-        return Array.from(this.keys_map.values());
-    }
-    values_array() {
-        return Array.from(this.values_map.values());
-    }
-    entries_array() {
-        let result = [];
-        for (let [s, k] of this.keys_map.entries()) {
-            result.push([k, this.values_map.get(s)]);
-        }
-        return result;
-    }
-    keys_equal(other) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)) {
-                return false;
-            }
-        }
-        for (let elem of other.keys_array()) {
-            if (!this.has_key(elem)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    keys_intersect(other) {
-        let result = [];
-        for (let k of this.keys_array()) {
-            if (other.has_key(k)) {
-                result.push(k);
-            }
-        }
-        return result;
-    }
-    keys_subset(other) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    toString() {
-        let entry_strings = this.entries_array().map(x => x.toString()).sort();
-        return `FuckDict<${entry_strings.join(',')}>`;
-    }
-    copy() {
-        return new FuckDict(this.entries_array());
-    }
-}
-exports.FuckDict = FuckDict;
-function chain_object(src) {
-    return new Proxy(src, {
-        get: function (target, key) {
-            if (target[key] === undefined) {
-                target[key] = {};
-            }
-            let v = target[key];
-            if (typeof v === 'object' && !(v instanceof Array)) {
-                return chain_object(v);
-            } else {
-                return v;
-            }
-        }
-    });
-}
-exports.chain_object = chain_object;
-function chain_update(target, source, inplace = false) {
-    let updated;
-    if (inplace) {
-        updated = target || {};
-    } else {
-        updated = Object.assign({}, target);
-    }
-    for (let [n, v] of Object.entries(source)) {
-        if (typeof v === 'object' && !(v instanceof Array)) {
-            updated[n] = chain_update(updated[n], v, inplace);
-        } else {
-            updated[n] = v;
-        }
-    }
-    return updated;
-}
-exports.chain_update = chain_update;
-function arrays_fuck_equal(ar1, ar2) {
-    if (ar1.length !== ar2.length) {
-        return false;
-    }
-    for (let i = 0; i < ar1.length; i++) {
-        if (ar1[i].toString() !== ar2[i].toString()) {
-            return false;
-        }
-    }
-    return true;
-}
-exports.arrays_fuck_equal = arrays_fuck_equal;
-function array_fuck_contains(ar, elt) {
-    return ar.some(x => x.toString() === elt.toString());
-}
-exports.array_fuck_contains = array_fuck_contains;
-function make_matrix2(data_obj) {
-    let dim_y = data_obj.length;
-    let dim_x = data_obj[0].length;
-    let data = new Int16Array(data_obj.reduce((x, y) => x.concat(y)));
-    // TODO complain if the total length is wrong
-    return new Matrix2(data, dim_x, dim_y);
-}
-exports.make_matrix2 = make_matrix2;
-function zeros(dim_x, dim_y) {
-    return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);
-}
-exports.zeros = zeros;
-class Matrix2 {
-    constructor(data, dim_x, dim_y) {
-        this.data = data;
-        this.dim_x = dim_x;
-        this.dim_y = dim_y;
-    }
-    get(x, y) {
-        return this.data[y * this.dim_x + x];
-    }
-    set(x, y, value) {
-        this.data[y * this.dim_x + x] = value;
-    }
-    rotate(degrees) {
-        //validate input better
-        if (degrees == 360 || degrees == 0) {
-            return this;
-        }
-        const n_rotations = degrees / 90;
-        let m = this;
-        const dim_x = this.dim_x;
-        const dim_y = this.dim_y;
-        for (let i = 0; i < n_rotations; i++) {
-            let new_data = new Int16Array(dim_x * dim_y);
-            let new_mat2 = new Matrix2(new_data, dim_y, dim_x);
-            for (let y = 0; y < dim_y; y++) {
-                for (let x = 0; x < dim_x; x++) {
-                    new_mat2.set(dim_y - 1 - y, x, m.get(x, y));
-                }
-            }
-            m = new_mat2;
-        }
-        return m;
-    }
-    contains(value) {
-        return this.data.indexOf(value) !== -1;
-    }
-    copy() {
-        return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);
-    }
-}
-exports.Matrix2 = Matrix2;
-function counter_add(counter, key, inc) {
-    let cur_val = 0;
-    if (counter.has(key)) {
-        cur_val = counter.get(key);
-    }
-    return counter.set(key, cur_val + inc);
-}
-exports.counter_add = counter_add;
-function counter_get(counter, key) {
-    let cur_val = 0;
-    if (counter.has(key)) {
-        cur_val = counter.get(key);
-    }
-    return cur_val;
-}
-exports.counter_get = counter_get;
-function counter_update(counter1, counter2) {
-    counter2.forEach(function (v, k) {
-        counter_add(counter1, k, v);
-    });
-    return counter1;
-}
-exports.counter_update = counter_update;
-function counter_order(counter, include_zero = false) {
-    let result = Array.from(counter.entries()).sort((a, b) => a[1] - b[1]);
-    if (!include_zero) {
-        result = result.filter(([t, i]) => i > 0);
-    }
-    return result.map(([t, i]) => t);
-}
-exports.counter_order = counter_order;
-//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
-//export type MergeAnnotations<T, > = 
-function is_annotated(x) {
-    if (x === undefined) {
-        return false;
-    }
-    return x.annotated !== undefined;
-}
-exports.is_annotated = is_annotated;
-function annotate(x, annotation) {
-    if (annotation === undefined) {
-        annotation = {};
-    }
-    if (is_annotated(x)) {
-        Object.assign(x.annotation, annotation);
-        return x;
-    } else {
-        let result = { value: x, annotated: true, annotation };
-        return result;
-    }
-}
-exports.annotate = annotate;
-function unwrap(x) {
-    if (is_annotated(x)) {
-        return x.value;
-    } else {
-        return x;
-    }
-}
-exports.unwrap = unwrap;
-function with_annotatable(f, default_value) {
-    return x => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
-}
-exports.with_annotatable = with_annotatable;
-function get_annotation(x, default_value) {
-    if (is_annotated(x)) {
-        if (default_value !== undefined) {
-            return Object.assign({}, default_value, x.annotation);
-        } else {
-            return x.annotation;
-        }
-    } else {
-        return default_value;
-    }
-}
-exports.get_annotation = get_annotation;
-function set_enabled(x, enabled = true) {
-    return annotate(x, { enabled });
-}
-exports.set_enabled = set_enabled;
-function with_disablable(f) {
-    return with_annotatable(f, { enabled: true });
-}
-exports.with_disablable = with_disablable;
-function is_enabled(x) {
-    let result = get_annotation(x);
-    if (result === undefined) {
-        return true;
-    }
-    return result.enabled;
-}
-exports.is_enabled = is_enabled;
-class StringValidator {
-    static validate(s) {
-        return new this().is_valid(s);
-    }
-    is_valid(s) {
-        return false;
-    }
-}
-exports.StringValidator = StringValidator;
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(2);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -658,7 +357,7 @@ class PhraseDSLValidator extends datatypes_1.StringValidator {
     }
 }
 exports.PhraseDSLValidator = PhraseDSLValidator;
-function consume_option_stepwise_eager(parser, options) {
+function consume_declarative_dsl(parser, options) {
     // assumption: no option is a prefix of any other option
     let consumers = [];
     for (let option of options) {
@@ -685,56 +384,310 @@ function consume_option_stepwise_eager(parser, options) {
         consumers.push(opt_consumer);
     }
     let result = combine.call(this, parser, consumers);
-    // debugger;
     return result;
 }
-exports.consume_option_stepwise_eager = consume_option_stepwise_eager;
-// export function* consume_option_stepwise_eager(parser: CommandParser, options: Disablable<Displayable<string>[]>[]) {
-//     // assumption: no option is a prefix of any other option
-//     let current_cmd = [];
-//     let pos = 0;
-//     while (true) {
-//         let remaining_options = options.filter(with_disablable((toks) =>
-//             toks.slice(0, pos).every((tok, i) => tok === current_cmd[i])
-//         ));
-//         if (remaining_options.length === 0) {
-//             return untokenize(current_cmd);
-//         }
-//         let next_tokens: Disablable<Token>[] = [];
-//         for (let opt of remaining_options) {
-//             let {value, annotation:{enabled}} = annotate(opt);
-//             if (pos < value.length) {
-//                 let tok = value[pos];
-//                 let found = false;
-//                 for (let i = 0; i < next_tokens.length; i++) {
-//                     let nt = next_tokens[i];
-//                     if (unwrap(nt) === tok) {
-//                         if (enabled) {
-//                             next_tokens[i] = set_enabled(nt, true);
-//                         }
-//                         found = true;
-//                         break;
-//                     }
-//                 }
-//                 if (!found) {
-//                     next_tokens.push(set_enabled(tok, enabled));
-//                 }
-//             } else {
-//                 return untokenize(current_cmd);
-//             }
-//         }
-//         let display_type: DisplayEltType;
-//         if (pos === 0) {
-//             display_type = DisplayEltType.keyword;
-//         } else {
-//             display_type = next_tokens.length === 1 ? DisplayEltType.filler : DisplayEltType.option;
-//         }
-//         let next_options: Annotatable<string[], AMatch>[] = next_tokens.map(with_disablable(split_tokens)).map((o: Annotatable<string[], AMatch>) => annotate(o, {display: display_type}));
-//         let next_tok = yield parser.consume_option(next_options);
-//         current_cmd.push(next_tok);
-//         pos++;
-//     }
-// }
+exports.consume_declarative_dsl = consume_declarative_dsl;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class FuckDict {
+    constructor(a) {
+        this.size = 0;
+        this.keys_map = new Map();
+        this.values_map = new Map();
+        if (a !== undefined) {
+            for (let [k, v] of a) {
+                this.set(k, v);
+            }
+        }
+    }
+    set(k, v) {
+        let s = k.toString();
+        this.keys_map.set(s, k);
+        this.values_map.set(s, v);
+        this.size = this.keys_map.size;
+        return this;
+    }
+    get(k, default_value) {
+        if (!this.has_key(k) && default_value !== undefined) {
+            this.set(k, default_value);
+            return default_value;
+        }
+        let s = k.toString();
+        return this.values_map.get(s);
+    }
+    update(a) {
+        let updated = this.copy();
+        for (let [k, v] of a) {
+            updated.set(k, v);
+        }
+        return updated;
+    }
+    has_key(k) {
+        return this.keys_map.has(k.toString());
+    }
+    keys_array() {
+        return Array.from(this.keys_map.values());
+    }
+    values_array() {
+        return Array.from(this.values_map.values());
+    }
+    entries_array() {
+        let result = [];
+        for (let [s, k] of this.keys_map.entries()) {
+            result.push([k, this.values_map.get(s)]);
+        }
+        return result;
+    }
+    keys_equal(other) {
+        for (let elem of this.keys_array()) {
+            if (!other.has_key(elem)) {
+                return false;
+            }
+        }
+        for (let elem of other.keys_array()) {
+            if (!this.has_key(elem)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    keys_intersect(other) {
+        let result = [];
+        for (let k of this.keys_array()) {
+            if (other.has_key(k)) {
+                result.push(k);
+            }
+        }
+        return result;
+    }
+    keys_subset(other) {
+        for (let elem of this.keys_array()) {
+            if (!other.has_key(elem)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    toString() {
+        let entry_strings = this.entries_array().map(x => x.toString()).sort();
+        return `FuckDict<${entry_strings.join(',')}>`;
+    }
+    copy() {
+        return new FuckDict(this.entries_array());
+    }
+}
+exports.FuckDict = FuckDict;
+function chain_object(src) {
+    return new Proxy(src, {
+        get: function (target, key) {
+            if (target[key] === undefined) {
+                target[key] = {};
+            }
+            let v = target[key];
+            if (typeof v === 'object' && !(v instanceof Array)) {
+                return chain_object(v);
+            } else {
+                return v;
+            }
+        }
+    });
+}
+exports.chain_object = chain_object;
+function chain_update(target, source, replace_keys = [], inplace = false) {
+    let updated;
+    if (inplace) {
+        updated = target || {};
+    } else {
+        updated = Object.assign({}, target);
+    }
+    for (let [n, v] of Object.entries(source)) {
+        if (!replace_keys.includes(n) && typeof v === 'object' && !(v instanceof Array)) {
+            updated[n] = chain_update(updated[n], v, replace_keys, inplace);
+        } else {
+            updated[n] = v;
+        }
+    }
+    return updated;
+}
+exports.chain_update = chain_update;
+function arrays_fuck_equal(ar1, ar2) {
+    if (ar1.length !== ar2.length) {
+        return false;
+    }
+    for (let i = 0; i < ar1.length; i++) {
+        if (ar1[i].toString() !== ar2[i].toString()) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.arrays_fuck_equal = arrays_fuck_equal;
+function array_fuck_contains(ar, elt) {
+    return ar.some(x => x.toString() === elt.toString());
+}
+exports.array_fuck_contains = array_fuck_contains;
+function make_matrix2(data_obj) {
+    let dim_y = data_obj.length;
+    let dim_x = data_obj[0].length;
+    let data = new Int16Array(data_obj.reduce((x, y) => x.concat(y)));
+    // TODO complain if the total length is wrong
+    return new Matrix2(data, dim_x, dim_y);
+}
+exports.make_matrix2 = make_matrix2;
+function zeros(dim_x, dim_y) {
+    return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);
+}
+exports.zeros = zeros;
+class Matrix2 {
+    constructor(data, dim_x, dim_y) {
+        this.data = data;
+        this.dim_x = dim_x;
+        this.dim_y = dim_y;
+    }
+    get(x, y) {
+        return this.data[y * this.dim_x + x];
+    }
+    set(x, y, value) {
+        this.data[y * this.dim_x + x] = value;
+    }
+    rotate(degrees) {
+        //validate input better
+        if (degrees == 360 || degrees == 0) {
+            return this;
+        }
+        const n_rotations = degrees / 90;
+        let m = this;
+        const dim_x = this.dim_x;
+        const dim_y = this.dim_y;
+        for (let i = 0; i < n_rotations; i++) {
+            let new_data = new Int16Array(dim_x * dim_y);
+            let new_mat2 = new Matrix2(new_data, dim_y, dim_x);
+            for (let y = 0; y < dim_y; y++) {
+                for (let x = 0; x < dim_x; x++) {
+                    new_mat2.set(dim_y - 1 - y, x, m.get(x, y));
+                }
+            }
+            m = new_mat2;
+        }
+        return m;
+    }
+    contains(value) {
+        return this.data.indexOf(value) !== -1;
+    }
+    copy() {
+        return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);
+    }
+}
+exports.Matrix2 = Matrix2;
+function counter_add(counter, key, inc) {
+    let cur_val = 0;
+    if (counter.has(key)) {
+        cur_val = counter.get(key);
+    }
+    return counter.set(key, cur_val + inc);
+}
+exports.counter_add = counter_add;
+function counter_get(counter, key) {
+    let cur_val = 0;
+    if (counter.has(key)) {
+        cur_val = counter.get(key);
+    }
+    return cur_val;
+}
+exports.counter_get = counter_get;
+function counter_update(counter1, counter2) {
+    counter2.forEach(function (v, k) {
+        counter_add(counter1, k, v);
+    });
+    return counter1;
+}
+exports.counter_update = counter_update;
+function counter_order(counter, include_zero = false) {
+    let result = Array.from(counter.entries()).sort((a, b) => a[1] - b[1]);
+    if (!include_zero) {
+        result = result.filter(([t, i]) => i > 0);
+    }
+    return result.map(([t, i]) => t);
+}
+exports.counter_order = counter_order;
+//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
+//export type MergeAnnotations<T, > = 
+function is_annotated(x) {
+    if (x === undefined) {
+        return false;
+    }
+    return x.annotated !== undefined;
+}
+exports.is_annotated = is_annotated;
+function annotate(x, annotation) {
+    if (annotation === undefined) {
+        annotation = {};
+    }
+    if (is_annotated(x)) {
+        Object.assign(x.annotation, annotation);
+        return x;
+    } else {
+        let result = { value: x, annotated: true, annotation };
+        return result;
+    }
+}
+exports.annotate = annotate;
+function unwrap(x) {
+    if (is_annotated(x)) {
+        return x.value;
+    } else {
+        return x;
+    }
+}
+exports.unwrap = unwrap;
+function with_annotatable(f, default_value) {
+    return x => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
+}
+exports.with_annotatable = with_annotatable;
+function get_annotation(x, default_value) {
+    if (is_annotated(x)) {
+        if (default_value !== undefined) {
+            return Object.assign({}, default_value, x.annotation);
+        } else {
+            return x.annotation;
+        }
+    } else {
+        return default_value;
+    }
+}
+exports.get_annotation = get_annotation;
+function set_enabled(x, enabled = true) {
+    return annotate(x, { enabled });
+}
+exports.set_enabled = set_enabled;
+function with_disablable(f) {
+    return with_annotatable(f, { enabled: true });
+}
+exports.with_disablable = with_disablable;
+function is_enabled(x) {
+    let result = get_annotation(x);
+    if (result === undefined) {
+        return true;
+    }
+    return result.enabled;
+}
+exports.is_enabled = is_enabled;
+class StringValidator {
+    static validate(s) {
+        return new this().is_valid(s);
+    }
+    is_valid(s) {
+        return false;
+    }
+}
+exports.StringValidator = StringValidator;
 
 /***/ }),
 /* 3 */
@@ -878,8 +831,8 @@ exports.wrap_in_div = wrap_in_div;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(5);
-const parser_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(2);
 const text_tools_1 = __webpack_require__(3);
 const observer_moments_1 = __webpack_require__(17);
 const _00_prologue_1 = __webpack_require__(15);
@@ -888,7 +841,7 @@ exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
 class VenienceWorld extends commands_1.World {
-    constructor({ experiences, history_index, om_state, has_regarded }) {
+    constructor({ experiences, history_index, om_state, has_regarded, has_understood }) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
@@ -901,7 +854,10 @@ class VenienceWorld extends commands_1.World {
         if (has_regarded === undefined) {
             has_regarded = {};
         }
-        super({ experiences, history_index, om_state, has_regarded });
+        if (has_understood === undefined) {
+            has_understood = {};
+        }
+        super({ experiences, history_index, om_state, has_regarded, has_understood });
     }
     current_om() {
         for (let i = this.state.experiences.length - 1; i >= 0; i--) {
@@ -915,36 +871,49 @@ class VenienceWorld extends commands_1.World {
     get_om_state(om_id) {
         return this.state.om_state[om_id] || {};
     }
-    transition_to(dest, include_enter_message = true) {
-        let result = {
-            world: this.update({
-                experiences: [...this.state.experiences, dest],
-                history_index: this.state.history_index + 1
-            })
+    get_current_om_state() {
+        return this.get_om_state(this.current_om());
+    }
+    transition_to(dest, dest_om_state, message) {
+        let update = {
+            experiences: [...this.state.experiences, dest],
+            history_index: this.state.history_index + 1
         };
-        if (include_enter_message) {
-            let msg = VenienceWorld.observer_moments.get(dest).enter_message;
-            if (msg !== undefined) {
-                result.message = text_tools_1.wrap_in_div(msg);
+        if (dest_om_state !== undefined) {
+            update.om_state = {
+                [dest]: dest_om_state
+            };
+        }
+        let result = {
+            world: this.update(update)
+        };
+        if (message !== false) {
+            if (message === undefined) {
+                let msg = VenienceWorld.observer_moments[dest].enter_message;
+                if (msg !== undefined) {
+                    result.message = text_tools_1.wrap_in_div(msg);
+                }
+            } else {
+                result.message = message;
             }
         }
         return result;
     }
     get handle_command() {
         return exports.wrap_handler(function* (parser) {
-            let om = VenienceWorld.observer_moments.get(this.current_om());
+            let om = VenienceWorld.observer_moments[this.current_om()];
             if (!observer_moments_1.are_transitions_declarative(om)) {
                 //dispatch to a more specific handler
                 return om.handle_command.call(this, parser);
             }
             // we know these are valid because we indexed them
-            // too lazy to thread the validity tag up thru the types :(
+            // too lazy/busy to thread the validity tag up thru the types :(
             let cmd_options = om.transitions.map(([cmd, om_id]) => cmd);
             if (cmd_options.length === 0) {
                 yield parser.done();
                 return;
             }
-            let cmd_choice = parser_1.consume_option_stepwise_eager(parser, cmd_options);
+            let cmd_choice = parser_1.consume_declarative_dsl(parser, cmd_options);
             if (cmd_choice !== false) {
                 yield parser.done();
             }
@@ -973,7 +942,10 @@ class VenienceWorld extends commands_1.World {
             // });
             // let opt = yield consume_option_stepwise_eager(parser, options);
             // yield parser.done();
-            let options = look_options.map(([opt_toks, t]) => datatypes_1.set_enabled(opt_toks, !(this.state.has_regarded[t] || false)));
+            let options = look_options.map(([opt_toks, t]) => datatypes_1.annotate(opt_toks, {
+                enabled: !(this.state.has_regarded[t] || false),
+                display: parser_1.DisplayEltType.filler
+            }));
             let opt = yield parser.consume_option(options);
             yield parser.done();
             let target = null;
@@ -983,17 +955,63 @@ class VenienceWorld extends commands_1.World {
                     break;
                 }
             }
-            let result = {
-                world: this.update({
-                    has_regarded: {
-                        [target]: true
-                    }
-                }),
-                message: text_tools_1.wrap_in_div(VenienceWorld.perceptions[target].content)
-            };
-            return result;
+            return this.regard(target);
         });
     }
+    regard(perception_id, formatter) {
+        if (formatter === undefined) {
+            formatter = text_tools_1.wrap_in_div;
+        }
+        let result = {
+            world: this.update({
+                has_regarded: {
+                    [perception_id]: true
+                }
+            }),
+            message: formatter(VenienceWorld.perceptions[perception_id].content)
+        };
+        return result;
+    }
+    // make_understand_consumer(understand_options: [string[], ContentionID][], enabled=true) {
+    //     return wrap_handler(function*(parser: CommandParser){
+    //         let cmd_enabled = enabled && !understand_options.every(([cmd, t]) => this.state.has_regarded[t])
+    //         yield parser.consume_option([annotate(['try'], {
+    //             enabled: cmd_enabled,
+    //             display: DisplayEltType.filler
+    //         })]);
+    //         yield parser.consume_filler(['to']);
+    //         // let options = look_options.map(([opt_toks, t]) => {
+    //         //     if (this.state.has_regarded[t]) {
+    //         //         return ['~' + opt_toks[0], ...opt_toks.slice(1)];
+    //         //     } else {
+    //         //         return opt_toks;
+    //         //     }
+    //         // });
+    //         // let opt = yield consume_option_stepwise_eager(parser, options);
+    //         // yield parser.done();
+    //         let options = understand_options.map(([opt_toks, t]) =>
+    //             set_enabled(opt_toks, !(this.state.has_contended_with[t] || false))
+    //         );
+    //         let opt = yield parser.consume_option(options);
+    //         yield parser.done();
+    //         let target: ContentionID = null;
+    //         for (let [opt_toks, t] of understand_options) {
+    //             if (untokenize(opt_toks) === opt) {
+    //                 target = t;
+    //                 break;
+    //             }
+    //         } 
+    //         let result: VenienceWorldCommandResult = {
+    //             world: this.update({
+    //                 has_contended_with: {
+    //                     [target]: true
+    //                 }
+    //             }),
+    //             message: wrap_in_div(VenienceWorld.perceptions[target].content)
+    //         };
+    //         return result;
+    //     });
+    // }
     interstitial_update(message) {
         let result = {};
         let world_update = {};
@@ -1016,7 +1034,7 @@ class VenienceWorld extends commands_1.World {
             return [{ 'add': 'forgotten' }];
         }
         // apply the OM-specific interpretation
-        let om = VenienceWorld.observer_moments.get(this.current_om());
+        let om = VenienceWorld.observer_moments[this.current_om()];
         if (observer_moments_1.has_interpretations(om)) {
             if (observer_moments_1.are_interpretations_declarative(om)) {
                 return om.interpretations[history_elt.world.current_om()];
@@ -1038,14 +1056,14 @@ exports.VenienceWorld = VenienceWorld;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
 class World {
     constructor(state) {
         this.state = state;
     }
-    update(state_updates) {
-        let new_state = datatypes_1.chain_update(this.state, state_updates);
+    update(state_updates, replace_keys) {
+        let new_state = datatypes_1.chain_update(this.state, state_updates, replace_keys);
         return new this.constructor(new_state);
     }
 }
@@ -1194,7 +1212,7 @@ module.exports = ReactDOM;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const parser_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
     switch (det) {
@@ -1268,7 +1286,7 @@ const Text_1 = __webpack_require__(7);
 const TypeaheadList_1 = __webpack_require__(13);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
-const parser_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -1670,7 +1688,7 @@ exports.Prompt = Prompt;
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(2);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1768,7 +1786,8 @@ let start = {};
 //start.experiences = ['alcove, entering the forest']; 
 // start.experiences = ['woods, ending interpretation'];
 // start.experiences = ['bed, sitting up 2'];
-// start.experiences = ['woods, crossing the boundary 3'];
+// start.experiences = ['woods, crossing the boundary 2'];
+start.experiences = ['woods, clearing'];
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld(start));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -1781,8 +1800,8 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
 let prologue_oms = () => [{
     id: 'bed, sleeping 1',
     enter_message: '',
@@ -2185,331 +2204,780 @@ exports.default = {
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
-let ch1_oms = () => [{
-    id: 'alone in the woods',
-    enter_message: `Chapter 1 - A Sense Of Direction
-        <br />
-        <br />
-        You are alone in the woods in midmorning.`,
-    handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let { has_travelled = [] } = this.get_om_state('alone in the woods');
-        let look_consumer = this.make_look_consumer([[['around'], 'forest, general'], [['at', 'myself'], 'self, 2']]);
-        let go_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['go'], {
-                enabled: has_travelled.length < 4 && this.state.has_regarded['self, 2'] && this.state.has_regarded['forest, general'],
-                display: parser_1.DisplayEltType.keyword
+const datatypes_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
+let ch1_oms = () => {
+    function is_considering(a) {
+        return typeof a === 'object' && a['considering a fragment'] !== undefined;
+    }
+    function is_reifying(a) {
+        return typeof a === 'object' && a['reifying a fragment'] !== undefined;
+    }
+    const om_id_2_contention = {
+        'tower, peak': 'tangle, 2',
+        'woods, tangle': 'tangle, 1',
+        'woods, clearing 3': 'tangle, 3'
+    };
+    let tangle_consumer = venience_world_1.wrap_handler(function* (parser) {
+        if (this.state.has_understood[om_id_2_contention[this.current_om()]]) {
+            yield parser.invalidate();
+        }
+        let { prev_interp_action = 'ending interpretation', index = 0, begin_tag = -1 } = this.get_current_om_state();
+        let begin_consumer = venience_world_1.wrap_handler(function* (parser) {
+            if (prev_interp_action !== 'ending interpretation') {
+                yield parser.invalidate();
+            }
+            yield parser.consume_filler(['begin']);
+            yield parser.consume_exact(['reification']);
+            return {
+                world: this.update({
+                    om_state: {
+                        [this.current_om()]: {
+                            prev_interp_action: 'beginning interpretation',
+                            index: index + 1,
+                            begin_tag: index
+                        }
+                    }
+                }, ['prev_interp_action']),
+                message: text_tools_1.wrap_in_div(`
+                You're upstairs, alright.`)
+            };
+        });
+        let end_consumer = venience_world_1.wrap_handler(function* (parser) {
+            if (prev_interp_action === 'ending interpretation') {
+                yield parser.invalidate();
+            }
+            yield parser.consume_filler(['end']);
+            yield parser.consume_exact(['reification']);
+            yield parser.done();
+            let world_update = {
+                om_state: {
+                    [this.current_om()]: {
+                        prev_interp_action: 'ending interpretation',
+                        index: index + 1
+                    }
+                }
+            };
+            let message;
+            // check if they successfully reified the correct contention
+            if (is_reifying(prev_interp_action) && prev_interp_action.correctly) {
+                world_update.has_understood = {
+                    [om_id_2_contention[this.current_om()]]: true
+                };
+                message = `
+                You are beginning to understand, my dear.`;
+            } else {
+                message = `
+                There must be more to understand.`;
+            }
+            return {
+                world: this.update(world_update, ['prev_interp_action']),
+                message: text_tools_1.wrap_in_div(message)
+            };
+        });
+        let consider_consumer = venience_world_1.wrap_handler(function* (parser) {
+            if (prev_interp_action === 'ending interpretation') {
+                yield parser.invalidate();
+            }
+            yield parser.consume_option([datatypes_1.annotate(['consider'], {
+                display: parser_1.DisplayEltType.keyword,
+                enabled: !is_reifying(prev_interp_action) || !prev_interp_action.correctly
             })]);
-            let dir = yield parser.consume_option([['north?'], ['east?'], ['south?'], ['west?']].map(d => datatypes_1.set_enabled(d, has_travelled.indexOf(d[0]) === -1)));
+            yield parser.consume_filler(['the']);
+            let prev_contention = null;
+            if (is_considering(prev_interp_action)) {
+                prev_contention = prev_interp_action['considering a fragment'];
+            } else if (is_reifying(prev_interp_action)) {
+                prev_contention = prev_interp_action['reifying a fragment'];
+            }
+            let choice = yield parser.consume_option([datatypes_1.set_enabled(['first'], !this.state.has_understood['tangle, 1'] && prev_contention !== 'tangle, 1'), datatypes_1.set_enabled(['second'], !this.state.has_understood['tangle, 2'] && prev_contention !== 'tangle, 2'), datatypes_1.set_enabled(['third'], !this.state.has_understood['tangle, 3'] && prev_contention !== 'tangle, 3')]);
+            yield parser.consume_filler(['fragment']);
+            yield parser.done();
+            let choice_2_contention = {
+                'first': 'tangle, 1',
+                'second': 'tangle, 2',
+                'third': 'tangle, 3'
+            };
+            let x = venience_world_1.VenienceWorld.perceptions[choice_2_contention[choice]];
+            return {
+                world: this.update({
+                    om_state: {
+                        [this.current_om()]: {
+                            prev_interp_action: {
+                                'considering a fragment': choice_2_contention[choice]
+                            },
+                            index: index + 1
+                        }
+                    }
+                }, ['prev_interp_action']),
+                message: text_tools_1.wrap_in_div(`
+                The ${choice} fragment reads:
+                <br/><br/>
+                ${venience_world_1.VenienceWorld.perceptions[choice_2_contention[choice]].content}`)
+            };
+        });
+        let reify_consumer = venience_world_1.wrap_handler(function* (parser) {
+            if (!is_considering(prev_interp_action)) {
+                yield parser.invalidate();
+                return;
+            }
+            yield parser.consume_exact(['reify']);
+            yield parser.consume_filler(['the']);
+            let contention_2_option = {
+                'tangle, 1': ['tangle'],
+                'tangle, 2': ['outside', 'vantage'],
+                'tangle, 3': ['dance']
+            };
+            yield parser.consume_option(['tangle, 1', 'tangle, 2', 'tangle, 3'].map(c => datatypes_1.set_enabled(contention_2_option[c], c === prev_interp_action['considering a fragment'])));
             yield parser.done();
             let message;
-            if (has_travelled.length === 0) {
+            let correctly = prev_interp_action['considering a fragment'] === om_id_2_contention[this.current_om()];
+            if (prev_interp_action['considering a fragment'] === 'tangle, 2') {
+                correctly = correctly && this.state.has_understood['tangle, 1'];
+            } else if (prev_interp_action['considering a fragment'] === 'tangle, 3') {
+                correctly = correctly && this.state.has_understood['tangle, 2'];
+            }
+            if (correctly) {
+                // all the work gets done in the interpret history bit
+            } else {
                 message = text_tools_1.wrap_in_div(`
-                    You take a few steps ${dir.slice(0, -1)}.
-                    <br/><br/>
-                    Your surroundings appear similar.
-                    <br/><br/>
-                    Perhaps this isn't the right way.`);
-            } else if (has_travelled.length === 1) {
-                message = text_tools_1.wrap_in_div(`
-                    You feel no different after the second attempt to advance.
-                    <br/><br/>
-                    You have moved, but not meaningfully.
-                    `);
-            } else if (has_travelled.length === 2) {
-                message = text_tools_1.wrap_in_div(`
-                    A swirling cocktail of
-                    <br/><br/>
-                    doubt,
-                    <br/><br/>
-                    confusion
-                    <br/><br/>
-                    and disorientation
-                    <br/><br/>
-                    begins to set in.
-                    `);
-            } else if (has_travelled.length === 3) {
-                message = text_tools_1.wrap_in_div(`
-                    You are lost in the woods in midmorning.
-                    <br/><br/>
-                    You miss the security of your alcove.
-                    <br/><br/>
-                    <div class="alien-interp">
-                    <i>"You were a fool to leave
-                    <br/><br/>
-                    too fragile
-                    <br/><br/>
-                    too sensitive
-                    <br/><br/>
-                    to find your own way."</i>
-                    </div>`);
+                Wrong answer.`);
             }
             return {
                 world: this.update({
                     om_state: {
-                        ['alone in the woods']: {
-                            has_travelled: [...has_travelled, dir]
+                        [this.current_om()]: {
+                            prev_interp_action: {
+                                'reifying a fragment': prev_interp_action['considering a fragment'],
+                                correctly
+                            },
+                            index: index + 1
                         }
                     }
-                }),
+                }, ['prev_interp_action']),
                 message
             };
         });
-        let understand_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (!(has_travelled.length >= 4)) {
-                yield parser.invalidate();
-            }
-            yield parser.consume_filler(['try']);
-            yield parser.consume_filler(['to']);
-            yield parser.consume_exact(['understand']);
-            yield parser.done();
-            return this.transition_to('woods, trying to understand');
-        });
-        return parser_1.combine.call(this, parser, [look_consumer, go_consumer, understand_consumer]);
-    }),
-    dest_oms: ['alone in the woods', 'woods, trying to understand']
-}, {
-    id: 'woods, trying to understand',
-    enter_message: `
-        You are overwhelmed by the number of indistinct options.
-        <br/><br/>
-        The trees surrounding you are like a wall, made of irrelevance and uncertainty rather than impermeability.
-        <br/><br/>
-        You are unsure of what your heading should be.`,
-    transitions: [[['*consider', 'the', 'sense of', '&uncertainty'], 'woods, considering the sense of uncertainty']]
-}, {
-    id: 'woods, considering the sense of uncertainty',
-    enter_message: `
-        <div class="interp">
-        Katya used to say that a circle, when considered in relation to nothing,
-        is about as useful as a point, a dot, considered in the same context.
-        <br/><br/>
-        <i>“It is only important that a circle is circular when something other than the circle exists in terms of it,”</i>
-        she’d say, chuckling as you wracked your brain to understand.
-        </div>`,
-    transitions: [[['where', 'should', 'I', 'go?'], 'woods, asking 1']]
-}, {
-    id: 'woods, asking 1',
-    enter_message: `
-        <div class="interp">
-        <i>"I certainly can’t answer that, my dear.
-        <br/><br/>
-        But I assure you, you can do this."</i>
-        </div>`,
-    transitions: [[['what', 'should', 'I', 'do?'], 'woods, asking 2']]
-}, {
-    id: 'woods, asking 2',
-    enter_message: `
-        <div class="interp">
-        <i>"Judge the circle in terms of the world.
-        <br/><br/>
-        Question its circlehood.
-        <br/><br/>
-        Take the only path forward."</i>
-        </div>`,
-    transitions: [[['begin', '*interpretation'], 'woods, beginning interpretation']]
-}, {
-    id: 'woods, beginning interpretation',
-    enter_message: `
-        You are surrounded in all directions by the forest.
-        <br/><br/>
-        <div class="interp-woods-1">
-        The circle that is the forest encloses you.
-        <br/><br/>
-        It separates you from the world.
-        <br/><br/>
-        </div> 
-        You are unsure of which direction to go.
-        <br/><br/>
-        <div class="interp-woods-2">
-        It is primarily important that the occluding wood is a boundary, not that it is circular in shape.
-        <br/><br/>
-        <i>"The circularity is a mere artifact of our Euclidean heritage, my dear."</i>
-        <br/><br/>
-        A boundary separates you from the answers you seek.
-        <br/><br/>
-        </div>
-        You feel lost.
-        <div class="interp-woods-3">
-        <br/>
-        A circle may offer a continuum of freedom, and with it, an infinity of wrong ways.
-        <br/><br/>
-        But what of an enclosing boundary?
-        <br/><br/>
-        You’re either within it, or you’re free of it.
-        <br/><br/>
-        In or Out.
-        <br/><br/>
-        Perhaps there is only a single way forward after all.
-        </div>
-        `,
-    handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let { interp_step = 0 } = this.get_om_state('woods, beginning interpretation');
-        let next_interp = () => ({
-            world: this.update({
-                om_state: {
-                    ['woods, beginning interpretation']: {
-                        interp_step: interp_step + 1
+        return parser_1.combine.call(this, parser, [begin_consumer, reify_consumer, consider_consumer, end_consumer]);
+    });
+    function tangle_interpreter(history_elt) {
+        let h_world = history_elt.world;
+        if (h_world.current_om() === this.current_om() && history_elt.world.current_om() in om_id_2_contention) {
+            let { prev_interp_action = 'ending interpretation', index = 0, begin_tag = -1 } = this.get_current_om_state();
+            let { prev_interp_action: h_prev_inter_action = 'ending interpretation', index: h_index = 0, begin_tag: h_begin_tag = -1 } = h_world.get_current_om_state();
+            if (prev_interp_action === 'ending interpretation') {
+                if (!this.state.has_understood[om_id_2_contention[this.current_om()]]) {
+                    if (h_index > begin_tag + 1 && h_index < index) {
+                        return [{ 'add': 'forgotten' }];
                     }
                 }
-            })
-        });
-        let judge_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['judge'], {
-                display: parser_1.DisplayEltType.keyword,
-                enabled: interp_step === 0
-            })]);
-            yield parser.consume_filler(['the', 'circle']);
-            yield parser.consume_filler(['in', 'terms', 'of', 'the', 'world']);
-            yield parser.done();
-            return next_interp();
-        });
-        let question_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['question'], {
-                display: parser_1.DisplayEltType.keyword,
-                enabled: interp_step === 1
-            })]);
-            yield parser.consume_filler(['its', 'circlehood']);
-            yield parser.done();
-            return next_interp();
-        });
-        let take_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['take'], {
-                display: parser_1.DisplayEltType.keyword,
-                enabled: interp_step === 2
-            })]);
-            yield parser.consume_filler(['the', 'only', 'path', 'forward']);
-            yield parser.done();
-            return next_interp();
-        });
-        let end_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (interp_step < 3) {
-                yield parser.invalidate();
-            }
-            yield parser.consume_filler(['end']);
-            yield parser.consume_exact(['interpretation']);
-            yield parser.done();
-            return this.transition_to('woods, ending interpretation');
-        });
-        return parser_1.combine.call(this, parser, [judge_consumer, question_consumer, take_consumer, end_consumer]);
-    }),
-    dest_oms: ['woods, beginning interpretation', 'woods, ending interpretation'],
-    interpret_history(history_elt) {
-        if (history_elt.world.current_om() === 'woods, beginning interpretation') {
-            let { interp_step: hist_interp_step = 0 } = history_elt.world.get_om_state('woods, beginning interpretation');
-            if (hist_interp_step === 0) {
-                let { interp_step = 0 } = this.get_om_state('woods, beginning interpretation');
-                if (interp_step > 0) {
-                    return [{ 'add': `interp-woods-${interp_step}-enabled` }];
+            } else if (is_considering(prev_interp_action)) {
+                // forget back to last 'beginning interpretation'
+                if (h_index > begin_tag + 1 && h_index < index) {
+                    return [{ 'add': 'forgotten' }];
+                }
+            } else if (is_reifying(prev_interp_action)) {
+                if (prev_interp_action.correctly) {
+                    // find most recent considering (it will be index - 1)
+                    // add reify-tangle-N class
+                    if (h_index === index - 1) {
+                        let n;
+                        if (prev_interp_action['reifying a fragment'] === 'tangle, 1') {
+                            n = 1;
+                        } else if (prev_interp_action['reifying a fragment'] === 'tangle, 2') {
+                            n = 2;
+                        } else {
+                            n = 3;
+                        }
+                        return [{ 'add': `reif-tangle-${n}-enabled` }];
+                    }
                 }
             }
         }
     }
-}, {
-    id: 'woods, ending interpretation',
-    enter_message: `
-        You haven’t moved an inch.
-        <br/><br/>
-        And yet, the world around you seems to have been reshaped.
-        <br/><br/>
-        The proliferation of possibly-wrong paths forward has collapsed to a single binary choice:`,
-    transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']]
-}, {
-    id: 'woods, considering remaining',
-    enter_message: `or...`,
-    transitions: [[['~*remain', 'within the boundary'], 'woods, considering remaining'], [['*cross', 'the boundary'], 'woods, crossing the boundary 1']]
-}, {
-    id: 'woods, crossing the boundary 1',
-    enter_message: `
-        The particular direction of travel is unimportant.
-        <br/><br/>
-        <div class="interp">
-        <i>"Our world is one in which most degrees of freedom are accompanied by entropy production;
-        <br/><br/>
-        that is to say, arbitrariness is rarely scarce, my dear."</i>
-        <br/><br/>
-        </div>
-        You choose a direction <span class="interp-inline">(Arbitrarily! <i>"Thanks, <a href="https://arxiv.org/abs/cond-mat/0005382">Dewar</a>!"</i>)</span> and take it.
-        <br/><br/>
-        The forest around you remains an undifferentiated boundary of New England brush and flora...`,
-    transitions: [[['continue'], 'woods, crossing the boundary 2']],
-    interpretations: {
-        'woods, considering remaining': [{ 'add': 'forgotten' }]
-    }
-}, {
-    id: 'woods, crossing the boundary 2',
-    enter_message: `
-        ...until it begins to change.
-        <br/><br/>
-        You notice that the brown trunks of Oak are peppered with the white of Birch, here and there...`,
-    transitions: [[['continue'], 'woods, crossing the boundary 3']]
-}, {
-    id: 'woods, crossing the boundary 3',
-    enter_message: `
-        ...and now it is mostly Birch...`,
-    transitions: [[['continue'], 'woods, crossing the boundary 4']]
-}, {
-    id: 'woods, crossing the boundary 4',
-    enter_message: `
-        ...and now the white bark of the Birch trees blurs into a continuum of etched parchment.`,
-    handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let look_consumer = this.make_look_consumer([[['at', 'the', 'parchment'], 'forest, parchment trees']]);
-        let { read_state = 0 } = this.get_om_state('woods, crossing the boundary 4');
-        let apply_read_update = (world = this) => world.update({
-            om_state: {
-                ['woods, crossing the boundary 4']: {
-                    read_state: read_state + 1
-                }
-            }
-        });
-        let read_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['read'], {
-                display: parser_1.DisplayEltType.keyword,
-                enabled: this.state.has_regarded['forest, parchment trees']
-            })]);
-            let read_0_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['the', 'parchment'], {
-                    display: parser_1.DisplayEltType.filler,
-                    enabled: read_state === 0
+    return [{
+        id: 'alone in the woods',
+        enter_message: `Chapter 1 - A Sense Of Direction
+            <br />
+            <br />
+            You are alone in the woods in midmorning.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let { has_travelled = [] } = this.get_om_state('alone in the woods');
+            let look_consumer = this.make_look_consumer([[['around'], 'forest, general'], [['at', 'myself'], 'self, 2']]);
+            let go_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['go'], {
+                    enabled: has_travelled.length < 4 && this.state.has_regarded['self, 2'] && this.state.has_regarded['forest, general'],
+                    display: parser_1.DisplayEltType.keyword
                 })]);
+                let dir = yield parser.consume_option([['north?'], ['east?'], ['south?'], ['west?']].map(d => datatypes_1.set_enabled(d, has_travelled.indexOf(d[0]) === -1)));
                 yield parser.done();
+                let message;
+                if (has_travelled.length === 0) {
+                    message = text_tools_1.wrap_in_div(`
+                        You take a few steps ${dir.slice(0, -1)}.
+                        <br/><br/>
+                        Your surroundings appear similar.
+                        <br/><br/>
+                        Perhaps this isn't the right way.`);
+                } else if (has_travelled.length === 1) {
+                    message = text_tools_1.wrap_in_div(`
+                        You feel no different after the second attempt to advance.
+                        <br/><br/>
+                        You have moved, but not meaningfully.
+                        `);
+                } else if (has_travelled.length === 2) {
+                    message = text_tools_1.wrap_in_div(`
+                        A swirling cocktail of
+                        <br/><br/>
+                        doubt,
+                        <br/><br/>
+                        confusion
+                        <br/><br/>
+                        and disorientation
+                        <br/><br/>
+                        begins to set in.
+                        `);
+                } else if (has_travelled.length === 3) {
+                    message = text_tools_1.wrap_in_div(`
+                        You are lost in the woods in midmorning.
+                        <br/><br/>
+                        You miss the security of your alcove.
+                        <br/><br/>
+                        <div class="alien-interp">
+                        <i>"You were a fool to leave
+                        <br/><br/>
+                        too fragile
+                        <br/><br/>
+                        too sensitive
+                        <br/><br/>
+                        to find your own way."</i>
+                        </div>`);
+                }
                 return {
-                    world: apply_read_update(),
-                    message: text_tools_1.wrap_in_div(`
-                        Your eyes skim over the vast text laid out before you for a moment,
-                        <br/><br/>
-                        searching.
-                        <br/><br/>
-                        Then, you come to rest on one particular story.`)
+                    world: this.update({
+                        om_state: {
+                            ['alone in the woods']: {
+                                has_travelled: [...has_travelled, dir]
+                            }
+                        }
+                    }),
+                    message
                 };
             });
-            let read_1_consumer = venience_world_1.wrap_handler(function* (parser) {
-                if (read_state < 1) {
+            let understand_consumer = venience_world_1.wrap_handler(function* (parser) {
+                if (!(has_travelled.length >= 4)) {
                     yield parser.invalidate();
                 }
-                yield parser.consume_filler(['the', 'story', 'of']);
-                yield parser.consume_exact(['Charlotte'], parser_1.DisplayEltType.option);
+                yield parser.consume_filler(['try']);
+                yield parser.consume_filler(['to']);
+                yield parser.consume_exact(['understand']);
                 yield parser.done();
-                let result = this.transition_to('reading the story of charlotte');
-                result.world = apply_read_update(result.world);
-                return result;
+                return this.transition_to('woods, trying to understand');
             });
-            return parser_1.combine.call(this, parser, [read_0_consumer, read_1_consumer]);
-        });
-        return parser_1.combine.call(this, parser, [look_consumer, read_consumer]);
-    }),
-    dest_oms: ['woods, crossing the boundary 4', 'reading the story of charlotte']
-}, {
-    id: 'reading the story of charlotte',
-    enter_message: `
-        <i>You have reached the end of the demo.
-        <br/><br/>
-        Charlotte's story will be told in Chapter 2.
-        <br/><br/>
-        Thanks for playing Venience World!</i>`,
-    transitions: []
-}];
+            return parser_1.combine.call(this, parser, [look_consumer, go_consumer, understand_consumer]);
+        }),
+        dest_oms: ['alone in the woods', 'woods, trying to understand']
+    }, {
+        id: 'woods, trying to understand',
+        enter_message: `
+            You are overwhelmed by the number of indistinct options.
+            <br/><br/>
+            The trees surrounding you are like a wall, made of irrelevance and uncertainty rather than impermeability.
+            <br/><br/>
+            You are unsure of what your heading should be.`,
+        transitions: [[['*consider', 'the', 'sense of', '&uncertainty'], 'woods, considering the sense of uncertainty']]
+    }, {
+        id: 'woods, considering the sense of uncertainty',
+        enter_message: `
+            <div class="interp">
+            Katya used to say that a circle, when considered in relation to nothing,
+            is about as useful as a point, a dot, considered in the same context.
+            <br/><br/>
+            <i>“It is only important that a circle is circular when something other than the circle exists in terms of it,”</i>
+            she’d say, chuckling as you wracked your brain to understand.
+            </div>`,
+        transitions: [[['where', 'should', 'I', 'go?'], 'woods, asking 1']]
+    }, {
+        id: 'woods, asking 1',
+        enter_message: `
+            <div class="interp">
+            <i>"I certainly can’t answer that, my dear.
+            <br/><br/>
+            But I assure you, you can do this."</i>
+            </div>`,
+        transitions: [[['what', 'should', 'I', 'do?'], 'woods, asking 2']]
+    }, {
+        id: 'woods, asking 2',
+        enter_message: `
+            <div class="interp">
+            <i>"Judge the circle in terms of the world.
+            <br/><br/>
+            Question its circlehood.
+            <br/><br/>
+            Take the only path forward."</i>
+            </div>`,
+        transitions: [[['begin', '*interpretation'], 'woods, beginning interpretation']]
+    }, {
+        id: 'woods, beginning interpretation',
+        enter_message: `
+            You are surrounded in all directions by the forest.
+            <br/><br/>
+            <div class="interp-woods-1">
+            The circle that is the forest encloses you.
+            <br/><br/>
+            It separates you from the world.
+            <br/><br/>
+            </div> 
+            You are unsure of which direction to go.
+            <br/><br/>
+            <div class="interp-woods-2">
+            It is primarily important that the occluding wood is a boundary, not that it is circular in shape.
+            <br/><br/>
+            <i>"The circularity is a mere artifact of our Euclidean heritage, my dear."</i>
+            <br/><br/>
+            A boundary separates you from the answers you seek.
+            <br/><br/>
+            </div>
+            You feel lost.
+            <div class="interp-woods-3">
+            <br/>
+            A circle may offer a continuum of freedom, and with it, an infinity of wrong ways.
+            <br/><br/>
+            But what of an enclosing boundary?
+            <br/><br/>
+            You’re either within it, or you’re free of it.
+            <br/><br/>
+            In or Out.
+            <br/><br/>
+            Perhaps there is only a single way forward after all.
+            </div>
+            `,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let { interp_step = 0 } = this.get_om_state('woods, beginning interpretation');
+            let next_interp = () => ({
+                world: this.update({
+                    om_state: {
+                        ['woods, beginning interpretation']: {
+                            interp_step: interp_step + 1
+                        }
+                    }
+                })
+            });
+            let judge_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['judge'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: interp_step === 0
+                })]);
+                yield parser.consume_filler(['the', 'circle']);
+                yield parser.consume_filler(['in', 'terms', 'of', 'the', 'world']);
+                yield parser.done();
+                return next_interp();
+            });
+            let question_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['question'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: interp_step === 1
+                })]);
+                yield parser.consume_filler(['its', 'circlehood']);
+                yield parser.done();
+                return next_interp();
+            });
+            let take_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['take'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: interp_step === 2
+                })]);
+                yield parser.consume_filler(['the', 'only', 'path', 'forward']);
+                yield parser.done();
+                return next_interp();
+            });
+            let end_consumer = venience_world_1.wrap_handler(function* (parser) {
+                if (interp_step < 3) {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_filler(['end']);
+                yield parser.consume_exact(['interpretation']);
+                yield parser.done();
+                return this.transition_to('woods, ending interpretation');
+            });
+            return parser_1.combine.call(this, parser, [judge_consumer, question_consumer, take_consumer, end_consumer]);
+        }),
+        dest_oms: ['woods, beginning interpretation', 'woods, ending interpretation'],
+        interpret_history(history_elt) {
+            if (history_elt.world.current_om() === 'woods, beginning interpretation') {
+                let { interp_step: hist_interp_step = 0 } = history_elt.world.get_om_state('woods, beginning interpretation');
+                if (hist_interp_step === 0) {
+                    let { interp_step = 0 } = this.get_om_state('woods, beginning interpretation');
+                    if (interp_step > 0) {
+                        return [{ 'add': `interp-woods-${interp_step}-enabled` }];
+                    }
+                }
+            }
+        }
+    }, {
+        id: 'woods, ending interpretation',
+        enter_message: `
+            You haven’t moved an inch.
+            <br/><br/>
+            And yet, the world around you seems to have been reshaped.
+            <br/><br/>
+            The proliferation of possibly-wrong paths forward has collapsed to a single binary choice:`,
+        transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']]
+    }, {
+        id: 'woods, considering remaining',
+        enter_message: `or...`,
+        transitions: [[['~*remain', 'within the boundary'], 'woods, considering remaining'], [['*cross', 'the boundary'], 'woods, crossing the boundary 1']]
+    }, {
+        id: 'woods, crossing the boundary 1',
+        enter_message: `
+            The particular direction of travel is unimportant.
+            <br/><br/>
+            <div class="interp">
+            <i>"Our world is one in which most degrees of freedom are accompanied by entropy production;
+            <br/><br/>
+            that is to say, arbitrariness is rarely scarce, my dear."</i>
+            <br/><br/>
+            </div>
+            You choose a direction <span class="interp-inline">(Arbitrarily! <i>"Thanks, <a target="_blank" href="https://arxiv.org/abs/cond-mat/0005382">Dewar</a>!"</i>)</span> and take it.
+            <br/><br/>
+            The forest around you remains an undifferentiated boundary of New England brush and flora...`,
+        transitions: [[['continue'], 'woods, crossing the boundary 2']],
+        interpretations: {
+            'woods, considering remaining': [{ 'add': 'forgotten' }]
+        }
+    }, {
+        id: 'woods, crossing the boundary 2',
+        enter_message: `
+            ...until it begins to change.
+            <br/><br/>
+            You notice that the brown trunks of oak are peppered with the white of birch here and there.
+            <br/><br/>
+            And on the ground, partially covered in leaves, is a slip of parchment paper.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let { has_taken_note = false } = this.get_current_om_state();
+            let fragment_thread = venience_world_1.wrap_handler(function* (parser) {
+                let look_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    if (this.state.has_regarded['note fragment']) {
+                        yield parser.invalidate();
+                    }
+                    return this.make_look_consumer([[['at', 'the', 'parchment'], 'note fragment']]).call(this, parser);
+                });
+                let take_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    if (!this.state.has_regarded['note fragment'] || has_taken_note) {
+                        yield parser.invalidate();
+                    }
+                    yield parser.consume_option([datatypes_1.annotate(['take'], {
+                        display: parser_1.DisplayEltType.keyword,
+                        enabled: !has_taken_note
+                    })]);
+                    yield parser.consume_filler(['the', 'fragment']);
+                    yield parser.done();
+                    return {
+                        message: text_tools_1.wrap_in_div(`
+                            You pick it up.
+                            <br/><br/>
+                            It's been torn from a full page.
+                            <br/><br/>
+                            You recognize your own loopy scrawl on the parchment paper.
+                            <br/><br/>
+                            What is it doing out here? And where are the rest of your notes?`),
+                        world: this.update({
+                            om_state: {
+                                [this.current_om()]: {
+                                    has_taken_note: true
+                                }
+                            }
+                        })
+                    };
+                });
+                let read_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    if (!has_taken_note || this.state.has_regarded['tangle, 1']) {
+                        yield parser.invalidate();
+                    }
+                    yield parser.consume_option([datatypes_1.annotate(['read'], {
+                        display: parser_1.DisplayEltType.keyword,
+                        enabled: !this.state.has_regarded['tangle, 1']
+                    })]);
+                    yield parser.consume_filler(['it']);
+                    yield parser.done();
+                    return this.regard('tangle, 1', msg => text_tools_1.wrap_in_div(`
+                        It's the beginning of a transcript you took.
+                        <br/><br/>
+                        Something Katya said, that you wanted to remember:
+                        <br/><br/>
+                        ${msg}`));
+                });
+                return parser_1.combine.call(this, parser, [look_consumer, take_consumer, read_consumer]);
+            });
+            let consumer = venience_world_1.wrap_handler(function* (parser) {
+                if (!this.state.has_regarded['tangle, 1']) {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_filler(['continue']);
+                yield parser.done();
+                return this.transition_to('woods, crossing the boundary 3');
+            });
+            return parser_1.combine.call(this, parser, [fragment_thread, consumer]);
+        }),
+        dest_oms: ['woods, crossing the boundary 2', 'woods, crossing the boundary 3']
+    }, {
+        id: 'woods, crossing the boundary 3',
+        enter_message: `
+            The birch representation continues to grow relative to the oak.
+            <br/><br/>
+            Another slip of parchment paper catches your eye on the ground.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            // let {
+            //     has_taken_note = false
+            // } = this.get_om_state('woods, crossing the boundary 3');
+            let take_consumer = venience_world_1.wrap_handler(function* (parser) {
+                if (this.state.has_regarded['tangle, 2']) {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_option([datatypes_1.annotate(['take'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: !this.state.has_regarded['tangle, 2']
+                })]);
+                yield parser.consume_filler(['the', 'fragment']);
+                yield parser.done();
+                return this.regard('tangle, 2', msg => text_tools_1.wrap_in_div(`
+                    ${msg}`));
+            });
+            let continue_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['continue'], {
+                    enabled: !this.state.has_regarded['tangle, 2'],
+                    display: parser_1.DisplayEltType.keyword
+                })]);
+                yield parser.consume_filler(['up', 'the', 'birch', 'gradient']);
+                yield parser.done();
+                return this.transition_to('woods, clearing');
+            });
+            return parser_1.combine.call(this, parser, [take_consumer, continue_consumer]);
+        }),
+        dest_oms: ['woods, crossing the boundary 3', 'woods, clearing']
+    }, {
+        id: ['woods, clearing', 'woods, clearing 2', 'woods, clearing 3'],
+        enter_message: `
+            You arrive at a small clearing, surrounded by the parchment-white of birch.
+            <br/><br/>
+            The path forward branches in two.
+            <br/><br/>
+            In one direction, the path narrows and bends sharply behind a roiling wall of birch.
+            <br/><br/>
+            In another, a looming structure of some kind stands beyond the trees.
+            <br/><br/>
+            A third note fragment lies on the ground.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let { has_taken_note = false } = this.get_current_om_state();
+            let take_consumer = venience_world_1.wrap_handler(function* (parser) {
+                if (this.state.has_regarded['tangle, 3']) {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_option([datatypes_1.annotate(['take'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: !has_taken_note
+                })]);
+                yield parser.consume_filler(['the', 'fragment']);
+                yield parser.done();
+                return this.regard('tangle, 3', msg => text_tools_1.wrap_in_div(`
+                    ${msg}`));
+            });
+            let go_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['go'], {
+                    enabled: this.state.has_regarded['tangle, 3'],
+                    display: parser_1.DisplayEltType.keyword
+                })]);
+                yield parser.consume_filler(['to']);
+                let opt = yield parser.consume_option([['tangle'], ['tower']]);
+                yield parser.done();
+                if (opt === 'tangle') {
+                    if (this.state.has_understood['tangle, 3']) {
+                        return this.transition_to('woods, tangle 2');
+                    } else {
+                        return this.transition_to('woods, tangle');
+                    }
+                } else {
+                    if (this.state.has_understood['tangle, 2']) {
+                        return this.transition_to('tower, base 2');
+                    } else {
+                        return this.transition_to('tower, base');
+                    }
+                }
+            });
+            // TODO: add tangle consumer
+            // need gentler way of introducing it
+            return parser_1.combine.call(this, parser, [take_consumer, go_consumer]);
+        }),
+        dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'tower, base 2', 'woods, tangle 2'],
+        interpret_history: tangle_interpreter
+    }, {
+        id: ['woods, tangle'],
+        enter_message: `
+            Gee dang is it hard to stay oriented in here.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let return_consumer = venience_world_1.wrap_handler(function* (parser) {
+                let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
+                if (prev_interp_action !== 'ending interpretation') {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_exact(['return']);
+                yield parser.consume_filler(['to', 'the']);
+                yield parser.consume_filler(['clearing']);
+                yield parser.done();
+                let dest;
+                if (this.state.has_understood['tangle, 1']) {
+                    dest = 'woods, clearing 2';
+                } else {
+                    dest = 'woods, clearing';
+                }
+                return this.transition_to(dest);
+            });
+            return parser_1.combine.call(this, parser, [tangle_consumer, return_consumer]);
+        }),
+        dest_oms: ['woods, tangle', 'woods, clearing', 'woods, birch parchment 1'],
+        interpret_history: tangle_interpreter
+    }, {
+        id: ['tower, base', 'tower, base 2'],
+        enter_message: `
+            Big old tower stick up in the middle of the earth.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let ascend_consumer = venience_world_1.wrap_handler(function* (parser) {
+                // Climbs the tower
+                yield parser.consume_exact(['ascend']);
+                yield parser.done();
+                return this.transition_to('tower, peak');
+            });
+            let return_consumer = venience_world_1.wrap_handler(function* (parser) {
+                // Returns to the clearing
+                yield parser.consume_exact(['return']);
+                yield parser.consume_filler(['to', 'the']);
+                yield parser.consume_filler(['clearing']);
+                yield parser.done();
+                let dest;
+                if (this.state.has_understood['tangle, 2']) {
+                    dest = 'woods, clearing 3';
+                } else if (this.state.has_understood['tangle, 1']) {
+                    dest = 'woods, clearing 2';
+                } else {
+                    dest = 'woods, clearing';
+                }
+                return this.transition_to(dest);
+            });
+            return parser_1.combine.call(this, parser, [ascend_consumer, return_consumer]);
+        }),
+        dest_oms: ['tower, peak', 'woods, clearing', 'woods, clearing 2', 'woods, clearing 3']
+    }, {
+        id: 'tower, peak',
+        enter_message: `
+            Top o' the tower.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let descend_consumer = venience_world_1.wrap_handler(function* (parser) {
+                let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
+                if (prev_interp_action !== 'ending interpretation') {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_exact(['descend']);
+                yield parser.done();
+                if (this.state.has_understood['tangle, 2']) {
+                    return this.transition_to('tower, base 2');
+                } else {
+                    return this.transition_to('tower, base');
+                }
+            });
+            return parser_1.combine.call(this, parser, [tangle_consumer, descend_consumer]);
+        }),
+        interpret_history: tangle_interpreter,
+        dest_oms: ['tower, base', 'tower, base 2', 'tower, peak']
+    }, {
+        id: 'woods, tangle 2',
+        enter_message: `
+            You did it. Yayy`,
+        transitions: [[['continue'], 'woods, birch parchment 1']]
+    }, {
+        id: 'woods, birch parchment 1',
+        enter_message: `
+            ...and now it is mostly birch...`,
+        transitions: [[['continue'], 'woods, birch parchment 2']]
+    }, {
+        id: 'woods, birch parchment 2',
+        enter_message: `
+            ...and now the white bark of the birch trees blurs into a continuum of etched parchment.`,
+        handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let look_consumer = this.make_look_consumer([[['at', 'the', 'parchment'], 'forest, parchment trees']]);
+            let { read_state = 0 } = this.get_om_state('woods, birch parchment 2');
+            let apply_read_update = (world = this) => world.update({
+                om_state: {
+                    ['woods, birch parchment 2']: {
+                        read_state: read_state + 1
+                    }
+                }
+            });
+            let read_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['read'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: this.state.has_regarded['forest, parchment trees']
+                })]);
+                let read_0_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    yield parser.consume_option([datatypes_1.annotate(['the', 'parchment'], {
+                        display: parser_1.DisplayEltType.filler,
+                        enabled: read_state === 0
+                    })]);
+                    yield parser.done();
+                    return {
+                        world: apply_read_update(),
+                        message: text_tools_1.wrap_in_div(`
+                            Your eyes skim over the vast text laid out before you for a moment,
+                            <br/><br/>
+                            searching.
+                            <br/><br/>
+                            Then, you come to rest on one particular story.`)
+                    };
+                });
+                let read_1_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    if (read_state < 1) {
+                        yield parser.invalidate();
+                    }
+                    yield parser.consume_filler(['the', 'story', 'of']);
+                    yield parser.consume_exact(['Charlotte'], parser_1.DisplayEltType.option);
+                    yield parser.done();
+                    let result = this.transition_to('reading the story of charlotte');
+                    result.world = apply_read_update(result.world);
+                    return result;
+                });
+                return parser_1.combine.call(this, parser, [read_0_consumer, read_1_consumer]);
+            });
+            return parser_1.combine.call(this, parser, [look_consumer, read_consumer]);
+        }),
+        dest_oms: ['woods, birch parchment 2', 'reading the story of charlotte']
+    }, {
+        id: 'reading the story of charlotte',
+        enter_message: `
+            <i>You have reached the end of the demo.
+            <br/><br/>
+            Charlotte's story will be told in Chapter 2.
+            <br/><br/>
+            Thanks for playing Venience World!</i>`,
+        transitions: []
+    }];
+};
+// "We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."
+// "From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."
+// "It can feel like a deliverance when one reaches such a vantage after much aimless wandering."
+// "The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."
+// "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
+// "Do not fret, my dear. Return to the madness of life after your brief respite."
+// You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
+// "Expect to forget; to be turned around; to become tangled up."
+// "Find some joy in it; some exhilaration."
+// "And know that you have changed, dear. That your ascent has taught you something."
+//             <br /><br />
+//             You see the path you took to reach this viewing tower. You see it continue further onward, into MacDonald Park, and branch, curving into the brush by the river.
+//             <br /><br />
+//             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
+//             <br /><br />
+//             <div class="meditation-1">
+//             "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
+//             </div>`,
 let ch1_perceptions = () => [{
     id: 'forest, general',
     content: `
@@ -2539,6 +3007,73 @@ let ch1_perceptions = () => [{
         <div class="interp">
         and interpretations.
         </div>`
+}, {
+    id: 'note fragment',
+    content: `
+        You brush aside the leaves.
+        <br/><br/>
+        It appears to be a fragment from your missing notes!`
+}, {
+    id: 'tangle, 1',
+    content: `
+        <div class="interp"><i>
+        "We wander, for the most part, within a tangled, looping mess of thought;
+        <br/><br/>
+        a haphazard ligature of unrelated perceptions.
+        <br/><br/>
+        We lack the perspective to find meaning in it.”
+        </i></div>
+        <div class="reif-tangle-1">
+        <br/>
+        This winding maze of birch <i>is</i> the tangle.
+        <br/><br/>
+        It disorients you, subsumes you in its curves.
+        </div>
+        `
+}, {
+    id: 'tangle, 2',
+    content: `
+        <div class="interp"><i>
+        “It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds.
+        <br/><br/>
+        The twisting fibres of our journey are put into perspective.
+        <br/><br/>
+        It is peaceful from up there."
+        </i></div>
+        <div class="reif-tangle-2">
+        <br/>
+        This tower <i>is</i> the outside vantage.
+        <br/><br/>
+        It gives you the perspective to see how far you've come, and what waits for you ahead.
+        </div>`
+}, {
+    id: 'tangle, 3',
+    content: `
+        <div class="interp"><i>
+        "But do not grow too comfortable in that peace’s embrace.
+        <br/><br/>
+        It is a respite. And it must end.
+        <br/><br/>
+        All there is to do, once one has stood above the tangle for a while and surveyed it,
+        <br/><br/>
+        is to return to it.
+        <br/><br/>
+        To dance."
+        </i></div>
+        <div class="reif-tangle-3">
+        <br/>
+        Your own motion through the birch tangle and back out
+        <br/><br/>
+        your climb up the tower and back down
+        <br/><br/>
+        your exodus from the world into your alcove
+        <br/><br/>
+        your years spent in solitude
+        <br/><br/>
+        your setting forth this morning, and arriving here
+        <br/><br/>
+        this <i>is</i> the dance.
+        </div>`
 }];
 exports.default = {
     observer_moments: ch1_oms,
@@ -2553,8 +3088,28 @@ exports.default = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
+// Holy dang this is cool:
+// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
+//
+// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
+// as a constant, and get string literal typechecking elsewhere in the code.
+function infer_literal_array(...arr) {
+    return arr;
+}
+const ObserverMomentIDs = infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
+//ch1
+'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, clearing', 'woods, clearing 2', // pseudo copies to avoid loop erasure
+'woods, clearing 3', // because the impl is currently a bit of a hack :(
+'woods, tangle', 'woods, tangle 2', 'tower, base', 'tower, base 2', 'tower, peak', 'woods, birch parchment 1', 'woods, birch parchment 2', 'reading the story of charlotte');
+const PerceptionIDs = infer_literal_array(
+// Prologue
+'alcove, general', 'self, 1', 'alcove, envelope',
+// ch1
+'forest, general', 'self, 2', 'note fragment', 'tangle, 1', 'tangle, 2', 'tangle, 3', 'forest, parchment trees');
+const ContentionIDs = infer_literal_array(
+// ch1
+'tangle, 1', 'tangle, 2', 'tangle, 3');
 function are_transitions_declarative(t) {
     return t.transitions !== undefined;
 }
@@ -2567,8 +3122,13 @@ function are_interpretations_declarative(i) {
     return i.interpretations !== undefined;
 }
 exports.are_interpretations_declarative = are_interpretations_declarative;
+// export type Recitation = {
+//     id: RecitationID,
+//     contents: string[]
+// }
 function index_oms(oms) {
-    let result = new datatypes_1.FuckDict();
+    // let result = new FuckDict<ObserverMomentID, ObserverMoment>();
+    let result = {};
     for (let om of oms) {
         if (are_transitions_declarative(om)) {
             for (let [cmd, dest] of om.transitions) {
@@ -2579,18 +3139,24 @@ function index_oms(oms) {
                 }
             }
         }
-        if (result.has_key(om.id)) {
+        if (om.id in result) {
             throw `Duplicate ObserverMoment provided for ${om.id}`;
         }
-        result.set(om.id, om);
+        if (typeof om.id === 'string') {
+            result[om.id] = om;
+        } else {
+            for (let om_id of om.id) {
+                result[om_id] = om;
+            }
+        }
     }
-    for (let om of ObserverMomentIDs) {
-        if (!result.has_key(om)) {
-            throw `Missing ObserverMoment: ${om}`;
+    for (let om_id of ObserverMomentIDs) {
+        if (!(om_id in result)) {
+            throw `Missing ObserverMoment: ${om_id}`;
         }
     }
     //second/third pass, typecheck em
-    let pointed_to = new datatypes_1.FuckDict();
+    let pointed_to = new Set();
     for (let om of oms) {
         let dest_oms;
         if (are_transitions_declarative(om)) {
@@ -2600,16 +3166,24 @@ function index_oms(oms) {
         }
         for (let om_id of dest_oms) {
             if (om_id !== null) {
-                if (!result.has_key(om_id)) {
+                if (!(om_id in result)) {
                     throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
                 }
-                pointed_to.set(om_id, undefined);
+                pointed_to.add(om_id);
             }
         }
     }
     for (let om of oms.slice(1)) {
-        if (!pointed_to.has_key(om.id)) {
-            throw `om "${om.id}" is unreachable (and not the first in the list).`;
+        let om_ids;
+        if (typeof om.id === 'string') {
+            om_ids = [om.id];
+        } else {
+            om_ids = om.id;
+        }
+        for (let om_id of om_ids) {
+            if (!pointed_to.has(om_id)) {
+                throw `om "${om.id}" is unreachable (and not the first in the list).`;
+            }
         }
     }
     return result;
@@ -2632,18 +3206,6 @@ function index_perceptions(perceptions) {
     return result;
 }
 exports.index_perceptions = index_perceptions;
-// Holy dang this is cool:
-// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
-//
-// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
-// as a constant, and get string literal typechecking elsewhere in the code.
-function infer_literal_array(...arr) {
-    return arr;
-}
-const ObserverMomentIDs = infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
-//ch1
-'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, crossing the boundary 4', 'reading the story of charlotte');
-const PerceptionIDs = infer_literal_array('alcove, general', 'self, 1', 'alcove, envelope', 'forest, general', 'self, 2', 'forest, parchment trees');
 // Syntax shortcuts:
 // * = keyword
 // & = option

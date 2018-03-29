@@ -34,8 +34,8 @@ export abstract class World<T> implements CommandHandler<T>, Partial<HistoryInte
         this.state = state;
     }
 
-    update(state_updates: T): this {
-        let new_state = chain_update(this.state, state_updates);
+    update(state_updates: T, replace_keys?: string[]): this {
+        let new_state = chain_update(this.state, state_updates, replace_keys);
         return new (this.constructor as any)(new_state);
     }
 }

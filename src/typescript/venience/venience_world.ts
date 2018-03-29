@@ -11,7 +11,7 @@ import {
     CommandParser,
     DisplayEltType,
     with_early_stopping,
-    consume_option_stepwise_eager,
+    consume_declarative_dsl,
     PhraseDSLValidator
 } from '../parser'
 
@@ -33,12 +33,13 @@ import {
 import {
     ObserverMomentID,
     ObserverMoment,
+    PerceptionID,
+    ContentionID,
     are_transitions_declarative,
     has_interpretations,
     are_interpretations_declarative,
     index_oms,
-    index_perceptions,
-    PerceptionID
+    index_perceptions
 } from './observer_moments';
 
 import prologue from './chapters/00_prologue';
@@ -60,11 +61,12 @@ import chapter_1 from './chapters/01_chapter_1';
 // Coffee mug
 // 
 
-export type VenienceWorldState = {
+export interface VenienceWorldState {
     experiences?: ObserverMomentID[],
     history_index?: number,
     om_state?: {[K in ObserverMomentID]?: any},
-    has_regarded?: {[K in PerceptionID]?: boolean}
+    has_regarded?: {[K in PerceptionID]?: boolean},
+    has_understood?: {[K in ContentionID]?: boolean}
 }
 
 export type VenienceWorldCommandHandler = CommandHandler<VenienceWorldState>;
@@ -94,7 +96,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
         ...chapter_1.perceptions()
     ]);
     
-    constructor({experiences, history_index, om_state, has_regarded}: VenienceWorldState) {
+    constructor({experiences, history_index, om_state, has_regarded, has_understood}: VenienceWorldState) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
@@ -107,8 +109,11 @@ export class VenienceWorld extends World<VenienceWorldState>{
         if (has_regarded === undefined) {
             has_regarded = {};
         }
+        if (has_understood === undefined) {
+            has_understood = {};
+        }
         
-        super({experiences, history_index, om_state, has_regarded});
+        super({experiences, history_index, om_state, has_regarded, has_understood});
     }
 
     current_om(): ObserverMomentID {
@@ -125,17 +130,34 @@ export class VenienceWorld extends World<VenienceWorldState>{
         return this.state.om_state[om_id] || {};
     }
 
-    transition_to(dest: ObserverMomentID, include_enter_message=true) {
-        let result: VenienceWorldCommandResult = {
-            world: this.update({
-                experiences: [...this.state.experiences, dest],
-                history_index: this.state.history_index + 1
-            })
+    get_current_om_state() {
+        return this.get_om_state(this.current_om());
+    }
+
+    transition_to(dest: ObserverMomentID, dest_om_state?: any, message?: HTMLElement | false) {
+        let update: VenienceWorldState = {
+            experiences: [...this.state.experiences, dest],
+            history_index: this.state.history_index + 1
         };
-        if (include_enter_message) {
-            let msg = VenienceWorld.observer_moments.get(dest).enter_message;
-            if (msg !== undefined) {
-                result.message = wrap_in_div(msg);
+
+        if (dest_om_state !== undefined) {
+            update.om_state = {
+                [dest]: dest_om_state
+            };
+        }
+
+        let result: VenienceWorldCommandResult = {
+            world: this.update(update)
+        };
+
+        if (message !== false) {
+            if (message === undefined) {
+                let msg = VenienceWorld.observer_moments[dest].enter_message;
+                if (msg !== undefined) {
+                    result.message = wrap_in_div(msg);
+                }
+            } else {
+                result.message = message;
             }
         }
         return result;
@@ -143,7 +165,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
 
     get handle_command() {
         return wrap_handler(function*(parser: CommandParser) {
-            let om = VenienceWorld.observer_moments.get(this.current_om());
+            let om = VenienceWorld.observer_moments[this.current_om()];
 
             if (!are_transitions_declarative(om)) {
                 //dispatch to a more specific handler
@@ -152,7 +174,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
             }
 
             // we know these are valid because we indexed them
-            // too lazy to thread the validity tag up thru the types :(
+            // too lazy/busy to thread the validity tag up thru the types :(
             let cmd_options = <ValidString<PhraseDSLValidator>[][]>om.transitions.map(([cmd, om_id]) => cmd)
 
             if (cmd_options.length === 0) {
@@ -160,7 +182,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
                 return;
             }
 
-            let cmd_choice = consume_option_stepwise_eager(parser, cmd_options);
+            let cmd_choice = consume_declarative_dsl(parser, cmd_options);
 
             if (cmd_choice !== false){
                 yield parser.done();
@@ -199,7 +221,10 @@ export class VenienceWorld extends World<VenienceWorldState>{
             // yield parser.done();
 
             let options = look_options.map(([opt_toks, t]) =>
-                set_enabled(opt_toks, !(this.state.has_regarded[t] || false))
+                annotate(opt_toks, {
+                    enabled: !(this.state.has_regarded[t] || false),
+                    display: DisplayEltType.filler
+                })
             );
 
             let opt = yield parser.consume_option(options);
@@ -213,17 +238,72 @@ export class VenienceWorld extends World<VenienceWorldState>{
                 }
             } 
 
-            let result: VenienceWorldCommandResult = {
-                world: this.update({
-                    has_regarded: {
-                        [target]: true
-                    }
-                }),
-                message: wrap_in_div(VenienceWorld.perceptions[target].content)
-            };
-            return result;
+            return this.regard(target);
         });
     }
+
+    regard(perception_id: PerceptionID, formatter?:(message: string) => HTMLElement) {
+        if (formatter === undefined) {
+            formatter = wrap_in_div;
+        }
+        let result: VenienceWorldCommandResult = {
+            world: this.update({
+                has_regarded: {
+                    [perception_id]: true
+                }
+            }),
+            message: formatter(VenienceWorld.perceptions[perception_id].content)
+        };
+        return result;
+    }
+
+    // make_understand_consumer(understand_options: [string[], ContentionID][], enabled=true) {
+    //     return wrap_handler(function*(parser: CommandParser){
+    //         let cmd_enabled = enabled && !understand_options.every(([cmd, t]) => this.state.has_regarded[t])
+            
+    //         yield parser.consume_option([annotate(['try'], {
+    //             enabled: cmd_enabled,
+    //             display: DisplayEltType.filler
+    //         })]);
+    //         yield parser.consume_filler(['to']);
+            
+    //         // let options = look_options.map(([opt_toks, t]) => {
+    //         //     if (this.state.has_regarded[t]) {
+    //         //         return ['~' + opt_toks[0], ...opt_toks.slice(1)];
+    //         //     } else {
+    //         //         return opt_toks;
+    //         //     }
+    //         // });
+
+    //         // let opt = yield consume_option_stepwise_eager(parser, options);
+    //         // yield parser.done();
+
+    //         let options = understand_options.map(([opt_toks, t]) =>
+    //             set_enabled(opt_toks, !(this.state.has_contended_with[t] || false))
+    //         );
+
+    //         let opt = yield parser.consume_option(options);
+    //         yield parser.done();
+
+    //         let target: ContentionID = null;
+    //         for (let [opt_toks, t] of understand_options) {
+    //             if (untokenize(opt_toks) === opt) {
+    //                 target = t;
+    //                 break;
+    //             }
+    //         } 
+
+    //         let result: VenienceWorldCommandResult = {
+    //             world: this.update({
+    //                 has_contended_with: {
+    //                     [target]: true
+    //                 }
+    //             }),
+    //             message: wrap_in_div(VenienceWorld.perceptions[target].content)
+    //         };
+    //         return result;
+    //     });
+    // }
 
     interstitial_update(message?: HTMLElement) {
         let result: CommandResult<VenienceWorldState> = {};
@@ -252,7 +332,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
         }
 
         // apply the OM-specific interpretation
-        let om = VenienceWorld.observer_moments.get(this.current_om());
+        let om = VenienceWorld.observer_moments[this.current_om()];
         if (has_interpretations(om)) {
             if (are_interpretations_declarative(om)) {
                 return om.interpretations[history_elt.world.current_om()];
