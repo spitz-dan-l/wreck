@@ -396,3 +396,12 @@ export class StringValidator {
 export type ValidatedString<V extends StringValidator> = string & StringValidity;
 export type ValidString<V extends StringValidator> = string & _StringValidity.valid;
 
+
+// Holy dang this is cool:
+// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
+//
+// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
+// as a constant, and get string literal typechecking elsewhere in the code.
+export function infer_literal_array<T extends string>(...arr: T[]): T[] {
+  return arr;
+}

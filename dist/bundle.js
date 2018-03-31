@@ -80,8 +80,318 @@ module.exports = React;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
+class FuckDict {
+    constructor(a) {
+        this.size = 0;
+        this.keys_map = new Map();
+        this.values_map = new Map();
+        if (a !== undefined) {
+            for (let [k, v] of a) {
+                this.set(k, v);
+            }
+        }
+    }
+    set(k, v) {
+        let s = k.toString();
+        this.keys_map.set(s, k);
+        this.values_map.set(s, v);
+        this.size = this.keys_map.size;
+        return this;
+    }
+    get(k, default_value) {
+        if (!this.has_key(k) && default_value !== undefined) {
+            this.set(k, default_value);
+            return default_value;
+        }
+        let s = k.toString();
+        return this.values_map.get(s);
+    }
+    update(a) {
+        let updated = this.copy();
+        for (let [k, v] of a) {
+            updated.set(k, v);
+        }
+        return updated;
+    }
+    has_key(k) {
+        return this.keys_map.has(k.toString());
+    }
+    keys_array() {
+        return Array.from(this.keys_map.values());
+    }
+    values_array() {
+        return Array.from(this.values_map.values());
+    }
+    entries_array() {
+        let result = [];
+        for (let [s, k] of this.keys_map.entries()) {
+            result.push([k, this.values_map.get(s)]);
+        }
+        return result;
+    }
+    keys_equal(other) {
+        for (let elem of this.keys_array()) {
+            if (!other.has_key(elem)) {
+                return false;
+            }
+        }
+        for (let elem of other.keys_array()) {
+            if (!this.has_key(elem)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    keys_intersect(other) {
+        let result = [];
+        for (let k of this.keys_array()) {
+            if (other.has_key(k)) {
+                result.push(k);
+            }
+        }
+        return result;
+    }
+    keys_subset(other) {
+        for (let elem of this.keys_array()) {
+            if (!other.has_key(elem)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    toString() {
+        let entry_strings = this.entries_array().map(x => x.toString()).sort();
+        return `FuckDict<${entry_strings.join(',')}>`;
+    }
+    copy() {
+        return new FuckDict(this.entries_array());
+    }
+}
+exports.FuckDict = FuckDict;
+function chain_object(src) {
+    return new Proxy(src, {
+        get: function (target, key) {
+            if (target[key] === undefined) {
+                target[key] = {};
+            }
+            let v = target[key];
+            if (typeof v === 'object' && !(v instanceof Array)) {
+                return chain_object(v);
+            } else {
+                return v;
+            }
+        }
+    });
+}
+exports.chain_object = chain_object;
+function chain_update(target, source, replace_keys = [], inplace = false) {
+    let updated;
+    if (inplace) {
+        updated = target || {};
+    } else {
+        updated = Object.assign({}, target);
+    }
+    for (let [n, v] of Object.entries(source)) {
+        if (!replace_keys.includes(n) && typeof v === 'object' && !(v instanceof Array)) {
+            updated[n] = chain_update(updated[n], v, replace_keys, inplace);
+        } else {
+            updated[n] = v;
+        }
+    }
+    return updated;
+}
+exports.chain_update = chain_update;
+function arrays_fuck_equal(ar1, ar2) {
+    if (ar1.length !== ar2.length) {
+        return false;
+    }
+    for (let i = 0; i < ar1.length; i++) {
+        if (ar1[i].toString() !== ar2[i].toString()) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.arrays_fuck_equal = arrays_fuck_equal;
+function array_fuck_contains(ar, elt) {
+    return ar.some(x => x.toString() === elt.toString());
+}
+exports.array_fuck_contains = array_fuck_contains;
+function make_matrix2(data_obj) {
+    let dim_y = data_obj.length;
+    let dim_x = data_obj[0].length;
+    let data = new Int16Array(data_obj.reduce((x, y) => x.concat(y)));
+    // TODO complain if the total length is wrong
+    return new Matrix2(data, dim_x, dim_y);
+}
+exports.make_matrix2 = make_matrix2;
+function zeros(dim_x, dim_y) {
+    return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);
+}
+exports.zeros = zeros;
+class Matrix2 {
+    constructor(data, dim_x, dim_y) {
+        this.data = data;
+        this.dim_x = dim_x;
+        this.dim_y = dim_y;
+    }
+    get(x, y) {
+        return this.data[y * this.dim_x + x];
+    }
+    set(x, y, value) {
+        this.data[y * this.dim_x + x] = value;
+    }
+    rotate(degrees) {
+        //validate input better
+        if (degrees == 360 || degrees == 0) {
+            return this;
+        }
+        const n_rotations = degrees / 90;
+        let m = this;
+        const dim_x = this.dim_x;
+        const dim_y = this.dim_y;
+        for (let i = 0; i < n_rotations; i++) {
+            let new_data = new Int16Array(dim_x * dim_y);
+            let new_mat2 = new Matrix2(new_data, dim_y, dim_x);
+            for (let y = 0; y < dim_y; y++) {
+                for (let x = 0; x < dim_x; x++) {
+                    new_mat2.set(dim_y - 1 - y, x, m.get(x, y));
+                }
+            }
+            m = new_mat2;
+        }
+        return m;
+    }
+    contains(value) {
+        return this.data.indexOf(value) !== -1;
+    }
+    copy() {
+        return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);
+    }
+}
+exports.Matrix2 = Matrix2;
+function counter_add(counter, key, inc) {
+    let cur_val = 0;
+    if (counter.has(key)) {
+        cur_val = counter.get(key);
+    }
+    return counter.set(key, cur_val + inc);
+}
+exports.counter_add = counter_add;
+function counter_get(counter, key) {
+    let cur_val = 0;
+    if (counter.has(key)) {
+        cur_val = counter.get(key);
+    }
+    return cur_val;
+}
+exports.counter_get = counter_get;
+function counter_update(counter1, counter2) {
+    counter2.forEach(function (v, k) {
+        counter_add(counter1, k, v);
+    });
+    return counter1;
+}
+exports.counter_update = counter_update;
+function counter_order(counter, include_zero = false) {
+    let result = Array.from(counter.entries()).sort((a, b) => a[1] - b[1]);
+    if (!include_zero) {
+        result = result.filter(([t, i]) => i > 0);
+    }
+    return result.map(([t, i]) => t);
+}
+exports.counter_order = counter_order;
+//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
+//export type MergeAnnotations<T, > = 
+function is_annotated(x) {
+    if (x === undefined) {
+        return false;
+    }
+    return x.annotated !== undefined;
+}
+exports.is_annotated = is_annotated;
+function annotate(x, annotation) {
+    if (annotation === undefined) {
+        annotation = {};
+    }
+    if (is_annotated(x)) {
+        Object.assign(x.annotation, annotation);
+        return x;
+    } else {
+        let result = { value: x, annotated: true, annotation };
+        return result;
+    }
+}
+exports.annotate = annotate;
+function unwrap(x) {
+    if (is_annotated(x)) {
+        return x.value;
+    } else {
+        return x;
+    }
+}
+exports.unwrap = unwrap;
+function with_annotatable(f, default_value) {
+    return x => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
+}
+exports.with_annotatable = with_annotatable;
+function get_annotation(x, default_value) {
+    if (is_annotated(x)) {
+        if (default_value !== undefined) {
+            return Object.assign({}, default_value, x.annotation);
+        } else {
+            return x.annotation;
+        }
+    } else {
+        return default_value;
+    }
+}
+exports.get_annotation = get_annotation;
+function set_enabled(x, enabled = true) {
+    return annotate(x, { enabled });
+}
+exports.set_enabled = set_enabled;
+function with_disablable(f) {
+    return with_annotatable(f, { enabled: true });
+}
+exports.with_disablable = with_disablable;
+function is_enabled(x) {
+    let result = get_annotation(x);
+    if (result === undefined) {
+        return true;
+    }
+    return result.enabled;
+}
+exports.is_enabled = is_enabled;
+class StringValidator {
+    static validate(s) {
+        return new this().is_valid(s);
+    }
+    is_valid(s) {
+        return false;
+    }
+}
+exports.StringValidator = StringValidator;
+// Holy dang this is cool:
+// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
+//
+// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
+// as a constant, and get string literal typechecking elsewhere in the code.
+function infer_literal_array(...arr) {
+    return arr;
+}
+exports.infer_literal_array = infer_literal_array;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(1);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -389,307 +699,6 @@ function consume_declarative_dsl(parser, options) {
 exports.consume_declarative_dsl = consume_declarative_dsl;
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-class FuckDict {
-    constructor(a) {
-        this.size = 0;
-        this.keys_map = new Map();
-        this.values_map = new Map();
-        if (a !== undefined) {
-            for (let [k, v] of a) {
-                this.set(k, v);
-            }
-        }
-    }
-    set(k, v) {
-        let s = k.toString();
-        this.keys_map.set(s, k);
-        this.values_map.set(s, v);
-        this.size = this.keys_map.size;
-        return this;
-    }
-    get(k, default_value) {
-        if (!this.has_key(k) && default_value !== undefined) {
-            this.set(k, default_value);
-            return default_value;
-        }
-        let s = k.toString();
-        return this.values_map.get(s);
-    }
-    update(a) {
-        let updated = this.copy();
-        for (let [k, v] of a) {
-            updated.set(k, v);
-        }
-        return updated;
-    }
-    has_key(k) {
-        return this.keys_map.has(k.toString());
-    }
-    keys_array() {
-        return Array.from(this.keys_map.values());
-    }
-    values_array() {
-        return Array.from(this.values_map.values());
-    }
-    entries_array() {
-        let result = [];
-        for (let [s, k] of this.keys_map.entries()) {
-            result.push([k, this.values_map.get(s)]);
-        }
-        return result;
-    }
-    keys_equal(other) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)) {
-                return false;
-            }
-        }
-        for (let elem of other.keys_array()) {
-            if (!this.has_key(elem)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    keys_intersect(other) {
-        let result = [];
-        for (let k of this.keys_array()) {
-            if (other.has_key(k)) {
-                result.push(k);
-            }
-        }
-        return result;
-    }
-    keys_subset(other) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    toString() {
-        let entry_strings = this.entries_array().map(x => x.toString()).sort();
-        return `FuckDict<${entry_strings.join(',')}>`;
-    }
-    copy() {
-        return new FuckDict(this.entries_array());
-    }
-}
-exports.FuckDict = FuckDict;
-function chain_object(src) {
-    return new Proxy(src, {
-        get: function (target, key) {
-            if (target[key] === undefined) {
-                target[key] = {};
-            }
-            let v = target[key];
-            if (typeof v === 'object' && !(v instanceof Array)) {
-                return chain_object(v);
-            } else {
-                return v;
-            }
-        }
-    });
-}
-exports.chain_object = chain_object;
-function chain_update(target, source, replace_keys = [], inplace = false) {
-    let updated;
-    if (inplace) {
-        updated = target || {};
-    } else {
-        updated = Object.assign({}, target);
-    }
-    for (let [n, v] of Object.entries(source)) {
-        if (!replace_keys.includes(n) && typeof v === 'object' && !(v instanceof Array)) {
-            updated[n] = chain_update(updated[n], v, replace_keys, inplace);
-        } else {
-            updated[n] = v;
-        }
-    }
-    return updated;
-}
-exports.chain_update = chain_update;
-function arrays_fuck_equal(ar1, ar2) {
-    if (ar1.length !== ar2.length) {
-        return false;
-    }
-    for (let i = 0; i < ar1.length; i++) {
-        if (ar1[i].toString() !== ar2[i].toString()) {
-            return false;
-        }
-    }
-    return true;
-}
-exports.arrays_fuck_equal = arrays_fuck_equal;
-function array_fuck_contains(ar, elt) {
-    return ar.some(x => x.toString() === elt.toString());
-}
-exports.array_fuck_contains = array_fuck_contains;
-function make_matrix2(data_obj) {
-    let dim_y = data_obj.length;
-    let dim_x = data_obj[0].length;
-    let data = new Int16Array(data_obj.reduce((x, y) => x.concat(y)));
-    // TODO complain if the total length is wrong
-    return new Matrix2(data, dim_x, dim_y);
-}
-exports.make_matrix2 = make_matrix2;
-function zeros(dim_x, dim_y) {
-    return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);
-}
-exports.zeros = zeros;
-class Matrix2 {
-    constructor(data, dim_x, dim_y) {
-        this.data = data;
-        this.dim_x = dim_x;
-        this.dim_y = dim_y;
-    }
-    get(x, y) {
-        return this.data[y * this.dim_x + x];
-    }
-    set(x, y, value) {
-        this.data[y * this.dim_x + x] = value;
-    }
-    rotate(degrees) {
-        //validate input better
-        if (degrees == 360 || degrees == 0) {
-            return this;
-        }
-        const n_rotations = degrees / 90;
-        let m = this;
-        const dim_x = this.dim_x;
-        const dim_y = this.dim_y;
-        for (let i = 0; i < n_rotations; i++) {
-            let new_data = new Int16Array(dim_x * dim_y);
-            let new_mat2 = new Matrix2(new_data, dim_y, dim_x);
-            for (let y = 0; y < dim_y; y++) {
-                for (let x = 0; x < dim_x; x++) {
-                    new_mat2.set(dim_y - 1 - y, x, m.get(x, y));
-                }
-            }
-            m = new_mat2;
-        }
-        return m;
-    }
-    contains(value) {
-        return this.data.indexOf(value) !== -1;
-    }
-    copy() {
-        return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);
-    }
-}
-exports.Matrix2 = Matrix2;
-function counter_add(counter, key, inc) {
-    let cur_val = 0;
-    if (counter.has(key)) {
-        cur_val = counter.get(key);
-    }
-    return counter.set(key, cur_val + inc);
-}
-exports.counter_add = counter_add;
-function counter_get(counter, key) {
-    let cur_val = 0;
-    if (counter.has(key)) {
-        cur_val = counter.get(key);
-    }
-    return cur_val;
-}
-exports.counter_get = counter_get;
-function counter_update(counter1, counter2) {
-    counter2.forEach(function (v, k) {
-        counter_add(counter1, k, v);
-    });
-    return counter1;
-}
-exports.counter_update = counter_update;
-function counter_order(counter, include_zero = false) {
-    let result = Array.from(counter.entries()).sort((a, b) => a[1] - b[1]);
-    if (!include_zero) {
-        result = result.filter(([t, i]) => i > 0);
-    }
-    return result.map(([t, i]) => t);
-}
-exports.counter_order = counter_order;
-//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
-//export type MergeAnnotations<T, > = 
-function is_annotated(x) {
-    if (x === undefined) {
-        return false;
-    }
-    return x.annotated !== undefined;
-}
-exports.is_annotated = is_annotated;
-function annotate(x, annotation) {
-    if (annotation === undefined) {
-        annotation = {};
-    }
-    if (is_annotated(x)) {
-        Object.assign(x.annotation, annotation);
-        return x;
-    } else {
-        let result = { value: x, annotated: true, annotation };
-        return result;
-    }
-}
-exports.annotate = annotate;
-function unwrap(x) {
-    if (is_annotated(x)) {
-        return x.value;
-    } else {
-        return x;
-    }
-}
-exports.unwrap = unwrap;
-function with_annotatable(f, default_value) {
-    return x => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
-}
-exports.with_annotatable = with_annotatable;
-function get_annotation(x, default_value) {
-    if (is_annotated(x)) {
-        if (default_value !== undefined) {
-            return Object.assign({}, default_value, x.annotation);
-        } else {
-            return x.annotation;
-        }
-    } else {
-        return default_value;
-    }
-}
-exports.get_annotation = get_annotation;
-function set_enabled(x, enabled = true) {
-    return annotate(x, { enabled });
-}
-exports.set_enabled = set_enabled;
-function with_disablable(f) {
-    return with_annotatable(f, { enabled: true });
-}
-exports.with_disablable = with_disablable;
-function is_enabled(x) {
-    let result = get_annotation(x);
-    if (result === undefined) {
-        return true;
-    }
-    return result.enabled;
-}
-exports.is_enabled = is_enabled;
-class StringValidator {
-    static validate(s) {
-        return new this().is_valid(s);
-    }
-    is_valid(s) {
-        return false;
-    }
-}
-exports.StringValidator = StringValidator;
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -831,8 +840,8 @@ exports.wrap_in_div = wrap_in_div;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(5);
-const parser_1 = __webpack_require__(1);
-const datatypes_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
 const observer_moments_1 = __webpack_require__(17);
 const _00_prologue_1 = __webpack_require__(15);
@@ -1066,8 +1075,8 @@ exports.VenienceWorld = VenienceWorld;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(2);
-const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 class World {
     constructor(state) {
         this.state = state;
@@ -1222,7 +1231,7 @@ module.exports = ReactDOM;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
     switch (det) {
@@ -1296,7 +1305,7 @@ const Text_1 = __webpack_require__(7);
 const TypeaheadList_1 = __webpack_require__(13);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
-const parser_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -1698,7 +1707,7 @@ exports.Prompt = Prompt;
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1810,8 +1819,8 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(2);
-const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 let prologue_oms = () => [{
     id: 'bed, sleeping 1',
     enter_message: '',
@@ -2214,8 +2223,8 @@ exports.default = {
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(2);
-const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 let ch1_oms = () => {
     function is_considering(a) {
         return typeof a === 'object' && a['considering a fragment'] !== undefined;
@@ -2226,9 +2235,11 @@ let ch1_oms = () => {
     const om_id_2_contention = {
         'tower, peak': 'tangle, 2',
         'woods, tangle': 'tangle, 1',
-        'woods, clearing 3': 'tangle, 3'
+        'woods, clearing': 'tangle, 3'
+        // 'woods, clearing 2': 'tangle, 3',
+        // 'woods, clearing 3': 'tangle, 3'
     };
-    let tangle_consumer = venience_world_1.wrap_handler(function* (parser) {
+    let make_tangle_consumer = (begin_enabled = true) => venience_world_1.wrap_handler(function* (parser) {
         if (this.state.has_understood[om_id_2_contention[this.current_om()]]) {
             yield parser.invalidate();
         }
@@ -2239,9 +2250,25 @@ let ch1_oms = () => {
             }
             yield parser.consume_option([datatypes_1.annotate(['begin'], {
                 display: parser_1.DisplayEltType.filler,
-                enabled: this.state.has_regarded['tangle, 3']
+                enabled: begin_enabled
             })]);
             yield parser.consume_exact(['interpretation']);
+            // Begin message
+            // Depending on
+            // How many times you have begun an interpretation?
+            let message;
+            if (!this.state.has_understood['tangle, 1']) {
+                message = text_tools_1.wrap_in_div(`
+                You have all three fragments.
+                <br/><br/>
+                Considered together, their words rouse a sense of wonder in you.
+                <br/><br/>
+                You are determined to understand them.`);
+            } else if (!this.state.has_understood['tangle, 2']) {
+                message = text_tools_1.wrap_in_div(`What did Katya mean?`);
+            } else {
+                message = text_tools_1.wrap_in_div(`The words beckon you.`);
+            }
             return {
                 world: this.update({
                     om_state: {
@@ -2252,8 +2279,7 @@ let ch1_oms = () => {
                         }
                     }
                 }, ['prev_interp_action']),
-                message: text_tools_1.wrap_in_div(`
-                You're upstairs, alright.`)
+                message
             };
         });
         let end_consumer = venience_world_1.wrap_handler(function* (parser) {
@@ -2274,11 +2300,45 @@ let ch1_oms = () => {
             let message;
             // check if they successfully reified the correct contention
             if (is_reifying(prev_interp_action) && prev_interp_action.correctly) {
+                let understood = om_id_2_contention[this.current_om()];
                 world_update.has_understood = {
-                    [om_id_2_contention[this.current_om()]]: true
+                    [understood]: true
                 };
-                message = `
-                You are beginning to understand, my dear.`;
+                // TODO: different messages depending on:
+                // Where you are
+                // Which step of the interpretation you're up to
+                if (understood === 'tangle, 1') {
+                    message = `
+                    <div class="interp"><i>
+                    "You are beginning to understand, my dear.
+                    <br/><br/>
+                    Keep going."
+                    </i></div>`;
+                } else if (understood === 'tangle, 2') {
+                    message = `
+                    <div class="interp"><i>
+                    "Indeed.
+                    <br/><br/>
+                    Don't stop now. Follow the thread to its end."
+                    </i></div>`;
+                } else {
+                    message = `
+                    You feel, once again, as though the world around you has changed,
+                    <br/><br/>
+                    rendered in a new light.
+                    <br/><br/>
+                    Your understanding encompasses more than the space around you, the trees, your body.
+                    <br/><br/>
+                    It is further comprised by your path through that space,
+                    <br/><br/>
+                    the way in which you navigate it over time,
+                    <br/><br/>
+                    the way your feelings change to reflect the circumstances.
+                    <br/><br/>
+                    <div class="interp"><i>
+                    "Well done!"
+                    </i></div>`;
+                }
             } else {
                 message = `
                 There must be more to understand.`;
@@ -2336,12 +2396,13 @@ let ch1_oms = () => {
             }
             yield parser.consume_exact(['reify']);
             yield parser.consume_filler(['the']);
+            const contentions = datatypes_1.infer_literal_array('tangle, 1', 'tangle, 2', 'tangle, 3');
             let contention_2_option = {
                 'tangle, 1': ['tangle'],
                 'tangle, 2': ['outside', 'vantage'],
                 'tangle, 3': ['dance']
             };
-            yield parser.consume_option(['tangle, 1', 'tangle, 2', 'tangle, 3'].map(c => datatypes_1.set_enabled(contention_2_option[c], c === prev_interp_action['considering a fragment'])));
+            let choice = yield parser.consume_option(contentions.map(c => datatypes_1.set_enabled(contention_2_option[c], c === prev_interp_action['considering a fragment'])));
             yield parser.done();
             let message;
             let correctly = prev_interp_action['considering a fragment'] === om_id_2_contention[this.current_om()];
@@ -2353,8 +2414,44 @@ let ch1_oms = () => {
             if (correctly) {
                 // all the work gets done in the interpret history bit
             } else {
-                message = text_tools_1.wrap_in_div(`
-                Wrong answer.`);
+                // TODO: different messages depending on
+                // Where you are
+                // Which thing you tried to reify
+                if (prev_interp_action['considering a fragment'] !== om_id_2_contention[this.current_om()]) {
+                    message = text_tools_1.wrap_in_div(`
+                    You struggle to connect "the ${choice}" to your present environment and circumstance.`);
+                } else {
+                    if (prev_interp_action['considering a fragment'] === 'tangle, 2') {
+                        message = text_tools_1.wrap_in_div(`
+                        You think the viewing tower might correspond to "the ${choice}".
+                        <br/><br/>
+                        However, the first fragment mentions a "tangle", which you still don't entirely understand.
+                        <br/><br/>
+                        Until you do, it will be hard to say what this ${choice} helps to elucidate.`);
+                    } else if (prev_interp_action['considering a fragment'] === 'tangle, 3') {
+                        // If they have visited both the tangle and viewing tower
+                        let must_have_visited = ['woods, tangle', 'tower, peak'];
+                        if (must_have_visited.every(x => this.state.experiences.includes(x))) {
+                            let incomplete_msg_parts = [];
+                            if (!this.state.has_understood['tangle, 1']) {
+                                incomplete_msg_parts.push(`the first fragment's "tangle"`);
+                            }
+                            if (!this.state.has_understood['tangle, 2']) {
+                                incomplete_msg_parts.push(`the second fragment's "outside vantage"`);
+                            }
+                            let incomplete_msg = incomplete_msg_parts.join(' or ');
+                            message = text_tools_1.wrap_in_div(`
+                            The idea of "the ${choice}" is beginning to feel familiar, with all your motion in and out of the twisting woods, up and down the viewing tower.
+                            <br/><br/>
+                            But you still don't entirely understand ${incomplete_msg}.
+                            <br/><br/>
+                            Until you do, it will be hard to say why this ${choice} is worth returning to.`);
+                        } else {
+                            message = text_tools_1.wrap_in_div(`
+                            You struggle to connect "the ${choice}" to your present environment and circumstance.`);
+                        }
+                    }
+                }
             }
             return {
                 world: this.update({
@@ -2769,7 +2866,7 @@ let ch1_oms = () => {
         }),
         dest_oms: ['woods, crossing the boundary 3', 'woods, clearing']
     }, {
-        id: ['woods, clearing', 'woods, clearing 2', 'woods, clearing 3'],
+        id: 'woods, clearing',
         enter_message: `
             You arrive at a small clearing, surrounded by the parchment-white of birch.
             <br/><br/>
@@ -2784,14 +2881,13 @@ let ch1_oms = () => {
         short_enter_message: `
             You arrive back at the clearing.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let { has_taken_note = false } = this.get_current_om_state();
             let take_consumer = venience_world_1.wrap_handler(function* (parser) {
                 if (this.state.has_regarded['tangle, 3']) {
                     yield parser.invalidate();
                 }
                 yield parser.consume_option([datatypes_1.annotate(['take'], {
                     display: parser_1.DisplayEltType.keyword,
-                    enabled: !has_taken_note
+                    enabled: !this.state.has_regarded['tangle, 3']
                 })]);
                 yield parser.consume_filler(['the', 'third', 'fragment']);
                 yield parser.done();
@@ -2812,8 +2908,8 @@ let ch1_oms = () => {
                     display: parser_1.DisplayEltType.keyword
                 })]);
                 let go_tangle_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    yield parser.consume_filler(['in']);
-                    yield parser.consume_filler(['to', 'the']);
+                    yield parser.consume_filler(['inward']);
+                    yield parser.consume_filler(['on', 'the']);
                     yield parser.consume_exact(['narrow', 'path'], parser_1.DisplayEltType.option);
                     yield parser.done();
                     if (this.state.has_understood['tangle, 3']) {
@@ -2823,21 +2919,21 @@ let ch1_oms = () => {
                     }
                 });
                 let go_tower_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    yield parser.consume_filler(['out']);
+                    yield parser.consume_filler(['outward']);
                     yield parser.consume_filler(['to', 'the']);
                     yield parser.consume_exact(['looming', 'structure'], parser_1.DisplayEltType.option);
                     yield parser.done();
-                    if (this.state.has_understood['tangle, 2']) {
-                        return this.transition_to('tower, base 2');
-                    } else {
-                        return this.transition_to('tower, base');
-                    }
+                    // if (this.state.has_understood['tangle, 2']) {
+                    //     return this.transition_to('tower, base 2');
+                    // } else {
+                    return this.transition_to('tower, base');
+                    // }
                 });
                 return parser_1.combine.call(this, parser, [go_tangle_consumer, go_tower_consumer]);
             });
-            return parser_1.combine.call(this, parser, [take_consumer, tangle_consumer, go_consumer]);
+            return parser_1.combine.call(this, parser, [take_consumer, make_tangle_consumer(Boolean(this.state.has_regarded['tangle, 3'])), go_consumer]);
         }),
-        dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'tower, base 2', 'woods, tangle 2'],
+        dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'woods, tangle 2'],
         interpret_history: tangle_interpreter
     }, {
         id: ['woods, tangle'],
@@ -2860,19 +2956,19 @@ let ch1_oms = () => {
                 yield parser.consume_filler(['clearing']);
                 yield parser.done();
                 let dest;
-                if (this.state.has_understood['tangle, 1']) {
-                    dest = 'woods, clearing 2';
-                } else {
-                    dest = 'woods, clearing';
-                }
+                // if (this.state.has_understood['tangle, 1']) {
+                //     dest = 'woods, clearing 2';
+                // } else {
+                dest = 'woods, clearing';
+                // }
                 return this.transition_to(dest);
             });
-            return parser_1.combine.call(this, parser, [tangle_consumer, return_consumer]);
+            return parser_1.combine.call(this, parser, [make_tangle_consumer(), return_consumer]);
         }),
         dest_oms: ['woods, tangle', 'woods, clearing', 'woods, birch parchment 1'],
         interpret_history: tangle_interpreter
     }, {
-        id: ['tower, base', 'tower, base 2'],
+        id: 'tower, base',
         enter_message: `
             As you make your way outward, the trees begin the thin.
             <br/><br/>
@@ -2898,18 +2994,18 @@ let ch1_oms = () => {
                 yield parser.consume_filler(['clearing']);
                 yield parser.done();
                 let dest;
-                if (this.state.has_understood['tangle, 2']) {
-                    dest = 'woods, clearing 3';
-                } else if (this.state.has_understood['tangle, 1']) {
-                    dest = 'woods, clearing 2';
-                } else {
-                    dest = 'woods, clearing';
-                }
+                // if (this.state.has_understood['tangle, 2']) {
+                //     dest = 'woods, clearing 3';
+                // } else if (this.state.has_understood['tangle, 1']) {
+                //     dest = 'woods, clearing 2';
+                // } else {
+                dest = 'woods, clearing';
+                // }
                 return this.transition_to(dest);
             });
             return parser_1.combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
         }),
-        dest_oms: ['tower, peak', 'woods, clearing', 'woods, clearing 2', 'woods, clearing 3']
+        dest_oms: ['tower, peak', 'woods, clearing'] // , 'woods, clearing 2', 'woods, clearing 3'
     }, {
         id: 'tower, peak',
         enter_message: `
@@ -2920,8 +3016,18 @@ let ch1_oms = () => {
             The sky streches further and further across the horizon.
             <br/><br/>
             You set foot on the top platform.`,
+        short_enter_message: `
+            You climb the stairs and arrive at the tower's top platform.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
-            // TODO: survey the horizon?
+            let survey_consumer = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_option([datatypes_1.annotate(['survey'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: !this.state.has_regarded['tangle, tower peak']
+                })]);
+                yield parser.consume_filler(['the', 'horizon']);
+                yield parser.done();
+                return this.regard('tangle, tower peak');
+            });
             let descend_consumer = venience_world_1.wrap_handler(function* (parser) {
                 let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
                 if (prev_interp_action !== 'ending interpretation') {
@@ -2929,16 +3035,16 @@ let ch1_oms = () => {
                 }
                 yield parser.consume_exact(['descend']);
                 yield parser.done();
-                if (this.state.has_understood['tangle, 2']) {
-                    return this.transition_to('tower, base 2');
-                } else {
-                    return this.transition_to('tower, base');
-                }
+                // if (this.state.has_understood['tangle, 2']) {
+                //     return this.transition_to('tower, base 2');
+                // } else {
+                return this.transition_to('tower, base');
+                // }
             });
-            return parser_1.combine.call(this, parser, [tangle_consumer, descend_consumer]);
+            return parser_1.combine.call(this, parser, [make_tangle_consumer(Boolean(this.state.has_regarded['tangle, tower peak'])), survey_consumer, descend_consumer]);
         }),
         interpret_history: tangle_interpreter,
-        dest_oms: ['tower, base', 'tower, base 2', 'tower, peak']
+        dest_oms: ['tower, base', 'tower, peak'] // , 'tower, base 2'
     }, {
         id: 'woods, tangle 2',
         enter_message: `
@@ -3079,7 +3185,17 @@ let ch1_perceptions = () => [{
 }, {
     id: 'tangle, tower peak',
     content: `
-        `
+        The sun dances off the top of the canopy. You see the parchment-white birch trees flow into the brown of oak, and the fuzzy-green of distant pine.
+        <br/><br/>
+        You survey the looping threads of path through the woods.
+        <br /><br />
+        You see the path you took to reach this viewing tower. You see it flow back into the clearing, which in turn flows into the narrow, winding path through the birch thicket.
+        <br/><br/>
+        Further out, you see a river carving the forest in half.
+        </br><br/>
+        And beyond that, the base of a snow-covered mountain.
+        <br/><br/>
+        You see the path back through the oak trees to your alcove, that you are destined to visit again, if you are ever to return to your study and transcribe your experiences.`
 }, {
     id: 'tangle, 1',
     content: `
@@ -3155,26 +3271,22 @@ exports.default = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const parser_1 = __webpack_require__(1);
-// Holy dang this is cool:
-// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
-//
-// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
-// as a constant, and get string literal typechecking elsewhere in the code.
-function infer_literal_array(...arr) {
-    return arr;
-}
-const ObserverMomentIDs = infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
+const ObserverMomentIDs = datatypes_1.infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
 //ch1
-'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, clearing', 'woods, clearing 2', // pseudo copies to avoid loop erasure
-'woods, clearing 3', // because the impl is currently a bit of a hack :(
-'woods, tangle', 'woods, tangle 2', 'tower, base', 'tower, base 2', 'tower, peak', 'woods, birch parchment 1', 'woods, birch parchment 2', 'reading the story of charlotte');
-const PerceptionIDs = infer_literal_array(
+'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, clearing',
+// 'woods, clearing 2', // pseudo copies to avoid loop erasure
+// 'woods, clearing 3', // because the impl is currently a bit of a hack :(
+'woods, tangle', 'woods, tangle 2', 'tower, base',
+// 'tower, base 2',
+'tower, peak', 'woods, birch parchment 1', 'woods, birch parchment 2', 'reading the story of charlotte');
+const PerceptionIDs = datatypes_1.infer_literal_array(
 // Prologue
 'alcove, general', 'self, 1', 'alcove, envelope',
 // ch1
 'forest, general', 'self, 2', 'note fragment', 'tangle, tower base', 'tangle, tower peak', 'tangle, 1', 'tangle, 2', 'tangle, 3', 'forest, parchment trees');
-const ContentionIDs = infer_literal_array(
+const ContentionIDs = datatypes_1.infer_literal_array(
 // ch1
 'tangle, 1', 'tangle, 2', 'tangle, 3');
 function are_transitions_declarative(t) {

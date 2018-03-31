@@ -19,6 +19,7 @@ import {
 
 import {
     tokenize,
+    untokenize,
     wrap_in_div
 } from '../../text_tools';
 
@@ -26,7 +27,9 @@ import {
     set_enabled,
     is_enabled,
     annotate,
-    Annotatable
+    Annotatable,
+    FuckDict,
+    infer_literal_array
 } from '../../datatypes';
 
 import {
@@ -68,10 +71,12 @@ let ch1_oms: () => ObserverMoment[] = (() => {
     const om_id_2_contention: {[K in ObserverMomentID]?: ('tangle, 1' | 'tangle, 2' | 'tangle, 3')} = {
         'tower, peak': 'tangle, 2',
         'woods, tangle': 'tangle, 1',
-        'woods, clearing 3': 'tangle, 3'
+        'woods, clearing': 'tangle, 3'
+        // 'woods, clearing 2': 'tangle, 3',
+        // 'woods, clearing 3': 'tangle, 3'
     };
 
-    let tangle_consumer = wrap_handler(function*(parser: CommandParser) {
+    let make_tangle_consumer = (begin_enabled=true) => wrap_handler(function*(parser: CommandParser) {
         if (this.state.has_understood[om_id_2_contention[this.current_om()]]) {
             yield parser.invalidate();
         }
@@ -86,14 +91,30 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             if (prev_interp_action !== 'ending interpretation') {
                 yield parser.invalidate();
             }
-
             yield parser.consume_option([
                 annotate(['begin'], {
                     display: DisplayEltType.filler,
-                    enabled: this.state.has_regarded['tangle, 3']
+                    enabled: begin_enabled
                 })]);
             yield parser.consume_exact(['interpretation']);
 
+            // Begin message
+
+            // Depending on
+            // How many times you have begun an interpretation?
+            let message: HTMLElement;
+            if (!this.state.has_understood['tangle, 1']) {
+                message = wrap_in_div(`
+                You have all three fragments.
+                <br/><br/>
+                Considered together, their words rouse a sense of wonder in you.
+                <br/><br/>
+                You are determined to understand them.`);
+            } else if (!this.state.has_understood['tangle, 2']) {
+                message = wrap_in_div(`What did Katya mean?`);
+            } else {                
+                message = wrap_in_div(`The words beckon you.`);
+            }
             return {
                 world: this.update({
                     om_state: {
@@ -104,8 +125,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         }
                     }
                 }, ['prev_interp_action']),
-                message: wrap_in_div(`
-                You're upstairs, alright.`)
+                message
             }
         
         });
@@ -132,12 +152,46 @@ let ch1_oms: () => ObserverMoment[] = (() => {
 
             // check if they successfully reified the correct contention
             if (is_reifying(prev_interp_action) && prev_interp_action.correctly) {
+                let understood = om_id_2_contention[this.current_om()];
                 world_update.has_understood = {
-                    [om_id_2_contention[this.current_om()]]: true
+                    [understood]: true
                 };
 
-                message = `
-                You are beginning to understand, my dear.`
+                // TODO: different messages depending on:
+                // Where you are
+                // Which step of the interpretation you're up to
+                if (understood === 'tangle, 1') {
+                    message = `
+                    <div class="interp"><i>
+                    "You are beginning to understand, my dear.
+                    <br/><br/>
+                    Keep going."
+                    </i></div>`;
+                } else if (understood === 'tangle, 2') {
+                    message = `
+                    <div class="interp"><i>
+                    "Indeed.
+                    <br/><br/>
+                    Don't stop now. Follow the thread to its end."
+                    </i></div>`;
+                } else {
+                    message = `
+                    You feel, once again, as though the world around you has changed,
+                    <br/><br/>
+                    rendered in a new light.
+                    <br/><br/>
+                    Your understanding encompasses more than the space around you, the trees, your body.
+                    <br/><br/>
+                    It is further comprised by your path through that space,
+                    <br/><br/>
+                    the way in which you navigate it over time,
+                    <br/><br/>
+                    the way your feelings change to reflect the circumstances.
+                    <br/><br/>
+                    <div class="interp"><i>
+                    "Well done!"
+                    </i></div>`;
+                }
             } else {
                 message = `
                 There must be more to understand.`;
@@ -211,13 +265,21 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             yield parser.consume_exact(['reify']);
             yield parser.consume_filler(['the']);
             
-            let contention_2_option = {
+            const contentions = infer_literal_array(
+                'tangle, 1',
+                'tangle, 2',
+                'tangle, 3'
+            )
+
+            type ContentionID = typeof contentions[number];
+
+            let contention_2_option: {[K in ContentionID]: string[]} = {
                 'tangle, 1': ['tangle'],
                 'tangle, 2': ['outside', 'vantage'],
                 'tangle, 3': ['dance']
             };
 
-            yield parser.consume_option(['tangle, 1', 'tangle, 2', 'tangle, 3'].map(c =>
+            let choice = yield parser.consume_option(contentions.map(c =>
                 set_enabled(contention_2_option[c], c === prev_interp_action['considering a fragment'])));
 
             yield parser.done();
@@ -235,8 +297,46 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             if (correctly) {
                 // all the work gets done in the interpret history bit
             } else {
-                message = wrap_in_div(`
-                Wrong answer.`);
+                // TODO: different messages depending on
+                // Where you are
+                // Which thing you tried to reify
+                if (prev_interp_action['considering a fragment'] !== om_id_2_contention[this.current_om()]) {
+                    message = wrap_in_div(`
+                    You struggle to connect "the ${choice}" to your present environment and circumstance.`);
+                } else {
+                    if (prev_interp_action['considering a fragment'] === 'tangle, 2') {
+                        message = wrap_in_div(`
+                        You think the viewing tower might correspond to "the ${choice}".
+                        <br/><br/>
+                        However, the first fragment mentions a "tangle", which you still don't entirely understand.
+                        <br/><br/>
+                        Until you do, it will be hard to say what this ${choice} helps to elucidate.`);
+                    } else if (prev_interp_action['considering a fragment'] === 'tangle, 3') {
+                        // If they have visited both the tangle and viewing tower
+                        let must_have_visited: ObserverMomentID[] = ['woods, tangle', 'tower, peak'];
+                        if (must_have_visited.every(x => this.state.experiences.includes(x))) {
+                            let incomplete_msg_parts: string[] = [];
+                            if (!this.state.has_understood['tangle, 1']) {
+                                incomplete_msg_parts.push(`the first fragment's "tangle"`)
+                            }
+                            if (!this.state.has_understood['tangle, 2']) {
+                                incomplete_msg_parts.push(`the second fragment's "outside vantage"`);
+                            }
+
+                            let incomplete_msg = incomplete_msg_parts.join(' or ');
+
+                            message = wrap_in_div(`
+                            The idea of "the ${choice}" is beginning to feel familiar, with all your motion in and out of the twisting woods, up and down the viewing tower.
+                            <br/><br/>
+                            But you still don't entirely understand ${incomplete_msg}.
+                            <br/><br/>
+                            Until you do, it will be hard to say why this ${choice} is worth returning to.`);
+                        } else {
+                            message = wrap_in_div(`
+                            You struggle to connect "the ${choice}" to your present environment and circumstance.`);
+                        }
+                    }
+                }
             }
 
             return {
@@ -772,7 +872,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             dest_oms: ['woods, crossing the boundary 3', 'woods, clearing']
         },
         {
-            id: ['woods, clearing', 'woods, clearing 2', 'woods, clearing 3'],
+            id: 'woods, clearing', //['woods, clearing', 'woods, clearing 2', 'woods, clearing 3'],
             enter_message: `
             You arrive at a small clearing, surrounded by the parchment-white of birch.
             <br/><br/>
@@ -787,10 +887,6 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             short_enter_message: `
             You arrive back at the clearing.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
-                let {
-                    has_taken_note = false
-                } = this.get_current_om_state();
-
                 let take_consumer = wrap_handler(function*(parser: CommandParser) {
                     if (this.state.has_regarded['tangle, 3']) {
                         yield parser.invalidate();
@@ -799,7 +895,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     yield parser.consume_option([
                         annotate(['take'], {
                             display: DisplayEltType.keyword,
-                            enabled: !has_taken_note
+                            enabled: !this.state.has_regarded['tangle, 3']
                         })
                     ]);
                     yield parser.consume_filler(['the', 'third', 'fragment']);
@@ -827,8 +923,8 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         })]);
 
                     let go_tangle_consumer = wrap_handler(function*(parser: CommandParser) {
-                        yield parser.consume_filler(['in']);
-                        yield parser.consume_filler(['to', 'the']);
+                        yield parser.consume_filler(['inward']);
+                        yield parser.consume_filler(['on', 'the']);
                         yield parser.consume_exact(['narrow', 'path'], DisplayEltType.option);
                         yield parser.done();
 
@@ -840,16 +936,16 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     });
                     
                     let go_tower_consumer = wrap_handler(function*(parser: CommandParser) {
-                        yield parser.consume_filler(['out']);
+                        yield parser.consume_filler(['outward']);
                         yield parser.consume_filler(['to', 'the']);
                         yield parser.consume_exact(['looming', 'structure'], DisplayEltType.option);
                         yield parser.done();
 
-                        if (this.state.has_understood['tangle, 2']) {
-                            return this.transition_to('tower, base 2');
-                        } else {
+                        // if (this.state.has_understood['tangle, 2']) {
+                        //     return this.transition_to('tower, base 2');
+                        // } else {
                             return this.transition_to('tower, base');
-                        }
+                        // }
                     });
 
                     return combine.call(this, parser, [go_tangle_consumer, go_tower_consumer]);
@@ -857,11 +953,11 @@ let ch1_oms: () => ObserverMoment[] = (() => {
 
                 return combine.call(this, parser, [
                     take_consumer,
-                    tangle_consumer,
+                    make_tangle_consumer(Boolean(this.state.has_regarded['tangle, 3'])),
                     go_consumer
                 ]);
             }),
-            dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'tower, base 2', 'woods, tangle 2'],
+            dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'woods, tangle 2'], //'tower, base 2',
             interpret_history: tangle_interpreter
         },
         {
@@ -889,23 +985,23 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     yield parser.done();
 
                     let dest: ObserverMomentID;
-                    if (this.state.has_understood['tangle, 1']) {
-                        dest = 'woods, clearing 2';
-                    } else {
+                    // if (this.state.has_understood['tangle, 1']) {
+                    //     dest = 'woods, clearing 2';
+                    // } else {
                         dest = 'woods, clearing';
-                    }
+                    // }
 
                     return this.transition_to(dest);
                 });
 
-                return combine.call(this, parser, [tangle_consumer, return_consumer]);
+                return combine.call(this, parser, [make_tangle_consumer(), return_consumer]);
 
             }),
             dest_oms: ['woods, tangle', 'woods, clearing', 'woods, birch parchment 1'],
             interpret_history: tangle_interpreter
         },
         {
-            id: ['tower, base', 'tower, base 2'],
+            id: 'tower, base', // ['tower, base', 'tower, base 2'],
             enter_message: `
             As you make your way outward, the trees begin the thin.
             <br/><br/>
@@ -937,20 +1033,20 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     yield parser.done();
 
                     let dest: ObserverMomentID;
-                    if (this.state.has_understood['tangle, 2']) {
-                        dest = 'woods, clearing 3';
-                    } else if (this.state.has_understood['tangle, 1']) {
-                        dest = 'woods, clearing 2';
-                    } else {
+                    // if (this.state.has_understood['tangle, 2']) {
+                    //     dest = 'woods, clearing 3';
+                    // } else if (this.state.has_understood['tangle, 1']) {
+                    //     dest = 'woods, clearing 2';
+                    // } else {
                         dest = 'woods, clearing';
-                    }
+                    // }
 
                     return this.transition_to(dest);
                 });
 
                 return combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
             }),
-            dest_oms: ['tower, peak', 'woods, clearing', 'woods, clearing 2', 'woods, clearing 3']
+            dest_oms: ['tower, peak', 'woods, clearing'] // , 'woods, clearing 2', 'woods, clearing 3'
         },
         {
             id: 'tower, peak',
@@ -962,8 +1058,21 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             The sky streches further and further across the horizon.
             <br/><br/>
             You set foot on the top platform.`,
+            short_enter_message: `
+            You climb the stairs and arrive at the tower's top platform.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
-                // TODO: survey the horizon?
+                let survey_consumer = wrap_handler(function*(parser: CommandParser) {
+                    yield parser.consume_option([
+                        annotate(['survey'], {
+                            display: DisplayEltType.keyword,
+                            enabled: !this.state.has_regarded['tangle, tower peak']
+                        })]);
+
+                    yield parser.consume_filler(['the', 'horizon']);
+                    yield parser.done();
+
+                    return this.regard('tangle, tower peak');
+                });
 
                 let descend_consumer = wrap_handler(function*(parser: CommandParser) {
                     let {prev_interp_action = 'ending interpretation'} : InterpState = this.get_current_om_state();
@@ -975,20 +1084,21 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     yield parser.consume_exact(['descend']);
                     yield parser.done();
 
-                    if (this.state.has_understood['tangle, 2']) {
-                        return this.transition_to('tower, base 2');
-                    } else {
+                    // if (this.state.has_understood['tangle, 2']) {
+                    //     return this.transition_to('tower, base 2');
+                    // } else {
                         return this.transition_to('tower, base');
-                    }
+                    // }
                 });
                 
                 return combine.call(this, parser, [
-                    tangle_consumer,
+                    make_tangle_consumer(Boolean(this.state.has_regarded['tangle, tower peak'])),
+                    survey_consumer,
                     descend_consumer
                 ]);       
             }),
             interpret_history: tangle_interpreter,
-            dest_oms: ['tower, base', 'tower, base 2', 'tower, peak']
+            dest_oms: ['tower, base', 'tower, peak'] // , 'tower, base 2'
         },
         {
             id: 'woods, tangle 2',
@@ -1169,7 +1279,17 @@ let ch1_perceptions: () => Perception[] = () => [
     {
         id: 'tangle, tower peak',
         content: `
-        `
+        The sun dances off the top of the canopy. You see the parchment-white birch trees flow into the brown of oak, and the fuzzy-green of distant pine.
+        <br/><br/>
+        You survey the looping threads of path through the woods.
+        <br /><br />
+        You see the path you took to reach this viewing tower. You see it flow back into the clearing, which in turn flows into the narrow, winding path through the birch thicket.
+        <br/><br/>
+        Further out, you see a river carving the forest in half.
+        </br><br/>
+        And beyond that, the base of a snow-covered mountain.
+        <br/><br/>
+        You see the path back through the oak trees to your alcove, that you are destined to visit again, if you are ever to return to your study and transcribe your experiences.`
     },
     {
         id: 'tangle, 1',

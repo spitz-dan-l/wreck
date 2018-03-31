@@ -5,7 +5,8 @@ import {
     ValidString,
     set_enabled,
     is_enabled,
-    chain_update
+    chain_update,
+    infer_literal_array
 } from '../datatypes';
 
 import {
@@ -32,15 +33,6 @@ import {
     tokenize,
     wrap_in_div
 } from '../text_tools';
-
-// Holy dang this is cool:
-// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
-//
-// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
-// as a constant, and get string literal typechecking elsewhere in the code.
-function infer_literal_array<T extends string>(...arr: T[]): T[] {
-  return arr;
-}
 
 const ObserverMomentIDs = infer_literal_array(
     'bed, sleeping 1',
@@ -95,14 +87,14 @@ const ObserverMomentIDs = infer_literal_array(
     'woods, crossing the boundary 3',
 
     'woods, clearing',
-    'woods, clearing 2', // pseudo copies to avoid loop erasure
-    'woods, clearing 3', // because the impl is currently a bit of a hack :(
+    // 'woods, clearing 2', // pseudo copies to avoid loop erasure
+    // 'woods, clearing 3', // because the impl is currently a bit of a hack :(
 
     'woods, tangle',
     'woods, tangle 2',
     
     'tower, base',
-    'tower, base 2',
+    // 'tower, base 2',
     
     'tower, peak',
 
