@@ -66,7 +66,8 @@ export interface VenienceWorldState {
     history_index?: number,
     om_state?: {[K in ObserverMomentID]?: any},
     has_regarded?: {[K in PerceptionID]?: boolean},
-    has_understood?: {[K in ContentionID]?: boolean}
+    has_understood?: {[K in ContentionID]?: boolean},
+    has_visited?: {[K in ObserverMomentID]?: boolean}
 }
 
 export type VenienceWorldCommandHandler = CommandHandler<VenienceWorldState>;
@@ -96,7 +97,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
         ...chapter_1.perceptions()
     ]);
     
-    constructor({experiences, history_index, om_state, has_regarded, has_understood}: VenienceWorldState) {
+    constructor({experiences, history_index, om_state, has_regarded, has_understood, has_visited}: VenienceWorldState) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
@@ -112,8 +113,11 @@ export class VenienceWorld extends World<VenienceWorldState>{
         if (has_understood === undefined) {
             has_understood = {};
         }
+        if (has_visited === undefined) {
+            has_visited = {};
+        }
         
-        super({experiences, history_index, om_state, has_regarded, has_understood});
+        super({experiences, history_index, om_state, has_regarded, has_understood, has_visited});
     }
 
     current_om(): ObserverMomentID {
@@ -137,7 +141,8 @@ export class VenienceWorld extends World<VenienceWorldState>{
     transition_to(dest: ObserverMomentID, dest_om_state?: any, message?: HTMLElement | false) {
         let update: VenienceWorldState = {
             experiences: [...this.state.experiences, dest],
-            history_index: this.state.history_index + 1
+            history_index: this.state.history_index + 1,
+            has_visited: {[dest]: true}
         };
 
         if (dest_om_state !== undefined) {
@@ -152,7 +157,13 @@ export class VenienceWorld extends World<VenienceWorldState>{
 
         if (message !== false) {
             if (message === undefined) {
-                let msg = VenienceWorld.observer_moments[dest].enter_message;
+                let msg: string;
+                let dest_om = VenienceWorld.observer_moments[dest];
+                if (this.state.has_visited[dest] && dest_om.short_enter_message !== undefined) {
+                    msg = dest_om.short_enter_message;
+                } else {
+                    msg = dest_om.enter_message;
+                }
                 if (msg !== undefined) {
                     result.message = wrap_in_div(msg);
                 }
@@ -310,13 +321,13 @@ export class VenienceWorld extends World<VenienceWorldState>{
         let world_update: VenienceWorldState = {};
 
         // apply loop erasure
-        if (this.state.experiences.length > 0) {
-            let loop_idx = this.state.experiences.indexOf(this.current_om());
-            if (loop_idx !== this.state.experiences.length - 1) {
-                let new_experiences = this.state.experiences.slice().fill(null, loop_idx + 1);
-                world_update.experiences = new_experiences;
-            }
-        }
+        // if (this.state.experiences.length > 0) {
+        //     let loop_idx = this.state.experiences.indexOf(this.current_om());
+        //     if (loop_idx !== this.state.experiences.length - 1) {
+        //         let new_experiences = this.state.experiences.slice().fill(null, loop_idx + 1, this.state.experiences.length - 1);
+        //         world_update.experiences = new_experiences;
+        //     }
+        // }
 
         if (Object.keys(world_update).length > 0){
             result.world = this.update(world_update);
@@ -327,9 +338,10 @@ export class VenienceWorld extends World<VenienceWorldState>{
 
     interpret_history(history_elt: VenienceWorldInterstitialUpdateResult): HistoryInterpretationOp {
         // apply loop erasure mechanic
-        if (this.state.experiences[history_elt.world.state.history_index] === null) {
-            return [{'add': 'forgotten'}];
-        }
+
+        // if (this.state.experiences[history_elt.world.state.history_index] === null) {
+        //     return [{'add': 'forgotten'}];
+        // }
 
         // apply the OM-specific interpretation
         let om = VenienceWorld.observer_moments[this.current_om()];

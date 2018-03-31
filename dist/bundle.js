@@ -841,7 +841,7 @@ exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
 class VenienceWorld extends commands_1.World {
-    constructor({ experiences, history_index, om_state, has_regarded, has_understood }) {
+    constructor({ experiences, history_index, om_state, has_regarded, has_understood, has_visited }) {
         if (experiences === undefined) {
             experiences = ['bed, sleeping 1'];
         }
@@ -857,7 +857,10 @@ class VenienceWorld extends commands_1.World {
         if (has_understood === undefined) {
             has_understood = {};
         }
-        super({ experiences, history_index, om_state, has_regarded, has_understood });
+        if (has_visited === undefined) {
+            has_visited = {};
+        }
+        super({ experiences, history_index, om_state, has_regarded, has_understood, has_visited });
     }
     current_om() {
         for (let i = this.state.experiences.length - 1; i >= 0; i--) {
@@ -877,7 +880,8 @@ class VenienceWorld extends commands_1.World {
     transition_to(dest, dest_om_state, message) {
         let update = {
             experiences: [...this.state.experiences, dest],
-            history_index: this.state.history_index + 1
+            history_index: this.state.history_index + 1,
+            has_visited: { [dest]: true }
         };
         if (dest_om_state !== undefined) {
             update.om_state = {
@@ -889,7 +893,13 @@ class VenienceWorld extends commands_1.World {
         };
         if (message !== false) {
             if (message === undefined) {
-                let msg = VenienceWorld.observer_moments[dest].enter_message;
+                let msg;
+                let dest_om = VenienceWorld.observer_moments[dest];
+                if (this.state.has_visited[dest] && dest_om.short_enter_message !== undefined) {
+                    msg = dest_om.short_enter_message;
+                } else {
+                    msg = dest_om.enter_message;
+                }
                 if (msg !== undefined) {
                     result.message = text_tools_1.wrap_in_div(msg);
                 }
@@ -1016,13 +1026,13 @@ class VenienceWorld extends commands_1.World {
         let result = {};
         let world_update = {};
         // apply loop erasure
-        if (this.state.experiences.length > 0) {
-            let loop_idx = this.state.experiences.indexOf(this.current_om());
-            if (loop_idx !== this.state.experiences.length - 1) {
-                let new_experiences = this.state.experiences.slice().fill(null, loop_idx + 1);
-                world_update.experiences = new_experiences;
-            }
-        }
+        // if (this.state.experiences.length > 0) {
+        //     let loop_idx = this.state.experiences.indexOf(this.current_om());
+        //     if (loop_idx !== this.state.experiences.length - 1) {
+        //         let new_experiences = this.state.experiences.slice().fill(null, loop_idx + 1, this.state.experiences.length - 1);
+        //         world_update.experiences = new_experiences;
+        //     }
+        // }
         if (Object.keys(world_update).length > 0) {
             result.world = this.update(world_update);
         }
@@ -1030,9 +1040,9 @@ class VenienceWorld extends commands_1.World {
     }
     interpret_history(history_elt) {
         // apply loop erasure mechanic
-        if (this.state.experiences[history_elt.world.state.history_index] === null) {
-            return [{ 'add': 'forgotten' }];
-        }
+        // if (this.state.experiences[history_elt.world.state.history_index] === null) {
+        //     return [{'add': 'forgotten'}];
+        // }
         // apply the OM-specific interpretation
         let om = VenienceWorld.observer_moments[this.current_om()];
         if (observer_moments_1.has_interpretations(om)) {
@@ -1566,7 +1576,7 @@ class Preface extends React.Component {
         };
     }
     render() {
-        return React.createElement("div", { className: "preface", ref: d => this.div = d }, React.createElement("h1", { onClick: this.start_game }, React.createElement("a", { href: '#' }, "Start Venience World")), React.createElement("h3", null, "Welcome to Venience World!"), React.createElement("br", null), React.createElement("br", null), React.createElement("section", null, React.createElement("h3", null, "How to play"), "Venience World is an incomplete game that uses a new kind of parser interface.", React.createElement("br", null), React.createElement("br", null), "Use tab, enter, the arrow keys or the mouse to select autocompletions of your commands as you play.", React.createElement("br", null), React.createElement("br", null), "Play time is about 10 to 20 minutes. I hope you enjoy playing!", React.createElement("br", null), React.createElement("br", null), React.createElement("strong", null, "Warning:"), " Currently there is ", React.createElement("i", null, "no way to save or load"), " your game. If you need to take a break, leave Venience World open in a tab. Save/Load will be added in a future release.", React.createElement("br", null), React.createElement("br", null), "To get started now, click the Start Venience World button up top.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Replaying"), "Venience World is designed to make all content accessible in a single playthrough.", React.createElement("br", null), React.createElement("br", null), "This means you will ", React.createElement("i", null, "never be expected"), " to reset the game and repeat yourself in order to explore a missed branch.", React.createElement("br", null), React.createElement("br", null), "Have faith in this as you play through the game. Replaying a game is often worthwhile; in this case, just know it is ", React.createElement("i", null, "not required"), " to get the full experience.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Browser compatibility"), "Venience World has been tested to work on the Chrome and Firefox browsers.", React.createElement("br", null), React.createElement("br", null), "It definitely doesn't work on Safari.", React.createElement("br", null), React.createElement("br", null), "I haven't tested it on IE/Edge, Opera, or others.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Development progress"), "This is a playable demo with a prologue and partial first chapter with no puzzle elements.", React.createElement("br", null), React.createElement("br", null), "The final release will complete the story and contain mild puzzle elements surrounding the interpretation of aphorisms.", React.createElement("br", null), React.createElement("br", null), "Most of what you see will be subject to change for the final release.", React.createElement("br", null), React.createElement("br", null), "I'm not sure when it will be finished.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Contact"), "If you are interested in updates on the game, follow the ", React.createElement("a", { href: "https://twitter.com/VenienceWorld" }, "@VenienceWorld"), " twitter account, or ", React.createElement("a", { href: "mailto:spitz.dan.L+venience@gmail.com" }, "email me"), ".", React.createElement("br", null), React.createElement("br", null), "I would love to hear about your experience playing Venience World!", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Open source"), "Venience World is open source.", React.createElement("br", null), React.createElement("br", null), "The project can be found at ", React.createElement("a", { href: "https://github.com/spitz-dan-l/wreck/" }, "https://github.com/spitz-dan-l/wreck/"), ".", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "The name"), "The name \"Venience World\" is a play on \"", React.createElement("a", { href: "https://plato.stanford.edu/entries/supervenience/" }, "Supervenience"), "\", and the trope wherein games have names of the form \"Super ", React.createElement("i", null, "X"), " World\".", React.createElement("br", null), React.createElement("br", null), "The game is thematically about seeking an understanding about what is going on. Supervenience as a concept is one of the philosophical tools that has been developed for doing that."));
+        return React.createElement("div", { className: "preface", style: { display: 'none' }, ref: d => this.div = d }, React.createElement("h1", { onClick: this.start_game }, React.createElement("a", { href: '#' }, "Start Venience World")), React.createElement("h3", null, "Welcome to Venience World!"), React.createElement("br", null), React.createElement("br", null), React.createElement("section", null, React.createElement("h3", null, "How to play"), "Venience World is an incomplete game that uses a new kind of parser interface.", React.createElement("br", null), React.createElement("br", null), "Use tab, enter, the arrow keys or the mouse to select autocompletions of your commands as you play.", React.createElement("br", null), React.createElement("br", null), "Play time is about 10 to 20 minutes. I hope you enjoy playing!", React.createElement("br", null), React.createElement("br", null), React.createElement("strong", null, "Warning:"), " Currently there is ", React.createElement("i", null, "no way to save or load"), " your game. If you need to take a break, leave Venience World open in a tab. Save/Load will be added in a future release.", React.createElement("br", null), React.createElement("br", null), "To get started now, click the Start Venience World button up top.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Replaying"), "Venience World is designed to make all content accessible in a single playthrough.", React.createElement("br", null), React.createElement("br", null), "This means you will ", React.createElement("i", null, "never be expected"), " to reset the game and repeat yourself in order to explore a missed branch.", React.createElement("br", null), React.createElement("br", null), "Have faith in this as you play through the game. Replaying a game is often worthwhile; in this case, just know it is ", React.createElement("i", null, "not required"), " to get the full experience.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Browser compatibility"), "Venience World has been tested to work on the Chrome and Firefox browsers.", React.createElement("br", null), React.createElement("br", null), "It definitely doesn't work on Safari.", React.createElement("br", null), React.createElement("br", null), "I haven't tested it on IE/Edge, Opera, or others.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Development progress"), "This is a playable demo with a prologue and partial first chapter with no puzzle elements.", React.createElement("br", null), React.createElement("br", null), "The final release will complete the story and contain mild puzzle elements surrounding the interpretation of aphorisms.", React.createElement("br", null), React.createElement("br", null), "Most of what you see will be subject to change for the final release.", React.createElement("br", null), React.createElement("br", null), "I'm not sure when it will be finished.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Contact"), "If you are interested in updates on the game, follow the ", React.createElement("a", { href: "https://twitter.com/VenienceWorld" }, "@VenienceWorld"), " twitter account, or ", React.createElement("a", { href: "mailto:spitz.dan.L+venience@gmail.com" }, "email me"), ".", React.createElement("br", null), React.createElement("br", null), "I would love to hear about your experience playing Venience World!", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Open source"), "Venience World is open source.", React.createElement("br", null), React.createElement("br", null), "The project can be found at ", React.createElement("a", { href: "https://github.com/spitz-dan-l/wreck/" }, "https://github.com/spitz-dan-l/wreck/"), ".", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "The name"), "The name \"Venience World\" is a play on \"", React.createElement("a", { href: "https://plato.stanford.edu/entries/supervenience/" }, "Supervenience"), "\", and the trope wherein games have names of the form \"Super ", React.createElement("i", null, "X"), " World\".", React.createElement("br", null), React.createElement("br", null), "The game is thematically about seeking an understanding about what is going on. Supervenience as a concept is one of the philosophical tools that has been developed for doing that."));
     }
 }
 exports.Preface = Preface;
@@ -1786,8 +1796,8 @@ let start = {};
 //start.experiences = ['alcove, entering the forest']; 
 // start.experiences = ['woods, ending interpretation'];
 // start.experiences = ['bed, sitting up 2'];
-// start.experiences = ['woods, crossing the boundary 2'];
-start.experiences = ['woods, clearing'];
+start.experiences = ['woods, crossing the boundary 2'];
+// start.experiences = ['woods, clearing'];
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld(start));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -2227,8 +2237,11 @@ let ch1_oms = () => {
             if (prev_interp_action !== 'ending interpretation') {
                 yield parser.invalidate();
             }
-            yield parser.consume_filler(['begin']);
-            yield parser.consume_exact(['reification']);
+            yield parser.consume_option([datatypes_1.annotate(['begin'], {
+                display: parser_1.DisplayEltType.filler,
+                enabled: this.state.has_regarded['tangle, 3']
+            })]);
+            yield parser.consume_exact(['interpretation']);
             return {
                 world: this.update({
                     om_state: {
@@ -2248,7 +2261,7 @@ let ch1_oms = () => {
                 yield parser.invalidate();
             }
             yield parser.consume_filler(['end']);
-            yield parser.consume_exact(['reification']);
+            yield parser.consume_exact(['interpretation']);
             yield parser.done();
             let world_update = {
                 om_state: {
@@ -2290,8 +2303,8 @@ let ch1_oms = () => {
             } else if (is_reifying(prev_interp_action)) {
                 prev_contention = prev_interp_action['reifying a fragment'];
             }
-            let choice = yield parser.consume_option([datatypes_1.set_enabled(['first'], !this.state.has_understood['tangle, 1'] && prev_contention !== 'tangle, 1'), datatypes_1.set_enabled(['second'], !this.state.has_understood['tangle, 2'] && prev_contention !== 'tangle, 2'), datatypes_1.set_enabled(['third'], !this.state.has_understood['tangle, 3'] && prev_contention !== 'tangle, 3')]);
-            yield parser.consume_filler(['fragment']);
+            let choice_str = yield parser.consume_option([datatypes_1.set_enabled(['first', 'fragment'], !this.state.has_understood['tangle, 1'] && prev_contention !== 'tangle, 1'), datatypes_1.set_enabled(['second', 'fragment'], !this.state.has_understood['tangle, 2'] && prev_contention !== 'tangle, 2'), datatypes_1.set_enabled(['third', 'fragment'], !this.state.has_understood['tangle, 3'] && prev_contention !== 'tangle, 3')]);
+            let choice = text_tools_1.tokenize(choice_str)[0][0];
             yield parser.done();
             let choice_2_contention = {
                 'first': 'tangle, 1',
@@ -2652,7 +2665,7 @@ let ch1_oms = () => {
             <br/><br/>
             You notice that the brown trunks of oak are peppered with the white of birch here and there.
             <br/><br/>
-            And on the ground, partially covered in leaves, is a slip of parchment paper.`,
+            And on the ground, partially covered in leaves, is a fragment of parchment paper.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
             let { has_taken_note = false } = this.get_current_om_state();
             let fragment_thread = venience_world_1.wrap_handler(function* (parser) {
@@ -2660,7 +2673,7 @@ let ch1_oms = () => {
                     if (this.state.has_regarded['note fragment']) {
                         yield parser.invalidate();
                     }
-                    return this.make_look_consumer([[['at', 'the', 'parchment'], 'note fragment']]).call(this, parser);
+                    return this.make_look_consumer([[['at', 'the', 'fragment'], 'note fragment']]).call(this, parser);
                 });
                 let take_consumer = venience_world_1.wrap_handler(function* (parser) {
                     if (!this.state.has_regarded['note fragment'] || has_taken_note) {
@@ -2670,7 +2683,7 @@ let ch1_oms = () => {
                         display: parser_1.DisplayEltType.keyword,
                         enabled: !has_taken_note
                     })]);
-                    yield parser.consume_filler(['the', 'fragment']);
+                    yield parser.consume_filler(['it']);
                     yield parser.done();
                     return {
                         message: text_tools_1.wrap_in_div(`
@@ -2680,7 +2693,7 @@ let ch1_oms = () => {
                             <br/><br/>
                             You recognize your own loopy scrawl on the parchment paper.
                             <br/><br/>
-                            What is it doing out here? And where are the rest of your notes?`),
+                            Who left it out here? And where are the rest of your notes?`),
                         world: this.update({
                             om_state: {
                                 [this.current_om()]: {
@@ -2710,10 +2723,10 @@ let ch1_oms = () => {
                 return parser_1.combine.call(this, parser, [look_consumer, take_consumer, read_consumer]);
             });
             let consumer = venience_world_1.wrap_handler(function* (parser) {
-                if (!this.state.has_regarded['tangle, 1']) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_filler(['continue']);
+                yield parser.consume_option([datatypes_1.annotate(['continue'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: this.state.has_regarded['tangle, 1']
+                })]);
                 yield parser.done();
                 return this.transition_to('woods, crossing the boundary 3');
             });
@@ -2723,13 +2736,10 @@ let ch1_oms = () => {
     }, {
         id: 'woods, crossing the boundary 3',
         enter_message: `
-            The birch representation continues to grow relative to the oak.
+            More and more birch trees appear as your trudge onward.
             <br/><br/>
-            Another slip of parchment paper catches your eye on the ground.`,
+            Another fragment of parchment paper catches your eye on the ground.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
-            // let {
-            //     has_taken_note = false
-            // } = this.get_om_state('woods, crossing the boundary 3');
             let take_consumer = venience_world_1.wrap_handler(function* (parser) {
                 if (this.state.has_regarded['tangle, 2']) {
                     yield parser.invalidate();
@@ -2738,17 +2748,20 @@ let ch1_oms = () => {
                     display: parser_1.DisplayEltType.keyword,
                     enabled: !this.state.has_regarded['tangle, 2']
                 })]);
-                yield parser.consume_filler(['the', 'fragment']);
+                yield parser.consume_filler(['the', 'second', 'fragment']);
                 yield parser.done();
                 return this.regard('tangle, 2', msg => text_tools_1.wrap_in_div(`
+                    It reads:
+                    <br/><br/>
                     ${msg}`));
             });
             let continue_consumer = venience_world_1.wrap_handler(function* (parser) {
                 yield parser.consume_option([datatypes_1.annotate(['continue'], {
-                    enabled: !this.state.has_regarded['tangle, 2'],
+                    enabled: Boolean(this.state.has_regarded['tangle, 2']),
                     display: parser_1.DisplayEltType.keyword
                 })]);
-                yield parser.consume_filler(['up', 'the', 'birch', 'gradient']);
+                yield parser.consume_filler(['up', 'the']);
+                yield parser.consume_filler(['birch', 'gradient']);
                 yield parser.done();
                 return this.transition_to('woods, clearing');
             });
@@ -2760,13 +2773,16 @@ let ch1_oms = () => {
         enter_message: `
             You arrive at a small clearing, surrounded by the parchment-white of birch.
             <br/><br/>
-            The path forward branches in two.
-            <br/><br/>
-            In one direction, the path narrows and bends sharply behind a roiling wall of birch.
-            <br/><br/>
-            In another, a looming structure of some kind stands beyond the trees.
-            <br/><br/>
+            The path forward branches in two:
+            <br/>
+            <blockquote>
+                In one direction, the path narrows and bends sharply behind a roiling wall of birch.
+                <br/><br/>
+                In another, a looming structure of some kind stands beyond the trees.
+            </blockquote>
             A third note fragment lies on the ground.`,
+        short_enter_message: `
+            You arrive back at the clearing.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
             let { has_taken_note = false } = this.get_current_om_state();
             let take_consumer = venience_world_1.wrap_handler(function* (parser) {
@@ -2777,43 +2793,62 @@ let ch1_oms = () => {
                     display: parser_1.DisplayEltType.keyword,
                     enabled: !has_taken_note
                 })]);
-                yield parser.consume_filler(['the', 'fragment']);
+                yield parser.consume_filler(['the', 'third', 'fragment']);
                 yield parser.done();
                 return this.regard('tangle, 3', msg => text_tools_1.wrap_in_div(`
-                    ${msg}`));
+                    It reads:
+                    <br/><br/>
+                    ${msg}
+                    <br/>
+                    This completes the transcript. The three fragments comprise a full page from your notes.`));
             });
             let go_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['go'], {
+                let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
+                if (prev_interp_action !== 'ending interpretation') {
+                    yield parser.invalidate();
+                }
+                yield parser.consume_option([datatypes_1.annotate(['proceed'], {
                     enabled: this.state.has_regarded['tangle, 3'],
                     display: parser_1.DisplayEltType.keyword
                 })]);
-                yield parser.consume_filler(['to']);
-                let opt = yield parser.consume_option([['tangle'], ['tower']]);
-                yield parser.done();
-                if (opt === 'tangle') {
+                let go_tangle_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    yield parser.consume_filler(['in']);
+                    yield parser.consume_filler(['to', 'the']);
+                    yield parser.consume_exact(['narrow', 'path'], parser_1.DisplayEltType.option);
+                    yield parser.done();
                     if (this.state.has_understood['tangle, 3']) {
                         return this.transition_to('woods, tangle 2');
                     } else {
                         return this.transition_to('woods, tangle');
                     }
-                } else {
+                });
+                let go_tower_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    yield parser.consume_filler(['out']);
+                    yield parser.consume_filler(['to', 'the']);
+                    yield parser.consume_exact(['looming', 'structure'], parser_1.DisplayEltType.option);
+                    yield parser.done();
                     if (this.state.has_understood['tangle, 2']) {
                         return this.transition_to('tower, base 2');
                     } else {
                         return this.transition_to('tower, base');
                     }
-                }
+                });
+                return parser_1.combine.call(this, parser, [go_tangle_consumer, go_tower_consumer]);
             });
-            // TODO: add tangle consumer
-            // need gentler way of introducing it
-            return parser_1.combine.call(this, parser, [take_consumer, go_consumer]);
+            return parser_1.combine.call(this, parser, [take_consumer, tangle_consumer, go_consumer]);
         }),
         dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'tower, base 2', 'woods, tangle 2'],
         interpret_history: tangle_interpreter
     }, {
         id: ['woods, tangle'],
         enter_message: `
-            Gee dang is it hard to stay oriented in here.`,
+            The path inward narrows to form a gap just wide enough to fit your body.
+            <br/><br/>
+            You step carefully along the path, bending around corners, surrounded by parchment-white.
+            <br/><br/>
+            Some ways in, you arrive at a dead end.
+            <br/><br/>
+            You feel as though you have arrived somewhere significant, though you have nowhere to go now but back.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
             let return_consumer = venience_world_1.wrap_handler(function* (parser) {
                 let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
@@ -2839,11 +2874,20 @@ let ch1_oms = () => {
     }, {
         id: ['tower, base', 'tower, base 2'],
         enter_message: `
-            Big old tower stick up in the middle of the earth.`,
+            As you make your way outward, the trees begin the thin.
+            <br/><br/>
+            You arrive at the base of a wooden viewing tower, erected perfectly among the trees.`,
+        short_enter_message: `
+            You arrive at the viewing tower's base.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
+            let look_consumer = this.make_look_consumer([[['at', 'the', 'tower'], 'tangle, tower base']]);
             let ascend_consumer = venience_world_1.wrap_handler(function* (parser) {
                 // Climbs the tower
-                yield parser.consume_exact(['ascend']);
+                yield parser.consume_option([datatypes_1.annotate(['ascend'], {
+                    display: parser_1.DisplayEltType.keyword,
+                    enabled: this.state.has_regarded['tangle, tower base']
+                })]);
+                yield parser.consume_filler(['the', 'viewing', 'tower']);
                 yield parser.done();
                 return this.transition_to('tower, peak');
             });
@@ -2863,14 +2907,21 @@ let ch1_oms = () => {
                 }
                 return this.transition_to(dest);
             });
-            return parser_1.combine.call(this, parser, [ascend_consumer, return_consumer]);
+            return parser_1.combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
         }),
         dest_oms: ['tower, peak', 'woods, clearing', 'woods, clearing 2', 'woods, clearing 3']
     }, {
         id: 'tower, peak',
         enter_message: `
-            Top o' the tower.`,
+            As your feet thud up the heavy stairs, your view begins to change.
+            <br/><br/>
+            You can see above the parchment-white treeline.
+            <br/><br/>
+            The sky streches further and further across the horizon.
+            <br/><br/>
+            You set foot on the top platform.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
+            // TODO: survey the horizon?
             let descend_consumer = venience_world_1.wrap_handler(function* (parser) {
                 let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
                 if (prev_interp_action !== 'ending interpretation') {
@@ -3012,7 +3063,23 @@ let ch1_perceptions = () => [{
     content: `
         You brush aside the leaves.
         <br/><br/>
-        It appears to be a fragment from your missing notes!`
+        It appears to be a fragment from your missing notes.`
+}, {
+    id: 'tangle, tower base',
+    content: `
+        The tower evokes a solid, steadfast presence.
+        <br/><br/>
+        Its construction is orderly and massive.
+        <br/><br/>
+        A grid of thick, vertical wooden beams rooted deep within the ground provides its sturdy foundation.
+        <br/><br/>
+        Thick wooden slabs form a railed stairway that winds up to the top platform.
+        <br/><br/>
+        The wood is damp and weathered to a greenish brown, as though it has been here for an eternity.`
+}, {
+    id: 'tangle, tower peak',
+    content: `
+        `
 }, {
     id: 'tangle, 1',
     content: `
@@ -3021,7 +3088,7 @@ let ch1_perceptions = () => [{
         <br/><br/>
         a haphazard ligature of unrelated perceptions.
         <br/><br/>
-        We lack the perspective to find meaning in it.”
+        Within the tangle, we lack the perspective to find the meaning we seek.”
         </i></div>
         <div class="reif-tangle-1">
         <br/>
@@ -3106,7 +3173,7 @@ const PerceptionIDs = infer_literal_array(
 // Prologue
 'alcove, general', 'self, 1', 'alcove, envelope',
 // ch1
-'forest, general', 'self, 2', 'note fragment', 'tangle, 1', 'tangle, 2', 'tangle, 3', 'forest, parchment trees');
+'forest, general', 'self, 2', 'note fragment', 'tangle, tower base', 'tangle, tower peak', 'tangle, 1', 'tangle, 2', 'tangle, 3', 'forest, parchment trees');
 const ContentionIDs = infer_literal_array(
 // ch1
 'tangle, 1', 'tangle, 2', 'tangle, 3');

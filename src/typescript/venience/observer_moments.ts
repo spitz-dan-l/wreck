@@ -126,6 +126,8 @@ const PerceptionIDs = infer_literal_array(
     'forest, general',
     'self, 2',
     'note fragment',
+    'tangle, tower base',
+    'tangle, tower peak',
     'tangle, 1',
     'tangle, 2',
     'tangle, 3',
@@ -182,6 +184,7 @@ export function are_interpretations_declarative(i: Interpretations): i is Interp
 export type ObserverMoment = {
     id: ObserverMomentID | ObserverMomentID[],
     enter_message?: string,
+    short_enter_message?: string,
 } & Transitions & Interpretations;
 
 export type Perception = {

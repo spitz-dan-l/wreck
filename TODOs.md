@@ -5,7 +5,8 @@ TODOs
 - Puzzle uno
     - Cycling thru notes during an interp
         - "consider the first fragment"
-    - Appropriate loop erasure
+
+    - (Probs not ready for spring thing :( )Appropriate loop erasure
     - ability to go directly to next relevant place if you've been already?
         (perhaps not as this would affect the redescription/laying the groundwork for tying the environment to the notes?)
 

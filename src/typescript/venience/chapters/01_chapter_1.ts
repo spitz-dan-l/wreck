@@ -87,8 +87,12 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 yield parser.invalidate();
             }
 
-            yield parser.consume_filler(['begin']);
-            yield parser.consume_exact(['reification']);
+            yield parser.consume_option([
+                annotate(['begin'], {
+                    display: DisplayEltType.filler,
+                    enabled: this.state.has_regarded['tangle, 3']
+                })]);
+            yield parser.consume_exact(['interpretation']);
 
             return {
                 world: this.update({
@@ -112,7 +116,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             }
 
             yield parser.consume_filler(['end']);
-            yield parser.consume_exact(['reification']);
+            yield parser.consume_exact(['interpretation']);
             yield parser.done()
 
             let world_update: VenienceWorldState = {
@@ -163,12 +167,13 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 prev_contention = prev_interp_action['reifying a fragment'];
             }
 
-            let choice: string = yield parser.consume_option([
-                set_enabled(['first'], !this.state.has_understood['tangle, 1'] && prev_contention !== 'tangle, 1'),
-                set_enabled(['second'], !this.state.has_understood['tangle, 2'] && prev_contention !== 'tangle, 2'),
-                set_enabled(['third'], !this.state.has_understood['tangle, 3'] && prev_contention !== 'tangle, 3')
+            let choice_str: string = yield parser.consume_option([
+                set_enabled(['first', 'fragment'], !this.state.has_understood['tangle, 1'] && prev_contention !== 'tangle, 1'),
+                set_enabled(['second', 'fragment'], !this.state.has_understood['tangle, 2'] && prev_contention !== 'tangle, 2'),
+                set_enabled(['third', 'fragment'], !this.state.has_understood['tangle, 3'] && prev_contention !== 'tangle, 3')
             ]);
-            yield parser.consume_filler(['fragment']);
+            let choice = tokenize(choice_str)[0][0];
+
             yield parser.done();
 
             let choice_2_contention: {[K: string]: 'tangle, 1' | 'tangle, 2' | 'tangle, 3'} = {
@@ -627,7 +632,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             <br/><br/>
             You notice that the brown trunks of oak are peppered with the white of birch here and there.
             <br/><br/>
-            And on the ground, partially covered in leaves, is a slip of parchment paper.`,
+            And on the ground, partially covered in leaves, is a fragment of parchment paper.`,
             handle_command: wrap_handler(function* (parser: CommandParser) {
                 let {
                     has_taken_note = false
@@ -640,7 +645,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         }
 
                         return this.make_look_consumer([
-                            [['at', 'the', 'parchment'], 'note fragment']]).call(this, parser);
+                            [['at', 'the', 'fragment'], 'note fragment']]).call(this, parser);
                     });
                     
                     let take_consumer = wrap_handler(function*(parser: CommandParser) {
@@ -654,7 +659,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                                 enabled: !has_taken_note
                             })
                         ]);
-                        yield parser.consume_filler(['the', 'fragment']);
+                        yield parser.consume_filler(['it']);
                         yield parser.done()
 
                         return {
@@ -665,7 +670,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                             <br/><br/>
                             You recognize your own loopy scrawl on the parchment paper.
                             <br/><br/>
-                            What is it doing out here? And where are the rest of your notes?`),
+                            Who left it out here? And where are the rest of your notes?`),
                             world: this.update({
                                 om_state: {
                                     [this.current_om()] : {
@@ -704,11 +709,11 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 });
 
                 let consumer = wrap_handler(function*(parser: CommandParser) {
-                    if (!this.state.has_regarded['tangle, 1']) {
-                        yield parser.invalidate();
-                    }
-
-                    yield parser.consume_filler(['continue']);
+                    yield parser.consume_option([
+                        annotate(['continue'], {
+                            display: DisplayEltType.keyword,
+                            enabled: this.state.has_regarded['tangle, 1']
+                        })]);
                     yield parser.done();
 
                     return this.transition_to('woods, crossing the boundary 3');
@@ -721,14 +726,10 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         {
             id: 'woods, crossing the boundary 3',
             enter_message: `
-            The birch representation continues to grow relative to the oak.
+            More and more birch trees appear as your trudge onward.
             <br/><br/>
-            Another slip of parchment paper catches your eye on the ground.`,
+            Another fragment of parchment paper catches your eye on the ground.`,
             handle_command: wrap_handler(function *(parser: CommandParser) {
-                // let {
-                //     has_taken_note = false
-                // } = this.get_om_state('woods, crossing the boundary 3');
-
                 let take_consumer = wrap_handler(function*(parser: CommandParser) {
                     if (this.state.has_regarded['tangle, 2']) {
                         yield parser.invalidate();
@@ -740,10 +741,12 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                             enabled: !this.state.has_regarded['tangle, 2']
                         })
                     ]);
-                    yield parser.consume_filler(['the', 'fragment']);
-                    yield parser.done()
+                    yield parser.consume_filler(['the', 'second', 'fragment']);
+                    yield parser.done();
 
                     return this.regard('tangle, 2', (msg) => wrap_in_div(`
+                    It reads:
+                    <br/><br/>
                     ${msg}`));
 
                 });
@@ -751,10 +754,11 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 let continue_consumer = wrap_handler(function*(parser:CommandParser) {
                     yield parser.consume_option([
                         annotate(['continue'], {
-                            enabled: !this.state.has_regarded['tangle, 2'],
+                            enabled: Boolean(this.state.has_regarded['tangle, 2']),
                             display: DisplayEltType.keyword
                         })]);
-                    yield parser.consume_filler(['up', 'the', 'birch', 'gradient']);
+                    yield parser.consume_filler(['up', 'the']);
+                    yield parser.consume_filler(['birch', 'gradient']);
                     yield parser.done();
 
                     return this.transition_to('woods, clearing');
@@ -772,13 +776,16 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             enter_message: `
             You arrive at a small clearing, surrounded by the parchment-white of birch.
             <br/><br/>
-            The path forward branches in two.
-            <br/><br/>
-            In one direction, the path narrows and bends sharply behind a roiling wall of birch.
-            <br/><br/>
-            In another, a looming structure of some kind stands beyond the trees.
-            <br/><br/>
+            The path forward branches in two:
+            <br/>
+            <blockquote>
+                In one direction, the path narrows and bends sharply behind a roiling wall of birch.
+                <br/><br/>
+                In another, a looming structure of some kind stands beyond the trees.
+            </blockquote>
             A third note fragment lies on the ground.`,
+            short_enter_message: `
+            You arrive back at the clearing.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
                 let {
                     has_taken_note = false
@@ -795,44 +802,62 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                             enabled: !has_taken_note
                         })
                     ]);
-                    yield parser.consume_filler(['the', 'fragment']);
+                    yield parser.consume_filler(['the', 'third', 'fragment']);
                     yield parser.done()
 
                     return this.regard('tangle, 3', (msg) => wrap_in_div(`
-                    ${msg}`));
+                    It reads:
+                    <br/><br/>
+                    ${msg}
+                    <br/>
+                    This completes the transcript. The three fragments comprise a full page from your notes.`));
                 });
 
                 let go_consumer = wrap_handler(function*(parser:CommandParser) {
+                    let {prev_interp_action = 'ending interpretation'} : InterpState = this.get_current_om_state();
+
+                    if (prev_interp_action !== 'ending interpretation') {
+                        yield parser.invalidate();
+                    }
+
                     yield parser.consume_option([
-                        annotate(['go'], {
+                        annotate(['proceed'], {
                             enabled: this.state.has_regarded['tangle, 3'],
                             display: DisplayEltType.keyword
                         })]);
-                    
-                    yield parser.consume_filler(['to']);
-                    let opt = yield parser.consume_option([['tangle'], ['tower']]);
-                    yield parser.done();
 
-                    if (opt === 'tangle') {
+                    let go_tangle_consumer = wrap_handler(function*(parser: CommandParser) {
+                        yield parser.consume_filler(['in']);
+                        yield parser.consume_filler(['to', 'the']);
+                        yield parser.consume_exact(['narrow', 'path'], DisplayEltType.option);
+                        yield parser.done();
+
                         if (this.state.has_understood['tangle, 3']) {
                             return this.transition_to('woods, tangle 2');
                         } else {
                             return this.transition_to('woods, tangle');
                         }
-                    } else {
+                    });
+                    
+                    let go_tower_consumer = wrap_handler(function*(parser: CommandParser) {
+                        yield parser.consume_filler(['out']);
+                        yield parser.consume_filler(['to', 'the']);
+                        yield parser.consume_exact(['looming', 'structure'], DisplayEltType.option);
+                        yield parser.done();
+
                         if (this.state.has_understood['tangle, 2']) {
                             return this.transition_to('tower, base 2');
                         } else {
                             return this.transition_to('tower, base');
                         }
-                    }
-                });
+                    });
 
-                // TODO: add tangle consumer
-                // need gentler way of introducing it
+                    return combine.call(this, parser, [go_tangle_consumer, go_tower_consumer]);
+                });
 
                 return combine.call(this, parser, [
                     take_consumer,
+                    tangle_consumer,
                     go_consumer
                 ]);
             }),
@@ -842,7 +867,13 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         {
             id: ['woods, tangle'],
             enter_message: `
-            Gee dang is it hard to stay oriented in here.`,
+            The path inward narrows to form a gap just wide enough to fit your body.
+            <br/><br/>
+            You step carefully along the path, bending around corners, surrounded by parchment-white.
+            <br/><br/>
+            Some ways in, you arrive at a dead end.
+            <br/><br/>
+            You feel as though you have arrived somewhere significant, though you have nowhere to go now but back.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
                 let return_consumer = wrap_handler(function*(parser: CommandParser) {
                     let {prev_interp_action = 'ending interpretation'} : InterpState = this.get_current_om_state();
@@ -876,11 +907,22 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         {
             id: ['tower, base', 'tower, base 2'],
             enter_message: `
-            Big old tower stick up in the middle of the earth.`,
+            As you make your way outward, the trees begin the thin.
+            <br/><br/>
+            You arrive at the base of a wooden viewing tower, erected perfectly among the trees.`,
+            short_enter_message: `
+            You arrive at the viewing tower's base.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
+                let look_consumer = this.make_look_consumer([[['at', 'the', 'tower'], 'tangle, tower base']]);
+
                 let ascend_consumer = wrap_handler(function*(parser: CommandParser) {
                     // Climbs the tower
-                    yield parser.consume_exact(['ascend']);
+                    yield parser.consume_option([
+                        annotate(['ascend'], {
+                            display: DisplayEltType.keyword,
+                            enabled: this.state.has_regarded['tangle, tower base']
+                        })]);
+                    yield parser.consume_filler(['the', 'viewing', 'tower']);
                     yield parser.done();
 
                     return this.transition_to('tower, peak');
@@ -906,15 +948,22 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     return this.transition_to(dest);
                 });
 
-                return combine.call(this, parser, [ascend_consumer, return_consumer]);
+                return combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
             }),
             dest_oms: ['tower, peak', 'woods, clearing', 'woods, clearing 2', 'woods, clearing 3']
         },
         {
             id: 'tower, peak',
             enter_message: `
-            Top o' the tower.`,
+            As your feet thud up the heavy stairs, your view begins to change.
+            <br/><br/>
+            You can see above the parchment-white treeline.
+            <br/><br/>
+            The sky streches further and further across the horizon.
+            <br/><br/>
+            You set foot on the top platform.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
+                // TODO: survey the horizon?
 
                 let descend_consumer = wrap_handler(function*(parser: CommandParser) {
                     let {prev_interp_action = 'ending interpretation'} : InterpState = this.get_current_om_state();
@@ -1102,7 +1151,25 @@ let ch1_perceptions: () => Perception[] = () => [
         content: `
         You brush aside the leaves.
         <br/><br/>
-        It appears to be a fragment from your missing notes!`
+        It appears to be a fragment from your missing notes.`
+    },
+    {
+        id: 'tangle, tower base',
+        content: `
+        The tower evokes a solid, steadfast presence.
+        <br/><br/>
+        Its construction is orderly and massive.
+        <br/><br/>
+        A grid of thick, vertical wooden beams rooted deep within the ground provides its sturdy foundation.
+        <br/><br/>
+        Thick wooden slabs form a railed stairway that winds up to the top platform.
+        <br/><br/>
+        The wood is damp and weathered to a greenish brown, as though it has been here for an eternity.`
+    },
+    {
+        id: 'tangle, tower peak',
+        content: `
+        `
     },
     {
         id: 'tangle, 1',
@@ -1112,7 +1179,7 @@ let ch1_perceptions: () => Perception[] = () => [
         <br/><br/>
         a haphazard ligature of unrelated perceptions.
         <br/><br/>
-        We lack the perspective to find meaning in it.”
+        Within the tangle, we lack the perspective to find the meaning we seek.”
         </i></div>
         <div class="reif-tangle-1">
         <br/>
