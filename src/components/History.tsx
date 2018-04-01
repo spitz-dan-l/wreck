@@ -34,7 +34,7 @@ export class BookGuy extends React.Component<any, any> {
     };
   }
 
-  edit(possible_message_classes) {
+  edit(possible_message_classes, callback?) {
     if (possible_message_classes === undefined) {
       possible_message_classes = [];
     }
@@ -55,7 +55,7 @@ export class BookGuy extends React.Component<any, any> {
         }
     }
 
-    this.setState({removing_message_classes, adding_message_classes});
+    this.setState({removing_message_classes, adding_message_classes}, callback);
   }
 
   commit() {
@@ -187,9 +187,18 @@ export class History extends React.Component<any, any> {
   }
 
   commit() {
-    this.book_guys.forEach((bg) => bg.commit());
-  }
+    // edit the most recent element since that is how we pass in the new classes
+    // and it hasn't had them passed in thru the most recent edit() call yet.
+    let last_index = this.props.history.length - 1;
+    let {message_classes} = this.props.history[last_index];
+    let the_book_guy = this.book_guys[last_index];
 
+    the_book_guy.edit(
+      message_classes,
+      // Once the edit has been accepted, call commit on all book guys.
+      () => this.book_guys.forEach((bg) => bg.commit()));
+
+  }
 
   render() {
     return (

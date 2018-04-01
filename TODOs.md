@@ -2,40 +2,31 @@ TODOs
 
 **Spring Thing**
 
+- Add alien interp about finding torn up notes
+
+- Emphasize completed note from 3 fragments
+
+- Reduce verbosity about tangle
+
 - Puzzle uno
     - Cycling thru notes during an interp
-        - "consider the first fragment"
-
-    - (Probs not ready for spring thing :( )Appropriate loop erasure
-    - ability to go directly to next relevant place if you've been already?
-        (perhaps not as this would affect the redescription/laying the groundwork for tying the environment to the notes?)
-
-    - need a danged verb/set of verbs for "try interpreting this particular note in the present location"
-        "identify the tangle/outside vantage/dance"
-        "reify"
-
-    - error messages indicate:
-        - wrong location for this note
-        - not enough previous context to fully connect the dots
-
-
-
-
-- Need a beat between going into woods & getting lost
-
-- Need a beat between getting lost and getting birch parchment
+        - remove whole begin/end
 
 - Author's Preface:
     - Explain that tab/arrow keys/enter work for autocomplete
     - No saving/reloading yet
     - Player will not be incentivized to reset for hidden content
 
-- more consistent use of command colors
+- Show/hide info box
+- Prevent typing/clicking behind info box
 
-- fewer oxford commas
+- more consistent use of command colors
+- more consistent breaks b/w command tokens
 
 
 **Later**
+
+- (Probs not ready for spring thing :( )Appropriate loop erasure
 
 - consume_option_stepwise_eager bugs out when used to implement make_look_consumer().
 

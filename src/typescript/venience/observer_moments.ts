@@ -108,7 +108,10 @@ const ObserverMomentIDs = infer_literal_array(
 
     'reading the story of charlotte',
 
-    'outward, 1'
+    'outward, 1',
+    'outward, 2',
+    'outward, 3',
+    'outward, 4'
 )
 
 

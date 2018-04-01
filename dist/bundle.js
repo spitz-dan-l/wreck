@@ -1435,7 +1435,7 @@ class BookGuy extends React.Component {
             entering: true
         };
     }
-    edit(possible_message_classes) {
+    edit(possible_message_classes, callback) {
         if (possible_message_classes === undefined) {
             possible_message_classes = [];
         }
@@ -1453,7 +1453,7 @@ class BookGuy extends React.Component {
                 adding_message_classes.push(pmc);
             }
         }
-        this.setState({ removing_message_classes, adding_message_classes });
+        this.setState({ removing_message_classes, adding_message_classes }, callback);
     }
     commit() {
         let adding_classes = this.state.adding_message_classes;
@@ -1543,7 +1543,14 @@ class History extends React.Component {
         });
     }
     commit() {
-        this.book_guys.forEach(bg => bg.commit());
+        // edit the most recent element since that is how we pass in the new classes
+        // and it hasn't had them passed in thru the most recent edit() call yet.
+        let last_index = this.props.history.length - 1;
+        let { message_classes } = this.props.history[last_index];
+        let the_book_guy = this.book_guys[last_index];
+        the_book_guy.edit(message_classes,
+        // Once the edit has been accepted, call commit on all book guys.
+        () => this.book_guys.forEach(bg => bg.commit()));
     }
     render() {
         return React.createElement("div", null, this.props.history.map(hist => {
@@ -1807,8 +1814,8 @@ let start = {};
 // start.experiences = ['bed, sitting up 2'];
 // start.experiences = ['woods, crossing the boundary 2'];
 start.experiences = ['woods, clearing'];
-start.has_regarded = { 'tangle, 3': true };
-start.has_understood = { 'tangle, 3': true };
+// start.has_regarded = {'tangle, 3': true};
+// start.has_understood = {'tangle, 3': true};
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld(start));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -1904,7 +1911,7 @@ let prologue_oms = () => [{
         <br/><br/>
         You can update your notes first thing tomorrow.
         <br/><br/>
-        You slide back under the blankets. The autumn breeze cools your face.`,
+        You slide back under the blankets. The pre-spring breeze cools your face.`,
     transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']],
     interpretations: {
         'bed, trying to remember 1': [{ 'add': 'forgotten' }],
@@ -1916,10 +1923,17 @@ let prologue_oms = () => [{
 }, {
     id: 'bed, sleeping 2',
     enter_message: `You dream of<br /><br />
-        <div class="alien-interp"><i>calamity</i><br /><br /></div>
-        a <i>shattered mirror</i><br /><br />
-        an <i>ice-covered mountain</i><br /><br />
-        <div class="interp">and <i>her voice.</i></div>`,
+        <div class="alien-interp"><i>
+        calamity
+        <br/><br/>
+        </i></div>
+        <div class="interp">
+        a <i>shattered mirror</i>
+        <br/><br/>
+        an <i>ice-covered mountain</i>
+        <br/><br/>
+        and <i>her voice.</i>
+        </div>`,
     transitions: [[['awaken'], 'bed, awakening 2']]
 }, {
     id: 'bed, awakening 2',
@@ -2764,7 +2778,7 @@ let ch1_oms = () => {
         enter_message: `
             ...until it begins to change.
             <br/><br/>
-            You notice that the brown trunks of oak are peppered with the white of birch here and there.
+            You notice that the brown trunks of oak are sprinkled with the white of birch here and there.
             <br/><br/>
             And on the ground, partially covered in leaves, is a fragment of parchment paper.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
@@ -2948,9 +2962,13 @@ let ch1_oms = () => {
         dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'inward, 1', 'outward, 1'],
         interpret_history: function (history_elt) {
             let result = tangle_interpreter.call(this, history_elt) || [];
-            let ending_oms = ['inward, 1', 'inward, 2', 'inward, 3', 'inward, 4', 'inward, 5', 'reading the story of charlotte'];
+            let ending_oms = ['inward, 1', 'inward, 2', 'inward, 3', 'inward, 4', 'inward, 5', 'reading the story of charlotte', 'outward, 1', 'outward, 2', 'outward, 3', 'outward, 4'];
             if (ending_oms.includes(history_elt.world.current_om())) {
                 result.push({ 'add': 'forgotten' });
+            } else if (history_elt.world.current_om() === 'woods, clearing') {
+                if (['inward, 1', 'outward, 1'].some(x => history_elt.world.state.has_visited[x])) {
+                    result.push({ 'add': 'forgotten' });
+                }
             }
             return result;
         }
@@ -3012,7 +3030,7 @@ let ch1_oms = () => {
             });
             return parser_1.combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
         }),
-        dest_oms: ['tower, peak', 'woods, clearing'] // , 'woods, clearing 2', 'woods, clearing 3'
+        dest_oms: ['tower, peak', 'woods, clearing']
     }, {
         id: 'tower, peak',
         enter_message: `
@@ -3042,11 +3060,7 @@ let ch1_oms = () => {
                 }
                 yield parser.consume_exact(['descend']);
                 yield parser.done();
-                // if (this.state.has_understood['tangle, 2']) {
-                //     return this.transition_to('tower, base 2');
-                // } else {
                 return this.transition_to('tower, base');
-                // }
             });
             return parser_1.combine.call(this, parser, [make_tangle_consumer(Boolean(this.state.has_regarded['tangle, tower peak'])), survey_consumer, descend_consumer]);
         }),
@@ -3129,9 +3143,7 @@ let ch1_oms = () => {
                         world: apply_read_update(),
                         message: text_tools_1.wrap_in_div(`
                             <div class="interp">
-                            Your eyes skim over the vast text laid out before you for a moment,
-                            <br/><br/>
-                            searching.
+                            Your eyes skim over the vast text laid out before you for a moment, searching.
                             <br/><br/>
                             Then, you come to rest on one particular story.
                             </div>`)
@@ -3160,33 +3172,175 @@ let ch1_oms = () => {
             <br/><br/>
             Charlotte's story will be told in Chapter 2.
             <br/><br/>
-            Thanks for playing Venience World!</i>`,
+            Thanks for playing Venience World!
+            <br/><br/>
+            Feel free to return to the clearing and proceed differently.
+            </i>`,
         transitions: [[['*return', 'to the', 'clearing'], 'woods, clearing']]
     }, {
         id: 'outward, 1',
         enter_message: `
-            Unfinished Outward`,
-        transitions: []
+            You walk back out to the base of the viewing tower, and continue past it,
+            <br/><br/>
+            cutting into the woods where the footpath ends.
+            <br/><br/>
+            As you proceed, the birch trees become sparser, and the oak thickens again.`,
+        transitions: [[['*consider', 'what lies ahead'], 'outward, 2']]
+    }, {
+        id: 'outward, 2',
+        enter_message: `
+            <div class="interp"><i>
+            "An adventure, my dear.
+            <br/><br/>
+            Challenges, the likes of which you have not anticipated.
+            <br/><br/>
+            Opportunities to learn and grow."
+            </i></div>`,
+        transitions: [[['begin', '*interpretation'], 'outward, 3']]
+    }, (() => {
+        const interp_steps = datatypes_1.infer_literal_array('the calamity', 'the shattered mirror', 'the ice-covered mountain', 'her voice');
+        return {
+            id: 'outward, 3',
+            enter_message: `
+                You remember fragments from your dream last night.
+                <br/><br/>
+                There was
+                <br/><br/>
+                
+                <div class="alien-interp"><i>
+                calamity
+                <br/><br/>
+                </i></div>
+                <div class="reif-dream-1">
+                Katya's death,
+                <br/><br/>
+                and the destruction that her loss wrought on your life
+                <br/><br/>
+                </div>
+                
+                <div class="interp">
+                a <i>shattered mirror</i>
+                <br/><br/>
+                </div>
+                <div class="reif-dream-2">
+                the unexplained scattering of your notes across the land
+                <br/><br/>
+                </div>
+                
+                <div class="interp">
+                an <i>ice-covered mountain</i>
+                <br/><br/>
+                </div>
+                <div class="reif-dream-3">
+                the literal mountain that stands in wait across the river
+                <br/><br/>
+                </div>
+                
+                <div class="interp">
+                and <i>her voice.</i>
+                </div>
+                <div class="reif-dream-4">
+                <br/>
+                and <i>your determination to understand;</i>
+                <br/><br/>
+                to return to the world you left;
+                <br/><br/>
+                to intervene in its unfolding.
+                </div>`,
+            handle_command: venience_world_1.wrap_handler(function* (parser) {
+                let { has_interpreted = {}, prev_interp = null } = this.get_current_om_state();
+                let ready_for_last = interp_steps.slice(0, 3).every(x => has_interpreted[x]);
+                let finished = interp_steps.every(x => has_interpreted[x]);
+                let reify_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    yield parser.consume_option([datatypes_1.annotate(['reify'], {
+                        display: parser_1.DisplayEltType.keyword,
+                        enabled: !finished
+                    })]);
+                    let opt1 = yield parser.consume_option([datatypes_1.annotate(['the'], {
+                        display: parser_1.DisplayEltType.filler,
+                        enabled: !ready_for_last
+                    }), datatypes_1.annotate(['her'], {
+                        display: parser_1.DisplayEltType.filler,
+                        enabled: ready_for_last
+                    })]);
+                    let opt2;
+                    if (opt1 === 'the') {
+                        // the calamity
+                        // the shattered mirror
+                        // the ice-covered mountain
+                        opt2 = yield parser.consume_option([datatypes_1.annotate(['calamity'], { enabled: !has_interpreted['the calamity'] }), datatypes_1.annotate(['shattered', 'mirror'], { enabled: !has_interpreted['the shattered mirror'] }), datatypes_1.annotate(['ice-covered', 'mountain'], { enabled: !has_interpreted['the ice-covered mountain'] })]);
+                    } else {
+                        yield parser.consume_exact(['voice'], parser_1.DisplayEltType.option);
+                        opt2 = 'voice';
+                    }
+                    yield parser.done();
+                    let chosen_step = opt1 + ' ' + opt2;
+                    return {
+                        world: this.update({
+                            om_state: {
+                                [this.current_om()]: {
+                                    has_interpreted: {
+                                        [chosen_step]: true
+                                    },
+                                    prev_interp: chosen_step
+                                }
+                            }
+                        })
+                    };
+                });
+                let end_consumer = venience_world_1.wrap_handler(function* (parser) {
+                    yield parser.consume_option([datatypes_1.annotate(['end'], {
+                        display: parser_1.DisplayEltType.filler,
+                        enabled: finished
+                    })]);
+                    yield parser.consume_exact(['interpretation']);
+                    yield parser.done();
+                    let result = this.transition_to('outward, 4');
+                    result.world = result.world.update({
+                        om_state: {
+                            [this.current_om()]: {
+                                has_interpreted: {},
+                                prev_interp: null
+                            }
+                        }
+                    }, [this.current_om()]);
+                    return result;
+                });
+                return parser_1.combine.call(this, parser, [reify_consumer, end_consumer]);
+            }),
+            dest_oms: ['outward, 4'],
+            interpret_history: function (history_elt) {
+                if (history_elt.world.current_om() === this.current_om()) {
+                    let { has_interpreted = {}, prev_interp = null } = this.get_current_om_state();
+                    let { prev_interp: h_prev_interp = null } = history_elt.world.get_current_om_state();
+                    if (h_prev_interp === null) {
+                        if (prev_interp === 'the calamity') {
+                            return [{ add: 'reif-dream-1-enabled' }];
+                        } else if (prev_interp === 'the shattered mirror') {
+                            return [{ add: 'reif-dream-2-enabled' }];
+                        } else if (prev_interp === 'the ice-covered mountain') {
+                            return [{ add: 'reif-dream-3-enabled' }];
+                        } else if (prev_interp === 'her voice') {
+                            return [{ add: 'reif-dream-4-enabled' }];
+                        }
+                    }
+                }
+            }
+        };
+    })(), {
+        id: 'outward, 4',
+        enter_message: `
+            <i>You have reached the end of the demo.
+            <br/><br/>
+            Your journey to the mountain will be told in Chapter 2.
+            <br/><br/>
+            Thanks for playing Venience World!
+            <br/><br/>
+            Feel free to return to the clearing and proceed differently.
+            </i>`,
+        transitions: [[['*return', 'to the', 'clearing'], 'woods, clearing']]
     }];
 };
-// "We wander, for the most part, within a tangled, looping mess of thought; a ball of lint."
-// "From within the tangle, we feel lost. It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds."
-// "It can feel like a deliverance when one reaches such a vantage after much aimless wandering."
-// "The twisting fibres of our journey are put into perspective. We see how one piece of the path relates to another. It is peaceful from up there."
-// "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
-// "Do not fret, my dear. Return to the madness of life after your brief respite."
-// You survey the looping fibres of path around the park, the two wooden bridges at either end, and the frozen river carving your vantage in two.
-// "Expect to forget; to be turned around; to become tangled up."
-// "Find some joy in it; some exhilaration."
-// "And know that you have changed, dear. That your ascent has taught you something."
-//             <br /><br />
-//             You see the path you took to reach this viewing tower. You see it continue further onward, into MacDonald Park, and branch, curving into the brush by the river.
-//             <br /><br />
-//             You see the wooden footbridge crossing the river that you are destined to walk across, if you are ever to return to your study, and transcribe your experiences.
-//             <br /><br />
-//             <div class="meditation-1">
-//             "But do not be fooled; all there is to do, once one has stood above the tangle for a while, and surveyed it, is to return to it."
-//             </div>`,
 let ch1_perceptions = () => [{
     id: 'forest, general',
     content: `
@@ -3243,7 +3397,7 @@ let ch1_perceptions = () => [{
         <br /><br />
         You see the trail you took to reach this viewing tower. You see it flow back into the clearing, which in turn flows into the narrow, winding path through the birch thicket.
         <br/><br/>
-        Further out, a river carves the forest in half.
+        Further out, a frozen river carves the forest in half.
         </br><br/>
         And beyond that, the base of a snow-covered mountain.
         <br/><br/>
@@ -3335,7 +3489,7 @@ const ObserverMomentIDs = datatypes_1.infer_literal_array('bed, sleeping 1', 'be
 'tower, peak', 'inward, 1', 'inward, 2', 'inward, 3', 'inward, 4', 'inward, 5',
 // 'woods, birch parchment 1',
 // 'woods, birch parchment 2',
-'reading the story of charlotte', 'outward, 1');
+'reading the story of charlotte', 'outward, 1', 'outward, 2', 'outward, 3', 'outward, 4');
 const PerceptionIDs = datatypes_1.infer_literal_array(
 // Prologue
 'alcove, general', 'self, 1', 'alcove, envelope',

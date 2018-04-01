@@ -71,7 +71,12 @@
 .history.would-add-reif-tangle-2-enabled,
 .history.would-add-reif-tangle-3-enabled,
 /* Parchment Trees */
-.history.would-add-interp-parchment-trees-enabled
+.history.would-add-interp-parchment-trees-enabled,
+/* Dream */
+.history.would-add-reif-dream-1-enabled,
+.history.would-add-reif-dream-2-enabled,
+.history.would-add-reif-dream-3-enabled,
+.history.would-add-reif-dream-4-enabled
 {
     background-color: midnightblue;
 }
@@ -85,7 +90,11 @@
 .history .reif-tangle-1,
 .history .reif-tangle-2,
 .history .reif-tangle-3,
-.history .interp-parchment-trees
+.history .interp-parchment-trees,
+.history .reif-dream-1,
+.history .reif-dream-2,
+.history .reif-dream-3,
+.history .reif-dream-4
 {
     display: none;
 }
@@ -117,7 +126,12 @@
 /* Tangle interp */
 .history.reif-tangle-1-enabled .reif-tangle-1,
 .history.reif-tangle-2-enabled .reif-tangle-2,
-.history.reif-tangle-3-enabled .reif-tangle-3
+.history.reif-tangle-3-enabled .reif-tangle-3,
+/* Dream interp */
+.history.reif-dream-1-enabled .reif-dream-1,
+.history.reif-dream-2-enabled .reif-dream-2,
+.history.reif-dream-3-enabled .reif-dream-3,
+.history.reif-dream-4-enabled .reif-dream-4
 {
     display: block;
     opacity: 1;
@@ -137,7 +151,12 @@
 .history.adding-reif-tangle-2-enabled.animation-start .reif-tangle-2,
 .history.adding-reif-tangle-3-enabled.animation-start .reif-tangle-3,
 /* Parchment trees */
-.history.adding-interp-parchment-trees-enabled.animation-start .interp-parchment-trees
+.history.adding-interp-parchment-trees-enabled.animation-start .interp-parchment-trees,
+/* Dream interp */
+.history.adding-reif-dream-1-enabled.animation-start .reif-dream-1,
+.history.adding-reif-dream-2-enabled.animation-start .reif-dream-2,
+.history.adding-reif-dream-3-enabled.animation-start .reif-dream-3,
+.history.adding-reif-dream-4-enabled.animation-start .reif-dream-4
 {
     opacity: 0.01;
     max-height: 0px;
@@ -156,7 +175,12 @@
 .history.adding-reif-tangle-2-enabled.animation-start.animation-active .reif-tangle-2,
 .history.adding-reif-tangle-3-enabled.animation-start.animation-active .reif-tangle-3,
 /* Parchment trees */
-.history.adding-interp-parchment-trees-enabled.animation-start.animation-active .interp-parchment-trees
+.history.adding-interp-parchment-trees-enabled.animation-start.animation-active .interp-parchment-trees,
+/* Dream interp */
+.history.adding-reif-dream-1-enabled.animation-start.animation-active .reif-dream-1,
+.history.adding-reif-dream-2-enabled.animation-start.animation-active .reif-dream-2,
+.history.adding-reif-dream-3-enabled.animation-start.animation-active .reif-dream-3,
+.history.adding-reif-dream-4-enabled.animation-start.animation-active .reif-dream-4
 {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;

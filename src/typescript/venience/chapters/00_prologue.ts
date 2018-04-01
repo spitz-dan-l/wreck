@@ -131,7 +131,7 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br/><br/>
         You can update your notes first thing tomorrow.
         <br/><br/>
-        You slide back under the blankets. The autumn breeze cools your face.`,
+        You slide back under the blankets. The pre-spring breeze cools your face.`,
         transitions: [
             [['sleep', 'until', 'sunrise'], 'bed, sleeping 2']],
         interpretations: {
@@ -145,10 +145,17 @@ let prologue_oms: () => ObserverMoment[] = () => [
     {
         id: 'bed, sleeping 2',
         enter_message: `You dream of<br /><br />
-        <div class="alien-interp"><i>calamity</i><br /><br /></div>
-        a <i>shattered mirror</i><br /><br />
-        an <i>ice-covered mountain</i><br /><br />
-        <div class="interp">and <i>her voice.</i></div>`,
+        <div class="alien-interp"><i>
+        calamity
+        <br/><br/>
+        </i></div>
+        <div class="interp">
+        a <i>shattered mirror</i>
+        <br/><br/>
+        an <i>ice-covered mountain</i>
+        <br/><br/>
+        and <i>her voice.</i>
+        </div>`,
         transitions: [
             [['awaken'], 'bed, awakening 2']]
     },

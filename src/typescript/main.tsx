@@ -15,8 +15,8 @@ let start: VenienceWorldState = {};
 // start.experiences = ['bed, sitting up 2'];
 // start.experiences = ['woods, crossing the boundary 2'];
 start.experiences = ['woods, clearing'];
-start.has_regarded = {'tangle, 3': true}
-start.has_understood = {'tangle, 3': true};
+// start.has_regarded = {'tangle, 3': true};
+// start.has_understood = {'tangle, 3': true};
 
 let world_driver = new WorldDriver(new VenienceWorld(start))
 
