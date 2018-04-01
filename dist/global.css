@@ -16,6 +16,10 @@
       padding: 3em;
 }
 
+.terminal:focus {
+      outline: none;
+}
+
 .preface {
       position: absolute;
       z-index: 1;

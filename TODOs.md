@@ -2,24 +2,34 @@ TODOs
 
 **Spring Thing**
 
+- Add alien interp about finding torn up notes
 
-- Need a beat between going into woods & getting lost
+- Emphasize completed note from 3 fragments
 
-- Need a beat between getting lost and getting birch parchment
+- Reduce verbosity about tangle
 
-- enter when incomplete command should act like tab
+- remove up the birch gradient
+
+- Puzzle uno
+    - Cycling thru notes during an interp
+        - remove whole begin/end
 
 - Author's Preface:
     - Explain that tab/arrow keys/enter work for autocomplete
     - No saving/reloading yet
     - Player will not be incentivized to reset for hidden content
 
+- Show/hide info box
+- Prevent typing/clicking behind info box
+
 - more consistent use of command colors
+- more consistent breaks b/w command tokens
 
-- fewer oxford commas
-
+- enter/tab/right on completed token adds a space
 
 **Later**
+
+- (Probs not ready for spring thing :( )Appropriate loop erasure
 
 - consume_option_stepwise_eager bugs out when used to implement make_look_consumer().
 

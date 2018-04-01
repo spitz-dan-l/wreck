@@ -345,12 +345,12 @@ export class PhraseDSLValidator extends StringValidator {
     }
 }
 
-export function consume_option_stepwise_eager(parser: CommandParser, options: ValidatedString<PhraseDSLValidator>[][]) {
+export function consume_declarative_dsl(parser: CommandParser, options: ValidatedString<PhraseDSLValidator>[][]) {
     // assumption: no option is a prefix of any other option
     let consumers = [];
 
     for (let option of options) {
-        let opt_consumer = with_early_stopping(function *(parser) {
+        let opt_consumer = with_early_stopping(function*(parser) {
             for (let o of option) {
                 let enabled = true;
                 if (o.startsWith('~')) {

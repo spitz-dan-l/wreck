@@ -1,11 +1,12 @@
 import {
-    FuckDict,
+    // FuckDict,
     FuckSet,
     ValidatedString,
     ValidString,
     set_enabled,
     is_enabled,
-    chain_update
+    chain_update,
+    infer_literal_array
 } from '../datatypes';
 
 import {
@@ -18,14 +19,12 @@ import {
     CommandParser,
     DisplayEltType,
     with_early_stopping,
-    consume_option_stepwise_eager,
     PhraseDSLValidator
 } from '../parser'
 
 import {
     VenienceWorldCommandHandler,
     VenienceWorldCommandResult,
-    // VenienceWorldInterstitialUpdateResult,
     VenienceWorldHistoryInterpreter,
     wrap_handler
 } from './venience_world';
@@ -34,130 +33,6 @@ import {
     tokenize,
     wrap_in_div
 } from '../text_tools';
-
-export type TransitionList = (
-    [ValidatedString<PhraseDSLValidator>[], ObserverMomentID][]
-);
-export type TransitionListI = {
-    transitions: TransitionList,
-};
-
-export type Transitions = TransitionListI | (
-    VenienceWorldCommandHandler
-    & { dest_oms: ObserverMomentID[] }
-);
-
-export function are_transitions_declarative(t: Transitions): t is TransitionListI {
-    return (t as TransitionListI).transitions !== undefined;
-}
-
-export type InterpretationList = {[key in ObserverMomentID]?: HistoryInterpretationOp};
-
-export type InterpretationListI = {
-    interpretations?: InterpretationList
-};
-
-export type Interpretations = InterpretationListI | VenienceWorldHistoryInterpreter;
-
-export function has_interpretations(i: Partial<Interpretations>): i is Interpretations {
-    return (i as any).interpretations !== undefined || (i as any).interpret_history !== undefined;
-}
-
-export function are_interpretations_declarative(i: Interpretations): i is InterpretationListI {
-    return (i as InterpretationListI).interpretations !== undefined;
-}
-
-export type ObserverMoment = {
-    id: ObserverMomentID,
-    enter_message?: string,
-} & Transitions & Interpretations;
-
-export type Perception = {
-    id: PerceptionID,
-    content: string
-}
-
-export function index_oms(oms: ObserverMoment[]): FuckDict<ObserverMomentID, ObserverMoment>{
-    let result = new FuckDict<ObserverMomentID, ObserverMoment>();
-
-    for (let om of oms){
-        if (are_transitions_declarative(om)) {
-            for (let [cmd, dest] of om.transitions) {
-                for (let phrase of cmd) {
-                    if (!PhraseDSLValidator.validate(phrase)) {
-                        throw `Transition phrase "${phrase}" in ObserverMoment ${om.id} has ~ or * or & somewhere other than the start.`;
-                    }
-                }
-            }
-        }
-        if (result.has_key(om.id)) {
-            throw `Duplicate ObserverMoment provided for ${om.id}`;
-        }
-        result.set(om.id, om);
-    }
-
-    for (let om of ObserverMomentIDs) {
-        if (!result.has_key(om)) {
-            throw `Missing ObserverMoment: ${om}`;
-        }
-    }
-
-    //second/third pass, typecheck em
-    let pointed_to: FuckSet<ObserverMomentID> = new FuckDict<ObserverMomentID, undefined>();
-    for (let om of oms) {
-        let dest_oms: ObserverMomentID[];
-        if (are_transitions_declarative(om)) {
-            dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
-        } else {
-            dest_oms = om.dest_oms;
-        }
-
-        for (let om_id of dest_oms) {
-            if (om_id !== null) {
-                if (!result.has_key(om_id)) {
-                    throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
-                }
-                pointed_to.set(om_id, undefined);
-            }
-        }
-    }
-
-    for (let om of oms.slice(1)) {
-        if (!pointed_to.has_key(om.id)) {
-            throw `om "${om.id}" is unreachable (and not the first in the list).`;
-        }
-    }
-    
-    return result;
-}
-
-export function index_perceptions(perceptions: Perception[]): {[K in PerceptionID]: Perception} {
-    let result: Partial<{[K in PerceptionID]: Perception}> = {};
-    for (let p of perceptions) {
-        if (!(p.id in result)) {
-            result[p.id] = p;
-        } else {
-            throw `Duplicate perception definition for ${p.id}`;
-        }
-    }
-
-    for (let p of PerceptionIDs) {
-        if (!(p in result)) {
-            throw `Missing PerceptionID: ${p}`;
-        }
-    }
-
-    return <{[K in PerceptionID]: Perception}>result;
-}
-
-// Holy dang this is cool:
-// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
-//
-// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
-// as a constant, and get string literal typechecking elsewhere in the code.
-function infer_literal_array<T extends string>(...arr: T[]): T[] {
-  return arr;
-}
 
 const ObserverMomentIDs = infer_literal_array(
     'bed, sleeping 1',
@@ -208,26 +83,208 @@ const ObserverMomentIDs = infer_literal_array(
     'woods, considering remaining',
     'woods, crossing the boundary 1',
     'woods, crossing the boundary 2',
+
     'woods, crossing the boundary 3',
-    'woods, crossing the boundary 4',
+
+    'woods, clearing',
+    // 'woods, clearing 2', // pseudo copies to avoid loop erasure
+    // 'woods, clearing 3', // because the impl is currently a bit of a hack :(
+
+    'woods, tangle',
+    
+    'tower, base',
+    // 'tower, base 2',
+    
+    'tower, peak',
+
+    'inward, 1',
+    'inward, 2',
+    'inward, 3',
+    'inward, 4',
+    'inward, 5',
+    // 'woods, birch parchment 1',
+    // 'woods, birch parchment 2',
 
 
-    'reading the story of charlotte'
+    'reading the story of charlotte',
+
+    'outward, 1',
+    'outward, 2',
+    'outward, 3',
+    'outward, 4'
 )
 
 
 export type ObserverMomentID = typeof ObserverMomentIDs[number];
 
 const PerceptionIDs = infer_literal_array(
+    // Prologue
     'alcove, general',
     'self, 1',
     'alcove, envelope',
+
+    // ch1
     'forest, general',
     'self, 2',
+    'note fragment',
+    'tangle, tower base',
+    'tangle, tower peak',
+    'tangle, 1',
+    'tangle, 2',
+    'tangle, 3',
+
     'forest, parchment trees'
 );
 
 export type PerceptionID = typeof PerceptionIDs[number];
+
+
+const ContentionIDs = infer_literal_array(
+    // ch1
+    'tangle, 1',
+    'tangle, 2',
+    'tangle, 3',
+    'tangle, failure'
+)
+
+export type ContentionID = typeof ContentionIDs[number];
+
+
+
+export type TransitionList = (
+    [ValidatedString<PhraseDSLValidator>[], ObserverMomentID][]
+);
+export type TransitionListI = {
+    transitions: TransitionList,
+};
+
+export type Transitions = TransitionListI | (
+    VenienceWorldCommandHandler
+    & { dest_oms: ObserverMomentID[] }
+);
+
+export function are_transitions_declarative(t: Transitions): t is TransitionListI {
+    return (t as TransitionListI).transitions !== undefined;
+}
+
+export type InterpretationList = {[key in ObserverMomentID]?: HistoryInterpretationOp};
+
+export type InterpretationListI = {
+    interpretations?: InterpretationList
+};
+
+export type Interpretations = InterpretationListI | VenienceWorldHistoryInterpreter;
+
+export function has_interpretations(i: Partial<Interpretations>): i is Interpretations {
+    return (i as any).interpretations !== undefined || (i as any).interpret_history !== undefined;
+}
+
+export function are_interpretations_declarative(i: Interpretations): i is InterpretationListI {
+    return (i as InterpretationListI).interpretations !== undefined;
+}
+
+export type ObserverMoment = {
+    id: ObserverMomentID | ObserverMomentID[],
+    enter_message?: string,
+    short_enter_message?: string,
+} & Transitions & Interpretations;
+
+export type Perception = {
+    id: PerceptionID,
+    content: string
+}
+
+// export type Recitation = {
+//     id: RecitationID,
+//     contents: string[]
+// }
+
+export function index_oms(oms: ObserverMoment[]): {[K in ObserverMomentID]: ObserverMoment}{
+    // let result = new FuckDict<ObserverMomentID, ObserverMoment>();
+    let result: Partial<{[K in ObserverMomentID]: ObserverMoment}> = {};
+    for (let om of oms){
+        if (are_transitions_declarative(om)) {
+            for (let [cmd, dest] of om.transitions) {
+                for (let phrase of cmd) {
+                    if (!PhraseDSLValidator.validate(phrase)) {
+                        throw `Transition phrase "${phrase}" in ObserverMoment ${om.id} has ~ or * or & somewhere other than the start.`;
+                    }
+                }
+            }
+        }
+        if (om.id in result) {
+            throw `Duplicate ObserverMoment provided for ${om.id}`;
+        }
+        if (typeof om.id === 'string'){
+            result[om.id] = om;
+        } else {
+            for (let om_id of om.id) {
+                result[om_id] = om;
+            }
+        }
+    }
+
+    for (let om_id of ObserverMomentIDs) {
+        if (!(om_id in result)) {
+            throw `Missing ObserverMoment: ${om_id}`;
+        }
+    }
+
+    //second/third pass, typecheck em
+    let pointed_to = new Set<ObserverMomentID>();
+    for (let om of oms) {
+        let dest_oms: ObserverMomentID[];
+        if (are_transitions_declarative(om)) {
+            dest_oms = om.transitions.map(([cmd, om_id]) => om_id);
+        } else {
+            dest_oms = om.dest_oms;
+        }
+
+        for (let om_id of dest_oms) {
+            if (om_id !== null) {
+                if (!(om_id in result)) {
+                    throw `om "${om.id}" has transition to non-existant om "${om_id}"`;
+                }
+                pointed_to.add(om_id);
+            }
+        }
+    }
+
+    for (let om of oms.slice(1)) {
+        let om_ids: ObserverMomentID[];
+        if (typeof om.id === 'string') {
+            om_ids = [om.id];
+        } else {
+            om_ids = om.id;
+        }
+        for (let om_id of om_ids) {
+            if (!pointed_to.has(om_id)) {
+                throw `om "${om.id}" is unreachable (and not the first in the list).`;
+            }
+        }
+    }
+    
+    return <{[K in ObserverMomentID]: ObserverMoment}>result;
+}
+
+export function index_perceptions(perceptions: Perception[]): {[K in PerceptionID]: Perception} {
+    let result: Partial<{[K in PerceptionID]: Perception}> = {};
+    for (let p of perceptions) {
+        if (!(p.id in result)) {
+            result[p.id] = p;
+        } else {
+            throw `Duplicate perception definition for ${p.id}`;
+        }
+    }
+
+    for (let p of PerceptionIDs) {
+        if (!(p in result)) {
+            throw `Missing PerceptionID: ${p}`;
+        }
+    }
+
+    return <{[K in PerceptionID]: Perception}>result;
+}
 
 // Syntax shortcuts:
 // * = keyword

@@ -124,7 +124,7 @@ export function chain_object<T extends object>(src: T) {
     });
 } 
 
-export function chain_update(target: Object, source: Object, inplace=false) {
+export function chain_update(target: Object, source: Object, replace_keys: string[]=[], inplace=false) {
     let updated: Object;
     if (inplace) {
         updated = target || {};
@@ -133,8 +133,8 @@ export function chain_update(target: Object, source: Object, inplace=false) {
     }
 
     for (let [n, v] of Object.entries(source)) {
-        if (typeof v === 'object' && !(v instanceof Array)) {
-            updated[n] = chain_update(updated[n], v, inplace);
+        if (!replace_keys.includes(n) && typeof v === 'object' && !(v instanceof Array)) {
+            updated[n] = chain_update(updated[n], v, replace_keys, inplace);
         } else {
             updated[n] = v;
         }
@@ -396,3 +396,12 @@ export class StringValidator {
 export type ValidatedString<V extends StringValidator> = string & StringValidity;
 export type ValidString<V extends StringValidator> = string & _StringValidity.valid;
 
+
+// Holy dang this is cool:
+// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
+//
+// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
+// as a constant, and get string literal typechecking elsewhere in the code.
+export function infer_literal_array<T extends string>(...arr: T[]): T[] {
+  return arr;
+}
