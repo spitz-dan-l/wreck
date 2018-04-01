@@ -91,18 +91,24 @@ const ObserverMomentIDs = infer_literal_array(
     // 'woods, clearing 3', // because the impl is currently a bit of a hack :(
 
     'woods, tangle',
-    'woods, tangle 2',
     
     'tower, base',
     // 'tower, base 2',
     
     'tower, peak',
 
-    'woods, birch parchment 1',
-    'woods, birch parchment 2',
+    'inward, 1',
+    'inward, 2',
+    'inward, 3',
+    'inward, 4',
+    'inward, 5',
+    // 'woods, birch parchment 1',
+    // 'woods, birch parchment 2',
 
 
-    'reading the story of charlotte'
+    'reading the story of charlotte',
+
+    'outward, 1'
 )
 
 

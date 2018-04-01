@@ -69,7 +69,9 @@
 /* Tangle */
 .history.would-add-reif-tangle-1-enabled,
 .history.would-add-reif-tangle-2-enabled,
-.history.would-add-reif-tangle-3-enabled
+.history.would-add-reif-tangle-3-enabled,
+/* Parchment Trees */
+.history.would-add-interp-parchment-trees-enabled
 {
     background-color: midnightblue;
 }
@@ -82,7 +84,8 @@
 .history .interp-woods-3,
 .history .reif-tangle-1,
 .history .reif-tangle-2,
-.history .reif-tangle-3
+.history .reif-tangle-3,
+.history .interp-parchment-trees
 {
     display: none;
 }
@@ -102,7 +105,9 @@
 /* Woods interp */
 .history.interp-woods-1-enabled .interp-woods-1,
 .history.interp-woods-2-enabled .interp-woods-2,
-.history.interp-woods-3-enabled .interp-woods-3
+.history.interp-woods-3-enabled .interp-woods-3,
+/* Parchment trees */
+.history.interp-parchment-trees-enabled .interp-parchment-trees
 {
     display: block;
     color: gold;
@@ -130,7 +135,9 @@
 /* Tangle interp */
 .history.adding-reif-tangle-1-enabled.animation-start .reif-tangle-1,
 .history.adding-reif-tangle-2-enabled.animation-start .reif-tangle-2,
-.history.adding-reif-tangle-3-enabled.animation-start .reif-tangle-3
+.history.adding-reif-tangle-3-enabled.animation-start .reif-tangle-3,
+/* Parchment trees */
+.history.adding-interp-parchment-trees-enabled.animation-start .interp-parchment-trees
 {
     opacity: 0.01;
     max-height: 0px;
@@ -147,7 +154,9 @@
 /* Tangle interp */
 .history.adding-reif-tangle-1-enabled.animation-start.animation-active .reif-tangle-1,
 .history.adding-reif-tangle-2-enabled.animation-start.animation-active .reif-tangle-2,
-.history.adding-reif-tangle-3-enabled.animation-start.animation-active .reif-tangle-3
+.history.adding-reif-tangle-3-enabled.animation-start.animation-active .reif-tangle-3,
+/* Parchment trees */
+.history.adding-interp-parchment-trees-enabled.animation-start.animation-active .interp-parchment-trees
 {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
