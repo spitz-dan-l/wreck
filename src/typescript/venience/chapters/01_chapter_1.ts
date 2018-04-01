@@ -29,7 +29,8 @@ import {
     annotate,
     Annotatable,
     FuckDict,
-    infer_literal_array
+    infer_literal_array,
+    chain_update
 } from '../../datatypes';
 
 import {
@@ -65,7 +66,8 @@ let ch1_oms: () => ObserverMoment[] = (() => {
     type InterpState = {
         prev_interp_action: InterpAction
         index: number,
-        begin_tag: number
+        begin_tag: number,
+        hide_failures: boolean
     };
 
     const om_id_2_contention: {[K in ObserverMomentID]?: ('tangle, 1' | 'tangle, 2' | 'tangle, 3')} = {
@@ -84,7 +86,8 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         let {
             prev_interp_action = 'ending interpretation',
             index = 0,
-            begin_tag = -1
+            begin_tag = -1,
+            hide_failures = false
         }: InterpState = this.get_current_om_state();
 
         let begin_consumer = wrap_handler(function*(parser: CommandParser) {
@@ -121,7 +124,8 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         [this.current_om()]: {
                             prev_interp_action: 'beginning interpretation',
                             index: index + 1,
-                            begin_tag: index
+                            begin_tag: index,
+                            hide_failures: this.state.has_understood['tangle, failure']
                         }
                     }
                 }, ['prev_interp_action']),
@@ -197,6 +201,12 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             } else {
                 message = `
                 There must be more to understand.`;
+
+                world_update = chain_update(world_update, {
+                    has_understood: {
+                        'tangle, failure': true
+                    }
+                });
             }
 
             return {
@@ -368,7 +378,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
 
     function tangle_interpreter(this: VenienceWorld, history_elt: VenienceWorldInterstitialUpdateResult): HistoryInterpretationOp {
         let h_world = history_elt.world;
-        if (h_world.current_om() === this.current_om() && history_elt.world.current_om() in om_id_2_contention) {
+        if (h_world.current_om() === this.current_om() && h_world.current_om() in om_id_2_contention) {
             let {
                 prev_interp_action = 'ending interpretation',
                 index = 0,
@@ -378,13 +388,20 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             let {
                 prev_interp_action: h_prev_inter_action = 'ending interpretation',
                 index: h_index = 0,
-                begin_tag: h_begin_tag = -1
+                begin_tag: h_begin_tag = -1,
+                hide_failures: h_hide_failures = false
             }: InterpState = h_world.get_current_om_state();
             
             if (prev_interp_action === 'ending interpretation') {
                 if (!this.state.has_understood[om_id_2_contention[this.current_om()]]) {
-                    if (h_index > begin_tag + 1 && h_index < index) {
-                        return [{'add': 'forgotten'}];
+                    if (h_hide_failures) {
+                        if (h_index > begin_tag && h_index <= index) {
+                            return [{'add': 'forgotten'}];
+                        }
+                    } else {
+                        if (h_index > begin_tag + 1 && h_index < index) {
+                            return [{'add': 'forgotten'}];
+                        }
                     }
                 }
             } else if (is_considering(prev_interp_action)) {
@@ -772,7 +789,11 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                             <br/><br/>
                             You recognize your own loopy scrawl on the parchment paper.
                             <br/><br/>
-                            Who left it out here? And where are the rest of your notes?`),
+                            <div class="alien-interp">
+                            Who would tear apart your <i>life's work?</i>
+                            <br/><br/>
+                            Is there any hope at all that it can be recovered?
+                            </div>`),
                             world: this.update({
                                 om_state: {
                                     [this.current_om()] : {
@@ -828,7 +849,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         {
             id: 'woods, crossing the boundary 3',
             enter_message: `
-            More and more birch trees appear as your trudge onward.
+            More birch trees appear as your trudge onward.
             <br/><br/>
             Another fragment of parchment paper catches your eye on the ground.`,
             handle_command: wrap_handler(function *(parser: CommandParser) {
@@ -859,8 +880,8 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                             enabled: Boolean(this.state.has_regarded['tangle, 2']),
                             display: DisplayEltType.keyword
                         })]);
-                    yield parser.consume_filler(['up', 'the']);
-                    yield parser.consume_filler(['birch', 'gradient']);
+                    yield parser.consume_filler(['through', 'the']);
+                    yield parser.consume_filler(['birch', 'forest']);
                     yield parser.done();
 
                     return this.transition_to('woods, clearing');
@@ -885,7 +906,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 <br/><br/>
                 In another, a looming structure of some kind stands beyond the trees.
             </blockquote>
-            A third note fragment lies on the ground.`,
+            A third fragment lies on the ground.`,
             short_enter_message: `
             You arrive back at the clearing.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
@@ -908,7 +929,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     <br/><br/>
                     ${msg}
                     <br/>
-                    This completes the transcript. The three fragments comprise a full page from your notes.`));
+                    This completes the transcript!
+                    <br/><br/>
+                    The three fragments comprise a full page from your notes.`));
                 });
 
                 let go_consumer = wrap_handler(function*(parser:CommandParser) {
@@ -999,11 +1022,11 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         {
             id: 'woods, tangle',
             enter_message: `
-            The path inward narrows to form a gap just wide enough to fit your body.
+            The path narrows to form a space just wide enough to fit your body.
             <br/><br/>
-            You step carefully along the path, bending around corners, surrounded by parchment-white.
+            You step carefully, bending around corners, surrounded by parchment-white bark.
             <br/><br/>
-            Some ways in, you arrive at a dead end.
+            You arrive at a dead end.
             <br/><br/>
             You feel as though you have arrived somewhere significant, though you have nowhere to go now but back.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
@@ -1034,7 +1057,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         {
             id: 'tower, base',
             enter_message: `
-            As you make your way outward, the trees begin the thin.
+            As you make your way outward, the forest begins to thin.
             <br/><br/>
             You arrive at the base of a wooden viewing tower, erected perfectly among the trees.`,
             short_enter_message: `
@@ -1123,9 +1146,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         {
             id: 'inward, 1',
             enter_message: `
-            You proceed again into the narrow, winding path within the birch thicket.
+            You proceed again into the narrow, winding path.
             <br/><br/>
-            The parchment-white trees surrounding you ebb and flow, carving a tangled, wild path to the center.`,
+            The parchment-white trees surrounding you ebb and flow, carving a tangled, wild route to the center.`,
             transitions: [
                 [['*consider', 'the', 'familiar qualities', 'of', 'birch bark'], 'inward, 2']]
         },
@@ -1197,7 +1220,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     yield parser.consume_option([
                         annotate(['read'], {
                             display: DisplayEltType.keyword,
-                            enabled: true //this.state.has_regarded['forest, parchment trees']
+                            enabled: true
                         })
                     ]);
 
@@ -1378,9 +1401,6 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         let opt2: string;
 
                         if (opt1 === 'the') {
-                            // the calamity
-                            // the shattered mirror
-                            // the ice-covered mountain
                             opt2 = yield parser.consume_option([
                                 annotate(['calamity'], {enabled: !has_interpreted['the calamity']}),
                                 annotate(['shattered', 'mirror'], {enabled: !has_interpreted['the shattered mirror']}),
@@ -1487,8 +1507,7 @@ let ch1_perceptions: () => Perception[] = () => [
         id: 'forest, general',
         content: `
         The sun trickles through the thick brush.
-        <br />
-        <br />
+        <br/><br/>
         The growth of the forest surrounds you in every direction.`
     },
     {
@@ -1541,14 +1560,12 @@ let ch1_perceptions: () => Perception[] = () => [
         The sun dances over the top of the canopy. You see the parchment-white birch trees flow into the brown of oak, and the fuzzy-green of distant pine.
         <br/><br/>
         You survey the looping threads of passage through the woods.
-        <br /><br />
+        <br/><br/>
         You see the trail you took to reach this viewing tower. You see it flow back into the clearing, which in turn flows into the narrow, winding path through the birch thicket.
         <br/><br/>
         Further out, a frozen river carves the forest in half.
         </br><br/>
-        And beyond that, the base of a snow-covered mountain.
-        <br/><br/>
-        You see the path back through the oak trees to your alcove, that you are destined to walk again, if you are ever to return to your study and transcribe your experiences.`
+        And beyond that, the base of a snow-covered mountain.`
     },
     {
         id: 'tangle, 1',

@@ -8,6 +8,8 @@ TODOs
 
 - Reduce verbosity about tangle
 
+- remove up the birch gradient
+
 - Puzzle uno
     - Cycling thru notes during an interp
         - remove whole begin/end
@@ -23,6 +25,7 @@ TODOs
 - more consistent use of command colors
 - more consistent breaks b/w command tokens
 
+- enter/tab/right on completed token adds a space
 
 **Later**
 

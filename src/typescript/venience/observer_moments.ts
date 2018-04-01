@@ -143,7 +143,8 @@ const ContentionIDs = infer_literal_array(
     // ch1
     'tangle, 1',
     'tangle, 2',
-    'tangle, 3'
+    'tangle, 3',
+    'tangle, failure'
 )
 
 export type ContentionID = typeof ContentionIDs[number];
