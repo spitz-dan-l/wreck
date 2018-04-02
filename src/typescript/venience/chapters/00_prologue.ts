@@ -468,15 +468,20 @@ let prologue_oms: () => ObserverMoment[] = () => [
 
         interpret_history(history_elt: VenienceWorldInterstitialUpdateResult): HistoryInterpretationOp {
             let hist_om = history_elt.world.current_om();
+            let result: HistoryInterpretationOp = [];
             if (hist_om === 'alcove, beginning interpretation') {
                 let {interp_step: hist_interp_step = 0} = history_elt.world.get_om_state('alcove, beginning interpretation');    
                 if (hist_interp_step === 0) {
                     let {interp_step = 0} = this.get_om_state('alcove, beginning interpretation');
                     if (interp_step > 0) {
-                        return [{'add': `interp-alcove-${interp_step}-enabled`}];
+                        result.push({'add': `interp-alcove-${interp_step}-enabled`});
+                    } else {
+                        result.push({'add': 'interpretation-block'});
+                        result.push({'add': 'interpretation-active'});
                     }
                 }
             }
+            return result;
         }
     },
     {
@@ -487,7 +492,10 @@ let prologue_oms: () => ObserverMoment[] = () => [
         <br /><br />
         But your sense of purpose compels you. To go. To seek. To try to understand.`,
         transitions: [
-            [['enter', 'the', 'forest'], 'alcove, entering the forest']]
+            [['enter', 'the', 'forest'], 'alcove, entering the forest']],
+        interpretations: {
+            'alcove, beginning interpretation': [{'remove': 'interpretation-active'}]
+        }
     },
     {
         id: 'alcove, entering the forest',

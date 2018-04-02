@@ -25,8 +25,6 @@ TODOs
 - more consistent use of command colors
 - more consistent breaks b/w command tokens
 
-- enter/tab/right on completed token adds a space
-
 **Later**
 
 - (Probs not ready for spring thing :( )Appropriate loop erasure
