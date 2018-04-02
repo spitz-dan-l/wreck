@@ -28,17 +28,14 @@ export class TypeaheadList extends React.Component<any, any> {
     
     top: switch (event.keyCode) {
       case keys.enter:
-        // if (this.state.selection_index === -1) {
-        //   break;
-        // }
         if (this.props.typeahead.length > 0) {
           swallowed_enter = true;
         }
-        // swallowed_enter = true;
       case keys.tab:
         event.preventDefault();
       case keys.right:      
         if (this.props.typeahead.length === 0) {
+          this.props.onTypeaheadSelection(false);
           break;
         }
         let selected = (this.state.selection_index === -1) ?

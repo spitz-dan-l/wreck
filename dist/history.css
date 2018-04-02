@@ -18,6 +18,36 @@
     margin-bottom: 1em;
 }
 
+.history.interpretation-block {
+    outline: solid 1px ivory;
+    outline-offset: 0.4em;
+    transition: outline-color 400ms linear, background-color 400ms linear;
+}
+
+.history.interpretation-block.interpretation-active {
+    outline-color: ivory;
+    animation-name: interpreting;
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+}
+
+@keyframes interpreting {
+  0% {
+    outline-color: ivory;
+  }
+  50% {
+    outline-color: #72d2e5;
+  }
+  100 {
+    outline-color: ivory;
+  }
+}
+
+.history.interpretation-block.interpretation-active.would-remove-interpretation-active {
+    outline-color: #f9dd04;
+    animation: none !important;
+}
+
 .history.animation-new.animation-start .output-text {
     opacity: 0.01;
     max-height: 0px;
@@ -78,7 +108,22 @@
 .history.would-add-reif-dream-3-enabled,
 .history.would-add-reif-dream-4-enabled
 {
+    background-color: black;
+    animation-name: interpreting, would-interpret !important;
+    animation-duration: 2s, 2s !important;
+    animation-iteration-count: infinite, infinite !important;
+}
+
+@keyframes would-interpret {
+  0% {
+    background-color: black;
+  }
+  50% {
     background-color: midnightblue;
+  }
+  100 {
+    background-color: black;
+  }
 }
 
 .history .interp-alcove-1,

@@ -10,7 +10,7 @@ export class Preface extends React.Component<any, any> {
 
   render() {
     return (
-      <div className="preface" style={{display: 'none'}} ref={(d) => this.div = d}>
+      <div className="preface" ref={(d) => this.div = d}>
         <h1 onClick={this.start_game}>
             <a href='#'>Start Venience World</a>
         </h1>

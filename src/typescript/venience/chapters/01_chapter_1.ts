@@ -55,6 +55,10 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         'ending interpretation'
     );
 
+    function is_ending(a: InterpAction): a is 'ending interpretation' {
+        return a === undefined || a === 'ending interpretation';
+    }
+
     function is_considering(a: InterpAction): a is {'considering a fragment' : TangleContention} {
         return typeof a === 'object' && <any>a['considering a fragment'] !== undefined;
     }
@@ -84,14 +88,14 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         }
 
         let {
-            prev_interp_action = 'ending interpretation',
+            prev_interp_action = undefined,
             index = 0,
             begin_tag = -1,
             hide_failures = false
         }: InterpState = this.get_current_om_state();
 
         let begin_consumer = wrap_handler(function*(parser: CommandParser) {
-            if (prev_interp_action !== 'ending interpretation') {
+            if (!is_ending(prev_interp_action)) {
                 yield parser.invalidate();
             }
             yield parser.consume_option([
@@ -135,7 +139,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         });
 
         let end_consumer = wrap_handler(function*(parser: CommandParser) {
-            if (prev_interp_action === 'ending interpretation') {
+            if (is_ending(prev_interp_action)) {
                 yield parser.invalidate();
             }
 
@@ -216,7 +220,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         });
 
         let consider_consumer = wrap_handler(function*(parser: CommandParser) {
-            if (prev_interp_action === 'ending interpretation') {
+            if (is_ending(prev_interp_action)) {
                 yield parser.invalidate();
             }
             yield parser.consume_option([
@@ -380,35 +384,57 @@ let ch1_oms: () => ObserverMoment[] = (() => {
         let h_world = history_elt.world;
         if (h_world.current_om() === this.current_om() && h_world.current_om() in om_id_2_contention) {
             let {
-                prev_interp_action = 'ending interpretation',
+                prev_interp_action = undefined,
                 index = 0,
                 begin_tag = -1
             }: InterpState = this.get_current_om_state();
 
             let {
-                prev_interp_action: h_prev_inter_action = 'ending interpretation',
+                prev_interp_action: h_prev_interp_action = undefined,
                 index: h_index = 0,
                 begin_tag: h_begin_tag = -1,
                 hide_failures: h_hide_failures = false
             }: InterpState = h_world.get_current_om_state();
             
             if (prev_interp_action === 'ending interpretation') {
+                let result: HistoryInterpretationOp = [];
+
+                if (h_index <= begin_tag) {
+                    return;
+                }
+
+                if (is_considering(h_prev_interp_action)) {
+                    // debugger;
+                    result.push({'remove': 'interpretation-active'});
+                }
+
                 if (!this.state.has_understood[om_id_2_contention[this.current_om()]]) {
                     if (h_hide_failures) {
                         if (h_index > begin_tag && h_index <= index) {
-                            return [{'add': 'forgotten'}];
+                            result.push({'add': 'forgotten'});
                         }
                     } else {
                         if (h_index > begin_tag + 1 && h_index < index) {
-                            return [{'add': 'forgotten'}];
+                            result.push({'add': 'forgotten'});
                         }
                     }
                 }
+                return result;
             } else if (is_considering(prev_interp_action)) {
                 // forget back to last 'beginning interpretation'
                 
                 if (h_index > begin_tag + 1 && h_index < index) {
-                    return [{'add': 'forgotten'}];
+                    return [
+                        {'add': 'forgotten'},
+                        {'remove': 'interpretation-active'}
+                    ];
+                }
+
+                if (h_index === index) {
+                    return [
+                        {'add': 'interpretation-block'},
+                        {'add': 'interpretation-active'}
+                    ];
                 }
             } else if (is_reifying(prev_interp_action)) {
                 if (prev_interp_action.correctly) {
@@ -699,6 +725,10 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         let {interp_step = 0} = this.get_om_state('woods, beginning interpretation');
                         if (interp_step > 0) {
                             return [{'add': `interp-woods-${interp_step}-enabled`}];
+                        } else {
+                            return [
+                                {'add': 'interpretation-block'},
+                                {'add': 'interpretation-active'}];
                         }
                     }
                 }
@@ -715,7 +745,10 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             transitions: [
                 [['*remain', 'within the boundary'], 'woods, considering remaining'],
                 [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']
-            ]
+            ],
+            interpretations: {
+                'woods, beginning interpretation': [{'remove': 'interpretation-active'}]
+            }
         },
         {
             id: 'woods, considering remaining',
@@ -935,9 +968,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 });
 
                 let go_consumer = wrap_handler(function*(parser:CommandParser) {
-                    let {prev_interp_action = 'ending interpretation'} : InterpState = this.get_current_om_state();
+                    let {prev_interp_action = undefined} : InterpState = this.get_current_om_state();
 
-                    if (prev_interp_action !== 'ending interpretation') {
+                    if (!is_ending(prev_interp_action)) {
                         yield parser.invalidate();
                     }
 
@@ -954,7 +987,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                             yield parser.consume_exact(['narrow', 'path'], DisplayEltType.option);
                             yield parser.done();
 
-                            return this.transition_to('woods, tangle');
+                            return this.transition_to('woods, tangle', {
+                                prev_interp_action: undefined
+                            });
                         } else {
                             yield parser.consume_filler(['inward,']);
                             yield parser.consume_filler(['interrogating']);
@@ -1031,9 +1066,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             You feel as though you have arrived somewhere significant, though you have nowhere to go now but back.`,
             handle_command: wrap_handler(function*(parser: CommandParser) {
                 let return_consumer = wrap_handler(function*(parser: CommandParser) {
-                    let {prev_interp_action = 'ending interpretation'} : InterpState = this.get_current_om_state();
+                    let {prev_interp_action = undefined} : InterpState = this.get_current_om_state();
 
-                    if (prev_interp_action !== 'ending interpretation') {
+                    if (!is_ending(prev_interp_action)) {
                         yield parser.invalidate();
                     }
 
@@ -1045,7 +1080,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
 
                     let dest: ObserverMomentID = 'woods, clearing';
                 
-                    return this.transition_to(dest);
+                    return this.transition_to(dest, {
+                        prev_interp_action: undefined
+                    });
                 });
 
                 return combine.call(this, parser, [make_tangle_consumer(), return_consumer]);
@@ -1075,7 +1112,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     yield parser.consume_filler(['the', 'viewing', 'tower']);
                     yield parser.done();
 
-                    return this.transition_to('tower, peak');
+                    return this.transition_to('tower, peak', {
+                        prev_interp_action: undefined
+                    });
                 });
 
                 let return_consumer = wrap_handler(function*(parser: CommandParser) {
@@ -1088,7 +1127,9 @@ let ch1_oms: () => ObserverMoment[] = (() => {
 
                     let dest: ObserverMomentID = 'woods, clearing';
 
-                    return this.transition_to(dest);
+                    return this.transition_to(dest, {
+                        prev_interp_action: undefined
+                    });
                 });
 
                 return combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
@@ -1122,16 +1163,27 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 });
 
                 let descend_consumer = wrap_handler(function*(parser: CommandParser) {
-                    let {prev_interp_action = 'ending interpretation'} : InterpState = this.get_current_om_state();
+                    let {prev_interp_action = undefined} : InterpState = this.get_current_om_state();
 
-                    if (prev_interp_action !== 'ending interpretation') {
+                    if (!is_ending(prev_interp_action)) {
                         yield parser.invalidate();
                     }
 
                     yield parser.consume_exact(['descend']);
                     yield parser.done();
 
-                    return this.transition_to('tower, base');
+                    let result = this.transition_to('tower, base');
+
+                    result.world = result.world.update({
+                        om_state: {
+                            [this.current_om()]: {
+                                prev_interp_action: undefined
+                            }
+                        }
+                    });
+                    return result;
+
+                    // return this.transition_to('tower, base');
                 });
                 
                 return combine.call(this, parser, [

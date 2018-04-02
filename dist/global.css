@@ -27,8 +27,17 @@
       left: 0;
       top: 0;
       margin: 2em;
+      white-space: normal;
 }
 
 .preface h1 {
       float: right;
+}
+
+a:link {
+      color: gold;
+}
+
+a:visited {
+      color: darkgoldenrod;
 }

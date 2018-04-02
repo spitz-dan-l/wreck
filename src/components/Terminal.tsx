@@ -66,9 +66,7 @@ export class Terminal<T> extends React.Component<any, {world_driver: WorldDriver
       world_driver: this.state.world_driver
     });
    this.history.edit_after_update = true;
-    //this.history.edit();
     this.prompt.focus();
-    //this.scrollToPrompt();
     let that = this;
     window.setTimeout(function() {
       that.scrollToPrompt();
@@ -81,9 +79,11 @@ export class Terminal<T> extends React.Component<any, {world_driver: WorldDriver
     if (current_indentation === '' && matched_tokens.length > 1) {
       current_indentation = ' ';
     }
-    let new_last_token = current_indentation + option;
-    matched_tokens[matched_tokens.length - 1] = new_last_token;
 
+    if (option !== false){ 
+      let new_last_token = current_indentation + option;
+      matched_tokens[matched_tokens.length - 1] = new_last_token;
+    }
     let new_command = ''.concat(...matched_tokens) + ' ';
     this.handlePromptChange(new_command);
     this.prompt.setState({value: new_command});
@@ -137,7 +137,7 @@ export class Terminal<T> extends React.Component<any, {world_driver: WorldDriver
   render() {
     return (
       <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
-        <Preface on_start_game={() => this.prompt.focus()} />
+        { /*<Preface on_start_game={() => this.prompt.focus()} /> */}
         <History
           timeout={700}
           onAnimationFinish={this.scrollToPrompt}

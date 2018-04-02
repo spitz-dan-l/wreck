@@ -9,7 +9,7 @@ import {VenienceWorld, VenienceWorldState} from '../typescript/venience/venience
 
 let start: VenienceWorldState = {};
 
-//start.experiences = ['grass, asking 2'];
+// start.experiences = ['grass, asking 2'];
 //start.experiences = ['alcove, entering the forest']; 
 // start.experiences = ['woods, ending interpretation'];
 // start.experiences = ['bed, sitting up 2'];

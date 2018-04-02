@@ -63,17 +63,11 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 13);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports) {
-
-module.exports = React;
-
-/***/ }),
-/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -383,7 +377,7 @@ function infer_literal_array(...arr) {
 exports.infer_literal_array = infer_literal_array;
 
 /***/ }),
-/* 2 */
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -391,7 +385,7 @@ exports.infer_literal_array = infer_literal_array;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -699,6 +693,12 @@ function consume_declarative_dsl(parser, options) {
 exports.consume_declarative_dsl = consume_declarative_dsl;
 
 /***/ }),
+/* 2 */
+/***/ (function(module, exports) {
+
+module.exports = React;
+
+/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -840,12 +840,12 @@ exports.wrap_in_div = wrap_in_div;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(5);
-const parser_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 const text_tools_1 = __webpack_require__(3);
-const observer_moments_1 = __webpack_require__(17);
-const _00_prologue_1 = __webpack_require__(15);
-const _01_chapter_1_1 = __webpack_require__(16);
+const observer_moments_1 = __webpack_require__(16);
+const _00_prologue_1 = __webpack_require__(14);
+const _01_chapter_1_1 = __webpack_require__(15);
 exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
@@ -1075,8 +1075,8 @@ exports.VenienceWorld = VenienceWorld;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(1);
 class World {
     constructor(state) {
         this.state = state;
@@ -1230,8 +1230,8 @@ module.exports = ReactDOM;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const parser_1 = __webpack_require__(2);
+const React = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
     switch (det) {
@@ -1298,14 +1298,13 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const Preface_1 = __webpack_require__(11);
-const Prompt_1 = __webpack_require__(12);
+const React = __webpack_require__(2);
+const Prompt_1 = __webpack_require__(11);
 const Text_1 = __webpack_require__(7);
-const TypeaheadList_1 = __webpack_require__(13);
+const TypeaheadList_1 = __webpack_require__(12);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
-const parser_1 = __webpack_require__(2);
+const parser_1 = __webpack_require__(1);
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -1335,9 +1334,7 @@ class Terminal extends React.Component {
                 world_driver: this.state.world_driver
             });
             this.history.edit_after_update = true;
-            //this.history.edit();
             this.prompt.focus();
-            //this.scrollToPrompt();
             let that = this;
             window.setTimeout(function () {
                 that.scrollToPrompt();
@@ -1349,8 +1346,10 @@ class Terminal extends React.Component {
             if (current_indentation === '' && matched_tokens.length > 1) {
                 current_indentation = ' ';
             }
-            let new_last_token = current_indentation + option;
-            matched_tokens[matched_tokens.length - 1] = new_last_token;
+            if (option !== false) {
+                let new_last_token = current_indentation + option;
+                matched_tokens[matched_tokens.length - 1] = new_last_token;
+            }
             let new_command = ''.concat(...matched_tokens) + ' ';
             this.handlePromptChange(new_command);
             this.prompt.setState({ value: new_command });
@@ -1397,7 +1396,7 @@ class Terminal extends React.Component {
     }
     componentDidUpdate() {}
     render() {
-        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(Preface_1.Preface, { on_start_game: () => this.prompt.focus() }), React.createElement(History_1.History, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
+        return React.createElement("div", { className: "terminal", tabIndex: -1, onKeyDown: this.handleKeys, ref: cc => this.contentContainer = cc }, React.createElement(History_1.History, { timeout: 700, onAnimationFinish: this.scrollToPrompt, history: this.state.world_driver.history, possible_history: this.state.world_driver.possible_history, ref: h => this.history = h }), React.createElement(Prompt_1.Prompt, { onSubmit: this.handleSubmit, onChange: this.handlePromptChange, ref: p => this.prompt = p }, React.createElement(Text_1.ParsedText, { parser: this.currentParser(), typeaheadIndex: this.currentTypeaheadIndex() }, React.createElement(TypeaheadList_1.TypeaheadList, { typeahead: this.currentTypeahead(), indentation: this.currentIndentation(), onTypeaheadSelection: this.handleTypeaheadSelection, ref: t => this.typeahead_list = t }))));
     }
 }
 exports.Terminal = Terminal;
@@ -1410,7 +1409,7 @@ exports.Terminal = Terminal;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(2);
 const ReactDom = __webpack_require__(6);
 const Text_1 = __webpack_require__(7);
 class BookGuy extends React.Component {
@@ -1581,29 +1580,6 @@ exports.History = History;
 "use strict";
 
 
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-class Preface extends React.Component {
-    constructor() {
-        super(...arguments);
-        this.start_game = () => {
-            this.div.style.display = 'none';
-            this.props.on_start_game();
-        };
-    }
-    render() {
-        return React.createElement("div", { className: "preface", style: { display: 'none' }, ref: d => this.div = d }, React.createElement("h1", { onClick: this.start_game }, React.createElement("a", { href: '#' }, "Start Venience World")), React.createElement("h3", null, "Welcome to Venience World!"), React.createElement("br", null), React.createElement("br", null), React.createElement("section", null, React.createElement("h3", null, "How to play"), "Venience World is an incomplete game that uses a new kind of parser interface.", React.createElement("br", null), React.createElement("br", null), "Use tab, enter, the arrow keys or the mouse to select autocompletions of your commands as you play.", React.createElement("br", null), React.createElement("br", null), "Play time is about 10 to 20 minutes. I hope you enjoy playing!", React.createElement("br", null), React.createElement("br", null), React.createElement("strong", null, "Warning:"), " Currently there is ", React.createElement("i", null, "no way to save or load"), " your game. If you need to take a break, leave Venience World open in a tab. Save/Load will be added in a future release.", React.createElement("br", null), React.createElement("br", null), "To get started now, click the Start Venience World button up top.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Replaying"), "Venience World is designed to make all content accessible in a single playthrough.", React.createElement("br", null), React.createElement("br", null), "This means you will ", React.createElement("i", null, "never be expected"), " to reset the game and repeat yourself in order to explore a missed branch.", React.createElement("br", null), React.createElement("br", null), "Have faith in this as you play through the game. Replaying a game is often worthwhile; in this case, just know it is ", React.createElement("i", null, "not required"), " to get the full experience.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Browser compatibility"), "Venience World has been tested to work on the Chrome and Firefox browsers.", React.createElement("br", null), React.createElement("br", null), "It definitely doesn't work on Safari.", React.createElement("br", null), React.createElement("br", null), "I haven't tested it on IE/Edge, Opera, or others.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Development progress"), "This is a playable demo with a prologue and partial first chapter with no puzzle elements.", React.createElement("br", null), React.createElement("br", null), "The final release will complete the story and contain mild puzzle elements surrounding the interpretation of aphorisms.", React.createElement("br", null), React.createElement("br", null), "Most of what you see will be subject to change for the final release.", React.createElement("br", null), React.createElement("br", null), "I'm not sure when it will be finished.", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Contact"), "If you are interested in updates on the game, follow the ", React.createElement("a", { href: "https://twitter.com/VenienceWorld" }, "@VenienceWorld"), " twitter account, or ", React.createElement("a", { href: "mailto:spitz.dan.L+venience@gmail.com" }, "email me"), ".", React.createElement("br", null), React.createElement("br", null), "I would love to hear about your experience playing Venience World!", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "Open source"), "Venience World is open source.", React.createElement("br", null), React.createElement("br", null), "The project can be found at ", React.createElement("a", { href: "https://github.com/spitz-dan-l/wreck/" }, "https://github.com/spitz-dan-l/wreck/"), ".", React.createElement("br", null), React.createElement("br", null)), React.createElement("section", null, React.createElement("h3", null, "The name"), "The name \"Venience World\" is a play on \"", React.createElement("a", { href: "https://plato.stanford.edu/entries/supervenience/" }, "Supervenience"), "\", and the trope wherein games have names of the form \"Super ", React.createElement("i", null, "X"), " World\".", React.createElement("br", null), React.createElement("br", null), "The game is thematically about seeking an understanding about what is going on. Supervenience as a concept is one of the philosophical tools that has been developed for doing that."));
-    }
-}
-exports.Preface = Preface;
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
 var __rest = this && this.__rest || function (s, e) {
     var t = {};
     for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
@@ -1611,7 +1587,7 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(2);
 const keyboard_tools_1 = __webpack_require__(8);
 const InputWrapper = props => {
     const { children } = props,
@@ -1705,16 +1681,16 @@ class Prompt extends React.Component {
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 13 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(2);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1735,17 +1711,14 @@ class TypeaheadList extends React.Component {
         let swallowed_enter = false;
         top: switch (event.keyCode) {
             case keyboard_tools_1.keys.enter:
-                // if (this.state.selection_index === -1) {
-                //   break;
-                // }
                 if (this.props.typeahead.length > 0) {
                     swallowed_enter = true;
                 }
-            // swallowed_enter = true;
             case keyboard_tools_1.keys.tab:
                 event.preventDefault();
             case keyboard_tools_1.keys.right:
                 if (this.props.typeahead.length === 0) {
+                    this.props.onTypeaheadSelection(false);
                     break;
                 }
                 let selected = this.state.selection_index === -1 ? this.props.typeahead[0] : this.props.typeahead[this.state.selection_index];
@@ -1795,20 +1768,20 @@ class TypeaheadList extends React.Component {
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
-/* 14 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(2);
 const ReactDom = __webpack_require__(6);
 const Terminal_1 = __webpack_require__(9);
 const commands_1 = __webpack_require__(5);
 const venience_world_1 = __webpack_require__(4);
 let start = {};
-//start.experiences = ['grass, asking 2'];
+// start.experiences = ['grass, asking 2'];
 //start.experiences = ['alcove, entering the forest']; 
 // start.experiences = ['woods, ending interpretation'];
 // start.experiences = ['bed, sitting up 2'];
@@ -1820,7 +1793,7 @@ let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ }),
-/* 15 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1828,8 +1801,8 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(1);
 let prologue_oms = () => [{
     id: 'bed, sleeping 1',
     enter_message: '',
@@ -2173,15 +2146,20 @@ let prologue_oms = () => [{
     dest_oms: ['alcove, ending interpretation'],
     interpret_history(history_elt) {
         let hist_om = history_elt.world.current_om();
+        let result = [];
         if (hist_om === 'alcove, beginning interpretation') {
             let { interp_step: hist_interp_step = 0 } = history_elt.world.get_om_state('alcove, beginning interpretation');
             if (hist_interp_step === 0) {
                 let { interp_step = 0 } = this.get_om_state('alcove, beginning interpretation');
                 if (interp_step > 0) {
-                    return [{ 'add': `interp-alcove-${interp_step}-enabled` }];
+                    result.push({ 'add': `interp-alcove-${interp_step}-enabled` });
+                } else {
+                    result.push({ 'add': 'interpretation-block' });
+                    result.push({ 'add': 'interpretation-active' });
                 }
             }
         }
+        return result;
     }
 }, {
     id: 'alcove, ending interpretation',
@@ -2190,7 +2168,10 @@ let prologue_oms = () => [{
         You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
         <br /><br />
         But your sense of purpose compels you. To go. To seek. To try to understand.`,
-    transitions: [[['enter', 'the', 'forest'], 'alcove, entering the forest']]
+    transitions: [[['enter', 'the', 'forest'], 'alcove, entering the forest']],
+    interpretations: {
+        'alcove, beginning interpretation': [{ 'remove': 'interpretation-active' }]
+    }
 }, {
     id: 'alcove, entering the forest',
     enter_message: `What lies within the forest, and beyond? What will it be like, out there?`,
@@ -2230,7 +2211,7 @@ exports.default = {
 };
 
 /***/ }),
-/* 16 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2239,9 +2220,12 @@ exports.default = {
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(4);
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(1);
 let ch1_oms = () => {
+    function is_ending(a) {
+        return a === undefined || a === 'ending interpretation';
+    }
     function is_considering(a) {
         return typeof a === 'object' && a['considering a fragment'] !== undefined;
     }
@@ -2259,9 +2243,9 @@ let ch1_oms = () => {
         if (this.state.has_understood[om_id_2_contention[this.current_om()]]) {
             yield parser.invalidate();
         }
-        let { prev_interp_action = 'ending interpretation', index = 0, begin_tag = -1, hide_failures = false } = this.get_current_om_state();
+        let { prev_interp_action = undefined, index = 0, begin_tag = -1, hide_failures = false } = this.get_current_om_state();
         let begin_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (prev_interp_action !== 'ending interpretation') {
+            if (!is_ending(prev_interp_action)) {
                 yield parser.invalidate();
             }
             yield parser.consume_option([datatypes_1.annotate(['begin'], {
@@ -2300,7 +2284,7 @@ let ch1_oms = () => {
             };
         });
         let end_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (prev_interp_action === 'ending interpretation') {
+            if (is_ending(prev_interp_action)) {
                 yield parser.invalidate();
             }
             yield parser.consume_filler(['end']);
@@ -2373,7 +2357,7 @@ let ch1_oms = () => {
             };
         });
         let consider_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (prev_interp_action === 'ending interpretation') {
+            if (is_ending(prev_interp_action)) {
                 yield parser.invalidate();
             }
             yield parser.consume_option([datatypes_1.annotate(['consider'], {
@@ -2497,24 +2481,36 @@ let ch1_oms = () => {
     function tangle_interpreter(history_elt) {
         let h_world = history_elt.world;
         if (h_world.current_om() === this.current_om() && h_world.current_om() in om_id_2_contention) {
-            let { prev_interp_action = 'ending interpretation', index = 0, begin_tag = -1 } = this.get_current_om_state();
-            let { prev_interp_action: h_prev_inter_action = 'ending interpretation', index: h_index = 0, begin_tag: h_begin_tag = -1, hide_failures: h_hide_failures = false } = h_world.get_current_om_state();
+            let { prev_interp_action = undefined, index = 0, begin_tag = -1 } = this.get_current_om_state();
+            let { prev_interp_action: h_prev_interp_action = undefined, index: h_index = 0, begin_tag: h_begin_tag = -1, hide_failures: h_hide_failures = false } = h_world.get_current_om_state();
             if (prev_interp_action === 'ending interpretation') {
+                let result = [];
+                if (h_index <= begin_tag) {
+                    return;
+                }
+                if (is_considering(h_prev_interp_action)) {
+                    // debugger;
+                    result.push({ 'remove': 'interpretation-active' });
+                }
                 if (!this.state.has_understood[om_id_2_contention[this.current_om()]]) {
                     if (h_hide_failures) {
                         if (h_index > begin_tag && h_index <= index) {
-                            return [{ 'add': 'forgotten' }];
+                            result.push({ 'add': 'forgotten' });
                         }
                     } else {
                         if (h_index > begin_tag + 1 && h_index < index) {
-                            return [{ 'add': 'forgotten' }];
+                            result.push({ 'add': 'forgotten' });
                         }
                     }
                 }
+                return result;
             } else if (is_considering(prev_interp_action)) {
                 // forget back to last 'beginning interpretation'
                 if (h_index > begin_tag + 1 && h_index < index) {
-                    return [{ 'add': 'forgotten' }];
+                    return [{ 'add': 'forgotten' }, { 'remove': 'interpretation-active' }];
+                }
+                if (h_index === index) {
+                    return [{ 'add': 'interpretation-block' }, { 'add': 'interpretation-active' }];
                 }
             } else if (is_reifying(prev_interp_action)) {
                 if (prev_interp_action.correctly) {
@@ -2750,6 +2746,8 @@ let ch1_oms = () => {
                     let { interp_step = 0 } = this.get_om_state('woods, beginning interpretation');
                     if (interp_step > 0) {
                         return [{ 'add': `interp-woods-${interp_step}-enabled` }];
+                    } else {
+                        return [{ 'add': 'interpretation-block' }, { 'add': 'interpretation-active' }];
                     }
                 }
             }
@@ -2762,7 +2760,10 @@ let ch1_oms = () => {
             And yet, the world around you seems to have been reshaped.
             <br/><br/>
             The proliferation of possibly-wrong paths forward has collapsed to a single binary choice:`,
-        transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']]
+        transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']],
+        interpretations: {
+            'woods, beginning interpretation': [{ 'remove': 'interpretation-active' }]
+        }
     }, {
         id: 'woods, considering remaining',
         enter_message: `or...`,
@@ -2935,8 +2936,8 @@ let ch1_oms = () => {
                     The three fragments comprise a full page from your notes.`));
             });
             let go_consumer = venience_world_1.wrap_handler(function* (parser) {
-                let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
-                if (prev_interp_action !== 'ending interpretation') {
+                let { prev_interp_action = undefined } = this.get_current_om_state();
+                if (!is_ending(prev_interp_action)) {
                     yield parser.invalidate();
                 }
                 yield parser.consume_option([datatypes_1.annotate(['proceed'], {
@@ -2949,7 +2950,9 @@ let ch1_oms = () => {
                         yield parser.consume_filler(['on', 'the']);
                         yield parser.consume_exact(['narrow', 'path'], parser_1.DisplayEltType.option);
                         yield parser.done();
-                        return this.transition_to('woods, tangle');
+                        return this.transition_to('woods, tangle', {
+                            prev_interp_action: undefined
+                        });
                     } else {
                         yield parser.consume_filler(['inward,']);
                         yield parser.consume_filler(['interrogating']);
@@ -3002,8 +3005,8 @@ let ch1_oms = () => {
             You feel as though you have arrived somewhere significant, though you have nowhere to go now but back.`,
         handle_command: venience_world_1.wrap_handler(function* (parser) {
             let return_consumer = venience_world_1.wrap_handler(function* (parser) {
-                let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
-                if (prev_interp_action !== 'ending interpretation') {
+                let { prev_interp_action = undefined } = this.get_current_om_state();
+                if (!is_ending(prev_interp_action)) {
                     yield parser.invalidate();
                 }
                 yield parser.consume_exact(['return']);
@@ -3011,7 +3014,9 @@ let ch1_oms = () => {
                 yield parser.consume_filler(['clearing']);
                 yield parser.done();
                 let dest = 'woods, clearing';
-                return this.transition_to(dest);
+                return this.transition_to(dest, {
+                    prev_interp_action: undefined
+                });
             });
             return parser_1.combine.call(this, parser, [make_tangle_consumer(), return_consumer]);
         }),
@@ -3035,7 +3040,9 @@ let ch1_oms = () => {
                 })]);
                 yield parser.consume_filler(['the', 'viewing', 'tower']);
                 yield parser.done();
-                return this.transition_to('tower, peak');
+                return this.transition_to('tower, peak', {
+                    prev_interp_action: undefined
+                });
             });
             let return_consumer = venience_world_1.wrap_handler(function* (parser) {
                 // Returns to the clearing
@@ -3044,7 +3051,9 @@ let ch1_oms = () => {
                 yield parser.consume_filler(['clearing']);
                 yield parser.done();
                 let dest = 'woods, clearing';
-                return this.transition_to(dest);
+                return this.transition_to(dest, {
+                    prev_interp_action: undefined
+                });
             });
             return parser_1.combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
         }),
@@ -3072,13 +3081,22 @@ let ch1_oms = () => {
                 return this.regard('tangle, tower peak');
             });
             let descend_consumer = venience_world_1.wrap_handler(function* (parser) {
-                let { prev_interp_action = 'ending interpretation' } = this.get_current_om_state();
-                if (prev_interp_action !== 'ending interpretation') {
+                let { prev_interp_action = undefined } = this.get_current_om_state();
+                if (!is_ending(prev_interp_action)) {
                     yield parser.invalidate();
                 }
                 yield parser.consume_exact(['descend']);
                 yield parser.done();
-                return this.transition_to('tower, base');
+                let result = this.transition_to('tower, base');
+                result.world = result.world.update({
+                    om_state: {
+                        [this.current_om()]: {
+                            prev_interp_action: undefined
+                        }
+                    }
+                });
+                return result;
+                // return this.transition_to('tower, base');
             });
             return parser_1.combine.call(this, parser, [make_tangle_consumer(Boolean(this.state.has_regarded['tangle, tower peak'])), survey_consumer, descend_consumer]);
         }),
@@ -3482,15 +3500,15 @@ exports.default = {
 };
 
 /***/ }),
-/* 17 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(1);
-const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(0);
+const parser_1 = __webpack_require__(1);
 const ObserverMomentIDs = datatypes_1.infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
 //ch1
 'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, clearing',
