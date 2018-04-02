@@ -72,7 +72,7 @@ As development of Venience World continues, I may not continue to release all th
 
 ## Thoughts on IF design
 
-Venience World began as an experiment in IF design. It still largely is that, but I believe in it enough now to say it will be more than an experiment.
+Venience World began as an experiment in IF design. It still largely is that, but I believe in it enough now to say it will be more than an experiment. It introduces several novelties in IF design that I'd like to discuss.
 
 #### The autocomplete parser interface
 
@@ -84,7 +84,7 @@ A large class of player errors is impossible with this interface. Anything the p
 
 Not necessarily "for the better". Just different.
 
-There is still a sense of composing commands, a sense of personal performance in "uttering". I really enjoy this aspect of parser IF, and I think with an interface like this it's possible to enable the player to utter much more varied and particular sorts of things. A unique sort of poetry can be achieved.
+There is still a sense of composing commands, a sense of personal performance in "uttering". I really enjoy this aspect of parser IF, and I think with an interface like this it's possible to enable the player to utter more varied and particular sorts of things. A unique sort of poetry can be achieved.
 
 #### The plastic scrollback history
 
@@ -103,7 +103,7 @@ With (1) we make possible one of the core mechanics of Venience World: the inter
 
 With (2) we can perform "enhancement" and "cleanup" on the scrollback history, drawing attention to what we want and hiding repetitive or otherwise irrelevant sections of text.
 
-There is a slippery slope with a plastic scrollback history. We have the opportunity to do much more than just (1) and (2). Common tropes might call for "rewriting" events entirely. Time-travel mechanics, or psychological horror themes of unreliable memories, or postmodern conceptual relativism come to mind. In Venience World I have elected to steer clear of these, sticking to some conservative rules:
+There is a slippery slope with a plastic scrollback history. We have the opportunity to do much more than just (1) and (2). Common tropes might call for "rewriting" events entirely. Time-travel mechanics, or psychological horror themes with unreliable memories, or postmodern conceptual relativism come to mind. In Venience World I have elected to steer clear of these, sticking to some conservative rules:
 
 - Don't adjust history scrolled too far above the current view.
 - Don't *alter* anything; only annotate, restyle or hide.
