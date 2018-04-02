@@ -2,6 +2,8 @@
 
 Venience World is a parser game (i.e. text adventure) with a novel interface.
 
+A playable demo will be available as part of the [Spring Thing 2018](http://springthing.net/2018/) festival.
+
 It is written in Typescript and runs in the browser.
 
 If you're interested in adapting it for your purposes, or learning about how it works, please drop me a line at spitz.dan.L+venienceworld@gmail.com or DM [@VenienceWorld](https://twitter.com/venienceworld) on twitter.
@@ -67,3 +69,43 @@ As development of Venience World continues, I may not continue to release all th
 - Exporting transcripts. There's currently not a great way to copy the entire transcript of a playthrough as text and save it somewhere. Currently, selecting and copy-pasting the page yields a few formatting bugs.
 
 - Many more, that are too intertwined with the core design principles of the game to be easily listed as "missing features".
+
+## Thoughts on IF design
+
+Venience World began as an experiment in IF design. It still largely is that, but I believe in it enough now to say it will be more than an experiment.
+
+#### The autocomplete parser interface
+
+I think the interface creates new opportunities for the IF medium. Using it is qualitatively distinct from playing traditional parser games (e.g. Inform7), and newer link-based games (e.g. Twine).
+
+There are fewer options than in traditional parser games, and (arguably) more options than in link games.
+
+A large class of player errors is impossible with this interface. Anything the player "shouldn't be able to say" is "unutterable" by default, a natural consequence of the design. (There are other sorts of "useful" errors, that are worth keeping in.) I think this, along with the direct feedback of autocomplete options, changes the experience of playing a lot.
+
+Not necessarily "for the better". Just different.
+
+There is still a sense of composing commands, a sense of personal performance in "uttering". I really enjoy this aspect of parser IF, and I think with an interface like this it's possible to enable the player to utter much more varied sorts of things. A sense of poetry can be captured.
+
+#### The plastic scrollback history
+
+Another novel feature of Venience World's design is the plasticity of the scrollback history.
+
+The idea for a plastic or mutable scrollback history is not really new. But Venience World takes a very particular kind of approach to it.
+
+There have been IF games created where the player has the affordance of swapping between different lexical blobs to produce different narrative outcomes. This is an extremely rich area for innovation in IF design. Venience World's particular take explores a small fraction of the space.
+
+My goal with Venience World's plastic scrollback history is to produce two particular effects:
+
+1. To reference and annotate recently-printed text as an evocative tool.
+2. To exercise greater authorial control over the appearance and flow of the story over time.
+
+With (1) we make possible one of the core mechanics of Venience World: the interpretation of events and recited words. By applying our interpretive acts as annotations directly to the source text, we evoke the interpretations in a unique (and I feel, fun, interesting) way.
+
+With (2) we can perform "cleanup" on the scrollback history, drawing attention to what we want and hiding repetitive or otherwise irrelevant sections of text.
+
+There is a slippery slope with a plastic scrollback history. We have the opportunity to do much more than just (1) and (2). Common tropes might be to "rewrite" events entirely. Time-travel mechanics, or psychological horror themes of unreliable memories come to mind. In Venience World I have elected to steer clear of these, sticking to some conservative rules:
+
+- Don't adjust history scrolled too far above the current view.
+- Don't *alter* anything; only annotate, restyle or hide.
+
+I like these minimalist rules; they provide enjoyable creative constraints, they allow subtler mechanics to shine through, and they prevent certain design anti-patterns.
