@@ -1786,9 +1786,9 @@ let start = {};
 // start.experiences = ['woods, ending interpretation'];
 // start.experiences = ['bed, sitting up 2'];
 // start.experiences = ['woods, crossing the boundary 2'];
-// start.experiences = ['woods, clearing'];
-// start.has_regarded = {'tangle, 3': true};
-// start.has_understood = {'tangle, 3': true};
+start.experiences = ['woods, clearing'];
+start.has_regarded = { 'tangle, 3': true };
+start.has_understood = { 'tangle, 3': true };
 let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld(start));
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
@@ -2119,7 +2119,8 @@ let prologue_oms = () => [{
                 display: parser_1.DisplayEltType.keyword,
                 enabled: interp_step < 2
             })]);
-            yield parser.consume_option([datatypes_1.annotate(['the', 'direction', 'of', 'gravity'], { enabled: interp_step === 0 }), datatypes_1.annotate(['the', 'slickness', 'of', 'the', 'ice'], { enabled: interp_step === 1 })]);
+            yield parser.consume_filler(['the']);
+            yield parser.consume_option([datatypes_1.annotate(['direction', 'of', 'gravity'], { enabled: interp_step === 0 }), datatypes_1.annotate(['slickness', 'of', 'the', 'ice'], { enabled: interp_step === 1 })]);
             yield parser.done();
             return next_interp();
         });
@@ -2128,7 +2129,8 @@ let prologue_oms = () => [{
                 display: parser_1.DisplayEltType.keyword,
                 enabled: interp_step === 2
             })]);
-            yield parser.consume_filler(['the', 'horizon']);
+            yield parser.consume_filler(['the']);
+            yield parser.consume_filler(['horizon']);
             yield parser.done();
             return next_interp();
         });
@@ -2669,7 +2671,7 @@ let ch1_oms = () => {
             <div class="interp-woods-2">
             It is primarily important that the occluding wood is a boundary, not that it is circular in shape.
             <br/><br/>
-            <i>"The circularity is a mere artifact of our Euclidean heritage, my dear."</i>
+            <i>"Its circularity is a mere artifact of our Euclidean heritage, my dear."</i>
             <br/><br/>
             A boundary separates you from the answers you seek.
             <br/><br/>
@@ -2856,7 +2858,7 @@ let ch1_oms = () => {
             });
             let consumer = venience_world_1.wrap_handler(function* (parser) {
                 yield parser.consume_option([datatypes_1.annotate(['continue'], {
-                    display: parser_1.DisplayEltType.keyword,
+                    display: parser_1.DisplayEltType.filler,
                     enabled: this.state.has_regarded['tangle, 1']
                 })]);
                 yield parser.done();
@@ -2890,7 +2892,7 @@ let ch1_oms = () => {
             let continue_consumer = venience_world_1.wrap_handler(function* (parser) {
                 yield parser.consume_option([datatypes_1.annotate(['continue'], {
                     enabled: Boolean(this.state.has_regarded['tangle, 2']),
-                    display: parser_1.DisplayEltType.keyword
+                    display: parser_1.DisplayEltType.filler
                 })]);
                 yield parser.consume_filler(['through', 'the']);
                 yield parser.consume_filler(['birch', 'forest']);
@@ -3085,7 +3087,7 @@ let ch1_oms = () => {
                 if (!is_ending(prev_interp_action)) {
                     yield parser.invalidate();
                 }
-                yield parser.consume_exact(['descend']);
+                yield parser.consume_exact(['descend'], parser_1.DisplayEltType.filler);
                 yield parser.done();
                 let result = this.transition_to('tower, base');
                 result.world = result.world.update({
@@ -3132,7 +3134,10 @@ let ch1_oms = () => {
             <br/>
             You are surrounded by a meticulous, exhaustive continuum of etched parchment.
             </div>`,
-        transitions: [[['*consider', 'the', 'second sense', 'of', 'birch bark'], 'inward, 4']]
+        transitions: [[['*consider', 'the', 'second sense', 'of', 'birch bark'], 'inward, 4']],
+        interpretations: {
+            'inward, 3': [{ add: 'interpretation-block' }, { add: 'interpretation-active' }]
+        }
     }, {
         id: 'inward, 4',
         transitions: [[['end', '*interpretation'], 'inward, 5']],
@@ -3200,7 +3205,10 @@ let ch1_oms = () => {
             });
             return parser_1.combine.call(this, parser, [read_consumer]);
         }),
-        dest_oms: ['reading the story of charlotte']
+        dest_oms: ['reading the story of charlotte'],
+        interpretations: {
+            'inward, 3': [{ remove: 'interpretation-active' }]
+        }
     }, {
         id: 'reading the story of charlotte',
         enter_message: `
@@ -3347,6 +3355,9 @@ let ch1_oms = () => {
                     let { has_interpreted = {}, prev_interp = null } = this.get_current_om_state();
                     let { prev_interp: h_prev_interp = null } = history_elt.world.get_current_om_state();
                     if (h_prev_interp === null) {
+                        if (prev_interp === null) {
+                            return [{ add: 'interpretation-block' }, { add: 'interpretation-active' }];
+                        }
                         if (prev_interp === 'the calamity') {
                             return [{ add: 'reif-dream-1-enabled' }];
                         } else if (prev_interp === 'the shattered mirror') {
@@ -3371,7 +3382,10 @@ let ch1_oms = () => {
             <br/><br/>
             Feel free to return to the clearing and proceed differently.
             </i>`,
-        transitions: [[['*return', 'to the', 'clearing'], 'woods, clearing']]
+        transitions: [[['*return', 'to the', 'clearing'], 'woods, clearing']],
+        interpretations: {
+            'outward, 3': [{ remove: 'interpretation-active' }]
+        }
     }];
 };
 let ch1_perceptions = () => [{

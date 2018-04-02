@@ -630,7 +630,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             <div class="interp-woods-2">
             It is primarily important that the occluding wood is a boundary, not that it is circular in shape.
             <br/><br/>
-            <i>"The circularity is a mere artifact of our Euclidean heritage, my dear."</i>
+            <i>"Its circularity is a mere artifact of our Euclidean heritage, my dear."</i>
             <br/><br/>
             A boundary separates you from the answers you seek.
             <br/><br/>
@@ -867,7 +867,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 let consumer = wrap_handler(function*(parser: CommandParser) {
                     yield parser.consume_option([
                         annotate(['continue'], {
-                            display: DisplayEltType.keyword,
+                            display: DisplayEltType.filler,
                             enabled: this.state.has_regarded['tangle, 1']
                         })]);
                     yield parser.done();
@@ -911,7 +911,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                     yield parser.consume_option([
                         annotate(['continue'], {
                             enabled: Boolean(this.state.has_regarded['tangle, 2']),
-                            display: DisplayEltType.keyword
+                            display: DisplayEltType.filler
                         })]);
                     yield parser.consume_filler(['through', 'the']);
                     yield parser.consume_filler(['birch', 'forest']);
@@ -1169,7 +1169,7 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         yield parser.invalidate();
                     }
 
-                    yield parser.consume_exact(['descend']);
+                    yield parser.consume_exact(['descend'], DisplayEltType.filler);
                     yield parser.done();
 
                     let result = this.transition_to('tower, base');
@@ -1230,7 +1230,13 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             You are surrounded by a meticulous, exhaustive continuum of etched parchment.
             </div>`,
             transitions: [
-            [['*consider', 'the', 'second sense', 'of', 'birch bark'], 'inward, 4']]
+            [['*consider', 'the', 'second sense', 'of', 'birch bark'], 'inward, 4']],
+            interpretations: {
+                'inward, 3': [
+                    {add: 'interpretation-block'},
+                    {add: 'interpretation-active'}
+                ]
+            }
         },
         {
             id: 'inward, 4',
@@ -1321,7 +1327,10 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                 return combine.call(this, parser, [read_consumer]);
 
             }),
-            dest_oms: ['reading the story of charlotte']
+            dest_oms: ['reading the story of charlotte'],
+            interpretations: {
+                'inward, 3': [{remove: 'interpretation-active'}]
+            }
         },
         {
             id: 'reading the story of charlotte',
@@ -1523,6 +1532,12 @@ let ch1_oms: () => ObserverMoment[] = (() => {
                         let {prev_interp: h_prev_interp = null} = history_elt.world.get_current_om_state();
 
                         if (h_prev_interp === null) {
+                            if (prev_interp === null) {
+                                return [
+                                    {add: 'interpretation-block'},
+                                    {add: 'interpretation-active'}
+                                ]
+                            }
                             if (prev_interp === 'the calamity') {
                                 return [{add: 'reif-dream-1-enabled'}];
                             } else if (prev_interp === 'the shattered mirror') {
@@ -1549,7 +1564,10 @@ let ch1_oms: () => ObserverMoment[] = (() => {
             Feel free to return to the clearing and proceed differently.
             </i>`,
             transitions: [
-            [['*return', 'to the', 'clearing'], 'woods, clearing']]
+            [['*return', 'to the', 'clearing'], 'woods, clearing']],
+            interpretations: {
+                'outward, 3': [{remove: 'interpretation-active'}]
+            }
         }
     ];
 });
