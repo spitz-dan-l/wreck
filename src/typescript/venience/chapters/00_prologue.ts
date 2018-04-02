@@ -425,9 +425,11 @@ let prologue_oms: () => ObserverMoment[] = () => [
                     display: DisplayEltType.keyword,
                     enabled: interp_step < 2})]);
 
+                yield parser.consume_filler(['the']);
+
                 yield parser.consume_option([
-                    annotate(['the', 'direction', 'of', 'gravity'], {enabled: interp_step === 0}),
-                    annotate(['the', 'slickness', 'of', 'the', 'ice'], {enabled: interp_step === 1}),
+                    annotate(['direction', 'of', 'gravity'], {enabled: interp_step === 0}),
+                    annotate(['slickness', 'of', 'the', 'ice'], {enabled: interp_step === 1}),
                 ]);
 
                 yield parser.done();
@@ -441,7 +443,8 @@ let prologue_oms: () => ObserverMoment[] = () => [
                     enabled: interp_step === 2
                 })]);
 
-                yield parser.consume_filler(['the', 'horizon']);
+                yield parser.consume_filler(['the']);
+                yield parser.consume_filler(['horizon']);
                 yield parser.done();
 
                 return next_interp();

@@ -78,7 +78,7 @@ Venience World began as an experiment in IF design. It still largely is that, bu
 
 I think the interface creates new opportunities for the IF medium. Using it is qualitatively distinct from playing traditional parser games (e.g. Inform7), and newer link-based games (e.g. Twine).
 
-There are fewer options than in traditional parser games, and (arguably) more options than in link games. (I really, really like some link-based games, respect.)
+There are fewer options than in traditional parser games, and (arguably) more options than in link games. (I really, really like some link-based games, shout-out to [Open Sorcery](http://abigailcorfman.com/Home/OpenSorcery) and others, respect.)
 
 A large class of player errors is impossible with this interface. Anything the player "shouldn't be able to say" is "unutterable" by default, a natural consequence of the design. (There are other sorts of "useful" errors, that are worth keeping in.) I think this, along with the direct feedback of autocomplete options, changes the experience of playing a lot.
 
