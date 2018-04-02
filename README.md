@@ -78,13 +78,13 @@ Venience World began as an experiment in IF design. It still largely is that, bu
 
 I think the interface creates new opportunities for the IF medium. Using it is qualitatively distinct from playing traditional parser games (e.g. Inform7), and newer link-based games (e.g. Twine).
 
-There are fewer options than in traditional parser games, and (arguably) more options than in link games.
+There are fewer options than in traditional parser games, and (arguably) more options than in link games. (I really, really like some link-based games, respect.)
 
 A large class of player errors is impossible with this interface. Anything the player "shouldn't be able to say" is "unutterable" by default, a natural consequence of the design. (There are other sorts of "useful" errors, that are worth keeping in.) I think this, along with the direct feedback of autocomplete options, changes the experience of playing a lot.
 
 Not necessarily "for the better". Just different.
 
-There is still a sense of composing commands, a sense of personal performance in "uttering". I really enjoy this aspect of parser IF, and I think with an interface like this it's possible to enable the player to utter much more varied sorts of things. A sense of poetry can be captured.
+There is still a sense of composing commands, a sense of personal performance in "uttering". I really enjoy this aspect of parser IF, and I think with an interface like this it's possible to enable the player to utter much more varied and particular sorts of things. A unique sort of poetry can be achieved.
 
 #### The plastic scrollback history
 
@@ -101,9 +101,9 @@ My goal with Venience World's plastic scrollback history is to produce two parti
 
 With (1) we make possible one of the core mechanics of Venience World: the interpretation of events and recited words. By applying our interpretive acts as annotations directly to the source text, we evoke the interpretations in a unique (and I feel, fun, interesting) way.
 
-With (2) we can perform "cleanup" on the scrollback history, drawing attention to what we want and hiding repetitive or otherwise irrelevant sections of text.
+With (2) we can perform "enhancement" and "cleanup" on the scrollback history, drawing attention to what we want and hiding repetitive or otherwise irrelevant sections of text.
 
-There is a slippery slope with a plastic scrollback history. We have the opportunity to do much more than just (1) and (2). Common tropes might be to "rewrite" events entirely. Time-travel mechanics, or psychological horror themes of unreliable memories come to mind. In Venience World I have elected to steer clear of these, sticking to some conservative rules:
+There is a slippery slope with a plastic scrollback history. We have the opportunity to do much more than just (1) and (2). Common tropes might call for "rewriting" events entirely. Time-travel mechanics, or psychological horror themes of unreliable memories, or postmodern conceptual relativism come to mind. In Venience World I have elected to steer clear of these, sticking to some conservative rules:
 
 - Don't adjust history scrolled too far above the current view.
 - Don't *alter* anything; only annotate, restyle or hide.
