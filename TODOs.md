@@ -1,35 +1,50 @@
 TODOs
+- Taking the dev reins
+    - Settle on global policy for string constants vs Enums
+        - Attempt to improve editor autocomplete to make this very easy
+    - Run various validation/game logic tests immediately after compiling
+        - Reachability/completeness of OMs
+        - Puffer flows
+    - Add runtime exceptions so we can test for them
+        - Not calling .done() on parser but returning a command result anyway
+    - Add situational test flows
+        - E.g. a start game state, a sequence of player commands, assertions about where the state winds up. Runs post-compile.
 
-**Spring Thing**
 
-- Add alien interp about finding torn up notes
+    - Consider removing a level of genericness on the command-logic types and functions
+        - Any game project only has one world, meaning we *could* define all the generic CommandResult<T> etc. as *non-generic* types in terms of the concrete world type for this project.
+            - Would simplify our types by quite a bit
+            - Would put ObserverMoments, Perceptions, etc. on the same level of fundamentality as Worlds
+            - Should produce a script that prepopulates a new project with stuff if we do this
 
-- Emphasize completed note from 3 fragments
+- Major parser cleanup
+    - consume_declarative_dsl bugs out when used to implement make_look_consumer().
 
-- Reduce verbosity about tangle
+    - consume_option becomes primary means of direct interaction with parser
+        - consume_exact becomes private
+        - consume_filler disappears
+        - name just becomes "consume()"
+    - consume_declarative_dsl becomes primary means of higher-level interaction with parser
 
-- remove up the birch gradient
+    - if possible, identify a cleaner system for representing intermediate parser state and matches
 
-- Puzzle uno
-    - Cycling thru notes during an interp
-        - remove whole begin/end
+    - improve the api around annotating with DisplayEltType and enabled.
+        - legal to pass a single option to consume() without wrapping in list
+        - ways to annotate enabled/display per-option, or same for all options
+        - Change DisplayEltType form enum to string?
 
-- Author's Preface:
-    - Explain that tab/arrow keys/enter work for autocomplete
-    - No saving/reloading yet
-    - Player will not be incentivized to reset for hidden content
+- Endorsed form of bookkeeping: each world state knows its index in history.
 
-- Show/hide info box
-- Prevent typing/clicking behind info box
+- Appropriate loop erasure
+    - Per-om optional callback returns whether two world states on the same om are "same" or "different".
+        ("Same" would imply "do perform loop erasure")
 
-- more consistent use of command colors
-- more consistent breaks b/w command tokens
+- "puffer" abstraction for stateful cross-om commands
+    - e.g. "look", "tangle puzzle", generic begin/end interpretation
+    - get bookkeeping by default - it gets its own local history index
+    - OMs *are* puffers
 
-**Later**
-
-- (Probs not ready for spring thing :( )Appropriate loop erasure
-
-- consume_option_stepwise_eager bugs out when used to implement make_look_consumer().
+- begin/end interpretation helpers
 
 - add "carriage return" option in typeahead?
 - add "delete most recent token" option in typeahead
