@@ -2,7 +2,7 @@
 
 Venience World is a parser game (i.e. text adventure) with a novel interface.
 
-A playable demo will be available as part of the [Spring Thing 2018](http://springthing.net/2018/) festival.
+A playable demo is available as part of the [Spring Thing 2018](http://springthing.net/2018/play.html#VenienceWorld) festival.
 
 It is written in Typescript and runs in the browser.
 
