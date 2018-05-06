@@ -1,4 +1,7 @@
 TODOs
+- BUG: manually typing disabled autocomplete options produces stutter on last word
+    should just turn red immediately...
+
 - Taking the dev reins
     - Settle on global policy for string constants vs Enums
         - Attempt to improve editor autocomplete to make this very easy
