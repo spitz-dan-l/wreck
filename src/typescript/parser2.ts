@@ -146,8 +146,18 @@ export class Parser {
         }
     }
 
+    concrete_match() {
+        let match = this.matches.slice();
+
+        if (this)
+    }
+
     prefix(position: number) {
         // return the match prefix(es) up to position in the original token stream
+
+        if (position < this.cursor) { //we don't need to ask children
+
+        }
 
         /*
             So e.g. for position 0, return the unique
