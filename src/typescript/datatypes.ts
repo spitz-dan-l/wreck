@@ -142,6 +142,44 @@ export function chain_update(target: Object, source: Object, replace_keys: strin
     return updated;
 }
 
+
+type Updater = { [K: string]: Updater | ((x: any) => any) };
+
+export function update(source: any, updater: Updater): any {
+    if (updater.constructor === Object) {
+        let result;
+        if (source.constructor === Object) {
+            result = {...source};
+        } else {
+            result = {};
+        }
+        
+        for (let [n, v] of Object.entries(updater)) {
+            if (v === undefined) {
+                delete result[n];
+            } else {
+                result[n] = update(result[n], v as any);
+            }
+        }
+
+        return result;
+    } else if (updater.constructor === Function){
+        let updater: ((x: any) => any);
+        return updater(source);
+    } else {
+        //just "replacing" source with updater
+        let updater: any;
+        return updater;
+    }
+}
+
+// let obj = { a: 1, b: { c: [2,3], d: 5 } };
+// let updated: typeof obj = update(obj, { b: { c: _ => [..._, 4] } } );
+
+// update(obj, { e: { f: _ => 6 }});
+
+// let x = 5;
+
 export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
     if (ar1.length !== ar2.length) {
         return false;
