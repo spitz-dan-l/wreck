@@ -1,4 +1,12 @@
 TODOs
+
+Use exceptions instead of generators for parser
+Don't rely on "this" at all
+Allow no-arg closures to get used as sub-handlers (rather than explicitly requiring parser arg. it's a closure, it has it already)
+
+
+
+
 - Taking the dev reins
     - Settle on global policy for string constants vs Enums
         - Attempt to improve editor autocomplete to make this very easy

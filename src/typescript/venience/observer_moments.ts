@@ -35,8 +35,29 @@ import {
 } from '../text_tools';
 
 const ObserverMomentIDs = infer_literal_array(
+    'imagining 0',
     'imagining 1',
-    'imagining 2'
+    'imagining 2',
+    'imagining 3',
+    'imagining 4',
+    'imagining 5',
+    'home 1',
+    'home silenced',
+    'home listened',
+    'outside 1',
+    'outside 2',
+    'outside 3',
+    'outside 4',
+    'outside 4, death',
+    'outside 5',
+    'outside 5, death',
+    'dark pool 1',
+    'dark pool 2',
+    'dark pool 3',
+    'dark pool 4',
+    'dark pool 5',
+    'dark pool 5, death',
+    'dark pool 6'
 )
 
 

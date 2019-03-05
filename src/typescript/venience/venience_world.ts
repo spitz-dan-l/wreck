@@ -103,7 +103,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
     
     constructor({experiences, history_index, om_state, has_regarded, has_understood, has_visited}: VenienceWorldState) {
         if (experiences === undefined) {
-            experiences = ['imagining 1'];
+            experiences = ['imagining 0'];
         }
         if (history_index === undefined) {
             history_index = 0;
