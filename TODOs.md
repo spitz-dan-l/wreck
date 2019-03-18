@@ -4,10 +4,20 @@ Use exceptions instead of generators for parser
 Don't rely on "this" at all
 Allow no-arg closures to get used as sub-handlers (rather than explicitly requiring parser arg. it's a closure, it has it already)
 
-
+- Do a better job stealing focus
 
 
 - Taking the dev reins
+    - The editor autocomplete/underlining can be a distracting/counterproductive
+        - autocomplete for parser methods is generally good
+        - for world state, not very good (shouldn't be "this", should just be explicit)
+        - for per-om state, bad, requires type declarations
+        - annoying to maintain separate list of OMIDs/PerceptionIDs, and error squigglies are really distracting in this case
+            - the gain here is editor autocomplete for OM and Perception ID. worth it? workaround possible?
+        - no transitions/handler/dest_oms should equal empty transitions, so no error.
+    
+    - The boilerplate for writing a command handler is too much (wrap_handler, explicit parser argument in every subhandler, explicitly passing "this" to subhandlers)
+    
     - Settle on global policy for string constants vs Enums
         - Attempt to improve editor autocomplete to make this very easy
     - Run various validation/game logic tests immediately after compiling
@@ -25,7 +35,20 @@ Allow no-arg closures to get used as sub-handlers (rather than explicitly requir
             - Would put ObserverMoments, Perceptions, etc. on the same level of fundamentality as Worlds
             - Should produce a script that prepopulates a new project with stuff if we do this
 
+- Dynamic text when transitioning OMs is awkward
+    - OMs have an enter_text, but if anything special is going on when you enter an OM then enter_text gets ignored
+    - possible fix: enter_text can be a function taking current OM state? (returns string)
+        - This would blur the line between enter_text and handle_command... up til now have purposefully avoided for this reason. Encourages homogeneity in how command handlers are factored.
+            - is the footgun worth it?
+
 - Major parser cleanup
+    - Unify consuming an option and multiple parser paths
+        - python prototype of this underway in python/parser.py
+        - move logic to add a space after a completed token out of react and into core parser
+        - The goal of this is to expunge all the lingering parser bugs:
+            - sometimes typing the first invalid keystroke gets swallowed
+            - consume_declarative_dsl fails when only 1 or 2 tokens total (?)
+
     - consume_declarative_dsl bugs out when used to implement make_look_consumer().
 
     - consume_option becomes primary means of direct interaction with parser
@@ -40,6 +63,9 @@ Allow no-arg closures to get used as sub-handlers (rather than explicitly requir
         - legal to pass a single option to consume() without wrapping in list
         - ways to annotate enabled/display per-option, or same for all options
         - Change DisplayEltType form enum to string?
+
+    - punctuation in commands
+
 
 - Endorsed form of bookkeeping: each world state knows its index in history.
 
@@ -59,9 +85,17 @@ Allow no-arg closures to get used as sub-handlers (rather than explicitly requir
 
 - repeated tabs should cycle thru current token/phrase option
 
-- When all consume options are disabled, still show them in the interface (?)
+- Proposal: "Disabled" has cousins "Visited", and "Want to Visit"
+    Visited can to indicate "You could enter this command, but it would be unnecessary or break flow".
+        After the player has already examined something, it could become Visited rather than Disabled
+            Meaning they could examine it again, and get the same response, but it's a reminder that they've already done that
+            and that they can trust the result won't be different this time.
+        (Another feature idea: instead of reprint the same description, could flash an overlaying window of it while the visited command is entered)
+    "Want to Visit" can indicate "You want to be able to do this, but you can't yet".
+        Players have expressed confusion/stress when they think they have "lost the opportunity" to do a disabled thing, when really they just can't do it *yet*.
 
-- punctuation in commands
+
+- When all consume options are disabled, still show them in the interface (?)
 
 - save/load
     
