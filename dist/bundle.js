@@ -68,6 +68,12 @@
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports) {
+
+module.exports = React;
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -195,6 +201,36 @@ function chain_update(target, source, replace_keys = [], inplace = false) {
     return updated;
 }
 exports.chain_update = chain_update;
+function update(source, updater) {
+    if (updater.constructor === Object) {
+        let result;
+        if (source.constructor === Object) {
+            result = Object.assign({}, source);
+        } else {
+            result = {};
+        }
+        for (let [n, v] of Object.entries(updater)) {
+            if (v === undefined) {
+                delete result[n];
+            } else {
+                result[n] = update(result[n], v);
+            }
+        }
+        return result;
+    } else if (updater.constructor === Function) {
+        let updater;
+        return updater(source);
+    } else {
+        //just "replacing" source with updater
+        let updater;
+        return updater;
+    }
+}
+exports.update = update;
+// let obj = { a: 1, b: { c: [2,3], d: 5 } };
+// let updated: typeof obj = update(obj, { b: { c: _ => [..._, 4] } } );
+// update(obj, { e: { f: _ => 6 }});
+// let x = 5;
 function arrays_fuck_equal(ar1, ar2) {
     if (ar1.length !== ar2.length) {
         return false;
@@ -377,7 +413,7 @@ function infer_literal_array(...arr) {
 exports.infer_literal_array = infer_literal_array;
 
 /***/ }),
-/* 1 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -385,7 +421,7 @@ exports.infer_literal_array = infer_literal_array;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -693,12 +729,6 @@ function consume_declarative_dsl(parser, options) {
 exports.consume_declarative_dsl = consume_declarative_dsl;
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
-module.exports = React;
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -839,20 +869,168 @@ exports.wrap_in_div = wrap_in_div;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const commands_1 = __webpack_require__(5);
-const parser_1 = __webpack_require__(1);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
+class World {
+    constructor(state) {
+        this.state = state;
+    }
+    update(state_updates, replace_keys) {
+        let new_state = datatypes_1.chain_update(this.state, state_updates, replace_keys);
+        return new this.constructor(new_state);
+    }
+}
+exports.World = World;
+function apply_command(world, cmd) {
+    let parser = new parser_1.CommandParser(cmd);
+    let result = { parser: parser, world: world };
+    let cmd_result = world.handle_command(parser);
+    if (cmd_result !== undefined) {
+        if (cmd_result.world !== undefined) {
+            result.world = cmd_result.world;
+        }
+        if (cmd_result.message !== undefined) {
+            result.message = cmd_result.message;
+        }
+        result = apply_interstitial_update(result);
+    }
+    return result;
+}
+exports.apply_command = apply_command;
+function apply_interstitial_update(result) {
+    if (result.world.interstitial_update !== undefined) {
+        let res2 = result.world.interstitial_update();
+        if (res2 !== undefined) {
+            if (res2.world !== undefined) {
+                result.world = res2.world;
+            }
+            if (res2.message !== undefined) {
+                //assume they updated the original message in some way   
+                result.message = res2.message;
+            }
+        }
+    }
+    return result;
+}
+class HistoryInterpretationError extends Error {}
+;
+function apply_history_interpretation_op(interp, op) {
+    if (op === undefined || op.length === 0) {
+        return interp;
+    }
+    let new_interp;
+    if (interp === undefined) {
+        new_interp = [];
+    } else {
+        new_interp = [...interp];
+    }
+    for (let o of op) {
+        if (o['add'] !== undefined) {
+            let message_class = o['add'];
+            if (new_interp.indexOf(message_class) === -1) {
+                new_interp.push(message_class);
+            }
+        }
+        if (o['remove'] !== undefined) {
+            let message_class = o['remove'];
+            let idx = new_interp.indexOf(message_class);
+            if (idx !== -1) {
+                new_interp.splice(idx, 1);
+            }
+        }
+    }
+    return new_interp;
+}
+function apply_history_interpretation(history, world) {
+    if (world.interpret_history === undefined) {
+        return history;
+    } else {
+        let history_input = history.map(({ world, message }) => ({ world, message }));
+        let interp_ops = history_input.map(world.interpret_history, world);
+        let new_history = [];
+        for (let i = 0; i < interp_ops.length; i++) {
+            let new_elt = Object.assign({}, history[i]);
+            let msg_clss = new_elt.message_classes;
+            let op = interp_ops[i];
+            new_elt.message_classes = apply_history_interpretation_op(msg_clss, op);
+            new_history.push(new_elt);
+        }
+        return new_history;
+    }
+}
+class WorldDriver {
+    constructor(initial_world) {
+        this.previous_histories = [];
+        let initial_result = { world: initial_world };
+        initial_result = apply_interstitial_update(initial_result);
+        initial_result.index = 0;
+        this.history = apply_history_interpretation([initial_result], initial_world);
+        this.apply_command('', false); //populate this.current_state
+    }
+    apply_command(cmd, commit = true) {
+        let prev_state = datatypes_1.unwrap(this.history[this.history.length - 1]);
+        let result = apply_command(prev_state.world, cmd);
+        result.index = prev_state.index + 1;
+        this.current_state = result;
+        if (this.current_state.parser.validity === parser_1.MatchValidity.valid) {
+            this.possible_history = apply_history_interpretation([...this.history, this.current_state], this.current_state.world);
+            if (commit) {
+                this.commit();
+            }
+        } else {
+            this.possible_history = this.history;
+        }
+        return result;
+    }
+    commit() {
+        //save previous history for posterity
+        this.previous_histories.push(this.history);
+        //filter out any disabled history
+        this.history = this.possible_history.filter(datatypes_1.is_enabled); //.map(x => annotate(x, 1));
+        this.apply_command('', false);
+        return this.current_state;
+    }
+}
+exports.WorldDriver = WorldDriver;
+// eager dispatch
+// type WorldWithEagerDispatch<T> = World<T> & {
+//     get_commands(): Disablable<Command<T>>[],
+// }
+// export function eager_dispatch<T>(world: WorldWithEagerDispatch<T>, parser: CommandParser) {
+//     let commands = world.get_commands();
+//     let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
+//     let cmd_name = parser.consume_option(options, 'command');
+//     let result: CommandResult<T> = {parser: parser, world: world};
+//     if (!cmd_name) {
+//         return result;
+//     }
+//     let command = unwrap(commands[commands.findIndex((cmd) => (
+//         cmd_name === untokenize(unwrap(cmd).command_name)))]);
+//     let cmd_result = command.execute(world, parser);
+//     return cmd_result
+// }
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const commands_1 = __webpack_require__(4);
+const parser_1 = __webpack_require__(2);
+const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
-const observer_moments_1 = __webpack_require__(16);
-const _00_prologue_1 = __webpack_require__(14);
-const _01_chapter_1_1 = __webpack_require__(15);
+const observer_moments_1 = __webpack_require__(15);
+const hex_1 = __webpack_require__(14);
 exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
 class VenienceWorld extends commands_1.World {
     constructor({ experiences, history_index, om_state, has_regarded, has_understood, has_visited }) {
         if (experiences === undefined) {
-            experiences = ['bed, sleeping 1'];
+            experiences = ['imagining 0'];
         }
         if (history_index === undefined) {
             history_index = 0;
@@ -1063,158 +1241,9 @@ class VenienceWorld extends commands_1.World {
         }
     }
 }
-VenienceWorld.observer_moments = observer_moments_1.index_oms([..._00_prologue_1.default.observer_moments(), ..._01_chapter_1_1.default.observer_moments()]);
-VenienceWorld.perceptions = observer_moments_1.index_perceptions([..._00_prologue_1.default.perceptions(), ..._01_chapter_1_1.default.perceptions()]);
+VenienceWorld.observer_moments = observer_moments_1.index_oms([...hex_1.default.observer_moments()]);
+VenienceWorld.perceptions = observer_moments_1.index_perceptions([...hex_1.default.perceptions()]);
 exports.VenienceWorld = VenienceWorld;
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
-class World {
-    constructor(state) {
-        this.state = state;
-    }
-    update(state_updates, replace_keys) {
-        let new_state = datatypes_1.chain_update(this.state, state_updates, replace_keys);
-        return new this.constructor(new_state);
-    }
-}
-exports.World = World;
-function apply_command(world, cmd) {
-    let parser = new parser_1.CommandParser(cmd);
-    let result = { parser: parser, world: world };
-    let cmd_result = world.handle_command(parser);
-    if (cmd_result !== undefined) {
-        if (cmd_result.world !== undefined) {
-            result.world = cmd_result.world;
-        }
-        if (cmd_result.message !== undefined) {
-            result.message = cmd_result.message;
-        }
-        result = apply_interstitial_update(result);
-    }
-    return result;
-}
-exports.apply_command = apply_command;
-function apply_interstitial_update(result) {
-    if (result.world.interstitial_update !== undefined) {
-        let res2 = result.world.interstitial_update();
-        if (res2 !== undefined) {
-            if (res2.world !== undefined) {
-                result.world = res2.world;
-            }
-            if (res2.message !== undefined) {
-                //assume they updated the original message in some way   
-                result.message = res2.message;
-            }
-        }
-    }
-    return result;
-}
-class HistoryInterpretationError extends Error {}
-;
-function apply_history_interpretation_op(interp, op) {
-    if (op === undefined || op.length === 0) {
-        return interp;
-    }
-    let new_interp;
-    if (interp === undefined) {
-        new_interp = [];
-    } else {
-        new_interp = [...interp];
-    }
-    for (let o of op) {
-        if (o['add'] !== undefined) {
-            let message_class = o['add'];
-            if (new_interp.indexOf(message_class) === -1) {
-                new_interp.push(message_class);
-            }
-        }
-        if (o['remove'] !== undefined) {
-            let message_class = o['remove'];
-            let idx = new_interp.indexOf(message_class);
-            if (idx !== -1) {
-                new_interp.splice(idx, 1);
-            }
-        }
-    }
-    return new_interp;
-}
-function apply_history_interpretation(history, world) {
-    if (world.interpret_history === undefined) {
-        return history;
-    } else {
-        let history_input = history.map(({ world, message }) => ({ world, message }));
-        let interp_ops = history_input.map(world.interpret_history, world);
-        let new_history = [];
-        for (let i = 0; i < interp_ops.length; i++) {
-            let new_elt = Object.assign({}, history[i]);
-            let msg_clss = new_elt.message_classes;
-            let op = interp_ops[i];
-            new_elt.message_classes = apply_history_interpretation_op(msg_clss, op);
-            new_history.push(new_elt);
-        }
-        return new_history;
-    }
-}
-class WorldDriver {
-    constructor(initial_world) {
-        this.previous_histories = [];
-        let initial_result = { world: initial_world };
-        initial_result = apply_interstitial_update(initial_result);
-        initial_result.index = 0;
-        this.history = apply_history_interpretation([initial_result], initial_world);
-        this.apply_command('', false); //populate this.current_state
-    }
-    apply_command(cmd, commit = true) {
-        let prev_state = datatypes_1.unwrap(this.history[this.history.length - 1]);
-        let result = apply_command(prev_state.world, cmd);
-        result.index = prev_state.index + 1;
-        this.current_state = result;
-        if (this.current_state.parser.validity === parser_1.MatchValidity.valid) {
-            this.possible_history = apply_history_interpretation([...this.history, this.current_state], this.current_state.world);
-            if (commit) {
-                this.commit();
-            }
-        } else {
-            this.possible_history = this.history;
-        }
-        return result;
-    }
-    commit() {
-        //save previous history for posterity
-        this.previous_histories.push(this.history);
-        //filter out any disabled history
-        this.history = this.possible_history.filter(datatypes_1.is_enabled); //.map(x => annotate(x, 1));
-        this.apply_command('', false);
-        return this.current_state;
-    }
-}
-exports.WorldDriver = WorldDriver;
-// eager dispatch
-// type WorldWithEagerDispatch<T> = World<T> & {
-//     get_commands(): Disablable<Command<T>>[],
-// }
-// export function eager_dispatch<T>(world: WorldWithEagerDispatch<T>, parser: CommandParser) {
-//     let commands = world.get_commands();
-//     let options = commands.map((cmd) => with_disablable(cmd, (c) => c.command_name));
-//     let cmd_name = parser.consume_option(options, 'command');
-//     let result: CommandResult<T> = {parser: parser, world: world};
-//     if (!cmd_name) {
-//         return result;
-//     }
-//     let command = unwrap(commands[commands.findIndex((cmd) => (
-//         cmd_name === untokenize(unwrap(cmd).command_name)))]);
-//     let cmd_result = command.execute(world, parser);
-//     return cmd_result
-// }
 
 /***/ }),
 /* 6 */
@@ -1230,8 +1259,8 @@ module.exports = ReactDOM;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
-const parser_1 = __webpack_require__(1);
+const React = __webpack_require__(0);
+const parser_1 = __webpack_require__(2);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
     switch (det) {
@@ -1298,13 +1327,13 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const Prompt_1 = __webpack_require__(11);
 const Text_1 = __webpack_require__(7);
 const TypeaheadList_1 = __webpack_require__(12);
 const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
-const parser_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
 class Terminal extends React.Component {
     constructor(props) {
         super(props);
@@ -1409,7 +1438,7 @@ exports.Terminal = Terminal;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Text_1 = __webpack_require__(7);
 class BookGuy extends React.Component {
@@ -1587,7 +1616,7 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
 const InputWrapper = props => {
     const { children } = props,
@@ -1688,9 +1717,9 @@ exports.Prompt = Prompt;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1775,11 +1804,11 @@ exports.TypeaheadList = TypeaheadList;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(2);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Terminal_1 = __webpack_require__(9);
-const commands_1 = __webpack_require__(5);
-const venience_world_1 = __webpack_require__(4);
+const commands_1 = __webpack_require__(4);
+const venience_world_1 = __webpack_require__(5);
 let start = {};
 // start.experiences = ['grass, asking 2'];
 //start.experiences = ['alcove, entering the forest']; 
@@ -1800,416 +1829,511 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const venience_world_1 = __webpack_require__(4);
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
-let prologue_oms = () => [{
-    id: 'bed, sleeping 1',
+const venience_world_1 = __webpack_require__(5);
+const text_tools_1 = __webpack_require__(3);
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
+let hex_oms = () => [{
+    id: "imagining 0",
     enter_message: '',
-    transitions: [[['awaken'], 'bed, awakening 1']]
+    transitions: [[['who', 'am', 'I?'], 'imagining 1']]
 }, {
-    id: 'bed, awakening 1',
-    enter_message: 'You awaken in your bed.',
-    transitions: [[['sit', 'up'], 'bed, sitting up 1']]
-}, {
-    id: 'bed, sitting up 1',
-    enter_message: `You push yourself upright, blankets falling to your waist.
-        You squint and see only the palest light of dawn.
-        Crickets chirp in the forest bordering your alcove.
-        <br /><br />
-        Your body still feels heavy with sleep.
-        <br /><br />
-        Something important nags quietly at you from the back of your mind...`,
-    transitions: [[['try', 'to', '*remember'], 'bed, trying to remember 1']]
-}, {
-    id: 'bed, trying to remember 1',
+    id: "imagining 1",
     enter_message: `
-        Something to do with Katya's twelfth sequence.`,
-    transitions: [[['remember', 'the', 'twelfth', 'sequence'], 'bed, trying to remember 2']]
-}, {
-    id: 'bed, trying to remember 2',
-    enter_message: `
-        The twelfth sequence was the first purely numeric one in Katya's notes.
-        <br/><br/>
-        None of the greek symbols, none of the allusions to physical constants.
-        <br/><br/>
-        Just numbers. Eighty-seven of them.`,
-    transitions: [[['remember', 'the', 'numbers'], 'bed, trying to remember 3']]
-}, {
-    id: 'bed, trying to remember 3',
-    enter_message: `
-        For years, the meaning of this sequence has eluded you.
-        <br/><br/>
-        It begins:
-        <br/><br/>
-        57 44 35
-        <br/><br/>
-        and continues:`,
-    transitions: [[['20', '699', '319'], 'bed, trying to remember 4']]
-}, {
-    id: 'bed, trying to remember 4',
-    enter_message: `
-        Your favorite bit is positions fifty-one through fifty-three:`,
-    transitions: [[['936', '5223', '2717'], 'bed, trying to remember 5']]
-}, {
-    id: 'bed, trying to remember 5',
-    enter_message: `
-        Such strange poetry in these numbers.
-        <br/><br/>
-        You know they must mean <i>something.</i>
-        <br/><br/>
-        Katya was brilliant, after all.
-        <br/><br/>
-        Sometimes frighteningly so.`,
-    transitions: [[['remember', 'Katya'], 'bed, trying to remember 6']]
-}, {
-    id: 'bed, trying to remember 6',
-    enter_message: `
-        She was your advisor.
-        <br/><br/>
-        But she treated you like family.
-        <br/><br/>
-        You miss her.
-        <br/><br/>
         <div class="interp">
-        <i>"Go back to sleep, my dear.
-        <br/><br/>
-        Number Twelve can wait til morning,"</i> you imagine she'd say.
+            That doesn't matter right now.
+            <br/><br/>
+            Imagine you're Chitin Wastrel.
         </div>`,
-    transitions: [[['lie', 'down'], 'bed, lying down 1']]
-}, {
-    id: 'bed, lying down 1',
-    enter_message: `
-        Yes, no reason to be up now.
-        <br/><br/>
-        You can update your notes first thing tomorrow.
-        <br/><br/>
-        You slide back under the blankets. The pre-spring breeze cools your face.`,
-    transitions: [[['sleep', 'until', 'sunrise'], 'bed, sleeping 2']],
-    interpretations: {
-        'bed, trying to remember 1': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 2': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 3': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 4': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 5': [{ 'add': 'forgotten' }]
-    }
-}, {
-    id: 'bed, sleeping 2',
-    enter_message: `You dream of<br /><br />
-        <div class="alien-interp"><i>
-        calamity
-        <br/><br/>
-        </i></div>
-        <div class="interp">
-        a <i>shattered mirror</i>
-        <br/><br/>
-        an <i>ice-covered mountain</i>
-        <br/><br/>
-        and <i>her voice.</i>
-        </div>`,
-    transitions: [[['awaken'], 'bed, awakening 2']]
-}, {
-    id: 'bed, awakening 2',
-    enter_message: `You awaken in your bed again.`,
-    transitions: [[['sit', 'up'], 'bed, sitting up 2']],
-    interpretations: {
-        'bed, sleeping 1': [{ 'add': 'forgotten' }],
-        'bed, awakening 1': [{ 'add': 'forgotten' }],
-        'bed, sitting up 1': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 1': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 2': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 3': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 4': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 5': [{ 'add': 'forgotten' }],
-        'bed, trying to remember 6': [{ 'add': 'forgotten' }],
-        'bed, lying down 1': [{ 'add': 'forgotten' }],
-        'bed, sleeping 2': [{ 'add': 'forgotten' }]
-    }
-}, {
-    id: 'bed, sitting up 2',
-    enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let look_consumer = this.make_look_consumer([[['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
-        let other_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['approach'], {
-                enabled: ['alcove, general', 'self, 1'].every(p => this.state.has_regarded[p]),
-                display: parser_1.DisplayEltType.keyword
-            })]);
-            yield parser.consume_filler(['the', 'desk']);
-            yield parser.done();
-            return this.transition_to('desk, sitting down');
-        });
-        return parser_1.combine.call(this, parser, [look_consumer, other_consumer]);
-    }),
-    dest_oms: ['desk, sitting down']
-}, {
-    id: 'desk, sitting down',
-    enter_message: `You pace across the grass and take your seat at the leather-backed study chair.
-        <br /><br />
-        On the desk is a large parchment envelope, bound in twine.`,
-    handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let look_consumer = this.make_look_consumer([[['at', 'the', 'envelope'], 'alcove, envelope'], [['around'], 'alcove, general'], [['at', 'myself'], 'self, 1']]);
-        let open_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['open'], {
-                enabled: this.state.has_regarded['alcove, envelope'] || false,
-                display: parser_1.DisplayEltType.keyword
-            })]);
-            yield parser.consume_filler(['the']);
-            yield parser.consume_filler(['envelope']);
-            yield parser.done();
-            return this.transition_to('desk, opening the envelope');
-        });
-        return parser_1.combine.call(this, parser, [look_consumer, open_consumer]);
-    }),
-    dest_oms: ['desk, sitting down', 'desk, opening the envelope']
-    // transitions: [
-    //     [['open', 'the', 'envelope'], 'desk, opening the envelope']]
-}, {
-    id: 'desk, opening the envelope',
-    enter_message: `You undo the twine, leaving it in a loop on the desk.
-        <br /><br />
-        You unfold the envelope’s flap.
-        <br /><br />
-        It’s empty.`,
-    transitions: [[['what?'], 'desk, reacting']]
-}, {
-    id: 'desk, reacting',
-    enter_message: `
-        Empty?
-        <br/><br/>
-        No, it can't be empty.
-        <br/><br/>
-        You closed it up last night, bound it in twine and went to sleep.
-        <br/><br/>
-        <i>Empty?</i>`,
-    transitions: [[['try', 'to', '~*remember'], null], [['try', 'to', '*understand'], 'desk, trying to understand 1']]
-}, {
-    id: 'desk, trying to understand 1',
-    enter_message: `
-        Years of work.
-        <br/><br/>
-        Sequence Number Twelve.
-        </br><br/>
-        How does it go?`,
-    handle_command: venience_world_1.wrap_handler(function* (parser) {
-        const r = [[9735, 4130, 3261], [3538, 8177, 3424], [6930, 3134, 2822]];
-        for (let i = 0; i < 3; i++) {
-            let options = [];
-            for (let j = 0; j < 3; j++) {
-                let n = r[i][j];
-                let opt = datatypes_1.annotate([n.toString() + '?'], {
+        let make_regard_handler = perceptions => {
+            return venience_world_1.wrap_handler(function* (parser) {
+                let option = yield parser.consume_option(perceptions.map(p => datatypes_1.annotate(text_tools_1.tokenize(p)[0], {
+                    enabled: !this.state.has_regarded[p],
                     display: parser_1.DisplayEltType.filler
-                });
-                options.push(opt);
+                })));
+                console.log(option);
+                return this.regard(option);
+            });
+        };
+        let intro_perceptions = ['myself', 'merfolk', 'family', 'researcher'];
+        let intro_consumer = make_regard_handler(intro_perceptions);
+        let research_perceptions = ['dark pool', 'failed experiments', 'experiment'];
+        let research_consumer = venience_world_1.wrap_handler(function* (parser) {
+            if (!this.state.has_regarded['researcher']) {
+                return parser.invalidate();
             }
-            yield parser.consume_option(options);
-        }
-        yield parser.done();
-        return this.transition_to('desk, trying to understand 2');
+            return make_regard_handler(research_perceptions).call(this, parser);
+        });
+        let broadcaster_consumer = venience_world_1.wrap_handler(function* (parser) {
+            if (!this.state.has_regarded['experiment']) {
+                return parser.invalidate();
+            }
+            let broadcaster_regarder = make_regard_handler(['broadcaster']);
+            let do_broadcast = venience_world_1.wrap_handler(function* (parser) {
+                yield parser.consume_filler(['operate', 'broadcaster']);
+                return this.transition_to('imagining 2');
+            });
+            return parser_1.combine.call(this, parser, [broadcaster_regarder, do_broadcast]);
+        });
+        return parser_1.combine.call(this, parser, [intro_consumer, research_consumer, broadcaster_consumer]);
     }),
-    dest_oms: ['desk, trying to understand 2']
+    dest_oms: ["imagining 2"]
 }, {
-    id: 'desk, trying to understand 2',
-    enter_message: `        
-        A panic comes over you. Without your notes, how will you continue your work?
-        <br /><br />
-        How will you possibly understand? How will you honor Katya’s memory?`,
-    transitions: [[['*consider', 'the', 'sense of', '&panic'], 'desk, considering the sense of panic']]
-}, {
-    id: 'desk, considering the sense of panic',
-    enter_message: `<div class="interp">
-        Katya used to say that panic was like slipping down an ice-covered mountain face.
-        <br /><br />
-        It throws one particular path into relief: the path to the bottom.
-        </div>`,
-    transitions: [[['search', 'for', 'the', 'notes'], 'desk, searching for the notes']]
-}, {
-    id: 'desk, searching for the notes',
-    enter_message: `You look in the envelope again.
-        <br /><br />
-        You look in the grass under the desk, under the chair.
-        <br /><br />
-        You strip your bed, finding nothing within the folds.
-        <br /><br />
-        <div class="interp">
-        You can feel yourself slipping down an icy hill.
-        </div>`,
-    transitions: [[['slip', 'further'], 'grass, slipping further']]
-}, {
-    id: 'grass, slipping further',
-    enter_message: `Thoughts of dread, of a terrible, empty future, fill your mind.
-        <br /><br />
-        You curl up on the grass beneath you, holding yourself.`,
-    handle_command: venience_world_1.wrap_handler(function* (parser) {
-        yield parser.consume_exact(['consider']);
-        yield parser.consume_filler(['the']);
-        yield parser.consume_filler(['sense', 'of']);
-        yield parser.consume_option([datatypes_1.set_enabled(['panic'], false), datatypes_1.set_enabled(['dread'], true)]);
-        yield parser.done();
-        return this.transition_to('grass, considering the sense of dread');
-    }),
-    dest_oms: ['grass, considering the sense of dread']
-}, {
-    id: 'grass, considering the sense of dread',
-    enter_message: `<div class="interp">
-        <i>"Catch your breath, dear,"</i> Katya would say. <i>"The mountain, the ice, they are here to tell you something."</i>
-        </div>`,
-    transitions: [[['tell', 'me', 'what?'], 'grass, asking 1']]
-}, {
-    id: 'grass, asking 1',
-    enter_message: `<div class="interp">
-        <i>"That you are capable of a great deal of care, my dear.
-        <br /><br />
-        That your capacity to experience meaning is as energetic as a body sliding down a mountain."</i>
-        </div>`,
-    transitions: [[['what', 'should', 'I', 'do?'], 'grass, asking 2']]
-}, {
-    id: 'grass, asking 2',
-    enter_message: `<div class="interp"><i>
-        "Judge the direction of gravity. Judge the slickness of the ice.
-        <br /><br />
-        Survey the horizon.
-        <br /><br />
-        And then, choose where to go."
-        </i></div>`,
-    transitions: [[['begin', '*interpretation'], 'alcove, beginning interpretation']]
-}, {
-    id: 'alcove, beginning interpretation',
+    id: 'imagining 2',
     enter_message: `
-        <div class="face-of-it">
-        A nervous energy buzzes within your mind.
+        You mentally aim your cetacean broadcaster at the center of the Dark Pool, and fire a ping.
         <br/><br/>
-        </div>
-        <div class="interp-alcove-1">
-        Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to a sense of meaning within the world. You have a <i>compass</i>.
+        You hear the dolphin's click, first through its eardrums, and then, a split second later, through yours.`,
+    transitions: [[['listen for echoes'], 'imagining 3']]
+}, {
+    id: 'imagining 3',
+    enter_message: `
+        You wait one second, three seconds, ten, twenty...
         <br/><br/>
-        </div>
-        <div class="face-of-it">
-        Your notes are gone.
+        ...nothing.
         <br/><br/>
-        </div>
-        <div class="interp-alcove-2">
-        Your effort to organize and understand everything Katya taught you over the years. If your notes are truly gone, it is a great setback.
+        Does the Dark Pool absorb sound too? Or is it just enormous within its depths?`,
+    transitions: [[['focus'], 'imagining 4']]
+}, {
+    id: 'imagining 4',
+    enter_message: `
+        You close your eyes and inhabit the mind of your broadcaster.
         <br/><br/>
-        But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
+        You hear something.
         <br/><br/>
+        It's impossible, though. A <i>voice</i> is speaking to you.
+        <br/><br/>
+        <div class="interp">
+            "Ah, I see you're playing Mad Scientist again, eh?
+            <br/><br/>
+            That's a fun one."
         </div>
-        <div class="face-of-it">
-        You are alone in a grassy alcove in the forest.
+        `,
+    transitions: [[['what?'], 'imagining 5']]
+}, {
+    id: 'imagining 5',
+    enter_message: `
+        <div class="interp">
+            "Oh, I'm sorry. Did I surprise you?
+            <br/><br/>
+            Listen, <i>Professor Wastrel</i>. Let me give you some advice.
+            <br/><br/>
+            Go home. Now.
+            <br/><br/>
+            And leave me your little lobotomized toy to play with."
         </div>
-        <div class="interp-alcove-3">
         <br/>
-        Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
+        You feel yourself suddenly forced out of the mind of your broadcaster.
         <br/><br/>
-        Your view of the horizon is occluded by the trees from in here. Set out, seeking <i>new vantages.</i>
-        </div>`,
+        The dolphin drifts slowly downward, into the Dark Pool, until its body is enveloped.`,
+    transitions: [[['go', 'home'], 'home 1']]
+}, {
+    id: 'home 1',
+    enter_message: `
+        The fear pushes you to swim faster than Poseides herself.
+        <br/><br/>
+        ***
+        <br/><br/>
+        You sit in your island hut, ruminating. Afraid of what you've just witnessed.
+        <br/><br/>
+        Dasani and Aechtuo enter, shouting at each other like always.
+        <br/><br/>
+        Such rage seethes within them. Such spirit.`,
+    transitions: [[['&silence', '&them'], 'home silenced'], [['&listen', '&to', '&them'], 'home listened']]
+}, {
+    id: 'home silenced',
+    enter_message: `
+        They are suddenly silent.
+        <br/><br/>
+        Their faces go blank.
+        <br/><br/>
+        They turn to look at you.
+        <br/><br/>
+        You can hear the faint sound of laughter somewhere outside.`,
+    transitions: [[['follow', 'the', 'laughter'], 'outside 1']]
+}, {
+    id: 'home listened',
+    enter_message: `
+        The girls are arguing about Officer Marley.
+        <br/><br/>
+        Apparently she's not acting like herself.
+        <br/><br/>
+        You can hear the faint sound of laughter somewhere outside.`,
+    transitions: [[['follow', 'the', 'laughter'], 'outside 1']]
+}, {
+    id: 'outside 1',
+    enter_message: `Dasani and Aechtuo begin to follow you as you wander out the door toward the laughter.`,
     handle_command: venience_world_1.wrap_handler(function* (parser) {
-        let { interp_step = 0 } = this.get_om_state('alcove, beginning interpretation');
-        let next_interp = () => ({
-            world: this.update({
-                om_state: {
-                    ['alcove, beginning interpretation']: {
-                        interp_step: interp_step + 1
-                    }
-                }
-            })
-        });
-        let judge_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['judge'], {
-                display: parser_1.DisplayEltType.keyword,
-                enabled: interp_step < 2
-            })]);
-            yield parser.consume_filler(['the']);
-            yield parser.consume_option([datatypes_1.annotate(['direction', 'of', 'gravity'], { enabled: interp_step === 0 }), datatypes_1.annotate(['slickness', 'of', 'the', 'ice'], { enabled: interp_step === 1 })]);
-            yield parser.done();
-            return next_interp();
-        });
-        let survey_consumer = venience_world_1.wrap_handler(function* (parser) {
-            yield parser.consume_option([datatypes_1.annotate(['survey'], {
-                display: parser_1.DisplayEltType.keyword,
-                enabled: interp_step === 2
-            })]);
-            yield parser.consume_filler(['the']);
-            yield parser.consume_filler(['horizon']);
-            yield parser.done();
-            return next_interp();
-        });
-        let end_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (interp_step < 3) {
-                yield parser.invalidate();
-            }
-            yield parser.consume_filler(['end']);
-            yield parser.consume_exact(['interpretation']);
-            yield parser.done();
-            return this.transition_to('alcove, ending interpretation');
-        });
-        return parser_1.combine.call(this, parser, [judge_consumer, survey_consumer, end_consumer]);
-    }),
-    dest_oms: ['alcove, ending interpretation'],
-    interpret_history(history_elt) {
-        let hist_om = history_elt.world.current_om();
-        let result = [];
-        if (hist_om === 'alcove, beginning interpretation') {
-            let { interp_step: hist_interp_step = 0 } = history_elt.world.get_om_state('alcove, beginning interpretation');
-            if (hist_interp_step === 0) {
-                let { interp_step = 0 } = this.get_om_state('alcove, beginning interpretation');
-                if (interp_step > 0) {
-                    result.push({ 'add': `interp-alcove-${interp_step}-enabled` });
-                } else {
-                    result.push({ 'add': 'interpretation-block' });
-                    result.push({ 'add': 'interpretation-active' });
-                }
-            }
+        let option = yield parser.consume_option([['they', 'can', 'come'], ['they', 'must', 'stay']]);
+        let with_daughters;
+        let message;
+        if (option === 'they can come') {
+            with_daughters = true;
+            message = 'They fall into step behind you.';
+        } else {
+            with_daughters = false;
+            message = 'They remain in the hut, gazing after you in silence.';
         }
-        return result;
-    }
+        message += `
+            <br/><br/>
+            The laughter grows more raucous as you approach.
+            <br/><br/>
+            You can make out a figure in the distance.`;
+        return this.transition_to('outside 2', { with_daughters }, text_tools_1.wrap_in_div(message));
+    }),
+    dest_oms: ['outside 2']
 }, {
-    id: 'alcove, ending interpretation',
-    enter_message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
-        <br /><br />
-        You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
-        <br /><br />
-        But your sense of purpose compels you. To go. To seek. To try to understand.`,
-    transitions: [[['enter', 'the', 'forest'], 'alcove, entering the forest']],
-    interpretations: {
-        'alcove, beginning interpretation': [{ 'remove': 'interpretation-active' }]
-    }
+    id: 'outside 2',
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        yield parser.consume_filler(['continue']);
+        let with_daughters = this.get_current_om_state().with_daughters;
+        let message = `
+            It's Officer Marley. She howls in apparent maniacal joy.`;
+        if (with_daughters) {
+            message += `
+                <br/><br/>
+                "Ah, the three Wastrels!" she cries.
+                <br/><br/>
+                "Two hateful girls and their poor, obsessive, withdrawn father!"`;
+        } else {
+            message += `
+                <br/><br/>
+                "Ah, the distinguished Professor Wastrel!" she cries.
+                <br/><br/>
+                "Has the fool finally decided to come and see where his studies have gotten him?"`;
+        }
+        message += `
+            <br/><br/>
+            You notice an open wound on Officer Marley's neck.
+            <br/><br/>
+            Trickling forth is a pitch dark fluid, nothing like Mer blood.
+            <br/><br/>
+            You notice a trail of the black liquid along the ground, leading from Officer Marley back to the sea,
+            <br/><br/>
+            and towards the Dark Pool.`;
+        return this.transition_to('outside 3', { with_daughters }, text_tools_1.wrap_in_div(message));
+    }),
+    dest_oms: ['outside 3']
 }, {
-    id: 'alcove, entering the forest',
-    enter_message: `What lies within the forest, and beyond? What will it be like, out there?`,
-    transitions: [[['continue'], 'title']]
+    id: 'outside 3',
+    handle_command: venience_world_1.wrap_handler(function* (parser) {
+        yield parser.consume_filler(['follow', 'the', 'trail']);
+        let with_daughters = this.get_current_om_state().with_daughters;
+        if (with_daughters) {
+            return this.transition_to('outside 4');
+        } else {
+            return this.transition_to('outside 4, death');
+        }
+    }),
+    dest_oms: ['outside 4', 'outside 4, death']
 }, {
-    id: 'title',
-    enter_message: `VENIENCE WORLD
-        <br />
-        <br />
-        An Interactive Fiction by Daniel Spitz`,
-    transitions: [[['continue'], 'alone in the woods']]
-}];
-let prologue_perceptions = () => [{
-    id: 'alcove, general',
-    content: `
-        You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
-        <br /><br />
-        You see your desk and chair a few paces away, in the center of the alcove.
-        <br /><br />
-        On all sides you are surrounded by trees.`
-}, {
-    id: 'self, 1',
-    content: `
-        You are wearing a perfectly dignified pair of silk pajamas.`
-}, {
-    id: 'alcove, envelope',
-    content: `
-        You keep your research in this thick envelope.
+    id: 'outside 4, death',
+    enter_message: `
+        As you begin to wander towards the sea, Officer Marley steps in your way.
         <br/><br/>
-        You've been analyzing Katya's work for years now.
+        "Going back? To figure all this out once and for all?
         <br/><br/>
-        Your career is built in reverence of hers.`
+        I think not!"
+        <br/><br/>
+        She draws her sword and cuts your throat, laughing all the while.
+        <br/><br/>
+        Pitch black not-blood streams from neck, mouth, nose, eyes.
+        <br/><br/>
+        YOU HAVE DIED. (Refresh to try again.)`,
+    transitions: []
+}, {
+    id: 'outside 4',
+    enter_message: `
+        As you begin to wander towards the sea, Officer Marley steps in your way.
+        <br/><br/>
+        "Going back? To figure all this out once and for all?
+        <br/><br/>
+        I think not!"
+        <br/><br/>
+        She draws her sword, and Dasani lunges in front of you, drawing a knife.
+        <br/><br/>
+        "I'll protect you, father!" Dasani screams.`,
+    transitions: [[['&stop', '&her'], 'outside 5, death'], [['&let', '&her'], 'outside 5']]
+}, {
+    id: 'outside 5',
+    enter_message: `
+        Your daughter and Officer Marley meet in a blur of green flesh and steel.
+        <br/><br/>
+        An instant later, they both lie in a heap on the ground. Dead.
+        <br/><br/>
+        "Father," mutters Aechtuo. "We have to go. We have to understand.
+        <br/><br/>
+        She saved you so that you could understand."`,
+    transitions: [[['proceed'], 'dark pool 1']]
+}, {
+    id: 'outside 5, death',
+    enter_message: `
+        Your daughter's body is suddenly calm, the rage suddenly extinguished.
+        <br/><br/>
+        She drops her knife and turns away from Officer Marley.
+        <br/><br/>
+        She gazes at you. Her eyes appear vacant.
+        <br/><br/>
+        Officer Marley loses no time.
+        <br/><br/>
+        She swiftly beheads Dasani before your eyes.
+        <br/><br/>
+        She proceeds to execute Aechtuo and you in turn.
+        <br/><br/>
+        YOU HAVE DIED. (Refresh to try again.)`,
+    transitions: []
+}, {
+    id: 'dark pool 1',
+    enter_message: `
+        You and Aechtuo swim to the cave, arriving at the Dark Pool.
+        <br/><br/>
+        There it lies. Impassable, impossible, all-consuming.
+        <br/><br/>
+        <div class="interp">
+            "Back again, eh?
+            <br/><br/>
+            And with your beloved daughter in tow?
+            <br/><br/>
+            What happened to the other one?
+            <br/><br/>
+            I always liked her better."
+        </div>
+        <br/>
+        That voice again? It's time. Time to understand.
+        <br/><br/>
+        What lies within the depths?`,
+    transitions: [[['enter', 'the', 'Dark', 'Pool'], 'dark pool 2']]
+}, {
+    id: 'dark pool 2',
+    enter_message: `
+        As you swim towards the pool's black surface, a form emerges from its depths, shrouded in black clouds.
+        <br/><br/>
+        <div class="interp">
+            "Remember your little toy?
+            <br/><br/>
+            Your little broadcaster?
+            <br/><br/>
+            I couldn't resist having some fun with it.
+            <br/><br/>
+            I think you'll like my improvements."
+        </div>`,
+    transitions: [[['look', 'at', 'it'], 'dark pool 3']]
+}, {
+    id: 'dark pool 3',
+    enter_message: `  
+        It's your dolphin. Or, it was.
+        <br/><br/>
+        Its body is contorted into a spiral shape,
+        <br/><br/>
+        its fins bulge and bend unnaturally, like powerful arms,
+        <br/><br/>
+        its blowhole has been widened out,
+        <br/><br/>
+        allowing the brain to float gently outside the skull,
+        <br/><br/>
+        tethered by the pulsating brainstem,
+        <br/><br/>
+        like a fishing buoy.`,
+    transitions: [[['listen', 'through', 'it'], 'dark pool 4']]
+}, {
+    id: 'dark pool 4',
+    enter_message: ` 
+        And suddenly, you are in its mind again
+        <br/><br/>
+        and you are consumed by the sound of every
+        <br/><br/>
+        eddy and every grain of sand and every
+        <br/><br/>
+        beating animal heart in this cave
+        <br/><br/>
+        and your daughter aechtuo is
+        <br/><br/>
+        swimming towards you
+        <br/><br/>
+        r dolphin and she is strangling
+        <br/><br/>
+        it by the brain
+        <br/><br/>
+        stem and you really want to`,
+    transitions: [[['&stop', '&her'], 'dark pool 5, death'], [['&let', '&her'], 'dark pool 5']]
+}, {
+    id: 'dark pool 5, death',
+    enter_message: `
+        so of course she stops
+        <br/><br/>
+        and the dolphin gathers her up in
+        <br/><br/>
+        your arms and bites her in
+        <br/><br/>
+        half
+        <br/><br/>
+        and the sound rings out more clearly
+        <br/><br/>
+        in your mind than anything you have ever known
+        <br/><br/>
+        and you are nothing after that.
+        <br/><br/>
+        YOU HAVE DIED. (Refresh to try again.)`,
+    transitions: []
+}, {
+    id: 'dark pool 5',
+    enter_message: `
+        so of course she continues
+        <br/><br/>
+        and the sound begins to dissipate
+        <br/><br/>
+        and your thoughts are a bit more coherent than before
+        <br/><br/>
+        and you find you can return to your own mind.
+        <br/><br/>
+        But as you look through your own eyes again,
+        <br/><br/>
+        you see that Aechtuo and the dolphin have drifted into the Dark Pool.
+        <br/><br/>
+        And now she is gone.`,
+    transitions: [[['follow', 'her'], 'dark pool 6']]
+}, {
+    id: 'dark pool 6',
+    enter_message: `
+        You drift into the thick, black liquid,
+        <br/><br/>
+        becoming nothing.
+        <br/><br/>
+        <div class="interp">
+            I knew I couldn't keep you here forever.
+            <br/><br/>
+            I'm glad we got to play together, for awhile.
+            <br/><br/>
+            If you see the real Chitin Wastrel,
+            <br/><br/>
+            tell him I said Hi,
+            <br/><br/>
+            and that I'll be right here
+            <br/><br/>
+            waiting.
+        </div>
+        <br/>
+        YOU WIN.`,
+    transitions: []
 }];
+let hex_perceptions = () => [{
+    id: 'myself',
+    content: `
+        Merfolk. Father. Researcher.`
+}, {
+    id: 'merfolk',
+    content: `
+        Dark semi-firm scales coat your green flesh.
+        <br/><br/>
+        Your people are born of the sea. Vast, fluid, salty life.`
+}, {
+    id: 'family',
+    content: `
+        Two brilliant daughters. Dasani and Aechtuo. Sharing their mother's spirit.
+        <br/><br/>
+        And always at odds with each other, always fighting each other.
+        <br/><br/>
+        You wish they would work together, help each other.`
+}, {
+    id: 'researcher',
+    content: `
+        You are finishing up your experiment for the day at the Dark Pool.`
+}, {
+    id: 'dark pool',
+    content: `
+        A very strange phenomenon indeed. The Dark Pool is an underwater pool of dark- something.
+        <br/><br/>
+        Discovered within an underwater cave near your island home, it is a layer of thick, black fluid resting beneath the clear seawater.
+        <br/><br/>
+        The constitution of the dark substance is unknown, but by now it is recognized by your village to be dangerous.`
+}, {
+    id: 'failed experiments',
+    content: `
+        You have been trying to measure the Dark Pool's true depth.
+        <br/><br/>
+        All previous attempts to insert measuring devices into it have been unsuccessful.
+        <br/><br/>
+        In every case, the object submerged in the pool could not be retrieved.
+        <br/><br/>
+        Trained animals, and even some brave merfolk sent in after your instruments have never returned.`
+}, {
+    id: 'experiment',
+    content: `
+        Today's experiment is different. Today you are attempting to induce the pool to <i>tell</i> you its depth.
+        <br/><br/>
+        By asking it the right question, and listening carefully.
+        <br/><br/>
+        You have developed a broadcaster for just this purpose.`
+}, {
+    id: 'broadcaster',
+    content: `
+        A surprisingly simple application of mind control, of your own design.
+        <br/><br/>
+        First, find and trap a young dolphin. Make it your mindslave.
+        <br/><br/>
+        With some practice, you can psychically manipulate the dolphin's vocal chords to emit sonar pings.
+        <br/><br/>
+        Interpretting the resulting echoes is easier if you let the dolphin's inner ear and brain do the work.
+        <br/><br/>
+        You found that surgical removal of extraneous brain matter helps clean up the signal coming through the mindlink.
+        <br/><br/>
+        Ingenious, really.`
+}];
+/*
+
+Imagine you're Chitin Wastrel
+
+> myself
+Merfolk. Father. Researcher. And something else.
+
+> merfolk
+Dark semi-firm scales coat your green flesh.
+
+Your people are born of the sea. Vast, fluid, salty life.
+
+> father
+Two brilliant daughters. Dasani and Aechtuo. Sharing their mother's spirit. And always at odds with each other.
+
+> researcher
+You are finishing up your experiment for the day on the Dark Pool.
+
+[It is a pool of pitch black fluid within a submerged cave. Like a brine pool. Those who have entered did not return.]
+[A voice emits from the pool. It tells you that you are not really Chitin Wastrel anymore.]
+
+[Returning home, Dasani and Aechtuo are bickering about Officer Marley acting strange.]
+[If you tell them to stop fighting, they do so immediately, uncharacteristically.]
+
+[Laughter (Officer Marley) is heard in the distance.]
+
+[You leave the house to find her.]
+[Daughters make to follow you, you can prevent them or not.]
+
+[The island birds seem to suddenly startle and take flight.]
+[You can make them calm and land again.]
+
+[Marley has an open wound, continues to laugh. Instead of blood, pure black fluid flows from it.]
+[A trail of black fluid leads from Marley out to the sea, towards the Dark Pool.]
+
+[Marley vomits up black muck, which begins to take shape and move.]
+[If you allowed daughters to come, Dasani stays to hold back Marley.]
+
+[You (and Aechtuo) follow the black trail to the Dark Pool.]
+
+[The booming voice speaks again: "You cannot save them. It is too late. This dream is already mine."]
+
+[If Aechtuo is here: "Father, what should I do?"]
+
+[If "Stay back": You attempt to approach the Dark Pool. A giant fish emerges from it first, and eats you.]
+[If "Kill it": Aechtuo's eyes go dark and vacant. "Yes, lord." A giant fish emerges from the pool, and eats Aechtuo. She cuts her way out of its belly with a knife.]
+    [You swim towards the pool.]
+    ["Look at what you did to them. Look at what you made them do."]
+    [You enter the pool, and it envelopes you, and the dream fades, and you are nowhere.]
+
+*/
 exports.default = {
-    observer_moments: prologue_oms,
-    perceptions: prologue_perceptions
+    observer_moments: hex_oms,
+    perceptions: hex_perceptions
 };
 
 /***/ }),
@@ -2220,1325 +2344,10 @@ exports.default = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const venience_world_1 = __webpack_require__(4);
-const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
-let ch1_oms = () => {
-    function is_ending(a) {
-        return a === undefined || a === 'ending interpretation';
-    }
-    function is_considering(a) {
-        return typeof a === 'object' && a['considering a fragment'] !== undefined;
-    }
-    function is_reifying(a) {
-        return typeof a === 'object' && a['reifying a fragment'] !== undefined;
-    }
-    const om_id_2_contention = {
-        'tower, peak': 'tangle, 2',
-        'woods, tangle': 'tangle, 1',
-        'woods, clearing': 'tangle, 3'
-        // 'woods, clearing 2': 'tangle, 3',
-        // 'woods, clearing 3': 'tangle, 3'
-    };
-    let make_tangle_consumer = (begin_enabled = true) => venience_world_1.wrap_handler(function* (parser) {
-        if (this.state.has_understood[om_id_2_contention[this.current_om()]]) {
-            yield parser.invalidate();
-        }
-        let { prev_interp_action = undefined, index = 0, begin_tag = -1, hide_failures = false } = this.get_current_om_state();
-        let begin_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (!is_ending(prev_interp_action)) {
-                yield parser.invalidate();
-            }
-            yield parser.consume_option([datatypes_1.annotate(['begin'], {
-                display: parser_1.DisplayEltType.filler,
-                enabled: begin_enabled
-            })]);
-            yield parser.consume_exact(['interpretation']);
-            // Begin message
-            // Depending on
-            // How many times you have begun an interpretation?
-            let message;
-            if (!this.state.has_understood['tangle, 1']) {
-                message = text_tools_1.wrap_in_div(`
-                You have all three fragments.
-                <br/><br/>
-                Considered together, their words rouse a sense of wonder in you.
-                <br/><br/>
-                You are determined to understand them.`);
-            } else if (!this.state.has_understood['tangle, 2']) {
-                message = text_tools_1.wrap_in_div(`What did Katya mean?`);
-            } else {
-                message = text_tools_1.wrap_in_div(`The words beckon you.`);
-            }
-            return {
-                world: this.update({
-                    om_state: {
-                        [this.current_om()]: {
-                            prev_interp_action: 'beginning interpretation',
-                            index: index + 1,
-                            begin_tag: index,
-                            hide_failures: this.state.has_understood['tangle, failure']
-                        }
-                    }
-                }, ['prev_interp_action']),
-                message
-            };
-        });
-        let end_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (is_ending(prev_interp_action)) {
-                yield parser.invalidate();
-            }
-            yield parser.consume_filler(['end']);
-            yield parser.consume_exact(['interpretation']);
-            yield parser.done();
-            let world_update = {
-                om_state: {
-                    [this.current_om()]: {
-                        prev_interp_action: 'ending interpretation',
-                        index: index + 1
-                    }
-                }
-            };
-            let message;
-            // check if they successfully reified the correct contention
-            if (is_reifying(prev_interp_action) && prev_interp_action.correctly) {
-                let understood = om_id_2_contention[this.current_om()];
-                world_update.has_understood = {
-                    [understood]: true
-                };
-                // TODO: different messages depending on:
-                // Where you are
-                // Which step of the interpretation you're up to
-                if (understood === 'tangle, 1') {
-                    message = `
-                    <div class="interp"><i>
-                    "You are beginning to understand, my dear.
-                    <br/><br/>
-                    Keep going."
-                    </i></div>`;
-                } else if (understood === 'tangle, 2') {
-                    message = `
-                    <div class="interp"><i>
-                    "Indeed.
-                    <br/><br/>
-                    Don't stop now. Follow the thread to its end."
-                    </i></div>`;
-                } else {
-                    message = `
-                    You feel, once again, as though the world around you has changed.
-                    <br/><br/>
-                    Your understanding encompasses more than the space around you, the trees, your body.
-                    <br/><br/>
-                    It is further comprised by your path through that space,
-                    <br/><br/>
-                    the way in which you navigate it over time,
-                    <br/><br/>
-                    the way your feelings change to reflect the circumstances.
-                    <br/><br/>
-                    <div class="interp"><i>
-                    "You are writing your story now, my dear.
-                    <br/><br/>
-                    And reading it too.
-                    <br/><br/>
-                    Where will you go?"
-                    </i></div>`;
-                }
-            } else {
-                message = `
-                There must be more to understand.`;
-                world_update = datatypes_1.chain_update(world_update, {
-                    has_understood: {
-                        'tangle, failure': true
-                    }
-                });
-            }
-            return {
-                world: this.update(world_update, ['prev_interp_action']),
-                message: text_tools_1.wrap_in_div(message)
-            };
-        });
-        let consider_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (is_ending(prev_interp_action)) {
-                yield parser.invalidate();
-            }
-            yield parser.consume_option([datatypes_1.annotate(['consider'], {
-                display: parser_1.DisplayEltType.keyword,
-                enabled: !is_reifying(prev_interp_action) || !prev_interp_action.correctly
-            })]);
-            yield parser.consume_filler(['the']);
-            let prev_contention = null;
-            if (is_considering(prev_interp_action)) {
-                prev_contention = prev_interp_action['considering a fragment'];
-            } else if (is_reifying(prev_interp_action)) {
-                prev_contention = prev_interp_action['reifying a fragment'];
-            }
-            let choice_str = yield parser.consume_option([datatypes_1.set_enabled(['first', 'fragment'], !this.state.has_understood['tangle, 1'] && prev_contention !== 'tangle, 1'), datatypes_1.set_enabled(['second', 'fragment'], !this.state.has_understood['tangle, 2'] && prev_contention !== 'tangle, 2'), datatypes_1.set_enabled(['third', 'fragment'], !this.state.has_understood['tangle, 3'] && prev_contention !== 'tangle, 3')]);
-            let choice = text_tools_1.tokenize(choice_str)[0][0];
-            yield parser.done();
-            let choice_2_contention = {
-                'first': 'tangle, 1',
-                'second': 'tangle, 2',
-                'third': 'tangle, 3'
-            };
-            let x = venience_world_1.VenienceWorld.perceptions[choice_2_contention[choice]];
-            return {
-                world: this.update({
-                    om_state: {
-                        [this.current_om()]: {
-                            prev_interp_action: {
-                                'considering a fragment': choice_2_contention[choice]
-                            },
-                            index: index + 1
-                        }
-                    }
-                }, ['prev_interp_action']),
-                message: text_tools_1.wrap_in_div(`
-                The ${choice} fragment reads:
-                <br/><br/>
-                ${venience_world_1.VenienceWorld.perceptions[choice_2_contention[choice]].content}`)
-            };
-        });
-        let reify_consumer = venience_world_1.wrap_handler(function* (parser) {
-            if (!is_considering(prev_interp_action)) {
-                yield parser.invalidate();
-                return;
-            }
-            yield parser.consume_exact(['reify']);
-            yield parser.consume_filler(['the']);
-            const contentions = datatypes_1.infer_literal_array('tangle, 1', 'tangle, 2', 'tangle, 3');
-            let contention_2_option = {
-                'tangle, 1': ['tangle'],
-                'tangle, 2': ['outside', 'vantage'],
-                'tangle, 3': ['dance']
-            };
-            let choice = yield parser.consume_option(contentions.map(c => datatypes_1.set_enabled(contention_2_option[c], c === prev_interp_action['considering a fragment'])));
-            yield parser.done();
-            let message;
-            let correctly = prev_interp_action['considering a fragment'] === om_id_2_contention[this.current_om()];
-            if (prev_interp_action['considering a fragment'] === 'tangle, 2') {
-                correctly = correctly && this.state.has_understood['tangle, 1'];
-            } else if (prev_interp_action['considering a fragment'] === 'tangle, 3') {
-                correctly = correctly && this.state.has_understood['tangle, 2'];
-            }
-            if (correctly) {
-                // all the work gets done in the interpret history bit
-            } else {
-                // TODO: different messages depending on
-                // Where you are
-                // Which thing you tried to reify
-                if (prev_interp_action['considering a fragment'] !== om_id_2_contention[this.current_om()]) {
-                    message = text_tools_1.wrap_in_div(`
-                    You struggle to connect "the ${choice}" to your present environment and circumstance.`);
-                } else {
-                    if (prev_interp_action['considering a fragment'] === 'tangle, 2') {
-                        message = text_tools_1.wrap_in_div(`
-                        You think the viewing tower might correspond to "the ${choice}".
-                        <br/><br/>
-                        However, the first fragment mentions a "tangle", which you still don't entirely understand.
-                        <br/><br/>
-                        Until you do, it will be hard to say what this ${choice} helps to elucidate.`);
-                    } else if (prev_interp_action['considering a fragment'] === 'tangle, 3') {
-                        // If they have visited both the tangle and viewing tower
-                        let must_have_visited = ['woods, tangle', 'tower, peak'];
-                        if (must_have_visited.every(x => this.state.experiences.includes(x))) {
-                            let incomplete_msg_parts = [];
-                            if (!this.state.has_understood['tangle, 1']) {
-                                incomplete_msg_parts.push(`the first fragment's "tangle"`);
-                            }
-                            if (!this.state.has_understood['tangle, 2']) {
-                                incomplete_msg_parts.push(`the second fragment's "outside vantage"`);
-                            }
-                            let incomplete_msg = incomplete_msg_parts.join(' or ');
-                            message = text_tools_1.wrap_in_div(`
-                            The idea of "the ${choice}" is beginning to feel familiar, with all your motion in and out of the twisting woods, up and down the viewing tower.
-                            <br/><br/>
-                            But you still don't entirely understand ${incomplete_msg}.
-                            <br/><br/>
-                            Until you do, it will be hard to say why this ${choice} is worth returning to.`);
-                        } else {
-                            message = text_tools_1.wrap_in_div(`
-                            You struggle to connect "the ${choice}" to your present environment and circumstance.`);
-                        }
-                    }
-                }
-            }
-            return {
-                world: this.update({
-                    om_state: {
-                        [this.current_om()]: {
-                            prev_interp_action: {
-                                'reifying a fragment': prev_interp_action['considering a fragment'],
-                                correctly
-                            },
-                            index: index + 1
-                        }
-                    }
-                }, ['prev_interp_action']),
-                message
-            };
-        });
-        return parser_1.combine.call(this, parser, [begin_consumer, reify_consumer, consider_consumer, end_consumer]);
-    });
-    function tangle_interpreter(history_elt) {
-        let h_world = history_elt.world;
-        if (h_world.current_om() === this.current_om() && h_world.current_om() in om_id_2_contention) {
-            let { prev_interp_action = undefined, index = 0, begin_tag = -1 } = this.get_current_om_state();
-            let { prev_interp_action: h_prev_interp_action = undefined, index: h_index = 0, begin_tag: h_begin_tag = -1, hide_failures: h_hide_failures = false } = h_world.get_current_om_state();
-            if (prev_interp_action === 'ending interpretation') {
-                let result = [];
-                if (h_index <= begin_tag) {
-                    return;
-                }
-                if (is_considering(h_prev_interp_action)) {
-                    // debugger;
-                    result.push({ 'remove': 'interpretation-active' });
-                }
-                if (!this.state.has_understood[om_id_2_contention[this.current_om()]]) {
-                    if (h_hide_failures) {
-                        if (h_index > begin_tag && h_index <= index) {
-                            result.push({ 'add': 'forgotten' });
-                        }
-                    } else {
-                        if (h_index > begin_tag + 1 && h_index < index) {
-                            result.push({ 'add': 'forgotten' });
-                        }
-                    }
-                }
-                return result;
-            } else if (is_considering(prev_interp_action)) {
-                // forget back to last 'beginning interpretation'
-                if (h_index > begin_tag + 1 && h_index < index) {
-                    return [{ 'add': 'forgotten' }, { 'remove': 'interpretation-active' }];
-                }
-                if (h_index === index) {
-                    return [{ 'add': 'interpretation-block' }, { 'add': 'interpretation-active' }];
-                }
-            } else if (is_reifying(prev_interp_action)) {
-                if (prev_interp_action.correctly) {
-                    // find most recent considering (it will be index - 1)
-                    // add reify-tangle-N class
-                    if (h_index === index - 1) {
-                        let n;
-                        if (prev_interp_action['reifying a fragment'] === 'tangle, 1') {
-                            n = 1;
-                        } else if (prev_interp_action['reifying a fragment'] === 'tangle, 2') {
-                            n = 2;
-                        } else {
-                            n = 3;
-                        }
-                        return [{ 'add': `reif-tangle-${n}-enabled` }];
-                    }
-                }
-            }
-        }
-    }
-    return [{
-        id: 'alone in the woods',
-        enter_message: `Chapter 1 - A Sense Of Direction
-            <br />
-            <br />
-            You are alone in the woods in midmorning.`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let { has_travelled = [] } = this.get_om_state('alone in the woods');
-            let look_consumer = this.make_look_consumer([[['around'], 'forest, general'], [['at', 'myself'], 'self, 2']]);
-            let go_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['go'], {
-                    enabled: has_travelled.length < 4 && this.state.has_regarded['self, 2'] && this.state.has_regarded['forest, general'],
-                    display: parser_1.DisplayEltType.keyword
-                })]);
-                let dir = yield parser.consume_option([['north?'], ['east?'], ['south?'], ['west?']].map(d => datatypes_1.set_enabled(d, has_travelled.indexOf(d[0]) === -1)));
-                yield parser.done();
-                let message;
-                if (has_travelled.length === 0) {
-                    message = text_tools_1.wrap_in_div(`
-                        You take a few steps ${dir.slice(0, -1)}.
-                        <br/><br/>
-                        Your surroundings appear similar.
-                        <br/><br/>
-                        Perhaps this isn't the right way.`);
-                } else if (has_travelled.length === 1) {
-                    message = text_tools_1.wrap_in_div(`
-                        You feel no different after the second attempt to advance.
-                        <br/><br/>
-                        You have moved, but not meaningfully.
-                        `);
-                } else if (has_travelled.length === 2) {
-                    message = text_tools_1.wrap_in_div(`
-                        A swirling cocktail of
-                        <br/><br/>
-                        doubt,
-                        <br/><br/>
-                        confusion
-                        <br/><br/>
-                        and disorientation
-                        <br/><br/>
-                        begins to set in.
-                        `);
-                } else if (has_travelled.length === 3) {
-                    message = text_tools_1.wrap_in_div(`
-                        You are lost in the woods in midmorning.
-                        <br/><br/>
-                        You miss the security of your alcove.
-                        <br/><br/>
-                        <div class="alien-interp">
-                        <i>"You were a fool to leave
-                        <br/><br/>
-                        too fragile
-                        <br/><br/>
-                        too sensitive
-                        <br/><br/>
-                        to find your own way."</i>
-                        </div>`);
-                }
-                return {
-                    world: this.update({
-                        om_state: {
-                            ['alone in the woods']: {
-                                has_travelled: [...has_travelled, dir]
-                            }
-                        }
-                    }),
-                    message
-                };
-            });
-            let understand_consumer = venience_world_1.wrap_handler(function* (parser) {
-                if (!(has_travelled.length >= 4)) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_filler(['try']);
-                yield parser.consume_filler(['to']);
-                yield parser.consume_exact(['understand']);
-                yield parser.done();
-                return this.transition_to('woods, trying to understand');
-            });
-            return parser_1.combine.call(this, parser, [look_consumer, go_consumer, understand_consumer]);
-        }),
-        dest_oms: ['alone in the woods', 'woods, trying to understand']
-    }, {
-        id: 'woods, trying to understand',
-        enter_message: `
-            You are overwhelmed by the number of indistinct options.
-            <br/><br/>
-            The trees surrounding you are like a wall, made of irrelevance and uncertainty rather than impermeability.
-            <br/><br/>
-            You are unsure of what your heading should be.`,
-        transitions: [[['*consider', 'the', 'sense of', '&uncertainty'], 'woods, considering the sense of uncertainty']]
-    }, {
-        id: 'woods, considering the sense of uncertainty',
-        enter_message: `
-            <div class="interp">
-            Katya used to say that a circle, when considered in relation to nothing,
-            is about as useful as a point, a dot, considered in the same context.
-            <br/><br/>
-            <i>“It is only important that a circle is circular when something other than the circle exists in terms of it,”</i>
-            she’d say, chuckling as you wracked your brain to understand.
-            </div>`,
-        transitions: [[['where', 'should', 'I', 'go?'], 'woods, asking 1']]
-    }, {
-        id: 'woods, asking 1',
-        enter_message: `
-            <div class="interp">
-            <i>"I certainly can’t answer that, my dear.
-            <br/><br/>
-            But I assure you, you can do this."</i>
-            </div>`,
-        transitions: [[['what', 'should', 'I', 'do?'], 'woods, asking 2']]
-    }, {
-        id: 'woods, asking 2',
-        enter_message: `
-            <div class="interp">
-            <i>"Judge the circle in terms of the world.
-            <br/><br/>
-            Question its circlehood.
-            <br/><br/>
-            Take the only path forward."</i>
-            </div>`,
-        transitions: [[['begin', '*interpretation'], 'woods, beginning interpretation']]
-    }, {
-        id: 'woods, beginning interpretation',
-        enter_message: `
-            You are surrounded in all directions by the forest.
-            <br/><br/>
-            <div class="interp-woods-1">
-            The circle that is the forest encloses you.
-            <br/><br/>
-            It separates you from the world.
-            <br/><br/>
-            </div> 
-            You are unsure of which direction to go.
-            <br/><br/>
-            <div class="interp-woods-2">
-            It is primarily important that the occluding wood is a boundary, not that it is circular in shape.
-            <br/><br/>
-            <i>"Its circularity is a mere artifact of our Euclidean heritage, my dear."</i>
-            <br/><br/>
-            A boundary separates you from the answers you seek.
-            <br/><br/>
-            </div>
-            You feel lost.
-            <div class="interp-woods-3">
-            <br/>
-            A circle may offer a continuum of freedom, and with it, an infinity of wrong ways.
-            <br/><br/>
-            But what of an enclosing boundary?
-            <br/><br/>
-            You’re either within it, or you’re free of it.
-            <br/><br/>
-            In or Out.
-            <br/><br/>
-            Perhaps there is only a single way forward after all.
-            </div>
-            `,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let { interp_step = 0 } = this.get_om_state('woods, beginning interpretation');
-            let next_interp = () => ({
-                world: this.update({
-                    om_state: {
-                        ['woods, beginning interpretation']: {
-                            interp_step: interp_step + 1
-                        }
-                    }
-                })
-            });
-            let judge_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['judge'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: interp_step === 0
-                })]);
-                yield parser.consume_filler(['the', 'circle']);
-                yield parser.consume_filler(['in', 'terms', 'of', 'the', 'world']);
-                yield parser.done();
-                return next_interp();
-            });
-            let question_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['question'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: interp_step === 1
-                })]);
-                yield parser.consume_filler(['its', 'circlehood']);
-                yield parser.done();
-                return next_interp();
-            });
-            let take_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['take'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: interp_step === 2
-                })]);
-                yield parser.consume_filler(['the', 'only', 'path', 'forward']);
-                yield parser.done();
-                return next_interp();
-            });
-            let end_consumer = venience_world_1.wrap_handler(function* (parser) {
-                if (interp_step < 3) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_filler(['end']);
-                yield parser.consume_exact(['interpretation']);
-                yield parser.done();
-                return this.transition_to('woods, ending interpretation');
-            });
-            return parser_1.combine.call(this, parser, [judge_consumer, question_consumer, take_consumer, end_consumer]);
-        }),
-        dest_oms: ['woods, beginning interpretation', 'woods, ending interpretation'],
-        interpret_history(history_elt) {
-            if (history_elt.world.current_om() === 'woods, beginning interpretation') {
-                let { interp_step: hist_interp_step = 0 } = history_elt.world.get_om_state('woods, beginning interpretation');
-                if (hist_interp_step === 0) {
-                    let { interp_step = 0 } = this.get_om_state('woods, beginning interpretation');
-                    if (interp_step > 0) {
-                        return [{ 'add': `interp-woods-${interp_step}-enabled` }];
-                    } else {
-                        return [{ 'add': 'interpretation-block' }, { 'add': 'interpretation-active' }];
-                    }
-                }
-            }
-        }
-    }, {
-        id: 'woods, ending interpretation',
-        enter_message: `
-            You haven’t moved an inch.
-            <br/><br/>
-            And yet, the world around you seems to have been reshaped.
-            <br/><br/>
-            The proliferation of possibly-wrong paths forward has collapsed to a single binary choice:`,
-        transitions: [[['*remain', 'within the boundary'], 'woods, considering remaining'], [['~*cross', 'the boundary'], 'woods, crossing the boundary 1']],
-        interpretations: {
-            'woods, beginning interpretation': [{ 'remove': 'interpretation-active' }]
-        }
-    }, {
-        id: 'woods, considering remaining',
-        enter_message: `or...`,
-        transitions: [[['~*remain', 'within the boundary'], 'woods, considering remaining'], [['*cross', 'the boundary'], 'woods, crossing the boundary 1']]
-    }, {
-        id: 'woods, crossing the boundary 1',
-        enter_message: `
-            The particular direction of travel is unimportant.
-            <br/><br/>
-            <div class="interp">
-            <i>"Our world is one in which most degrees of freedom are accompanied by entropy production;
-            <br/><br/>
-            that is to say, arbitrariness is rarely scarce, my dear."</i>
-            <br/><br/>
-            </div>
-            You choose a direction <span class="interp-inline">(Arbitrarily! <i>"Thanks, <a target="_blank" href="https://arxiv.org/abs/cond-mat/0005382">Dewar</a>!"</i>)</span> and take it.
-            <br/><br/>
-            The forest around you remains an undifferentiated boundary of New England brush and flora...`,
-        transitions: [[['continue'], 'woods, crossing the boundary 2']],
-        interpretations: {
-            'woods, considering remaining': [{ 'add': 'forgotten' }]
-        }
-    }, {
-        id: 'woods, crossing the boundary 2',
-        enter_message: `
-            ...until it begins to change.
-            <br/><br/>
-            You notice that the brown trunks of oak are sprinkled with the white of birch here and there.
-            <br/><br/>
-            And on the ground, partially covered in leaves, is a fragment of parchment paper.`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let { has_taken_note = false } = this.get_current_om_state();
-            let fragment_thread = venience_world_1.wrap_handler(function* (parser) {
-                let look_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    if (this.state.has_regarded['note fragment']) {
-                        yield parser.invalidate();
-                    }
-                    return this.make_look_consumer([[['at', 'the', 'fragment'], 'note fragment']]).call(this, parser);
-                });
-                let take_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    if (!this.state.has_regarded['note fragment'] || has_taken_note) {
-                        yield parser.invalidate();
-                    }
-                    yield parser.consume_option([datatypes_1.annotate(['take'], {
-                        display: parser_1.DisplayEltType.keyword,
-                        enabled: !has_taken_note
-                    })]);
-                    yield parser.consume_filler(['it']);
-                    yield parser.done();
-                    return {
-                        message: text_tools_1.wrap_in_div(`
-                            You pick it up.
-                            <br/><br/>
-                            It's been torn from a full page.
-                            <br/><br/>
-                            You recognize your own loopy scrawl on the parchment paper.
-                            <br/><br/>
-                            <div class="alien-interp">
-                            Who would tear apart your <i>life's work?</i>
-                            <br/><br/>
-                            Is there any hope at all that it can be recovered?
-                            </div>`),
-                        world: this.update({
-                            om_state: {
-                                [this.current_om()]: {
-                                    has_taken_note: true
-                                }
-                            }
-                        })
-                    };
-                });
-                let read_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    if (!has_taken_note || this.state.has_regarded['tangle, 1']) {
-                        yield parser.invalidate();
-                    }
-                    yield parser.consume_option([datatypes_1.annotate(['read'], {
-                        display: parser_1.DisplayEltType.keyword,
-                        enabled: !this.state.has_regarded['tangle, 1']
-                    })]);
-                    yield parser.consume_filler(['it']);
-                    yield parser.done();
-                    return this.regard('tangle, 1', msg => text_tools_1.wrap_in_div(`
-                        It's the beginning of a transcript you took.
-                        <br/><br/>
-                        Something Katya said, that you wanted to remember:
-                        <br/><br/>
-                        ${msg}`));
-                });
-                return parser_1.combine.call(this, parser, [look_consumer, take_consumer, read_consumer]);
-            });
-            let consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['continue'], {
-                    display: parser_1.DisplayEltType.filler,
-                    enabled: this.state.has_regarded['tangle, 1']
-                })]);
-                yield parser.done();
-                return this.transition_to('woods, crossing the boundary 3');
-            });
-            return parser_1.combine.call(this, parser, [fragment_thread, consumer]);
-        }),
-        dest_oms: ['woods, crossing the boundary 2', 'woods, crossing the boundary 3']
-    }, {
-        id: 'woods, crossing the boundary 3',
-        enter_message: `
-            More birch trees appear as your trudge onward.
-            <br/><br/>
-            Another fragment of parchment paper catches your eye on the ground.`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let take_consumer = venience_world_1.wrap_handler(function* (parser) {
-                if (this.state.has_regarded['tangle, 2']) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_option([datatypes_1.annotate(['take'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: !this.state.has_regarded['tangle, 2']
-                })]);
-                yield parser.consume_filler(['the', 'second', 'fragment']);
-                yield parser.done();
-                return this.regard('tangle, 2', msg => text_tools_1.wrap_in_div(`
-                    It reads:
-                    <br/><br/>
-                    ${msg}`));
-            });
-            let continue_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['continue'], {
-                    enabled: Boolean(this.state.has_regarded['tangle, 2']),
-                    display: parser_1.DisplayEltType.filler
-                })]);
-                yield parser.consume_filler(['through', 'the']);
-                yield parser.consume_filler(['birch', 'forest']);
-                yield parser.done();
-                return this.transition_to('woods, clearing');
-            });
-            return parser_1.combine.call(this, parser, [take_consumer, continue_consumer]);
-        }),
-        dest_oms: ['woods, crossing the boundary 3', 'woods, clearing']
-    }, {
-        id: 'woods, clearing',
-        enter_message: `
-            You arrive at a small clearing, surrounded by the parchment-white of birch.
-            <br/><br/>
-            The path forward branches in two:
-            <br/>
-            <blockquote>
-                In one direction, the path narrows and bends sharply behind a roiling wall of birch.
-                <br/><br/>
-                In another, a looming structure of some kind stands beyond the trees.
-            </blockquote>
-            A third fragment lies on the ground.`,
-        short_enter_message: `
-            You arrive back at the clearing.`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let take_consumer = venience_world_1.wrap_handler(function* (parser) {
-                if (this.state.has_regarded['tangle, 3']) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_option([datatypes_1.annotate(['take'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: !this.state.has_regarded['tangle, 3']
-                })]);
-                yield parser.consume_filler(['the', 'third', 'fragment']);
-                yield parser.done();
-                return this.regard('tangle, 3', msg => text_tools_1.wrap_in_div(`
-                    It reads:
-                    <br/><br/>
-                    ${msg}
-                    <br/>
-                    This completes the transcript!
-                    <br/><br/>
-                    The three fragments comprise a full page from your notes.`));
-            });
-            let go_consumer = venience_world_1.wrap_handler(function* (parser) {
-                let { prev_interp_action = undefined } = this.get_current_om_state();
-                if (!is_ending(prev_interp_action)) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_option([datatypes_1.annotate(['proceed'], {
-                    enabled: this.state.has_regarded['tangle, 3'],
-                    display: parser_1.DisplayEltType.keyword
-                })]);
-                let go_tangle_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    if (!this.state.has_understood['tangle, 3']) {
-                        yield parser.consume_filler(['inward']);
-                        yield parser.consume_filler(['on', 'the']);
-                        yield parser.consume_exact(['narrow', 'path'], parser_1.DisplayEltType.option);
-                        yield parser.done();
-                        return this.transition_to('woods, tangle', {
-                            prev_interp_action: undefined
-                        });
-                    } else {
-                        yield parser.consume_filler(['inward,']);
-                        yield parser.consume_filler(['interrogating']);
-                        yield parser.consume_exact(['my', 'perceptions'], parser_1.DisplayEltType.option);
-                        yield parser.done();
-                        return this.transition_to('inward, 1');
-                    }
-                });
-                let go_tower_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    if (!this.state.has_understood['tangle, 3']) {
-                        yield parser.consume_filler(['outward']);
-                        yield parser.consume_filler(['to', 'the']);
-                        yield parser.consume_exact(['looming', 'structure'], parser_1.DisplayEltType.option);
-                        yield parser.done();
-                        return this.transition_to('tower, base');
-                    } else {
-                        yield parser.consume_filler(['outward,']);
-                        yield parser.consume_filler(['seeking']);
-                        yield parser.consume_exact(['the', 'mountain'], parser_1.DisplayEltType.option);
-                        yield parser.done();
-                        return this.transition_to('outward, 1');
-                    }
-                });
-                return parser_1.combine.call(this, parser, [go_tangle_consumer, go_tower_consumer]);
-            });
-            return parser_1.combine.call(this, parser, [take_consumer, make_tangle_consumer(Boolean(this.state.has_regarded['tangle, 3'])), go_consumer]);
-        }),
-        dest_oms: ['woods, clearing', 'woods, tangle', 'tower, base', 'inward, 1', 'outward, 1'],
-        interpret_history: function (history_elt) {
-            let result = tangle_interpreter.call(this, history_elt) || [];
-            let ending_oms = ['inward, 1', 'inward, 2', 'inward, 3', 'inward, 4', 'inward, 5', 'reading the story of charlotte', 'outward, 1', 'outward, 2', 'outward, 3', 'outward, 4'];
-            if (ending_oms.includes(history_elt.world.current_om())) {
-                result.push({ 'add': 'forgotten' });
-            } else if (history_elt.world.current_om() === 'woods, clearing') {
-                if (['inward, 1', 'outward, 1'].some(x => history_elt.world.state.has_visited[x])) {
-                    result.push({ 'add': 'forgotten' });
-                }
-            }
-            return result;
-        }
-    }, {
-        id: 'woods, tangle',
-        enter_message: `
-            The path narrows to form a space just wide enough to fit your body.
-            <br/><br/>
-            You step carefully, bending around corners, surrounded by parchment-white bark.
-            <br/><br/>
-            You arrive at a dead end.
-            <br/><br/>
-            You feel as though you have arrived somewhere significant, though you have nowhere to go now but back.`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let return_consumer = venience_world_1.wrap_handler(function* (parser) {
-                let { prev_interp_action = undefined } = this.get_current_om_state();
-                if (!is_ending(prev_interp_action)) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_exact(['return']);
-                yield parser.consume_filler(['to', 'the']);
-                yield parser.consume_filler(['clearing']);
-                yield parser.done();
-                let dest = 'woods, clearing';
-                return this.transition_to(dest, {
-                    prev_interp_action: undefined
-                });
-            });
-            return parser_1.combine.call(this, parser, [make_tangle_consumer(), return_consumer]);
-        }),
-        dest_oms: ['woods, tangle', 'woods, clearing'],
-        interpret_history: tangle_interpreter
-    }, {
-        id: 'tower, base',
-        enter_message: `
-            As you make your way outward, the forest begins to thin.
-            <br/><br/>
-            You arrive at the base of a wooden viewing tower, erected perfectly among the trees.`,
-        short_enter_message: `
-            You arrive at the viewing tower's base.`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let look_consumer = this.make_look_consumer([[['at', 'the', 'tower'], 'tangle, tower base']]);
-            let ascend_consumer = venience_world_1.wrap_handler(function* (parser) {
-                // Climbs the tower
-                yield parser.consume_option([datatypes_1.annotate(['ascend'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: this.state.has_regarded['tangle, tower base']
-                })]);
-                yield parser.consume_filler(['the', 'viewing', 'tower']);
-                yield parser.done();
-                return this.transition_to('tower, peak', {
-                    prev_interp_action: undefined
-                });
-            });
-            let return_consumer = venience_world_1.wrap_handler(function* (parser) {
-                // Returns to the clearing
-                yield parser.consume_exact(['return']);
-                yield parser.consume_filler(['to', 'the']);
-                yield parser.consume_filler(['clearing']);
-                yield parser.done();
-                let dest = 'woods, clearing';
-                return this.transition_to(dest, {
-                    prev_interp_action: undefined
-                });
-            });
-            return parser_1.combine.call(this, parser, [look_consumer, ascend_consumer, return_consumer]);
-        }),
-        dest_oms: ['tower, peak', 'woods, clearing']
-    }, {
-        id: 'tower, peak',
-        enter_message: `
-            As your feet thud up the heavy stairs, your view begins to change.
-            <br/><br/>
-            You can see over the parchment-white treeline.
-            <br/><br/>
-            The sky streches further and further across the horizon.
-            <br/><br/>
-            You set foot on the top platform.`,
-        short_enter_message: `
-            You climb the stairs and arrive at the tower's top platform.`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let survey_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['survey'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: !this.state.has_regarded['tangle, tower peak']
-                })]);
-                yield parser.consume_filler(['the', 'horizon']);
-                yield parser.done();
-                return this.regard('tangle, tower peak');
-            });
-            let descend_consumer = venience_world_1.wrap_handler(function* (parser) {
-                let { prev_interp_action = undefined } = this.get_current_om_state();
-                if (!is_ending(prev_interp_action)) {
-                    yield parser.invalidate();
-                }
-                yield parser.consume_exact(['descend'], parser_1.DisplayEltType.filler);
-                yield parser.done();
-                let result = this.transition_to('tower, base');
-                result.world = result.world.update({
-                    om_state: {
-                        [this.current_om()]: {
-                            prev_interp_action: undefined
-                        }
-                    }
-                });
-                return result;
-                // return this.transition_to('tower, base');
-            });
-            return parser_1.combine.call(this, parser, [make_tangle_consumer(Boolean(this.state.has_regarded['tangle, tower peak'])), survey_consumer, descend_consumer]);
-        }),
-        interpret_history: tangle_interpreter,
-        dest_oms: ['tower, base', 'tower, peak'] // , 'tower, base 2'
-    }, {
-        id: 'inward, 1',
-        enter_message: `
-            You proceed again into the narrow, winding path.
-            <br/><br/>
-            The parchment-white trees surrounding you ebb and flow, carving a tangled, wild route to the center.`,
-        transitions: [[['*consider', 'the', 'familiar qualities', 'of', 'birch bark'], 'inward, 2']]
-    }, {
-        id: 'inward, 2',
-        enter_message: `
-            It strikes you how <i>parchment-like</i> birch bark is.
-            <br/><br/>
-            It has roughly the same off-white color as your own note paper.
-            <br/><br/>
-            And it often appears embedded with dark, script-like etchings.
-            <br/><br/>
-            <div class="interp"><i>
-            "Indeed.
-            <br/><br/>
-            Like writing."
-            </i></div>`,
-        transitions: [[['begin', '*interpretation'], 'inward, 3']]
-    }, {
-        id: 'inward, 3',
-        enter_message: `
-            You are surrounded by a twisting, roiling wall of birch trees.
-            <div class="interp-parchment-trees">
-            <br/>
-            You are surrounded by a meticulous, exhaustive continuum of etched parchment.
-            </div>`,
-        transitions: [[['*consider', 'the', 'second sense', 'of', 'birch bark'], 'inward, 4']],
-        interpretations: {
-            'inward, 3': [{ add: 'interpretation-block' }, { add: 'interpretation-active' }]
-        }
-    }, {
-        id: 'inward, 4',
-        transitions: [[['end', '*interpretation'], 'inward, 5']],
-        interpretations: {
-            'inward, 3': [{ add: 'interp-parchment-trees-enabled' }]
-        }
-    }, {
-        id: 'inward, 5',
-        enter_message: `
-            <div class="interp">
-            The parchment surrounding you teems with scrawlings of
-            <br/><br/>
-            stories,
-            <br/><br/>
-            transcripts,
-            <br/><br/>
-            annotations,
-            <br/><br/>
-            <i>
-            and interpretations.
-            </i>
-            </div>`,
-        handle_command: venience_world_1.wrap_handler(function* (parser) {
-            let { read_state = 0 } = this.get_current_om_state();
-            let apply_read_update = (world = this) => world.update({
-                om_state: {
-                    [this.current_om()]: {
-                        read_state: read_state + 1
-                    }
-                }
-            });
-            let read_consumer = venience_world_1.wrap_handler(function* (parser) {
-                yield parser.consume_option([datatypes_1.annotate(['read'], {
-                    display: parser_1.DisplayEltType.keyword,
-                    enabled: true
-                })]);
-                let read_0_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    yield parser.consume_option([datatypes_1.annotate(['the', 'parchment'], {
-                        display: parser_1.DisplayEltType.filler,
-                        enabled: read_state === 0
-                    })]);
-                    yield parser.done();
-                    return {
-                        world: apply_read_update(),
-                        message: text_tools_1.wrap_in_div(`
-                            <div class="interp">
-                            Your eyes skim over the vast text laid out before you for a moment, searching.
-                            <br/><br/>
-                            Then, you come to rest on one particular story.
-                            </div>`)
-                    };
-                });
-                let read_1_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    if (read_state < 1) {
-                        yield parser.invalidate();
-                    }
-                    yield parser.consume_filler(['the', 'story', 'of']);
-                    yield parser.consume_exact(['Charlotte'], parser_1.DisplayEltType.option);
-                    yield parser.done();
-                    let result = this.transition_to('reading the story of charlotte');
-                    result.world = apply_read_update(result.world);
-                    return result;
-                });
-                return parser_1.combine.call(this, parser, [read_0_consumer, read_1_consumer]);
-            });
-            return parser_1.combine.call(this, parser, [read_consumer]);
-        }),
-        dest_oms: ['reading the story of charlotte'],
-        interpretations: {
-            'inward, 3': [{ remove: 'interpretation-active' }]
-        }
-    }, {
-        id: 'reading the story of charlotte',
-        enter_message: `
-            <i>You have reached the end of the demo.
-            <br/><br/>
-            Charlotte's story will be told in Chapter 2.
-            <br/><br/>
-            Thanks for playing Venience World!
-            <br/><br/>
-            Feel free to return to the clearing and proceed differently.
-            </i>`,
-        transitions: [[['*return', 'to the', 'clearing'], 'woods, clearing']]
-    }, {
-        id: 'outward, 1',
-        enter_message: `
-            You walk back out to the base of the viewing tower, and continue past it,
-            <br/><br/>
-            cutting into the woods where the footpath ends.
-            <br/><br/>
-            As you proceed, the birch trees become sparser, and the oak thickens again.`,
-        transitions: [[['*consider', 'what lies ahead'], 'outward, 2']]
-    }, {
-        id: 'outward, 2',
-        enter_message: `
-            <div class="interp"><i>
-            "An adventure, my dear.
-            <br/><br/>
-            Challenges, the likes of which you have not anticipated.
-            <br/><br/>
-            Opportunities to learn and grow."
-            </i></div>`,
-        transitions: [[['begin', '*interpretation'], 'outward, 3']]
-    }, (() => {
-        const interp_steps = datatypes_1.infer_literal_array('the calamity', 'the shattered mirror', 'the ice-covered mountain', 'her voice');
-        return {
-            id: 'outward, 3',
-            enter_message: `
-                You remember fragments from your dream last night.
-                <br/><br/>
-                There was
-                <br/><br/>
-                
-                <div class="alien-interp"><i>
-                calamity
-                <br/><br/>
-                </i></div>
-                <div class="reif-dream-1">
-                Katya's death,
-                <br/><br/>
-                and the destruction that her loss wrought on your life
-                <br/><br/>
-                </div>
-                
-                <div class="interp">
-                a <i>shattered mirror</i>
-                <br/><br/>
-                </div>
-                <div class="reif-dream-2">
-                the unexplained scattering of your notes across the land
-                <br/><br/>
-                </div>
-                
-                <div class="interp">
-                an <i>ice-covered mountain</i>
-                <br/><br/>
-                </div>
-                <div class="reif-dream-3">
-                the literal mountain that stands in wait across the river
-                <br/><br/>
-                </div>
-                
-                <div class="interp">
-                and <i>her voice.</i>
-                </div>
-                <div class="reif-dream-4">
-                <br/>
-                and <i>your determination to understand;</i>
-                <br/><br/>
-                to return to the world you left;
-                <br/><br/>
-                to intervene in its unfolding.
-                </div>`,
-            handle_command: venience_world_1.wrap_handler(function* (parser) {
-                let { has_interpreted = {}, prev_interp = null } = this.get_current_om_state();
-                let ready_for_last = interp_steps.slice(0, 3).every(x => has_interpreted[x]);
-                let finished = interp_steps.every(x => has_interpreted[x]);
-                let reify_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    yield parser.consume_option([datatypes_1.annotate(['reify'], {
-                        display: parser_1.DisplayEltType.keyword,
-                        enabled: !finished
-                    })]);
-                    let opt1 = yield parser.consume_option([datatypes_1.annotate(['the'], {
-                        display: parser_1.DisplayEltType.filler,
-                        enabled: !ready_for_last
-                    }), datatypes_1.annotate(['her'], {
-                        display: parser_1.DisplayEltType.filler,
-                        enabled: ready_for_last
-                    })]);
-                    let opt2;
-                    if (opt1 === 'the') {
-                        opt2 = yield parser.consume_option([datatypes_1.annotate(['calamity'], { enabled: !has_interpreted['the calamity'] }), datatypes_1.annotate(['shattered', 'mirror'], { enabled: !has_interpreted['the shattered mirror'] }), datatypes_1.annotate(['ice-covered', 'mountain'], { enabled: !has_interpreted['the ice-covered mountain'] })]);
-                    } else {
-                        yield parser.consume_exact(['voice'], parser_1.DisplayEltType.option);
-                        opt2 = 'voice';
-                    }
-                    yield parser.done();
-                    let chosen_step = opt1 + ' ' + opt2;
-                    return {
-                        world: this.update({
-                            om_state: {
-                                [this.current_om()]: {
-                                    has_interpreted: {
-                                        [chosen_step]: true
-                                    },
-                                    prev_interp: chosen_step
-                                }
-                            }
-                        })
-                    };
-                });
-                let end_consumer = venience_world_1.wrap_handler(function* (parser) {
-                    yield parser.consume_option([datatypes_1.annotate(['end'], {
-                        display: parser_1.DisplayEltType.filler,
-                        enabled: finished
-                    })]);
-                    yield parser.consume_exact(['interpretation']);
-                    yield parser.done();
-                    let result = this.transition_to('outward, 4');
-                    result.world = result.world.update({
-                        om_state: {
-                            [this.current_om()]: {
-                                has_interpreted: {},
-                                prev_interp: null
-                            }
-                        }
-                    }, [this.current_om()]);
-                    return result;
-                });
-                return parser_1.combine.call(this, parser, [reify_consumer, end_consumer]);
-            }),
-            dest_oms: ['outward, 4'],
-            interpret_history: function (history_elt) {
-                if (history_elt.world.current_om() === this.current_om()) {
-                    let { has_interpreted = {}, prev_interp = null } = this.get_current_om_state();
-                    let { prev_interp: h_prev_interp = null } = history_elt.world.get_current_om_state();
-                    if (h_prev_interp === null) {
-                        if (prev_interp === null) {
-                            return [{ add: 'interpretation-block' }, { add: 'interpretation-active' }];
-                        }
-                        if (prev_interp === 'the calamity') {
-                            return [{ add: 'reif-dream-1-enabled' }];
-                        } else if (prev_interp === 'the shattered mirror') {
-                            return [{ add: 'reif-dream-2-enabled' }];
-                        } else if (prev_interp === 'the ice-covered mountain') {
-                            return [{ add: 'reif-dream-3-enabled' }];
-                        } else if (prev_interp === 'her voice') {
-                            return [{ add: 'reif-dream-4-enabled' }];
-                        }
-                    }
-                }
-            }
-        };
-    })(), {
-        id: 'outward, 4',
-        enter_message: `
-            <i>You have reached the end of the demo.
-            <br/><br/>
-            Your journey to the mountain will be told in Chapter 2.
-            <br/><br/>
-            Thanks for playing Venience World!
-            <br/><br/>
-            Feel free to return to the clearing and proceed differently.
-            </i>`,
-        transitions: [[['*return', 'to the', 'clearing'], 'woods, clearing']],
-        interpretations: {
-            'outward, 3': [{ remove: 'interpretation-active' }]
-        }
-    }];
-};
-let ch1_perceptions = () => [{
-    id: 'forest, general',
-    content: `
-        The sun trickles through the thick brush.
-        <br/><br/>
-        The growth of the forest surrounds you in every direction.`
-}, {
-    id: 'self, 2',
-    content: `
-        Your silk pajamas glisten in the midmorning sun.
-        <br/><br/>
-        You are determined to continue your life's work.
-        <br/><br/>
-        To find or rewrite your missing notes.`
-}, {
-    id: 'forest, parchment trees',
-    content: `
-        The parchment teems with scrawlings of
-        <br/><br/>
-        stories,
-        <br/><br/>
-        transcripts,
-        <br/><br/>
-        annotations,
-        <br/><br/>
-        <div class="interp">
-        and interpretations.
-        </div>`
-}, {
-    id: 'note fragment',
-    content: `
-        You brush aside the leaves.
-        <br/><br/>
-        It appears to be a fragment from your missing notes.`
-}, {
-    id: 'tangle, tower base',
-    content: `
-        The tower evokes a solid, steadfast presence.
-        <br/><br/>
-        Its construction is orderly and massive.
-        <br/><br/>
-        A grid of thick, vertical wooden beams rooted deep within the ground provides its sturdy foundation.
-        <br/><br/>
-        Heavy wooden slabs form a railed stairway that winds up to the top platform.
-        <br/><br/>
-        The wood is damp and weathered to a greenish brown, as though it has been here for an eternity.`
-}, {
-    id: 'tangle, tower peak',
-    content: `
-        The sun dances over the top of the canopy. You see the parchment-white birch trees flow into the brown of oak, and the fuzzy-green of distant pine.
-        <br/><br/>
-        You survey the looping threads of passage through the woods.
-        <br/><br/>
-        You see the trail you took to reach this viewing tower. You see it flow back into the clearing, which in turn flows into the narrow, winding path through the birch thicket.
-        <br/><br/>
-        Further out, a frozen river carves the forest in half.
-        </br><br/>
-        And beyond that, the base of a snow-covered mountain.`
-}, {
-    id: 'tangle, 1',
-    content: `
-        <div class="interp"><i>
-        "We wander, for the most part, within a tangled, looping mess of thought;
-        <br/><br/>
-        a haphazard ligature of unrelated perceptions.
-        <br/><br/>
-        Within the tangle, we lack the perspective to find the meaning we seek.”
-        </i></div>
-        <div class="reif-tangle-1">
-        <br/>
-        This winding maze of birch <i>is</i> the tangle.
-        <br/><br/>
-        It disorients you, subsumes you in its curves.
-        </div>
-        `
-}, {
-    id: 'tangle, 2',
-    content: `
-        <div class="interp"><i>
-        “It is only when we find a vantage outside of the central tangle, looking over it, that we might sort out the mess in our minds.
-        <br/><br/>
-        The twisting fibres of our journey are put into perspective.
-        <br/><br/>
-        It is peaceful from up there."
-        </i></div>
-        <div class="reif-tangle-2">
-        <br/>
-        This tower <i>is</i> the outside vantage.
-        <br/><br/>
-        It gives you the perspective to see how far you've come, and what waits for you ahead.
-        </div>`
-}, {
-    id: 'tangle, 3',
-    content: `
-        <div class="interp"><i>
-        "But do not grow too comfortable in that peace’s embrace.
-        <br/><br/>
-        It is a respite. And it must end.
-        <br/><br/>
-        All there is to do, once one has stood outside the tangle for a while and surveyed it,
-        <br/><br/>
-        is to return to it.
-        <br/><br/>
-        To dance."
-        </i></div>
-        <div class="reif-tangle-3">
-        <br/>
-        Your own motion through the birch tangle and back out
-        <br/><br/>
-        your climb up the tower and back down
-        <br/><br/>
-        your exodus from the world into your alcove
-        <br/><br/>
-        your years spent in solitude
-        <br/><br/>
-        your setting forth this morning, and arriving here
-        <br/><br/>
-        this <i>is</i> the dance.
-        </div>`
-}];
-exports.default = {
-    observer_moments: ch1_oms,
-    perceptions: ch1_perceptions
-};
-
-/***/ }),
-/* 16 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
-const parser_1 = __webpack_require__(1);
-const ObserverMomentIDs = datatypes_1.infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title',
-//ch1
-'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, clearing',
-// 'woods, clearing 2', // pseudo copies to avoid loop erasure
-// 'woods, clearing 3', // because the impl is currently a bit of a hack :(
-'woods, tangle', 'tower, base',
-// 'tower, base 2',
-'tower, peak', 'inward, 1', 'inward, 2', 'inward, 3', 'inward, 4', 'inward, 5',
-// 'woods, birch parchment 1',
-// 'woods, birch parchment 2',
-'reading the story of charlotte', 'outward, 1', 'outward, 2', 'outward, 3', 'outward, 4');
-const PerceptionIDs = datatypes_1.infer_literal_array(
-// Prologue
-'alcove, general', 'self, 1', 'alcove, envelope',
-// ch1
-'forest, general', 'self, 2', 'note fragment', 'tangle, tower base', 'tangle, tower peak', 'tangle, 1', 'tangle, 2', 'tangle, 3', 'forest, parchment trees');
+const datatypes_1 = __webpack_require__(1);
+const parser_1 = __webpack_require__(2);
+const ObserverMomentIDs = datatypes_1.infer_literal_array('imagining 0', 'imagining 1', 'imagining 2', 'imagining 3', 'imagining 4', 'imagining 5', 'home 1', 'home silenced', 'home listened', 'outside 1', 'outside 2', 'outside 3', 'outside 4', 'outside 4, death', 'outside 5', 'outside 5, death', 'dark pool 1', 'dark pool 2', 'dark pool 3', 'dark pool 4', 'dark pool 5', 'dark pool 5, death', 'dark pool 6');
+const PerceptionIDs = datatypes_1.infer_literal_array('myself', 'merfolk', 'family', 'researcher', 'dark pool', 'failed experiments', 'experiment', 'broadcaster');
 const ContentionIDs = datatypes_1.infer_literal_array(
 // ch1
 'tangle, 1', 'tangle, 2', 'tangle, 3', 'tangle, failure');
