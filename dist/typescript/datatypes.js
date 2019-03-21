@@ -125,20 +125,39 @@ function chain_update(target, source, replace_keys = [], inplace = false) {
 }
 exports.chain_update = chain_update;
 function update(source, updater) {
-    if (updater instanceof Object) {
-        let result = Object.assign({}, source);
+    if (updater.constructor === Object) {
+        let result;
+        if (source.constructor === Object) {
+            result = Object.assign({}, source);
+        }
+        else {
+            result = {};
+        }
         for (let [n, v] of Object.entries(updater)) {
-            result[n] = update(result[n], v);
+            if (v === undefined) {
+                delete result[n];
+            }
+            else {
+                result[n] = update(result[n], v);
+            }
         }
         return result;
     }
-    else if (updater instanceof Function) {
+    else if (updater.constructor === Function) {
+        let updater;
         return updater(source);
+    }
+    else {
+        //just "replacing" source with updater
+        let updater;
+        return updater;
     }
 }
 exports.update = update;
-let obj = { a: 1, b: { c: [2, 3], d: 5 } };
-let updated = update(obj, { b: { c: _ => [..._, 4] } });
+// let obj = { a: 1, b: { c: [2,3], d: 5 } };
+// let updated: typeof obj = update(obj, { b: { c: _ => [..._, 4] } } );
+// update(obj, { e: { f: _ => 6 }});
+// let x = 5;
 function arrays_fuck_equal(ar1, ar2) {
     if (ar1.length !== ar2.length) {
         return false;

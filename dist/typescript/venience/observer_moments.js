@@ -2,22 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const datatypes_1 = require("../datatypes");
 const parser_1 = require("../parser");
-const ObserverMomentIDs = datatypes_1.infer_literal_array('bed, sleeping 1', 'bed, awakening 1', 'bed, sitting up 1', 'bed, trying to remember 1', 'bed, trying to remember 2', 'bed, trying to remember 3', 'bed, trying to remember 4', 'bed, trying to remember 5', 'bed, trying to remember 6', 'bed, lying down 1', 'bed, sleeping 2', 'bed, awakening 2', 'bed, sitting up 2', 'desk, sitting down', 'desk, opening the envelope', 'desk, reacting', 'desk, trying to understand 1', 'desk, trying to understand 2', 'desk, considering the sense of panic', 'desk, searching for the notes', 'grass, slipping further', 'grass, considering the sense of dread', 'grass, asking 1', 'grass, asking 2', 'alcove, beginning interpretation', 'alcove, ending interpretation', 'alcove, entering the forest', 'title', 
-//ch1
-'alone in the woods', 'woods, trying to understand', 'woods, considering the sense of uncertainty', 'woods, asking 1', 'woods, asking 2', 'woods, beginning interpretation', 'woods, ending interpretation', 'woods, considering remaining', 'woods, crossing the boundary 1', 'woods, crossing the boundary 2', 'woods, crossing the boundary 3', 'woods, clearing', 
-// 'woods, clearing 2', // pseudo copies to avoid loop erasure
-// 'woods, clearing 3', // because the impl is currently a bit of a hack :(
-'woods, tangle', 'tower, base', 
-// 'tower, base 2',
-'tower, peak', 'inward, 1', 'inward, 2', 'inward, 3', 'inward, 4', 'inward, 5', 
-// 'woods, birch parchment 1',
-// 'woods, birch parchment 2',
-'reading the story of charlotte', 'outward, 1', 'outward, 2', 'outward, 3', 'outward, 4');
-const PerceptionIDs = datatypes_1.infer_literal_array(
-// Prologue
-'alcove, general', 'self, 1', 'alcove, envelope', 
-// ch1
-'forest, general', 'self, 2', 'note fragment', 'tangle, tower base', 'tangle, tower peak', 'tangle, 1', 'tangle, 2', 'tangle, 3', 'forest, parchment trees');
+const ObserverMomentIDs = datatypes_1.infer_literal_array('imagining 0', 'imagining 1', 'imagining 2', 'imagining 3', 'imagining 4', 'imagining 5', 'home 1', 'home silenced', 'home listened', 'outside 1', 'outside 2', 'outside 3', 'outside 4', 'outside 4, death', 'outside 5', 'outside 5, death', 'dark pool 1', 'dark pool 2', 'dark pool 3', 'dark pool 4', 'dark pool 5', 'dark pool 5, death', 'dark pool 6');
+const PerceptionIDs = datatypes_1.infer_literal_array('myself', 'merfolk', 'family', 'researcher', 'dark pool', 'failed experiments', 'experiment', 'broadcaster');
 const ContentionIDs = datatypes_1.infer_literal_array(
 // ch1
 'tangle, 1', 'tangle, 2', 'tangle, 3', 'tangle, failure');

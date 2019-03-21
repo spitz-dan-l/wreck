@@ -106,7 +106,17 @@ export class FuckDict<K, V> {
     }
 }
 
-export type FuckSet<T> = FuckDict<T, undefined>;
+// export type FuckSet<T> = FuckDict<T, undefined>;
+export class FuckSet<T> extends FuckDict<T, undefined> {
+    constructor(a?: T[]) {
+        if (a !== undefined) {
+            super(a.map(t => <[T, undefined]>[t, undefined]));
+        } else {
+            super();
+        }
+    }
+}
+
 
 export function chain_object<T extends object>(src: T) {
     return new Proxy<T>(src, {

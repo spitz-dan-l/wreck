@@ -5,13 +5,12 @@ const parser_1 = require("../parser");
 const datatypes_1 = require("../datatypes");
 const text_tools_1 = require("../text_tools");
 const observer_moments_1 = require("./observer_moments");
-const _00_prologue_1 = require("./chapters/00_prologue");
-const _01_chapter_1_1 = require("./chapters/01_chapter_1");
+const hex_1 = require("./chapters/hex");
 exports.wrap_handler = (handler) => function (parser) { return parser_1.with_early_stopping(handler.bind(this))(parser); };
 class VenienceWorld extends commands_1.World {
     constructor({ experiences, history_index, om_state, has_regarded, has_understood, has_visited }) {
         if (experiences === undefined) {
-            experiences = ['bed, sleeping 1'];
+            experiences = ['imagining 0'];
         }
         if (history_index === undefined) {
             history_index = 0;
@@ -226,12 +225,10 @@ class VenienceWorld extends commands_1.World {
     }
 }
 VenienceWorld.observer_moments = observer_moments_1.index_oms([
-    ..._00_prologue_1.default.observer_moments(),
-    ..._01_chapter_1_1.default.observer_moments()
+    ...hex_1.default.observer_moments(),
 ]);
 VenienceWorld.perceptions = observer_moments_1.index_perceptions([
-    ..._00_prologue_1.default.perceptions(),
-    ..._01_chapter_1_1.default.perceptions()
+    ...hex_1.default.perceptions(),
 ]);
 exports.VenienceWorld = VenienceWorld;
 //# sourceMappingURL=venience_world.js.map

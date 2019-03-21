@@ -23,28 +23,41 @@
 
 */
 
+import { FuckSet } from './datatypes'
+import { starts_with } from './text_tools'
 
 // TODO: make "enter"/"submit" a valid token that the parser can expect.
 //    Having "submit" as typeahead means the user can press "enter" to run the command
-type Token = string;
 
-type TokenMatch = 
-    ['Match'] |
-    ['Partial', Token] |
-    ['Error'];
 
-function is_match(m: TokenMatch) {
-    return m[0] === 'Match'
+const SUBMIT_TOKEN = Symbol();
+type Token = string | typeof SUBMIT_TOKEN;
+
+export namespace TokenMatch {
+    export type Type = 
+        ['Match'] |
+        ['Partial', Token] |
+        ['Error'];
+
+    export function is_match(m: Type) {
+        return m[0] === 'Match'
+    }
+
+    export function is_partial(m: Type) {
+        return m[0] === 'Partial'
+    }
+
+    export function is_error(m: Type) {
+        return m[0] === 'Error'
+    }
+
+    export enum Fields{ kind, token, type };
+    export type TokenMatch = ['TokenMatch', Token, Type];
 }
 
-function is_partial(m: TokenMatch) {
-    return m[0] === 'Partial'
-}
+export type TokenMatch = TokenMatch.TokenMatch;
 
-function is_error(m: TokenMatch) {
-    return m[0] === 'Error'
-}
-
+import TM = TokenMatch;
 
 /*
 
@@ -53,15 +66,27 @@ function is_error(m: TokenMatch) {
     Ready, Not Ready (to execute)
 
 */
-type InputDisplay =
-    ['Filler'] |
-    ['Option'] |
-    ['Error'];
+export namespace InputDisplay {
+    export type Type =
+        ['Filler'] |
+        ['Option'] |
+        ['Error'];
+
+    export type Submit =
+        ['Submit'] |
+        ['NoSubmit'];
+
+    export type InputDisplay = ['InputDisplay', Type, Submit];
+}
+
+export type InputDisplay = InputDisplay.InputDisplay;
+import ID = InputDisplay;
 
 type TypeaheadDisplay =
     ['Available'] |
     ['Used'] |
     ['Locked']
+
 
 /*
 ParseResult type
@@ -87,7 +112,7 @@ class ParseResult {
 
     is_valid() {
         if (this._children === null) {
-            return this._matches.length === 0 || is_match(this._matches[this._matches.length - 1])
+            return this._matches.length === 0 || TM.is_match(this._matches[this._matches.length - 1][TM.Fields.type])
         }
 
         return this._children.some(c => c.is_valid());
@@ -190,7 +215,41 @@ class ParseResult {
         Typeahead is the Partial TokenMatches suffix (always at the end)
     */
     input_display(): InputDisplay[] {
+        let f = this.flattened();
 
+        // determine if submittable
+        let submittable = f.some(row => {
+            let last = row[row.length - 1];
+            return last[1] === SUBMIT_TOKEN && TM.is_match(last[2])
+        });
+
+        let display_submit: ID.Submit = submittable ? ['Submit'] : ['NoSubmit'];
+
+        let pos = 0;
+        let result: InputDisplay[] = [];
+        while (true) {
+            // get the column of TokenMatches
+            let column = f.filter(row => row.length > pos).map(row => row[pos]);
+
+            if (column.length === 0) {
+                break;
+            }
+
+            let display_type: ID.Type;
+            // determine error
+            if (column.every(tm => TM.is_error(tm[2]))) {
+                display_type = ['Error'];
+            } else {
+
+                // count unique token values
+                let uniq_toks = new FuckSet<Token>(column.map(tm => tm[1]));
+
+                display_type = uniq_toks.size === 1 ? ['Filler'] : ['Option'];
+            }
+
+            result.push(['InputDisplay', display_type, display_submit]);
+        }
+        return result;
     }
 
 }
@@ -207,10 +266,53 @@ class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    consume(tokens: Token[] /* TODO: make this a list of annotated tokens */) {
+    consume(tokens: Token[]) {
+        if (!this.parse_result.is_valid()) {
+            throw new ParseError('Tried to consume() on a done parser.');
+        }
 
+
+
+        if (this.pos === this.input_stream.length) {
+            // if the last token match is valid, add tokens as partial and throw NoMatch
+            this.parse_result.push(...tokens.map(t => <TokenMatch>['TokenMatch', '', ['Partial', t]]));
+            throw new NoMatch();
+        }
+
+        let partial = false;
+        let error = false;
+        // check if exact match
+        for (let i = 0; i < tokens.length; i++) {
+            if (this.pos + i >= this.input_stream.length) {
+                partial = true;
+                break;
+            }
+
+            let spec = tokens[i];
+            let input = this.input_stream[this.pos + i];
+
+            if (spec === input) {
+                continue
+            }
+            if (spec === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+                error = true;
+                break;
+            }
+            if (starts_with(<string>spec, <string>input)) {
+                // if there are still more input tokens, error.
+                if (this.pos + i < this.input_stream.length) {
+                    error = true;
+                }
+
+                partial = true;
+                continue;
+            }
+            error = true;
+
+        }
     }
 
+     /* TODO: make a subthread have a "style" e.g. locked, used, newly-available. not tokens. */
     split(subthreads: ParserThread[], combiner: (results: any[]) => any): any {
 
     }
