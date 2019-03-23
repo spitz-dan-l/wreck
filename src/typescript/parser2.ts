@@ -104,6 +104,20 @@ class ParseResult {
         this._parent = parent
     }
 
+    // TODO: make this a list???!!!!
+    // This enables multiple splits in a single ParserThread.
+    // Changes to do this:
+
+    // is_valid() should check whether at least one parent is valid? (i think? the induction is a bit weird)
+
+    // split() will create the "merged" sub-child parse results when it's called again after the
+    // current parse result has already been split
+
+    // prefix() needs to return a list of lists of TokenMatches
+    // flattened() needs to take the cartesian product of prefix() and suffixes()
+
+    // input_display() and typeahead() may need to check more thoroughly for errors
+    // since validity feels less guaranteed by induction..??
     _parent: ParseResult = null;
 
     _matches: TokenMatch[] = [];
@@ -147,8 +161,12 @@ class ParseResult {
     }
 
     split(n_splits: number): ParseResult[] {
+        // TODO: must be positive integer
+
         // TODO: figure out what to return in the case where the current ParseResult is not valid
         // just raise?
+        // Nope, I think you actually need to call split on each child? maybe?
+        // But in that case what would you return?
         if (this._children !== null) {
             throw new ParseError('cannot split an already-split parse result');
         }
@@ -207,12 +225,6 @@ class ParseResult {
             If > 1, option
             Else filler
 
-
-        Typeahead
-
-        For each non-valid row (ignoring errors, partial only)
-        If the row is at least the length of the input stream
-        Typeahead is the Partial TokenMatches suffix (always at the end)
     */
     input_display(): InputDisplay[] {
         let f = this.flattened();
@@ -251,6 +263,16 @@ class ParseResult {
         }
         return result;
     }
+    /*
+    Typeahead
+
+        For each non-valid row (ignoring errors, partial only)
+        If the row is at least the length of the input stream
+        Typeahead is the Partial TokenMatches suffix (always at the end)
+    */
+    typeahead() {
+
+    }
 
 }
 
@@ -271,18 +293,11 @@ class Parser {
             throw new ParseError('Tried to consume() on a done parser.');
         }
 
-
-
-        if (this.pos === this.input_stream.length) {
-            // if the last token match is valid, add tokens as partial and throw NoMatch
-            this.parse_result.push(...tokens.map(t => <TokenMatch>['TokenMatch', '', ['Partial', t]]));
-            throw new NoMatch();
-        }
-
         let partial = false;
         let error = false;
+        let i = 0
         // check if exact match
-        for (let i = 0; i < tokens.length; i++) {
+        for (i = 0; i < tokens.length; i++) {
             if (this.pos + i >= this.input_stream.length) {
                 partial = true;
                 break;
@@ -292,27 +307,77 @@ class Parser {
             let input = this.input_stream[this.pos + i];
 
             if (spec === input) {
-                continue
+                continue;
             }
             if (spec === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
                 error = true;
                 break;
             }
             if (starts_with(<string>spec, <string>input)) {
-                // if there are still more input tokens, error.
-                if (this.pos + i < this.input_stream.length) {
-                    error = true;
-                }
-
                 partial = true;
-                continue;
+                break;
             }
-            error = true;
 
+            error = true;
+            break;
+        }
+
+
+        if (partial) {
+            // check if we should actually be in error
+            if (i < tokens.length - 1) {
+                error = true;
+            } else {
+                // push all tokens as partials
+                this.parse_result.push(...tokens.map((t, j) => 
+                    <TokenMatch>[
+                        'TokenMatch',
+                        this.input_stream[this.pos + j] || '',
+                        ['Partial', t]]));
+                // increment pos
+                this.pos = this.input_stream.length;
+
+                throw new NoMatch();
+            }
+        }
+
+        if (error) {
+            // push all tokens as errors
+            this.parse_result.push(...tokens.map((t, j) =>
+                <TokenMatch>[
+                    'TokenMatch',
+                    this.input_stream[this.pos + j] || '',
+                    ['Error']]));
+            this.pos = this.input_stream.length;
+            // increment pos
+            throw new NoMatch();
+        }
+
+        // push all tokens as valid
+        this.parse_result.push(...tokens.map((t, j) =>
+            <TokenMatch>[
+                'TokenMatch',
+                this.input_stream[this.pos + j],
+                ['Match']]));
+
+        // increment pos
+        this.pos += tokens.length;
+
+    }
+
+    run_thread(thread: ParserThread) {
+        try {
+            return thread(this);
+        } catch (e) {
+            if (e instanceof NoMatch) {
+                return undefined;
+            }
+            throw e;
         }
     }
 
-     /* TODO: make a subthread have a "style" e.g. locked, used, newly-available. not tokens. */
+    /* TODO: make a subthread have a "style" e.g. locked, used, newly-available. not tokens. */
     split(subthreads: ParserThread[], combiner: (results: any[]) => any): any {
 
     }
@@ -336,6 +401,4 @@ class NoMatch extends Error {};
 class ParseError extends Error {};
 
 type ParserThread = (p: Parser) => any;
-
-
 
