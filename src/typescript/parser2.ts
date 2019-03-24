@@ -26,9 +26,8 @@
 import { FuckSet } from './datatypes'
 import { starts_with } from './text_tools'
 
-// TODO: make "enter"/"submit" a valid token that the parser can expect.
-//    Having "submit" as typeahead means the user can press "enter" to run the command
-
+class NoMatch extends Error {};
+class ParseError extends Error {};
 
 const SUBMIT_TOKEN = Symbol();
 type Token = string | typeof SUBMIT_TOKEN;
@@ -100,8 +99,8 @@ possible to pass a reference to a particular branch, and get out the global/flat
 */
 
 class ParseResult {
-    constructor(parent: ParseResult = null) {
-        this._parent = parent
+    constructor(parents: ParseResult[] = null) {
+        this._parents = parents;
     }
 
     // TODO: make this a list???!!!!
@@ -118,25 +117,59 @@ class ParseResult {
 
     // input_display() and typeahead() may need to check more thoroughly for errors
     // since validity feels less guaranteed by induction..??
-    _parent: ParseResult = null;
+    _parents: ParseResult[] = null;
 
     _matches: TokenMatch[] = [];
 
     _children: ParseResult[] = null;
 
+    // can the currently-input string be executed as a valid command?
     is_valid() {
-        if (this._children === null) {
-            return this._matches.length === 0 || TM.is_match(this._matches[this._matches.length - 1][TM.Fields.type])
+        if (!this._is_valid_parents()) {
+            return false;
         }
 
-        return this._children.some(c => c.is_valid());
+        if (!this._is_valid_this()) {
+            return false;
+        }
+
+        return this._is_valid_children();
+    }
+
+    _is_valid_this() {
+        return this._matches.length === 0 || TM.is_match(this._matches[this._matches.length - 1][TM.Fields.type])
+    }
+
+    // Check if any of the parents are valid
+    // If we are root, valid.
+    _is_valid_parents() {
+        if (this._parents === null) {
+            return true;
+        }
+
+        return this._parents.some(p => p._is_valid_this() && p._is_valid_parents());
+    }
+
+    _is_valid_children() {
+        if (this._children === null) {
+            return true;
+        }
+
+        return this._children.some(c => c._is_valid_this() && c._is_valid_children());
     }
 
     push(...new_matches: TokenMatch[]) {
+        // TODO: This will call is_valid_parents() more than is necessary. It only needs to be called once.
+        if (!this._is_valid_parents() || !this._is_valid_this()) {
+            return;
+        }
+
         if (this._children === null) {
+            this._matches.push(...new_matches);
+        } else {
             // check if we are allowed to push.
             // if currently valid -> yes
-            // if currently partial -> maybe
+            // if currently partial -> no
             /*  
                 harder case. if it's currently partial, that could mean:
                     the next token matched "validates" the previous partial ones
@@ -152,36 +185,47 @@ class ParseResult {
                         Therefore, the only case where pushing isn't null is if everything up til now is valid.
             */
             // if currently error -> no
-            if (this.is_valid()) {
-                this._matches.push(...new_matches);
-            }
-        } else {
             this._children.forEach(c => c.push(...new_matches));
         }
     }
 
     split(n_splits: number): ParseResult[] {
         // TODO: must be positive integer
-
-        // TODO: figure out what to return in the case where the current ParseResult is not valid
-        // just raise?
-        // Nope, I think you actually need to call split on each child? maybe?
-        // But in that case what would you return?
-        if (this._children !== null) {
-            throw new ParseError('cannot split an already-split parse result');
+        if (n_splits < 1) {
+            throw new ParseError('split(): n_splits must be a positive integer');
         }
 
-        if (!this.is_valid()) {
-            return null;
-        }
+        // We create n_splits child nodes,
+        // each with parents as the set of current leaf nodes.
+        let new_parents = this._leaves();
 
-        this._children = []
+        let new_children = [];
 
         for (let i = 0; i < n_splits; i++) {
-            this._children.push(new ParseResult(this));
+            new_children.push(new ParseResult(new_parents));
         }
 
-        return this._children;
+        new_parents.forEach(p => {
+            p._children = [...new_children];
+        });
+
+        return new_children;
+
+    }
+
+    _leaves(): ParseResult[] {
+        if (this._children === null) {
+            return [this];
+        }
+
+        let result = [];
+
+        this._children.forEach(c => {
+            result.push(...c._leaves());
+        });
+
+        return result;
+
     }
 
     suffixes(): TokenMatch[][] {
@@ -197,23 +241,28 @@ class ParseResult {
         return result;
     }
 
-    prefix(): TokenMatch[] {
-        let result = [];
-
-        let p = this._parent;
-
-        while (p !== null) {
-            result.unshift(...p._matches);
-            p = p._parent;
+    prefixes(): TokenMatch[][] {
+        if (this._parents === null) {
+            return [[]];
         }
 
+        let result = [];
+        this._parents.forEach(p1 => {
+            result.push(...p1.prefixes().map(p2 => [...p2, ...p1._matches]));
+        })
         return result;
     }
 
     flattened(): TokenMatch[][] {
-        let prefix = this.prefix();
+        let prefixes = this.prefixes();
+        let suffixes = this.suffixes();
 
-        return this.suffixes().map(s => [...prefix, ...s]);
+        let result = [];
+
+        prefixes.forEach(prefix => {
+            result.push(...suffixes.map(s => [...prefix, ...s]));
+        })
+        return result;
     }
 
     /*
@@ -224,8 +273,8 @@ class ParseResult {
         For each non-error column (valid or ends in partial), count number of unique token values
             If > 1, option
             Else filler
-
     */
+    // for each of the input tokens, how should they be displayed/highighted?
     input_display(): InputDisplay[] {
         let f = this.flattened();
 
@@ -270,6 +319,8 @@ class ParseResult {
         If the row is at least the length of the input stream
         Typeahead is the Partial TokenMatches suffix (always at the end)
     */
+    // for each row of typeahead to display, what are the tokens?
+    // will be positioned relative to the first input token.
     typeahead() {
 
     }
@@ -277,18 +328,37 @@ class ParseResult {
 }
 
 class Parser {
+    constructor(input_stream: Token[], pos: number = 0, parse_result: ParseResult = undefined) {
+        this.input_stream = input_stream;
+        this.pos = pos;
+        if (parse_result === undefined) {
+            parse_result = new ParseResult();
+        }
+        this.parse_result = parse_result;
+    }
+
     input_stream: Token[];
     pos: number = 0;
 
     parse_result: ParseResult;
 
+    consume(tokens: Token[]): void;
+    consume<T>(tokens: Token[], callback: () => T): T;
+    consume<T>(tokens: Token[], result: T): T;
+    consume(tokens: Token[], result?: any): any {
+        this._consume(tokens);
+        if (result instanceof Function) {
+            return result();
+        }
+        return result;
+    }
 
     /*
         This will throw a parse exception if the desired tokens can't be consumed.
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    consume(tokens: Token[]) {
+    _consume<T>(tokens: Token[]) {
         if (!this.parse_result.is_valid()) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
@@ -322,7 +392,6 @@ class Parser {
             error = true;
             break;
         }
-
 
         if (partial) {
             // check if we should actually be in error
@@ -366,39 +435,79 @@ class Parser {
 
     }
 
-    run_thread(thread: ParserThread) {
+    run_thread<T>(thread: ParserThread<T>): T | NoMatch {
         try {
             return thread(this);
         } catch (e) {
             if (e instanceof NoMatch) {
-                return undefined;
+                // Return the NoMatch object as a special value
+                return e;
             }
             throw e;
         }
     }
 
-    /* TODO: make a subthread have a "style" e.g. locked, used, newly-available. not tokens. */
-    split(subthreads: ParserThread[], combiner: (results: any[]) => any): any {
+    split<R>(subthreads: ParserThread<R>[]): R;
+    split<R, C>(subthreads: ParserThread<R>[], combiner: ((results: R[]) => C)): C;
+    split<R>(subthreads: ParserThread<R>[], combiner?: ((results: R[]) => any)): any {
+        if (subthreads.length <= 0) {
+            throw new ParseError('Cannot split with zero or fewer subthreads');
+        }
 
+        let new_parse_results = this.parse_result.split(subthreads.length);
+
+        let child_parsers = new_parse_results.map(pr => new Parser(this.input_stream, this.pos, pr));
+
+        let thread_results = child_parsers.map((cp, i) => cp.run_thread(subthreads[i]));
+
+        if (combiner === undefined) {
+            // the default combiner just takes the first valid result, or undefined if there is none
+            combiner = rs => rs[0];
+        }
+
+        return combiner(thread_results.filter(<(tr) => tr is R>(tr => !(tr instanceof NoMatch))));
     }
 
-
-    /*
-        helpers which don't update state, but are queries on the parser state
-    */
-    // can the currently-input string be executed as a valid command?
-    valid(): boolean {return true}
-
-    // for each of the input tokens, how should they be displayed/highighted?
-    input_token_display() {}
-
-    // for each row of typeahead to display, what are the tokens?
-    // will be positioned relative to the first input token.
-    typeahead() {}
+    // demonstration of the overloaded
+    // bloop() {
+    //     let x = this.split([(p) => 4]);
+    //     let x2 = this.split(
+    //         <ParserThreads<string | number>>[
+    //             ((p) => 4),
+    //             ((p) => 'f')
+    //         ],
+    //         (rs) => 1);
+    //     // this will be an error because the inferred type of an empty array is {}[], and number is not compatible with {}
+    //     // in practice this should not matter because an empty array of subthreads is a runtime error.
+    //     // let x3 = this.split([], (x: number) => 4);
+    // }
 }
 
-class NoMatch extends Error {};
-class ParseError extends Error {};
+type ParserThread<T> = (p: Parser) => T;
+type ParserThreads<T> =  ParserThread<T>[];
 
-type ParserThread = (p: Parser) => any;
+function test() {
+    function main_thread(p: Parser) {
+        p.consume(['look']);
+
+        let who = p.split([
+            (p) => p.consume(['at', 'me'], 'me'),
+            (p) => p.consume(['at', 'mewtwo'], 'mewtwo'),
+            (p) => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'),
+            (p) => p.consume(['at', 'steven'], () => '4')
+        ]);
+
+        let how = p.split([
+            (p) => p.consume(['happily'], 'happily'),
+            (p) => p.consume(['sadly'], 'sadly'),
+            (p) => 'neutrally'
+        ]);
+
+        p.consume([SUBMIT_TOKEN]);
+
+    }
+}
+
+
+
 
