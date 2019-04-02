@@ -1,3 +1,6 @@
+import {test} from '../typescript/parser2';
+
+test;
 import * as React from "react";
 import * as ReactDom from "react-dom";
 

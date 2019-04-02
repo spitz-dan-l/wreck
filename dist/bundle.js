@@ -63,17 +63,11 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 13);
+/******/ 	return __webpack_require__(__webpack_require__.s = 14);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports) {
-
-module.exports = React;
-
-/***/ }),
-/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -168,6 +162,17 @@ class FuckDict {
     }
 }
 exports.FuckDict = FuckDict;
+// export type FuckSet<T> = FuckDict<T, undefined>;
+class FuckSet extends FuckDict {
+    constructor(a) {
+        if (a !== undefined) {
+            super(a.map(t => [t, undefined]));
+        } else {
+            super();
+        }
+    }
+}
+exports.FuckSet = FuckSet;
 function chain_object(src) {
     return new Proxy(src, {
         get: function (target, key) {
@@ -413,6 +418,12 @@ function infer_literal_array(...arr) {
 exports.infer_literal_array = infer_literal_array;
 
 /***/ }),
+/* 1 */
+/***/ (function(module, exports) {
+
+module.exports = React;
+
+/***/ }),
 /* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -421,7 +432,7 @@ exports.infer_literal_array = infer_literal_array;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -869,7 +880,7 @@ exports.wrap_in_div = wrap_in_div;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 const parser_1 = __webpack_require__(2);
 class World {
     constructor(state) {
@@ -1020,10 +1031,10 @@ exports.WorldDriver = WorldDriver;
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(4);
 const parser_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 const text_tools_1 = __webpack_require__(3);
-const observer_moments_1 = __webpack_require__(15);
-const hex_1 = __webpack_require__(14);
+const observer_moments_1 = __webpack_require__(16);
+const hex_1 = __webpack_require__(15);
 exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
@@ -1259,7 +1270,7 @@ module.exports = ReactDOM;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
@@ -1327,11 +1338,11 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
-const Prompt_1 = __webpack_require__(11);
+const React = __webpack_require__(1);
+const Prompt_1 = __webpack_require__(12);
 const Text_1 = __webpack_require__(7);
-const TypeaheadList_1 = __webpack_require__(12);
-const History_1 = __webpack_require__(10);
+const TypeaheadList_1 = __webpack_require__(13);
+const History_1 = __webpack_require__(11);
 const text_tools_1 = __webpack_require__(3);
 const parser_1 = __webpack_require__(2);
 class Terminal extends React.Component {
@@ -1436,9 +1447,287 @@ exports.Terminal = Terminal;
 
 "use strict";
 
+/*
+    a parser thread takes a parser and uses it to consume some of a token stream,
+    and returns some result
+
+    a thread can *split* the current parser state into N branches,
+    each of which consume their own things separately and return their own results
+    the thread which initiated the split is also responsible for combining the various results
+    before returning control to the thread.
+        the most common scenario is that only one of N branches is still valid
+    
+    internally, the parser receives instructions from the parser thread and consumes
+    pieces of the input token stream. it builds up a list of token match objects,
+    where each token in the stream consumed so far gets a status of "matched", "partial", "error"
+
+    by combining these token labellings from all the different parser threads that ran,
+    we determine:
+        - whether the currently-input string is valid and can be executed
+        - what colors to highlight the various input words with
+        - what to display beneath the input prompt as typeahead options
+
+
+
+
+*/
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(0);
+const text_tools_1 = __webpack_require__(3);
+class NoMatch extends Error {}
+;
+class ParseRestart extends Error {
+    constructor(n_splits) {
+        super();
+        this.n_splits = n_splits;
+    }
+}
+;
+class ParseError extends Error {}
+;
+const SUBMIT_TOKEN = Symbol();
+var TokenMatch;
+(function (TokenMatch) {
+    function is_match(m) {
+        return m[0] === 'Match';
+    }
+    TokenMatch.is_match = is_match;
+    function is_partial(m) {
+        return m[0] === 'Partial';
+    }
+    TokenMatch.is_partial = is_partial;
+    function is_error(m) {
+        return m[0] === 'Error';
+    }
+    TokenMatch.is_error = is_error;
+    let Fields;
+    (function (Fields) {
+        Fields[Fields["kind"] = 0] = "kind";
+        Fields[Fields["token"] = 1] = "token";
+        Fields[Fields["type"] = 2] = "type";
+    })(Fields = TokenMatch.Fields || (TokenMatch.Fields = {}));
+    ;
+})(TokenMatch = exports.TokenMatch || (exports.TokenMatch = {}));
+var TM = TokenMatch;
+function is_parse_result_valid(result) {
+    return result.length === 0 || TM.is_match(array_last(result)[TM.Fields.type]);
+}
+// for each of the input tokens, how should they be displayed/highighted?
+function input_display(parse_results) {
+    // determine if submittable
+    let submittable = parse_results.some(row => {
+        let last = row[row.length - 1];
+        return last[1] === SUBMIT_TOKEN && TM.is_match(last[2]);
+    });
+    let display_submit = submittable ? ['Submit'] : ['NoSubmit'];
+    let pos = 0;
+    let result = [];
+    while (true) {
+        // get the column of TokenMatches
+        let column = parse_results.filter(row => row.length > pos).map(row => row[pos]);
+        if (column.length === 0) {
+            break;
+        }
+        let display_type;
+        // determine error
+        if (column.every(([_, token, type]) => TM.is_error(type))) {
+            display_type = ['Error'];
+        } else {
+            // count unique token values
+            let uniq_toks = new datatypes_1.FuckSet(column.map(([_, token, type]) => {
+                switch (type[0]) {
+                    case 'Match':
+                        return token;
+                    default:
+                        return type[1];
+                }
+            }));
+            display_type = uniq_toks.size === 1 ? ['Filler'] : ['Option'];
+        }
+        result.push(['InputDisplay', display_type, display_submit]);
+        pos++;
+    }
+    return result;
+}
+/*
+Typeahead
+
+    For each non-valid row (ignoring errors, partial only)
+    If the row is at least the length of the input stream
+    Typeahead is the Partial TokenMatches suffix (always at the end)
+*/
+// for each row of typeahead to display, what are the tokens?
+// will be positioned relative to the first input token.
+function typeahead(parse_results) {
+    return [];
+}
+class Parser {
+    constructor(input_stream, splits_to_take) {
+        this.pos = 0;
+        this.parse_result = [];
+        this._current_split = 0;
+        this.input_stream = input_stream;
+        this.pos = 0;
+        if (splits_to_take === undefined) {
+            splits_to_take = [];
+        }
+        this._splits_to_take = splits_to_take;
+    }
+    consume(tokens, result) {
+        this._consume(tokens);
+        if (result instanceof Function) {
+            return result();
+        }
+        return result;
+    }
+    /*
+        This will throw a parse exception if the desired tokens can't be consumed.
+        It is expected that every ParserThread is wrapped in an exception handler for
+        this case.
+    */
+    _consume(tokens) {
+        if (!is_parse_result_valid(this.parse_result)) {
+            throw new ParseError('Tried to consume() on a done parser.');
+        }
+        let partial = false;
+        let error = false;
+        let i = 0;
+        // check if exact match
+        for (i = 0; i < tokens.length; i++) {
+            if (this.pos + i >= this.input_stream.length) {
+                partial = true;
+                break;
+            }
+            let spec = tokens[i];
+            let input = this.input_stream[this.pos + i];
+            if (spec === input) {
+                continue;
+            }
+            if (spec === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
+                error = true;
+                break;
+            }
+            if (text_tools_1.starts_with(spec, input)) {
+                partial = true;
+                break;
+            }
+            error = true;
+            break;
+        }
+        if (partial) {
+            // check if we should actually be in error
+            if (i < tokens.length - 1) {
+                error = true;
+            } else {
+                // push all tokens as partials
+                this.parse_result.push(...tokens.map((t, j) => ['TokenMatch', this.input_stream[this.pos + j] || '', ['Partial', t]]));
+                // increment pos
+                this.pos = this.input_stream.length;
+                throw new NoMatch();
+            }
+        }
+        if (error) {
+            // push all tokens as errors
+            this.parse_result.push(...tokens.map((t, j) => ['TokenMatch', this.input_stream[this.pos + j] || '', ['Error', t]]));
+            // increment pos
+            this.pos = this.input_stream.length;
+            throw new NoMatch();
+        }
+        // push all tokens as valid
+        this.parse_result.push(...tokens.map((t, j) => ['TokenMatch', this.input_stream[this.pos + j], ['Match']]));
+        // increment pos
+        this.pos += tokens.length;
+    }
+    split(subthreads) {
+        if (this._current_split === this._splits_to_take.length) {
+            throw new ParseRestart(subthreads.length); // Signal to restart the parse with the new info about this split
+        }
+        let st = subthreads[this._splits_to_take[this._current_split]];
+        this._current_split++;
+        return st(this);
+    }
+    static run_thread(t, tokens) {
+        let frontier = [[]];
+        let results = [];
+        let parse_results = [];
+        while (frontier.length > 0) {
+            let path = frontier.pop();
+            let splits_to_take;
+            if (path.length === 0) {
+                splits_to_take = path;
+            } else {
+                let n = array_last(path).next();
+                if (n.done) {
+                    continue;
+                } else {
+                    frontier.push(path);
+                }
+                splits_to_take = [...path.slice(0, -1), n.value];
+            }
+            let p = new Parser(tokens, splits_to_take);
+            let result;
+            try {
+                result = t(p);
+            } catch (e) {
+                if (e instanceof NoMatch) {
+                    result = e;
+                } else if (e instanceof ParseRestart) {
+                    let new_splits = [];
+                    for (let i = 0; i < e.n_splits; i++) {
+                        new_splits.push(i);
+                    }
+                    frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    continue;
+                } else {
+                    throw e;
+                }
+            }
+            results.push(result);
+            parse_results.push(p.parse_result);
+        }
+        // TODO: Error here if more than 1 result?
+        let valid_results = results.filter(r => !(r instanceof NoMatch));
+        if (valid_results.length === 0) {
+            return [new NoMatch(), parse_results];
+        }
+        if (valid_results.length > 1) {
+            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
+        }
+        return [valid_results[0], parse_results];
+    }
+}
+function array_last(arr) {
+    return arr[arr.length - 1];
+}
+function test() {
+    function main_thread(p) {
+        p.consume(['look']);
+        let who = p.split([() => p.consume(['at', 'me'], 'me'), () => p.consume(['at', 'mewtwo'], 'mewtwo'), () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'), () => p.consume(['at', 'steven'], () => 'steven')]);
+        // p.parse_result.input_display(); // This labels every token as filler despite there being multiple options after "at".
+        let how = p.split([() => p.consume(['happily'], 'happily'), () => p.consume(['sadly'], 'sadly'), () => 'neutrally']);
+        p.consume([SUBMIT_TOKEN]);
+        return `Looked at ${who} ${how}`;
+    }
+    let input = ['look', 'at', 'mewtwo', 'steve', SUBMIT_TOKEN];
+    let [result, parses] = Parser.run_thread(main_thread, input);
+    console.log(result);
+    console.log('was the result');
+    console.log(input_display(parses));
+}
+exports.test = test;
+test();
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const React = __webpack_require__(1);
 const ReactDom = __webpack_require__(6);
 const Text_1 = __webpack_require__(7);
 class BookGuy extends React.Component {
@@ -1603,7 +1892,7 @@ class History extends React.Component {
 exports.History = History;
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1616,7 +1905,7 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(1);
 const keyboard_tools_1 = __webpack_require__(8);
 const InputWrapper = props => {
     const { children } = props,
@@ -1710,16 +1999,16 @@ class Prompt extends React.Component {
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const React = __webpack_require__(1);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -1797,14 +2086,16 @@ class TypeaheadList extends React.Component {
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(0);
+const parser2_1 = __webpack_require__(10);
+parser2_1.test;
+const React = __webpack_require__(1);
 const ReactDom = __webpack_require__(6);
 const Terminal_1 = __webpack_require__(9);
 const commands_1 = __webpack_require__(4);
@@ -1822,7 +2113,7 @@ let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1831,7 +2122,7 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(5);
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 const parser_1 = __webpack_require__(2);
 let hex_oms = () => [{
     id: "imagining 0",
@@ -2337,14 +2628,14 @@ exports.default = {
 };
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(1);
+const datatypes_1 = __webpack_require__(0);
 const parser_1 = __webpack_require__(2);
 const ObserverMomentIDs = datatypes_1.infer_literal_array('imagining 0', 'imagining 1', 'imagining 2', 'imagining 3', 'imagining 4', 'imagining 5', 'home 1', 'home silenced', 'home listened', 'outside 1', 'outside 2', 'outside 3', 'outside 4', 'outside 4, death', 'outside 5', 'outside 5, death', 'dark pool 1', 'dark pool 2', 'dark pool 3', 'dark pool 4', 'dark pool 5', 'dark pool 5, death', 'dark pool 6');
 const PerceptionIDs = datatypes_1.infer_literal_array('myself', 'merfolk', 'family', 'researcher', 'dark pool', 'failed experiments', 'experiment', 'broadcaster');

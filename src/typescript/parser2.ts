@@ -27,6 +27,14 @@ import { FuckSet } from './datatypes'
 import { starts_with } from './text_tools'
 
 class NoMatch extends Error {};
+class ParseRestart extends Error {
+    constructor(n_splits: number) {
+        super();
+        this.n_splits = n_splits;
+    }
+
+    n_splits: number;
+};
 class ParseError extends Error {};
 
 const SUBMIT_TOKEN = Symbol();
@@ -36,7 +44,7 @@ export namespace TokenMatch {
     export type Type = 
         ['Match'] |
         ['Partial', Token] |
-        ['Error'];
+        ['Error', Token]; // TODO have Error take an extra "intended" token like Partial.
 
     export function is_match(m: Type) {
         return m[0] === 'Match'
@@ -87,260 +95,92 @@ type TypeaheadDisplay =
     ['Locked']
 
 
-/*
-ParseResult type
+type ParseResult = TokenMatch[];
 
-Initially a single list of TokenMatches
-At some point in the list is a split into N branches
-
-possible to pass a reference to a particular branch, and get out the global/flattened set of token matches for it
-(including those token matches occurring before the split point)
-
-*/
-
-class ParseResult {
-    constructor(parents: ParseResult[] = null) {
-        this._parents = parents;
-    }
-
-    // TODO: make this a list???!!!!
-    // This enables multiple splits in a single ParserThread.
-    // Changes to do this:
-
-    // is_valid() should check whether at least one parent is valid? (i think? the induction is a bit weird)
-
-    // split() will create the "merged" sub-child parse results when it's called again after the
-    // current parse result has already been split
-
-    // prefix() needs to return a list of lists of TokenMatches
-    // flattened() needs to take the cartesian product of prefix() and suffixes()
-
-    // input_display() and typeahead() may need to check more thoroughly for errors
-    // since validity feels less guaranteed by induction..??
-    _parents: ParseResult[] = null;
-
-    _matches: TokenMatch[] = [];
-
-    _children: ParseResult[] = null;
-
-    // can the currently-input string be executed as a valid command?
-    is_valid() {
-        if (!this._is_valid_parents()) {
-            return false;
-        }
-
-        if (!this._is_valid_this()) {
-            return false;
-        }
-
-        return this._is_valid_children();
-    }
-
-    _is_valid_this() {
-        return this._matches.length === 0 || TM.is_match(this._matches[this._matches.length - 1][TM.Fields.type])
-    }
-
-    // Check if any of the parents are valid
-    // If we are root, valid.
-    _is_valid_parents() {
-        if (this._parents === null) {
-            return true;
-        }
-
-        return this._parents.some(p => p._is_valid_this() && p._is_valid_parents());
-    }
-
-    _is_valid_children() {
-        if (this._children === null) {
-            return true;
-        }
-
-        return this._children.some(c => c._is_valid_this() && c._is_valid_children());
-    }
-
-    push(...new_matches: TokenMatch[]) {
-        // TODO: This will call is_valid_parents() more than is necessary. It only needs to be called once.
-        if (!this._is_valid_parents() || !this._is_valid_this()) {
-            return;
-        }
-
-        if (this._children === null) {
-            this._matches.push(...new_matches);
-        } else {
-            // check if we are allowed to push.
-            // if currently valid -> yes
-            // if currently partial -> no
-            /*  
-                harder case. if it's currently partial, that could mean:
-                    the next token matched "validates" the previous partial ones
-                    e.g. "look at_mewtwo" -> <look at me>
-                        "at" will be in there are as a partial TokenMatch (so it can participate in typeahead)
-                        "me" is also a partial match since it is a prefix of "mewtwo"
-
-                        however if <look at mewtwo> were entered,
-                        then we'd potentially be trying to push a valid match (mewtwo) on after a partial one (at)
-
-                        I think the answer here is that the author is expected not to push anything on after initially pushing X partial match tokens in one go.
-
-                        Therefore, the only case where pushing isn't null is if everything up til now is valid.
-            */
-            // if currently error -> no
-            this._children.forEach(c => c.push(...new_matches));
-        }
-    }
-
-    split(n_splits: number): ParseResult[] {
-        // TODO: must be positive integer
-        if (n_splits < 1) {
-            throw new ParseError('split(): n_splits must be a positive integer');
-        }
-
-        // We create n_splits child nodes,
-        // each with parents as the set of current leaf nodes.
-        let new_parents = this._leaves();
-
-        let new_children = [];
-
-        for (let i = 0; i < n_splits; i++) {
-            new_children.push(new ParseResult(new_parents));
-        }
-
-        new_parents.forEach(p => {
-            p._children = [...new_children];
-        });
-
-        return new_children;
-
-    }
-
-    _leaves(): ParseResult[] {
-        if (this._children === null) {
-            return [this];
-        }
-
-        let result = [];
-
-        this._children.forEach(c => {
-            result.push(...c._leaves());
-        });
-
-        return result;
-
-    }
-
-    suffixes(): TokenMatch[][] {
-        if (this._children === null) {
-            return [[...this._matches]];
-        }
-
-        let result = [];
-        this._children.forEach(c => {
-            result.push(...c.suffixes().map(s => s.unshift(...this._matches)));
-        });
-
-        return result;
-    }
-
-    prefixes(): TokenMatch[][] {
-        if (this._parents === null) {
-            return [[]];
-        }
-
-        let result = [];
-        this._parents.forEach(p1 => {
-            result.push(...p1.prefixes().map(p2 => [...p2, ...p1._matches]));
-        })
-        return result;
-    }
-
-    flattened(): TokenMatch[][] {
-        let prefixes = this.prefixes();
-        let suffixes = this.suffixes();
-
-        let result = [];
-
-        prefixes.forEach(prefix => {
-            result.push(...suffixes.map(s => [...prefix, ...s]));
-        })
-        return result;
-    }
-
-    /*
-        If all rows end in errors, every token display is Error.
-
-        Determine if any of the valid rows ends in a Submit token.
-            If so, Ready
-        For each non-error column (valid or ends in partial), count number of unique token values
-            If > 1, option
-            Else filler
-    */
-    // for each of the input tokens, how should they be displayed/highighted?
-    input_display(): InputDisplay[] {
-        let f = this.flattened();
-
-        // determine if submittable
-        let submittable = f.some(row => {
-            let last = row[row.length - 1];
-            return last[1] === SUBMIT_TOKEN && TM.is_match(last[2])
-        });
-
-        let display_submit: ID.Submit = submittable ? ['Submit'] : ['NoSubmit'];
-
-        let pos = 0;
-        let result: InputDisplay[] = [];
-        while (true) {
-            // get the column of TokenMatches
-            let column = f.filter(row => row.length > pos).map(row => row[pos]);
-
-            if (column.length === 0) {
-                break;
-            }
-
-            let display_type: ID.Type;
-            // determine error
-            if (column.every(tm => TM.is_error(tm[2]))) {
-                display_type = ['Error'];
-            } else {
-
-                // count unique token values
-                let uniq_toks = new FuckSet<Token>(column.map(tm => tm[1]));
-
-                display_type = uniq_toks.size === 1 ? ['Filler'] : ['Option'];
-            }
-
-            result.push(['InputDisplay', display_type, display_submit]);
-        }
-        return result;
-    }
-    /*
-    Typeahead
-
-        For each non-valid row (ignoring errors, partial only)
-        If the row is at least the length of the input stream
-        Typeahead is the Partial TokenMatches suffix (always at the end)
-    */
-    // for each row of typeahead to display, what are the tokens?
-    // will be positioned relative to the first input token.
-    typeahead() {
-
-    }
-
+function is_parse_result_valid(result: ParseResult) {
+    return result.length === 0 || TM.is_match(array_last(result)[TM.Fields.type])
 }
 
-class Parser {
-    constructor(input_stream: Token[], pos: number = 0, parse_result: ParseResult = undefined) {
-        this.input_stream = input_stream;
-        this.pos = pos;
-        if (parse_result === undefined) {
-            parse_result = new ParseResult();
+// for each of the input tokens, how should they be displayed/highighted?
+function input_display(parse_results: ParseResult[]): InputDisplay[] {
+    
+    // determine if submittable
+    let submittable = parse_results.some(row => {
+        let last = row[row.length - 1];
+        return last[1] === SUBMIT_TOKEN && TM.is_match(last[2])
+    });
+
+    let display_submit: ID.Submit = submittable ? ['Submit'] : ['NoSubmit'];
+
+    let pos = 0;
+    let result: InputDisplay[] = [];
+    
+    while (true) {
+        // get the column of TokenMatches
+        let column = parse_results.filter(row => row.length > pos).map(row => row[pos]);
+
+        if (column.length === 0) {
+            break;
         }
-        this.parse_result = parse_result;
+
+        let display_type: ID.Type;
+        // determine error
+        if (column.every(([_, token, type]) => TM.is_error(type))) {
+            display_type = ['Error'];
+        } else {
+            // count unique token values
+            let uniq_toks = new FuckSet<Token>(column.map(([_, token, type]) => {
+                switch (type[0]) {
+                    case 'Match':
+                        return token;
+                    default:
+                        return type[1];
+                }
+            }));
+
+            display_type = uniq_toks.size === 1 ? ['Filler'] : ['Option'];
+        }
+
+        result.push(['InputDisplay', display_type, display_submit]);
+
+        pos++;
+    }
+    return result;
+}
+
+
+/*
+Typeahead
+
+    For each non-valid row (ignoring errors, partial only)
+    If the row is at least the length of the input stream
+    Typeahead is the Partial TokenMatches suffix (always at the end)
+*/
+// for each row of typeahead to display, what are the tokens?
+// will be positioned relative to the first input token.
+function typeahead(parse_results: ParseResult[]): Token[][] {
+    return [];
+}
+
+
+class Parser {
+    constructor(input_stream: Token[], splits_to_take: number[]) {
+        this.input_stream = input_stream;
+        this.pos = 0;
+
+        if (splits_to_take === undefined) {
+            splits_to_take = [];
+        }
+        this._splits_to_take = splits_to_take;
     }
 
     input_stream: Token[];
     pos: number = 0;
 
-    parse_result: ParseResult;
+    parse_result: ParseResult = [];
+    
+    _splits_to_take: number[];
+    _current_split: number = 0;
 
     consume(tokens: Token[]): void;
     consume<T>(tokens: Token[], callback: () => T): T;
@@ -359,7 +199,7 @@ class Parser {
         this case.
     */
     _consume<T>(tokens: Token[]) {
-        if (!this.parse_result.is_valid()) {
+        if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
 
@@ -417,9 +257,9 @@ class Parser {
                 <TokenMatch>[
                     'TokenMatch',
                     this.input_stream[this.pos + j] || '',
-                    ['Error']]));
-            this.pos = this.input_stream.length;
+                    ['Error', t]]));
             // increment pos
+            this.pos = this.input_stream.length;
             throw new NoMatch();
         }
 
@@ -435,37 +275,71 @@ class Parser {
 
     }
 
-    run_thread<T>(thread: ParserThread<T>): T | NoMatch {
-        try {
-            return thread(this);
-        } catch (e) {
-            if (e instanceof NoMatch) {
-                // Return the NoMatch object as a special value
-                return e;
-            }
-            throw e;
+    split<T>(subthreads: ParserThread<T>[]): T {
+        if (this._current_split === this._splits_to_take.length) {
+            throw new ParseRestart(subthreads.length); // Signal to restart the parse with the new info about this split
         }
+
+        let st = subthreads[this._splits_to_take[this._current_split]];
+        this._current_split++;
+
+        return st(this);
     }
 
-    split<R>(subthreads: ParserThread<R>[]): R;
-    split<R, C>(subthreads: ParserThread<R>[], combiner: ((results: R[]) => C)): C;
-    split<R>(subthreads: ParserThread<R>[], combiner?: ((results: R[]) => any)): any {
-        if (subthreads.length <= 0) {
-            throw new ParseError('Cannot split with zero or fewer subthreads');
+    static run_thread<T>(t: ParserThread<T>, tokens: Token[]): [T | NoMatch, ParseResult[]] {
+        let frontier = [[]];
+        let results: (T | NoMatch)[] = [];
+        let parse_results: ParseResult[] = [];
+
+        while (frontier.length > 0) {
+            let path = frontier.pop();
+            let splits_to_take;
+            if (path.length === 0) {
+                splits_to_take = path;
+            } else {
+                let n = array_last(path).next();
+                if (n.done) {
+                    continue;
+                } else {
+                    frontier.push(path);
+                }
+                splits_to_take = [...path.slice(0, -1), n.value];
+            }
+
+
+            let p = new Parser(tokens, splits_to_take);
+
+            let result: T | NoMatch;
+            try {
+                result = t(p);
+            } catch (e) {
+                if (e instanceof NoMatch) {
+                    result = e;
+                } else if (e instanceof ParseRestart) {
+                    let new_splits = [];
+                    for (let i = 0; i < e.n_splits; i++) {
+                        new_splits.push(i);
+                    }                    
+                    frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    continue;
+                } else {
+                    throw e;
+                }
+            }
+
+            results.push(result);
+            parse_results.push(p.parse_result);
         }
 
-        let new_parse_results = this.parse_result.split(subthreads.length);
-
-        let child_parsers = new_parse_results.map(pr => new Parser(this.input_stream, this.pos, pr));
-
-        let thread_results = child_parsers.map((cp, i) => cp.run_thread(subthreads[i]));
-
-        if (combiner === undefined) {
-            // the default combiner just takes the first valid result, or undefined if there is none
-            combiner = rs => rs[0];
+        // TODO: Error here if more than 1 result?
+        let valid_results = results.filter(r => !(r instanceof NoMatch));
+        if (valid_results.length === 0) {
+            return [new NoMatch(), parse_results];
         }
-
-        return combiner(thread_results.filter(<(tr) => tr is R>(tr => !(tr instanceof NoMatch))));
+        if (valid_results.length > 1) {
+            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
+        }
+        return [valid_results[0], parse_results];
     }
 
     // demonstration of the overloaded
@@ -483,31 +357,51 @@ class Parser {
     // }
 }
 
+// Question: should the parser input be mandatory?
+// Doesn't seem to complain when i leave out the first arg, even with this type
 type ParserThread<T> = (p: Parser) => T;
 type ParserThreads<T> =  ParserThread<T>[];
 
-function test() {
+
+function array_last<T>(arr: T[]): T {
+    return arr[arr.length - 1];
+}
+
+
+export function test() {
     function main_thread(p: Parser) {
         p.consume(['look']);
 
         let who = p.split([
-            (p) => p.consume(['at', 'me'], 'me'),
-            (p) => p.consume(['at', 'mewtwo'], 'mewtwo'),
-            (p) => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'),
-            (p) => p.consume(['at', 'steven'], () => '4')
+            () => p.consume(['at', 'me'], 'me'),
+            () => p.consume(['at', 'mewtwo'], 'mewtwo'),
+            () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'),
+            () => p.consume(['at', 'steven'], () => 'steven')
         ]);
 
+        // p.parse_result.input_display(); // This labels every token as filler despite there being multiple options after "at".
         let how = p.split([
-            (p) => p.consume(['happily'], 'happily'),
-            (p) => p.consume(['sadly'], 'sadly'),
-            (p) => 'neutrally'
+            () => p.consume(['happily'], 'happily'),
+            () => p.consume(['sadly'], 'sadly'),
+            () => 'neutrally'
         ]);
 
         p.consume([SUBMIT_TOKEN]);
 
+        return `Looked at ${who} ${how}`;
     }
+
+    let input: Token[] = ['look', 'at', 'mewtwo', 'steve', SUBMIT_TOKEN];
+
+    let [result, parses] = Parser.run_thread(main_thread, input);
+
+    console.log(result);
+    console.log('was the result');
+
+    console.log(input_display(parses));
+
 }
 
-
+test()
 
 

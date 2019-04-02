@@ -1,13 +1,63 @@
 TODOs
 
-Use exceptions instead of generators for parser -> no need for "function\*"
-Don't rely on "this" at all
-Allow no-arg closures to get used as sub-handlers (rather than explicitly requiring parser arg. it's a closure, it has it already)
+Priority
+- parser2.ts works
+- build for cmd, reachability test
+- eslint, reachability test as lint rule
+- integrate parser2 into rest of codebase
+    - TODO: start unpacking how to do this for each part of the engine
+    - UI
+        - new API for text display info from parser
+        - support the SUBMIT_TOKEN
+        - logic for tracking whitespace between tokens no longer in parser.ts - migrate somewhere
+    - Commands
+        - use new parser type
+    - OMs
+        - migrate to the new parser API
+        - port declarative DSL
+        - port make_look_consumer()
+
+
+
+parser2.ts
+    Use exceptions instead of generators for parser -> no need for "function\*"
+    Don't rely on "this" at all
+    Allow no-arg closures to get used as sub-handlers (rather than explicitly requiring parser arg. it's a closure, it has it already)
+
 
 - Do a better job stealing focus
 
+- THEME: OM description language
+    - Use JSX to write game text
+        - But in this case, probably don't actually use React:
+            - https://www.typescriptlang.org/docs/handbook/jsx.html
 
-- Taking the dev reins
+    - "puffer" abstraction for stateful cross-om commands
+        - e.g. "look", "tangle puzzle", generic begin/end interpretation
+        - get bookkeeping by default - it gets its own local history index
+        - OMs *are* puffers
+    
+    - Dynamic text when transitioning OMs is awkward
+        - OMs have an enter_text, but if anything special is going on when you enter an OM then enter_text gets ignored
+        - possible fix: enter_text can be a function taking current OM state? (returns string)
+            - This would blur the line between enter_text and handle_command... up til now have purposefully avoided for this reason. Encourages homogeneity in how command handlers are factored.
+                - is the footgun worth it?
+                - maximal flexibility approach: enter_text is literally a command-handler-like function. receives the (done, guaranteed-valid) parser, and the world, and the message up to this point.
+                    - feels intuitively clunky
+                - intermediate flexibility approach: enter_text takes current om state as input, transitions take an optional om_state updater function which takes current om_state and returns destination om state.
+                    - would encourage factoring of, (set destination and update state in current OM), (generate result text in destination OM)
+
+- THEME: Taking the dev reins (Editing/Building/Testing experience)
+    - types or lib property in tsconfig
+        - to eliminate irrelevant types for the project
+            - using a subproject could help with this
+        - lib: controls what baked-in types are provided
+        
+    - Set up building for commandline (useful for tests, debugging)
+        - To build for cmd, run tsc to emit as commonjs
+        - Look into using subprojects
+    - Set up linter
+        - add a lint rule for reachability of OMs
     - The editor autocomplete/underlining can be a distracting/counterproductive
         - autocomplete for parser methods is generally good
         - for world state, not very good (shouldn't be "this", should just be explicit)
@@ -15,6 +65,7 @@ Allow no-arg closures to get used as sub-handlers (rather than explicitly requir
         - annoying to maintain separate list of OMIDs/PerceptionIDs, and error squigglies are really distracting in this case
             - the gain here is editor autocomplete for OM and Perception ID. worth it? workaround possible?
         - no transitions/handler/dest_oms should equal empty transitions, so no error.
+        - Look at adding a linter with custom rules for some of these
     
     - The boilerplate for writing a command handler is too much (wrap_handler, explicit parser argument in every subhandler, explicitly passing "this" to subhandlers)
     
@@ -28,22 +79,11 @@ Allow no-arg closures to get used as sub-handlers (rather than explicitly requir
     - Add situational test flows
         - E.g. a start game state, a sequence of player commands, assertions about where the state winds up. Runs post-compile.
 
-
     - Consider removing a level of genericness on the command-logic types and functions
         - Any game project only has one world, meaning we *could* define all the generic CommandResult<T> etc. as *non-generic* types in terms of the concrete world type for this project.
             - Would simplify our types by quite a bit
             - Would put ObserverMoments, Perceptions, etc. on the same level of fundamentality as Worlds
             - Should produce a script that prepopulates a new project with stuff if we do this
-
-- Dynamic text when transitioning OMs is awkward
-    - OMs have an enter_text, but if anything special is going on when you enter an OM then enter_text gets ignored
-    - possible fix: enter_text can be a function taking current OM state? (returns string)
-        - This would blur the line between enter_text and handle_command... up til now have purposefully avoided for this reason. Encourages homogeneity in how command handlers are factored.
-            - is the footgun worth it?
-            - maximal flexibility approach: enter_text is literally a command-handler-like function. receives the (done, guaranteed-valid) parser, and the world, and the message up to this point.
-                - feels intuitively clunky
-            - intermediate flexibility approach: enter_text takes current om state as input, transitions take an optional om_state updater function which takes current om_state and returns destination om state.
-                - would encourage factoring of, (set destination and update state in current OM), (generate result text in destination OM)
 
 - Major parser cleanup
     - Unify consuming an option and multiple parser paths
@@ -77,11 +117,6 @@ Allow no-arg closures to get used as sub-handlers (rather than explicitly requir
     - Per-om optional callback returns whether two world states on the same om are "same" or "different".
         ("Same" would imply "do perform loop erasure")
 
-- "puffer" abstraction for stateful cross-om commands
-    - e.g. "look", "tangle puzzle", generic begin/end interpretation
-    - get bookkeeping by default - it gets its own local history index
-    - OMs *are* puffers
-
 - begin/end interpretation helpers
 
 - add "carriage return" option in typeahead?
@@ -95,8 +130,13 @@ Allow no-arg closures to get used as sub-handlers (rather than explicitly requir
             Meaning they could examine it again, and get the same response, but it's a reminder that they've already done that
             and that they can trust the result won't be different this time.
         (Another feature idea: instead of reprint the same description, could flash an overlaying window of it while the visited command is entered)
+        This could completely subsume loop erasure/history deletion (or complement it)
     "Want to Visit" can indicate "You want to be able to do this, but you can't yet".
         Players have expressed confusion/stress when they think they have "lost the opportunity" to do a disabled thing, when really they just can't do it *yet*.
+
+    And an extension to "Want to Visit": "Will Visit"
+        A command will float below the game screen (possibly accessible via scroll down), indicating to the player, "you *will* do this", but it remains a mystery how/when.
+        Once the player reaches the point where they are entering that command, it will glide up to their prompt and merge with it.
 
 
 - When all consume options are disabled, still show them in the interface (?)
