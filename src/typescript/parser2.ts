@@ -37,7 +37,7 @@ class ParseRestart extends Error {
 };
 class ParseError extends Error {};
 
-const SUBMIT_TOKEN = Symbol();
+const SUBMIT_TOKEN = Symbol('SUBMIT');
 type Token = string | typeof SUBMIT_TOKEN;
 
 export namespace TokenMatch {
@@ -158,20 +158,29 @@ Typeahead
 */
 // for each row of typeahead to display, what are the tokens?
 // will be positioned relative to the first input token.
-function typeahead(parse_results: ParseResult[]): Token[][] {
-    return [];
+function typeahead(parse_results: ParseResult[], input_stream: Token[]): Token[][] {
+    let rows_with_typeahead = parse_results.filter(pr => 
+        !(TM.is_error(array_last(pr)[2]))
+        && pr.slice(input_stream.length - 1).some(([_, tok, type]) => 
+            TM.is_partial(type)
+        )
+    );
+
+
+    return rows_with_typeahead.map(pr => {
+        let start_idx = pr.findIndex(([_, tok, type]) => TM.is_partial(type))
+        let result: Token[] = Array(start_idx).fill(null);
+        result.push(...pr.slice(start_idx).map(([_, tok, type]) => type[1]));
+        return result;
+    });
 }
 
 
 class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
         this.input_stream = input_stream;
-        this.pos = 0;
-
-        if (splits_to_take === undefined) {
-            splits_to_take = [];
-        }
-        this._splits_to_take = splits_to_take;
+        
+        this._split_iter = splits_to_take[Symbol.iterator]();
     }
 
     input_stream: Token[];
@@ -179,9 +188,8 @@ class Parser {
 
     parse_result: ParseResult = [];
     
-    _splits_to_take: number[];
-    _current_split: number = 0;
-
+    _split_iter: Iterator<number>;
+    
     consume(tokens: Token[]): void;
     consume<T>(tokens: Token[], callback: () => T): T;
     consume<T>(tokens: Token[], result: T): T;
@@ -225,7 +233,11 @@ class Parser {
                 break;
             }
             if (starts_with(<string>spec, <string>input)) {
-                partial = true;
+                if (this.pos + i < this.input_stream.length - 1) {
+                    error = true;
+                } else {
+                    partial = true;
+                }
                 break;
             }
 
@@ -234,21 +246,15 @@ class Parser {
         }
 
         if (partial) {
-            // check if we should actually be in error
-            if (i < tokens.length - 1) {
-                error = true;
-            } else {
-                // push all tokens as partials
-                this.parse_result.push(...tokens.map((t, j) => 
-                    <TokenMatch>[
-                        'TokenMatch',
-                        this.input_stream[this.pos + j] || '',
-                        ['Partial', t]]));
-                // increment pos
-                this.pos = this.input_stream.length;
-
-                throw new NoMatch();
-            }
+            // push all tokens as partials
+            this.parse_result.push(...tokens.map((t, j) => 
+                <TokenMatch>[
+                    'TokenMatch',
+                    this.input_stream[this.pos + j] || '',
+                    ['Partial', t]]));
+            // increment pos
+            this.pos = this.input_stream.length;
+            throw new NoMatch();
         }
 
         if (error) {
@@ -275,14 +281,17 @@ class Parser {
 
     }
 
+    eliminate() {
+        throw new NoMatch();
+    }
+
     split<T>(subthreads: ParserThread<T>[]): T {
-        if (this._current_split === this._splits_to_take.length) {
-            throw new ParseRestart(subthreads.length); // Signal to restart the parse with the new info about this split
+        let {value: split_value, done} = this._split_iter.next();
+        if (done) {
+            throw new ParseRestart(subthreads.length);
         }
-
-        let st = subthreads[this._splits_to_take[this._current_split]];
-        this._current_split++;
-
+        
+        let st = subthreads[split_value];
         return st(this);
     }
 
@@ -319,8 +328,9 @@ class Parser {
                     let new_splits = [];
                     for (let i = 0; i < e.n_splits; i++) {
                         new_splits.push(i);
-                    }                    
-                    frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    } 
+                    frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);                   
+                    //frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
                     continue;
                 } else {
                     throw e;
@@ -376,10 +386,10 @@ export function test() {
             () => p.consume(['at', 'me'], 'me'),
             () => p.consume(['at', 'mewtwo'], 'mewtwo'),
             () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'),
-            () => p.consume(['at', 'steven'], () => 'steven')
+            () => p.consume(['at', 'steven'], () => 'steven'),
+            () => { p.eliminate() }
         ]);
 
-        // p.parse_result.input_display(); // This labels every token as filler despite there being multiple options after "at".
         let how = p.split([
             () => p.consume(['happily'], 'happily'),
             () => p.consume(['sadly'], 'sadly'),
@@ -391,14 +401,22 @@ export function test() {
         return `Looked at ${who} ${how}`;
     }
 
-    let input: Token[] = ['look', 'at', 'mewtwo', 'steve', SUBMIT_TOKEN];
+    let input: Token[] = ['look', 'at', 'me'];
 
     let [result, parses] = Parser.run_thread(main_thread, input);
 
     console.log(result);
-    console.log('was the result');
-
+    
     console.log(input_display(parses));
+
+    console.log(typeahead(parses, input));
+
+    /*
+        TODO
+        Get rid of auto-option, it needs to be explicit
+        Change types of typeahead to support different typeahead styles
+            (new, old, locked)
+    */
 
 }
 
