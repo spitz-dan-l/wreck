@@ -422,6 +422,12 @@ function infer_literal_array(...arr) {
     return arr;
 }
 exports.infer_literal_array = infer_literal_array;
+function struct(kind, rest) {
+    return Object.assign({}, rest, { kind });
+}
+exports.struct = struct;
+let r = struct('Horse', { kind: 4 });
+let x = r.kind;
 function field_getter(x) {
     let result = {};
     for (let key in x[0]) {
@@ -1547,18 +1553,18 @@ function is_parse_result_valid(result) {
 // for each of the input tokens, how should they be displayed/highighted?
 function input_display(parse_results, input_stream) {
     // find the first submittable row
-    // if none, find the first non-error row
-    // if none, make everything error
     let row;
     let submittable = true;
     row = parse_results.find(row => {
         let last = array_last(row);
         return TokenMatch.is_partial(last.type) && last.type.token === SUBMIT_TOKEN;
     });
+    // if none, find the first non-error row
     if (row === undefined) {
         submittable = false;
         row = parse_results.find(row => row.every(({ type }) => !TokenMatch.is_error(type)));
     }
+    // if none, make everything error
     if (row === undefined) {
         row = input_stream.map(tok => ({
             kind: 'TokenMatch',
@@ -1577,13 +1583,10 @@ function input_display(parse_results, input_stream) {
 }
 /*
 Typeahead
-
     For each non-valid row (ignoring errors, partial only)
     If the row is at least the length of the input stream
     Typeahead is the Partial TokenMatches suffix (always at the end)
 */
-// for each row of typeahead to display, what are the tokens?
-// will be positioned relative to the first input token.
 function typeahead(parse_results, input_stream) {
     let rows_with_typeahead = parse_results.filter(pr => !TokenMatch.is_error(array_last(pr).type) && pr.slice(input_stream.length - 1).some(({ type }) => TokenMatch.is_partial(type)));
     return rows_with_typeahead.map(pr => {
@@ -1623,18 +1626,27 @@ class Parser {
         let i = 0;
         // check if exact match
         for (i = 0; i < tokens.length; i++) {
+            let spec = tokens[i];
+            let spec_value = spec.token;
+            if (spec_value === ConsumeSpec.NEVER_TOKEN) {
+                error = true;
+                break;
+            }
             if (this.pos + i >= this.input_stream.length) {
                 partial = true;
                 break;
             }
-            let spec = tokens[i];
-            let spec_value = spec.token;
             let input = this.input_stream[this.pos + i];
             if (spec_value === input) {
+                if (spec.typeahead_type.kind === 'Locked') {
+                    // TODO: special case for typeahead = Locked
+                    error = true;
+                    break;
+                }
                 continue;
             }
-            if (spec_value === ConsumeSpec.NEVER_TOKEN || spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
-                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with() or spec is NEVER_TOKEN)
+            if (spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
                 error = true;
                 break;
             }
@@ -1691,7 +1703,10 @@ class Parser {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        this.consume([ConsumeSpec.NEVER_TOKEN]);
+        return this.consume([ConsumeSpec.NEVER_TOKEN]);
+    }
+    submit(result) {
+        return this.consume([SUBMIT_TOKEN], result);
     }
     split(subthreads) {
         let { value: split_value, done } = this._split_iter.next();
@@ -1758,19 +1773,20 @@ function array_last(arr) {
 function test() {
     function main_thread(p) {
         p.consume([{ token: 'look', token_type: { kind: 'Keyword' } }]);
-        let who = p.split([() => p.consume(['at', 'me'], 'me'), () => p.consume(['at', 'mewtwo'], 'mewtwo'), () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'), () => p.consume(['at', 'steven'], () => 'steven'), () => p.consume(['at', 'martha'], 'martha'), () => {
+        let who = p.split([() => p.consume(['at', 'me'], 'me'), () => p.consume(['at', 'mewtwo'], 'mewtwo'), () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'), () => p.consume(['at', 'steven'], () => 'steven'), () => p.consume(['at', 'martha'], 'martha'), () => p.eliminate()]);
+        if (who === 'steven') {
             p.eliminate();
-        }]);
+        }
         let how = p.split([() => p.consume([{ token: 'happily', typeahead_type: { kind: 'Locked' } }], 'happily'), () => p.consume(['sadly'], 'sadly'), () => 'neutrally']);
-        p.consume([SUBMIT_TOKEN]);
+        p.submit();
         return `Looked at ${who} ${how}`;
     }
-    let input = ['look', 'at', 'martha', SUBMIT_TOKEN];
+    let input = ['look', 'at', 'steven'];
     let [result, parses] = Parser.run_thread(main_thread, input);
     console.log(result);
     let id = input_display(parses, input);
     console.log(id);
-    console.log(id.matches[0].type);
+    console.log(array_last(id.matches).type);
     let ta = typeahead(parses, input);
     console.log(ta);
     if (ta.length > 0) {

@@ -1,8 +1,9 @@
 TODOs
 
 Priority
-- parser2.ts works
 - build for cmd, reachability test
+- Commands
+        - use new parser type
 - eslint, reachability test as lint rule
 - integrate parser2 into rest of codebase
     - TODO: start unpacking how to do this for each part of the engine
@@ -10,8 +11,6 @@ Priority
         - new API for text display info from parser
         - support the SUBMIT_TOKEN
         - logic for tracking whitespace between tokens no longer in parser.ts - migrate somewhere
-    - Commands
-        - use new parser type
     - OMs
         - migrate to the new parser API
         - port declarative DSL

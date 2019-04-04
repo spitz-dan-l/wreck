@@ -454,6 +454,13 @@ export function infer_literal_array<T extends string>(...arr: T[]): T[] {
   return arr;
 }
 
+export function struct<K extends string, R extends object>(kind: K, rest?: R) {
+    return { ...rest, kind };
+}
+
+let r = struct('Horse', {kind: 4});
+
+let x = r.kind
 
 // A Struct is a tuple whose first element is an enum containing the rest of the struct's field names
 type Struct = {0:{[k: string]: any}};
