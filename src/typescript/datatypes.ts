@@ -453,3 +453,20 @@ export type ValidString<V extends StringValidator> = string & _StringValidity.va
 export function infer_literal_array<T extends string>(...arr: T[]): T[] {
   return arr;
 }
+
+
+// A Struct is a tuple whose first element is an enum containing the rest of the struct's field names
+type Struct = {0:{[k: string]: any}};
+type StructType<S extends Struct> = S[0];
+type StructFields<S extends Struct> = keyof StructType<S>;
+type StructProxy<S extends Struct> = { [K in StructFields<S>]: StructType<S>[K]}
+
+export function field_getter<S extends Struct>(x: S): StructProxy<S> {
+    let result: any = {};
+    for (let key in x[0]) {
+        Object.defineProperty(result, key, {
+            get: () => x[x[0][key]]
+        });
+    }
+    return result;
+}

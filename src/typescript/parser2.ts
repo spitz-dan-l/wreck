@@ -23,7 +23,7 @@
 
 */
 
-import { FuckSet } from './datatypes'
+import { FuckSet, field_getter } from './datatypes'
 import { starts_with } from './text_tools'
 
 class NoMatch extends Error {};
@@ -41,48 +41,61 @@ const SUBMIT_TOKEN = Symbol('SUBMIT');
 type Token = string | typeof SUBMIT_TOKEN;
 
 
-export namespace ConsumeSpec {
-    export type TokenType = 
-        ['Filler'] |
-        ['Option'] |
-        ['Keyword'];
+export class ConsumeSpec {
+    kind: 'ConsumeSpec' = 'ConsumeSpec';
 
-    export type TypeaheadType =
-        ['Available'] |
-        ['Used'] |
-        ['Locked'];
+    constructor(
+        public token: ConsumeSpec.TaintedToken,
+        public token_type: ConsumeSpec.TokenType = { kind: 'Filler' },
+        public typeahead_type: ConsumeSpec.TypeaheadType = { kind: 'Available' }
+    ) {}
 
-    export enum Fields { kind, token, token_type, typeahead_type };
-    export type ConsumeSpec =
-        ['ConsumeSpec', Token, TokenType, TypeaheadType];
-    
-    export type Consumable =
-        Token |
-        ConsumeSpec;
-
-    export function is_spec(x: Consumable): x is ConsumeSpec {
-        return x instanceof Array;
-    }
-    export function is_token(x: Consumable): x is Token {
-        return typeof x === 'string' || x === SUBMIT_TOKEN;
+    static make(obj: ConsumeSpec.Consumable): ConsumeSpec {
+        if (ConsumeSpec.is_token(obj)) {
+            return new ConsumeSpec(obj);
+        }
+        return new ConsumeSpec(obj.token, obj.token_type, obj.typeahead_type);
     }
 }
-export type ConsumeSpec = ConsumeSpec.ConsumeSpec;
+
+export namespace ConsumeSpec {
+    export type TokenType = 
+        { kind: 'Filler' } |
+        { kind: 'Option' } |
+        { kind: 'Keyword' };
+
+    export type TypeaheadType =
+        { kind: 'Available' } |
+        { kind: 'Used' } |
+        { kind: 'Locked' };
+
+    export const NEVER_TOKEN = Symbol('NEVER');
+
+    export type TaintedToken = Token | typeof NEVER_TOKEN;
+
+    export type Consumable =
+        TaintedToken |
+        (Partial<ConsumeSpec> & { token: TaintedToken });
+
+    export function is_token(x: Consumable): x is TaintedToken {
+        return typeof x === 'string' || x === SUBMIT_TOKEN || x === NEVER_TOKEN;
+    }
+
+    export function is_spec(x: Consumable): x is ConsumeSpec {
+        return !is_token(x);
+    }
+}
 
 export namespace TokenMatch {
-    export type Match = { kind: 'Match' };
-    export type Partial = { kind: 'Partial', token: Token };
+    export type Match = { kind: 'Match', type: ConsumeSpec.TokenType };
+    export type Partial = { kind: 'Partial', token: Token, type: ConsumeSpec.TypeaheadType };
     export type Error = { kind: 'Error', token: Token };
     
     export type Type = 
         Match |
         Partial |
         Error;
-    // export type Type = 
-    //     ['Match'] |
-    //     ['Partial', Token] |
-    //     ['Error', Token];
-
+ 
     export function is_match(m: Type): m is Match {
         return m.kind === 'Match'
     }
@@ -95,9 +108,6 @@ export namespace TokenMatch {
         return m.kind === 'Error'
     }
 
-    // export enum Fields{ kind, token, type };
-    // export type TokenMatch = ['TokenMatch', Token, Type];
-
     export type TokenMatch = { kind: 'TokenMatch', token: Token, type: Type };
 }
 export type TokenMatch = TokenMatch.TokenMatch;
@@ -109,26 +119,11 @@ export type TokenMatch = TokenMatch.TokenMatch;
     Ready, Not Ready (to execute)
 
 */
-export namespace InputDisplay {
-    export type Type =
-        ConsumeSpec.TokenType |
-        ['Error'];
-
-    export type Submit =
-        ['Submit'] |
-        ['NoSubmit'];
-
-    export type InputDisplay = ['InputDisplay', Type, Submit];
-}
-
-export type InputDisplay = InputDisplay.InputDisplay;
-import ID = InputDisplay;
-
-type TypeaheadDisplay =
-    ['Available'] |
-    ['Used'] |
-    ['Locked']
-
+export type InputDisplay = {
+    kind: 'InputDisplay',
+    matches: TokenMatch[],
+    submittable: boolean
+};
 
 type ParseResult = TokenMatch[];
 
@@ -137,50 +132,39 @@ function is_parse_result_valid(result: ParseResult) {
 }
 
 // for each of the input tokens, how should they be displayed/highighted?
-function input_display(parse_results: ParseResult[]): InputDisplay[] {
+function input_display(parse_results: ParseResult[], input_stream: Token[]): InputDisplay {
     
-    // determine if submittable
-    let submittable = parse_results.some(row => {
-        let last = row[row.length - 1];
-        return last[1] === SUBMIT_TOKEN && TokenMatch.is_match(last[2])
+    // find the first submittable row
+    // if none, find the first non-error row
+    // if none, make everything error
+    let row: ParseResult;
+    let submittable = true;
+    row = parse_results.find(row => {
+        let last = array_last(row);
+        return TokenMatch.is_partial(last.type) && last.type.token === SUBMIT_TOKEN;
     });
 
-    let display_submit: ID.Submit = submittable ? ['Submit'] : ['NoSubmit'];
-
-    let pos = 0;
-    let result: InputDisplay[] = [];
-    
-    while (true) {
-        // get the column of TokenMatches
-        let column = parse_results.filter(row => row.length > pos).map(row => row[pos]);
-
-        if (column.length === 0) {
-            break;
-        }
-
-        let display_type: ID.Type;
-        // determine error
-        if (column.every(({ type }) => TokenMatch.is_error(type))) {
-            display_type = ['Error'];
-        } else {
-            // count unique token values
-            let uniq_toks = new FuckSet<Token>(column.map(({ token, type }) => {
-                switch (type.kind) {
-                    case 'Match':
-                        return token;
-                    default:
-                        return type.token;
-                }
-            }));
-
-            display_type = uniq_toks.size === 1 ? ['Filler'] : ['Option'];
-        }
-
-        result.push(['InputDisplay', display_type, display_submit]);
-
-        pos++;
+    if (row === undefined) {
+        submittable = false;
+        row = parse_results.find(row => row.every(({ type }) => !TokenMatch.is_error(type)));
     }
-    return result;
+
+    if (row === undefined) {
+        row = input_stream.map(tok => ({
+            kind: 'TokenMatch',
+            token: tok,
+            type: {
+                kind: 'Error',
+                token: null
+            }
+        }));
+    }
+
+    return {
+        kind: 'InputDisplay',
+        matches: row,
+        submittable
+    };
 }
 
 /*
@@ -192,19 +176,19 @@ Typeahead
 */
 // for each row of typeahead to display, what are the tokens?
 // will be positioned relative to the first input token.
-function typeahead(parse_results: ParseResult[], input_stream: Token[]): Token[][] {
+function typeahead(parse_results: ParseResult[], input_stream: Token[]): TokenMatch.Partial[][] {
     let rows_with_typeahead = parse_results.filter(pr => 
         !(TokenMatch.is_error(array_last(pr).type))
         && pr.slice(input_stream.length - 1).some(({ type }) => 
             TokenMatch.is_partial(type)
         )
     );
-    debugger;
+
     return rows_with_typeahead.map(pr => {
         let start_idx = pr.findIndex(({ type }) => TokenMatch.is_partial(type));
-        let result: Token[] = Array(start_idx).fill(null);
-        let elts = <{ type: Exclude<TokenMatch.Type, TokenMatch.Match> }[]>pr.slice(start_idx);
-        result.push(...elts.map(({ type }) => type.token));
+        let result: TokenMatch.Partial[] = Array(start_idx).fill(null);
+        let elts = <{ type: TokenMatch.Partial }[]>pr.slice(start_idx);
+        result.push(...elts.map(tm => tm.type));
         return result;
     });
 }
@@ -224,11 +208,13 @@ class Parser {
     
     _split_iter: Iterator<number>;
     
-    consume(tokens: Token[]): void;
-    consume<T>(tokens: Token[], callback: () => T): T;
-    consume<T>(tokens: Token[], result: T): T;
-    consume(tokens: Token[], result?: any): any {
-        this._consume(tokens);
+    consume(tokens: ConsumeSpec.Consumable[]): void;
+    consume<T>(tokens: ConsumeSpec.Consumable[], callback: () => T): T;
+    consume<T>(tokens: ConsumeSpec.Consumable[], result: T): T;
+    consume(tokens: ConsumeSpec.Consumable[], result?: any): any {
+        let specs: ConsumeSpec[] = tokens.map(ConsumeSpec.make);
+
+        this._consume(specs);
         if (result instanceof Function) {
             return result();
         }
@@ -240,7 +226,7 @@ class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    _consume<T>(tokens: Token[]) {
+    _consume<T>(tokens: ConsumeSpec[]) {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
@@ -256,17 +242,18 @@ class Parser {
             }
 
             let spec = tokens[i];
+            let spec_value = spec.token;
             let input = this.input_stream[this.pos + i];
-
-            if (spec === input) {
+            if (spec_value === input) {
                 continue;
             }
-            if (spec === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
-                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
+
+            if (spec_value === ConsumeSpec.NEVER_TOKEN || spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with() or spec is NEVER_TOKEN)
                 error = true;
                 break;
             }
-            if (starts_with(<string>spec, <string>input)) {
+            if (starts_with(<string>spec_value, <string>input)) {
                 if (this.pos + i < this.input_stream.length - 1) {
                     error = true;
                 } else {
@@ -285,7 +272,11 @@ class Parser {
                 ({
                     kind: 'TokenMatch',
                     token: this.input_stream[this.pos + j] || '',
-                    type: { kind: 'Partial', token: t }
+                    type: {
+                        kind: 'Partial',
+                        token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token,
+                        type: t.typeahead_type
+                    }
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
@@ -298,7 +289,10 @@ class Parser {
                 ({
                     kind: 'TokenMatch',
                     token: this.input_stream[this.pos + j] || '',
-                    type: { kind: 'Error', token: t }
+                    type: {
+                        kind: 'Error',
+                        token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token
+                    }
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
@@ -310,21 +304,18 @@ class Parser {
             ({
                 kind: 'TokenMatch',
                 token: this.input_stream[this.pos + j],
-                type: { kind: 'Match' }
+                type: { kind: 'Match', type: t.token_type }
             } as const)));
-       // increment pos
+        // increment pos
         this.pos += tokens.length;
 
     }
 
     eliminate() {
         /*
-            TODO: Do we need to also consume the rest of the token stream here?
-
-            Not doing so could lead to odd behavior if the author is not careful,
-            like a bunch of correctly entered tokens and then suddenly an error without warning
+            It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        throw new NoMatch();
+        this.consume([ConsumeSpec.NEVER_TOKEN]);
     }
 
     split<T>(subthreads: ParserThread<T>[]): T {
@@ -372,7 +363,7 @@ class Parser {
                     } 
                     // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
                     frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    //frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    // frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
                     continue;
                 } else {
                     throw e;
@@ -421,7 +412,7 @@ function array_last<T>(arr: T[]): T {
 
 export function test() {
     function main_thread(p: Parser) {
-        p.consume(['look']);
+        p.consume([{token: 'look', token_type: { kind: 'Keyword' }}]);
 
         let who = p.split([
             () => p.consume(['at', 'me'], 'me'),
@@ -433,7 +424,7 @@ export function test() {
         ]);
 
         let how = p.split([
-            () => p.consume(['happily'], 'happily'),
+            () => p.consume([{ token: 'happily', typeahead_type: { kind: 'Locked' }}], 'happily'),
             () => p.consume(['sadly'], 'sadly'),
             () => 'neutrally'
         ]);
@@ -443,16 +434,21 @@ export function test() {
         return `Looked at ${who} ${how}`;
     }
 
-    let input: Token[] = ['look', 'at', 'martha'];
+    let input: Token[] = ['look', 'at', 'martha', SUBMIT_TOKEN];
 
     let [result, parses] = Parser.run_thread(main_thread, input);
     
     console.log(result);
-    
-    console.log(input_display(parses));
 
-    console.log(typeahead(parses, input));
+    let id = input_display(parses, input);
+    console.log(id);
+    console.log(id.matches[0].type);
 
+    let ta = typeahead(parses, input);
+    console.log(ta);
+    if (ta.length > 0) {
+        console.log(array_last(ta[0]).type);
+    }
     /*
         TODO
         Get rid of auto-option, it needs to be explicit

@@ -68,6 +68,12 @@
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports) {
+
+module.exports = React;
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -416,12 +422,16 @@ function infer_literal_array(...arr) {
     return arr;
 }
 exports.infer_literal_array = infer_literal_array;
-
-/***/ }),
-/* 1 */
-/***/ (function(module, exports) {
-
-module.exports = React;
+function field_getter(x) {
+    let result = {};
+    for (let key in x[0]) {
+        Object.defineProperty(result, key, {
+            get: () => x[x[0][key]]
+        });
+    }
+    return result;
+}
+exports.field_getter = field_getter;
 
 /***/ }),
 /* 2 */
@@ -432,7 +442,7 @@ module.exports = React;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 var DisplayEltType;
 (function (DisplayEltType) {
     DisplayEltType[DisplayEltType["keyword"] = 0] = "keyword";
@@ -880,7 +890,7 @@ exports.wrap_in_div = wrap_in_div;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
 class World {
     constructor(state) {
@@ -1031,7 +1041,7 @@ exports.WorldDriver = WorldDriver;
 Object.defineProperty(exports, "__esModule", { value: true });
 const commands_1 = __webpack_require__(4);
 const parser_1 = __webpack_require__(2);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
 const observer_moments_1 = __webpack_require__(16);
 const hex_1 = __webpack_require__(15);
@@ -1270,7 +1280,7 @@ module.exports = ReactDOM;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const parser_1 = __webpack_require__(2);
 exports.Carat = () => React.createElement("span", null, ">\u00A0");
 function get_display_color(det) {
@@ -1342,7 +1352,7 @@ exports.keys = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const Prompt_1 = __webpack_require__(12);
 const Text_1 = __webpack_require__(7);
 const TypeaheadList_1 = __webpack_require__(13);
@@ -1477,7 +1487,6 @@ exports.Terminal = Terminal;
 */
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
 const text_tools_1 = __webpack_require__(3);
 class NoMatch extends Error {}
 ;
@@ -1491,31 +1500,34 @@ class ParseRestart extends Error {
 class ParseError extends Error {}
 ;
 const SUBMIT_TOKEN = Symbol('SUBMIT');
-var ConsumeSpec;
-(function (ConsumeSpec) {
-    let Fields;
-    (function (Fields) {
-        Fields[Fields["kind"] = 0] = "kind";
-        Fields[Fields["token"] = 1] = "token";
-        Fields[Fields["token_type"] = 2] = "token_type";
-        Fields[Fields["typeahead_type"] = 3] = "typeahead_type";
-    })(Fields = ConsumeSpec.Fields || (ConsumeSpec.Fields = {}));
-    ;
-    function is_spec(x) {
-        return x instanceof Array;
+class ConsumeSpec {
+    constructor(token, token_type = { kind: 'Filler' }, typeahead_type = { kind: 'Available' }) {
+        this.token = token;
+        this.token_type = token_type;
+        this.typeahead_type = typeahead_type;
+        this.kind = 'ConsumeSpec';
     }
-    ConsumeSpec.is_spec = is_spec;
+    static make(obj) {
+        if (ConsumeSpec.is_token(obj)) {
+            return new ConsumeSpec(obj);
+        }
+        return new ConsumeSpec(obj.token, obj.token_type, obj.typeahead_type);
+    }
+}
+exports.ConsumeSpec = ConsumeSpec;
+(function (ConsumeSpec) {
+    ConsumeSpec.NEVER_TOKEN = Symbol('NEVER');
     function is_token(x) {
-        return typeof x === 'string' || x === SUBMIT_TOKEN;
+        return typeof x === 'string' || x === SUBMIT_TOKEN || x === ConsumeSpec.NEVER_TOKEN;
     }
     ConsumeSpec.is_token = is_token;
+    function is_spec(x) {
+        return !is_token(x);
+    }
+    ConsumeSpec.is_spec = is_spec;
 })(ConsumeSpec = exports.ConsumeSpec || (exports.ConsumeSpec = {}));
 var TokenMatch;
 (function (TokenMatch) {
-    // export type Type = 
-    //     ['Match'] |
-    //     ['Partial', Token] |
-    //     ['Error', Token];
     function is_match(m) {
         return m.kind === 'Match';
     }
@@ -1533,41 +1545,35 @@ function is_parse_result_valid(result) {
     return result.length === 0 || TokenMatch.is_match(array_last(result).type);
 }
 // for each of the input tokens, how should they be displayed/highighted?
-function input_display(parse_results) {
-    // determine if submittable
-    let submittable = parse_results.some(row => {
-        let last = row[row.length - 1];
-        return last[1] === SUBMIT_TOKEN && TokenMatch.is_match(last[2]);
+function input_display(parse_results, input_stream) {
+    // find the first submittable row
+    // if none, find the first non-error row
+    // if none, make everything error
+    let row;
+    let submittable = true;
+    row = parse_results.find(row => {
+        let last = array_last(row);
+        return TokenMatch.is_partial(last.type) && last.type.token === SUBMIT_TOKEN;
     });
-    let display_submit = submittable ? ['Submit'] : ['NoSubmit'];
-    let pos = 0;
-    let result = [];
-    while (true) {
-        // get the column of TokenMatches
-        let column = parse_results.filter(row => row.length > pos).map(row => row[pos]);
-        if (column.length === 0) {
-            break;
-        }
-        let display_type;
-        // determine error
-        if (column.every(({ type }) => TokenMatch.is_error(type))) {
-            display_type = ['Error'];
-        } else {
-            // count unique token values
-            let uniq_toks = new datatypes_1.FuckSet(column.map(({ token, type }) => {
-                switch (type.kind) {
-                    case 'Match':
-                        return token;
-                    default:
-                        return type.token;
-                }
-            }));
-            display_type = uniq_toks.size === 1 ? ['Filler'] : ['Option'];
-        }
-        result.push(['InputDisplay', display_type, display_submit]);
-        pos++;
+    if (row === undefined) {
+        submittable = false;
+        row = parse_results.find(row => row.every(({ type }) => !TokenMatch.is_error(type)));
     }
-    return result;
+    if (row === undefined) {
+        row = input_stream.map(tok => ({
+            kind: 'TokenMatch',
+            token: tok,
+            type: {
+                kind: 'Error',
+                token: null
+            }
+        }));
+    }
+    return {
+        kind: 'InputDisplay',
+        matches: row,
+        submittable
+    };
 }
 /*
 Typeahead
@@ -1580,12 +1586,11 @@ Typeahead
 // will be positioned relative to the first input token.
 function typeahead(parse_results, input_stream) {
     let rows_with_typeahead = parse_results.filter(pr => !TokenMatch.is_error(array_last(pr).type) && pr.slice(input_stream.length - 1).some(({ type }) => TokenMatch.is_partial(type)));
-    debugger;
     return rows_with_typeahead.map(pr => {
         let start_idx = pr.findIndex(({ type }) => TokenMatch.is_partial(type));
         let result = Array(start_idx).fill(null);
         let elts = pr.slice(start_idx);
-        result.push(...elts.map(({ type }) => type.token));
+        result.push(...elts.map(tm => tm.type));
         return result;
     });
 }
@@ -1597,7 +1602,8 @@ class Parser {
         this._split_iter = splits_to_take[Symbol.iterator]();
     }
     consume(tokens, result) {
-        this._consume(tokens);
+        let specs = tokens.map(ConsumeSpec.make);
+        this._consume(specs);
         if (result instanceof Function) {
             return result();
         }
@@ -1622,16 +1628,17 @@ class Parser {
                 break;
             }
             let spec = tokens[i];
+            let spec_value = spec.token;
             let input = this.input_stream[this.pos + i];
-            if (spec === input) {
+            if (spec_value === input) {
                 continue;
             }
-            if (spec === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
-                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
+            if (spec_value === ConsumeSpec.NEVER_TOKEN || spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with() or spec is NEVER_TOKEN)
                 error = true;
                 break;
             }
-            if (text_tools_1.starts_with(spec, input)) {
+            if (text_tools_1.starts_with(spec_value, input)) {
                 if (this.pos + i < this.input_stream.length - 1) {
                     error = true;
                 } else {
@@ -1647,7 +1654,11 @@ class Parser {
             this.parse_result.push(...tokens.map((t, j) => ({
                 kind: 'TokenMatch',
                 token: this.input_stream[this.pos + j] || '',
-                type: { kind: 'Partial', token: t }
+                type: {
+                    kind: 'Partial',
+                    token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token,
+                    type: t.typeahead_type
+                }
             })));
             // increment pos
             this.pos = this.input_stream.length;
@@ -1658,7 +1669,10 @@ class Parser {
             this.parse_result.push(...tokens.map((t, j) => ({
                 kind: 'TokenMatch',
                 token: this.input_stream[this.pos + j] || '',
-                type: { kind: 'Error', token: t }
+                type: {
+                    kind: 'Error',
+                    token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token
+                }
             })));
             // increment pos
             this.pos = this.input_stream.length;
@@ -1668,18 +1682,16 @@ class Parser {
         this.parse_result.push(...tokens.map((t, j) => ({
             kind: 'TokenMatch',
             token: this.input_stream[this.pos + j],
-            type: { kind: 'Match' }
+            type: { kind: 'Match', type: t.token_type }
         })));
         // increment pos
         this.pos += tokens.length;
     }
     eliminate() {
         /*
-            TODO: Do we need to also consume the rest of the token stream here?
-             Not doing so could lead to odd behavior if the author is not careful,
-            like a bunch of correctly entered tokens and then suddenly an error without warning
+            It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        throw new NoMatch();
+        this.consume([ConsumeSpec.NEVER_TOKEN]);
     }
     split(subthreads) {
         let { value: split_value, done } = this._split_iter.next();
@@ -1721,7 +1733,7 @@ class Parser {
                     }
                     // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
                     frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    //frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    // frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
                     continue;
                 } else {
                     throw e;
@@ -1745,19 +1757,25 @@ function array_last(arr) {
 }
 function test() {
     function main_thread(p) {
-        p.consume(['look']);
+        p.consume([{ token: 'look', token_type: { kind: 'Keyword' } }]);
         let who = p.split([() => p.consume(['at', 'me'], 'me'), () => p.consume(['at', 'mewtwo'], 'mewtwo'), () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'), () => p.consume(['at', 'steven'], () => 'steven'), () => p.consume(['at', 'martha'], 'martha'), () => {
             p.eliminate();
         }]);
-        let how = p.split([() => p.consume(['happily'], 'happily'), () => p.consume(['sadly'], 'sadly'), () => 'neutrally']);
+        let how = p.split([() => p.consume([{ token: 'happily', typeahead_type: { kind: 'Locked' } }], 'happily'), () => p.consume(['sadly'], 'sadly'), () => 'neutrally']);
         p.consume([SUBMIT_TOKEN]);
         return `Looked at ${who} ${how}`;
     }
-    let input = ['look', 'at', 'martha'];
+    let input = ['look', 'at', 'martha', SUBMIT_TOKEN];
     let [result, parses] = Parser.run_thread(main_thread, input);
     console.log(result);
-    console.log(input_display(parses));
-    console.log(typeahead(parses, input));
+    let id = input_display(parses, input);
+    console.log(id);
+    console.log(id.matches[0].type);
+    let ta = typeahead(parses, input);
+    console.log(ta);
+    if (ta.length > 0) {
+        console.log(array_last(ta[0]).type);
+    }
     /*
         TODO
         Get rid of auto-option, it needs to be explicit
@@ -1781,7 +1799,7 @@ test();
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Text_1 = __webpack_require__(7);
 class BookGuy extends React.Component {
@@ -1959,7 +1977,7 @@ var __rest = this && this.__rest || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
 const InputWrapper = props => {
     const { children } = props,
@@ -2060,9 +2078,9 @@ exports.Prompt = Prompt;
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const keyboard_tools_1 = __webpack_require__(8);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 class TypeaheadList extends React.Component {
     constructor(props) {
         super(props);
@@ -2149,7 +2167,7 @@ exports.TypeaheadList = TypeaheadList;
 Object.defineProperty(exports, "__esModule", { value: true });
 const parser2_1 = __webpack_require__(10);
 parser2_1.test;
-const React = __webpack_require__(1);
+const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Terminal_1 = __webpack_require__(9);
 const commands_1 = __webpack_require__(4);
@@ -2176,7 +2194,7 @@ ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_d
 Object.defineProperty(exports, "__esModule", { value: true });
 const venience_world_1 = __webpack_require__(5);
 const text_tools_1 = __webpack_require__(3);
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
 let hex_oms = () => [{
     id: "imagining 0",
@@ -2689,7 +2707,7 @@ exports.default = {
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(0);
+const datatypes_1 = __webpack_require__(1);
 const parser_1 = __webpack_require__(2);
 const ObserverMomentIDs = datatypes_1.infer_literal_array('imagining 0', 'imagining 1', 'imagining 2', 'imagining 3', 'imagining 4', 'imagining 5', 'home 1', 'home silenced', 'home listened', 'outside 1', 'outside 2', 'outside 3', 'outside 4', 'outside 4, death', 'outside 5', 'outside 5, death', 'dark pool 1', 'dark pool 2', 'dark pool 3', 'dark pool 4', 'dark pool 5', 'dark pool 5, death', 'dark pool 6');
 const PerceptionIDs = datatypes_1.infer_literal_array('myself', 'merfolk', 'family', 'researcher', 'dark pool', 'failed experiments', 'experiment', 'broadcaster');
