@@ -1304,9 +1304,13 @@ exports.ParsedText = props => {
             style.opacity = '0.6';
         }
     }
-    const elt_style = {};
-    const span_style = {};
-    return React.createElement("div", { className: "parsed-text", style: {} }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
+    const elt_style = {
+        //display: 'inline-block'
+    };
+    const span_style = {
+        //display: 'inline-block'
+    };
+    return React.createElement("div", { className: "parsed-text", style: {/*display: 'inline-block'*/} }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, parser === undefined ? '' : parser.match.map((elt, i) => React.createElement("div", { key: i.toString(), style: Object.assign({}, elt_style, { color: get_display_color(elt.display) }) }, React.createElement("span", { style: span_style }, elt.match + (i === parser.match.length - 1 ? parser.tail_padding : '')), i === typeaheadIndex ? children : ''))));
 };
 exports.OutputText = props => {
     const { message_html } = props;
@@ -1487,38 +1491,53 @@ class ParseRestart extends Error {
 class ParseError extends Error {}
 ;
 const SUBMIT_TOKEN = Symbol('SUBMIT');
-var TokenMatch;
-(function (TokenMatch) {
-    function is_match(m) {
-        return m[0] === 'Match';
-    }
-    TokenMatch.is_match = is_match;
-    function is_partial(m) {
-        return m[0] === 'Partial';
-    }
-    TokenMatch.is_partial = is_partial;
-    function is_error(m) {
-        return m[0] === 'Error';
-    }
-    TokenMatch.is_error = is_error;
+var ConsumeSpec;
+(function (ConsumeSpec) {
     let Fields;
     (function (Fields) {
         Fields[Fields["kind"] = 0] = "kind";
         Fields[Fields["token"] = 1] = "token";
-        Fields[Fields["type"] = 2] = "type";
-    })(Fields = TokenMatch.Fields || (TokenMatch.Fields = {}));
+        Fields[Fields["token_type"] = 2] = "token_type";
+        Fields[Fields["typeahead_type"] = 3] = "typeahead_type";
+    })(Fields = ConsumeSpec.Fields || (ConsumeSpec.Fields = {}));
     ;
+    function is_spec(x) {
+        return x instanceof Array;
+    }
+    ConsumeSpec.is_spec = is_spec;
+    function is_token(x) {
+        return typeof x === 'string' || x === SUBMIT_TOKEN;
+    }
+    ConsumeSpec.is_token = is_token;
+})(ConsumeSpec = exports.ConsumeSpec || (exports.ConsumeSpec = {}));
+var TokenMatch;
+(function (TokenMatch) {
+    // export type Type = 
+    //     ['Match'] |
+    //     ['Partial', Token] |
+    //     ['Error', Token];
+    function is_match(m) {
+        return m.kind === 'Match';
+    }
+    TokenMatch.is_match = is_match;
+    function is_partial(m) {
+        return m.kind === 'Partial';
+    }
+    TokenMatch.is_partial = is_partial;
+    function is_error(m) {
+        return m.kind === 'Error';
+    }
+    TokenMatch.is_error = is_error;
 })(TokenMatch = exports.TokenMatch || (exports.TokenMatch = {}));
-var TM = TokenMatch;
 function is_parse_result_valid(result) {
-    return result.length === 0 || TM.is_match(array_last(result)[TM.Fields.type]);
+    return result.length === 0 || TokenMatch.is_match(array_last(result).type);
 }
 // for each of the input tokens, how should they be displayed/highighted?
 function input_display(parse_results) {
     // determine if submittable
     let submittable = parse_results.some(row => {
         let last = row[row.length - 1];
-        return last[1] === SUBMIT_TOKEN && TM.is_match(last[2]);
+        return last[1] === SUBMIT_TOKEN && TokenMatch.is_match(last[2]);
     });
     let display_submit = submittable ? ['Submit'] : ['NoSubmit'];
     let pos = 0;
@@ -1531,16 +1550,16 @@ function input_display(parse_results) {
         }
         let display_type;
         // determine error
-        if (column.every(([_, token, type]) => TM.is_error(type))) {
+        if (column.every(({ type }) => TokenMatch.is_error(type))) {
             display_type = ['Error'];
         } else {
             // count unique token values
-            let uniq_toks = new datatypes_1.FuckSet(column.map(([_, token, type]) => {
-                switch (type[0]) {
+            let uniq_toks = new datatypes_1.FuckSet(column.map(({ token, type }) => {
+                switch (type.kind) {
                     case 'Match':
                         return token;
                     default:
-                        return type[1];
+                        return type.token;
                 }
             }));
             display_type = uniq_toks.size === 1 ? ['Filler'] : ['Option'];
@@ -1560,11 +1579,13 @@ Typeahead
 // for each row of typeahead to display, what are the tokens?
 // will be positioned relative to the first input token.
 function typeahead(parse_results, input_stream) {
-    let rows_with_typeahead = parse_results.filter(pr => !TM.is_error(array_last(pr)[2]) && pr.slice(input_stream.length - 1).some(([_, tok, type]) => TM.is_partial(type)));
+    let rows_with_typeahead = parse_results.filter(pr => !TokenMatch.is_error(array_last(pr).type) && pr.slice(input_stream.length - 1).some(({ type }) => TokenMatch.is_partial(type)));
+    debugger;
     return rows_with_typeahead.map(pr => {
-        let start_idx = pr.findIndex(([_, tok, type]) => TM.is_partial(type));
+        let start_idx = pr.findIndex(({ type }) => TokenMatch.is_partial(type));
         let result = Array(start_idx).fill(null);
-        result.push(...pr.slice(start_idx).map(([_, tok, type]) => type[1]));
+        let elts = pr.slice(start_idx);
+        result.push(...elts.map(({ type }) => type.token));
         return result;
     });
 }
@@ -1623,24 +1644,41 @@ class Parser {
         }
         if (partial) {
             // push all tokens as partials
-            this.parse_result.push(...tokens.map((t, j) => ['TokenMatch', this.input_stream[this.pos + j] || '', ['Partial', t]]));
+            this.parse_result.push(...tokens.map((t, j) => ({
+                kind: 'TokenMatch',
+                token: this.input_stream[this.pos + j] || '',
+                type: { kind: 'Partial', token: t }
+            })));
             // increment pos
             this.pos = this.input_stream.length;
             throw new NoMatch();
         }
         if (error) {
             // push all tokens as errors
-            this.parse_result.push(...tokens.map((t, j) => ['TokenMatch', this.input_stream[this.pos + j] || '', ['Error', t]]));
+            this.parse_result.push(...tokens.map((t, j) => ({
+                kind: 'TokenMatch',
+                token: this.input_stream[this.pos + j] || '',
+                type: { kind: 'Error', token: t }
+            })));
             // increment pos
             this.pos = this.input_stream.length;
             throw new NoMatch();
         }
         // push all tokens as valid
-        this.parse_result.push(...tokens.map((t, j) => ['TokenMatch', this.input_stream[this.pos + j], ['Match']]));
+        this.parse_result.push(...tokens.map((t, j) => ({
+            kind: 'TokenMatch',
+            token: this.input_stream[this.pos + j],
+            type: { kind: 'Match' }
+        })));
         // increment pos
         this.pos += tokens.length;
     }
     eliminate() {
+        /*
+            TODO: Do we need to also consume the rest of the token stream here?
+             Not doing so could lead to odd behavior if the author is not careful,
+            like a bunch of correctly entered tokens and then suddenly an error without warning
+        */
         throw new NoMatch();
     }
     split(subthreads) {
@@ -1681,6 +1719,7 @@ class Parser {
                     for (let i = 0; i < e.n_splits; i++) {
                         new_splits.push(i);
                     }
+                    // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
                     frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
                     //frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
                     continue;
@@ -1691,7 +1730,6 @@ class Parser {
             results.push(result);
             parse_results.push(p.parse_result);
         }
-        // TODO: Error here if more than 1 result?
         let valid_results = results.filter(r => !(r instanceof NoMatch));
         if (valid_results.length === 0) {
             return [new NoMatch(), parse_results];
@@ -1708,14 +1746,14 @@ function array_last(arr) {
 function test() {
     function main_thread(p) {
         p.consume(['look']);
-        let who = p.split([() => p.consume(['at', 'me'], 'me'), () => p.consume(['at', 'mewtwo'], 'mewtwo'), () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'), () => p.consume(['at', 'steven'], () => 'steven'), () => {
+        let who = p.split([() => p.consume(['at', 'me'], 'me'), () => p.consume(['at', 'mewtwo'], 'mewtwo'), () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'), () => p.consume(['at', 'steven'], () => 'steven'), () => p.consume(['at', 'martha'], 'martha'), () => {
             p.eliminate();
         }]);
         let how = p.split([() => p.consume(['happily'], 'happily'), () => p.consume(['sadly'], 'sadly'), () => 'neutrally']);
         p.consume([SUBMIT_TOKEN]);
         return `Looked at ${who} ${how}`;
     }
-    let input = ['look', 'at', 'me'];
+    let input = ['look', 'at', 'martha'];
     let [result, parses] = Parser.run_thread(main_thread, input);
     console.log(result);
     console.log(input_display(parses));
@@ -1725,6 +1763,11 @@ function test() {
         Get rid of auto-option, it needs to be explicit
         Change types of typeahead to support different typeahead styles
             (new, old, locked)
+       
+        (Way Later) Write a tester that runs through every possible input for a given main_thread,
+        to find runtime error states
+            - ambiguous parses
+            - any other exceptions thrown
     */
 }
 exports.test = test;
