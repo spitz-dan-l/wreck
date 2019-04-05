@@ -9,6 +9,8 @@ import { array_last } from '../typescript/datatypes';
 
 import 'mocha';
 
+import * as assert from 'assert';
+
 describe('parser', () => {
     it('should do a thing', () => {
         function main_thread(p: Parser) {
@@ -53,6 +55,8 @@ describe('parser', () => {
         if (ta.length > 0) {
             console.log(array_last(ta[0]).type);
         }
+
+        assert.ok(false, 'you should have done a better job');
         /*
             TODO
             Get rid of auto-option, it needs to be explicit

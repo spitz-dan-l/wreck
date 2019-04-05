@@ -18,7 +18,9 @@
   },
   "homepage": "https://github.com/spitz-dan-l/wreck#readme",
   "devDependencies": {
+    "@types/assert": "^1.4.2",
     "@types/mocha": "^5.2.6",
+    "assert": "^1.4.1",
     "awesome-typescript-loader": "^3.2.1",
     "babel-core": "^6.26.3",
     "babel-polyfill": "^6.23.0",
