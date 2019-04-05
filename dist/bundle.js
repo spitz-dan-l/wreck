@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 13);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -438,6 +438,10 @@ function field_getter(x) {
     return result;
 }
 exports.field_getter = field_getter;
+function array_last(arr) {
+    return arr[arr.length - 1];
+}
+exports.array_last = array_last;
 
 /***/ }),
 /* 2 */
@@ -1049,8 +1053,8 @@ const commands_1 = __webpack_require__(4);
 const parser_1 = __webpack_require__(2);
 const datatypes_1 = __webpack_require__(1);
 const text_tools_1 = __webpack_require__(3);
-const observer_moments_1 = __webpack_require__(16);
-const hex_1 = __webpack_require__(15);
+const observer_moments_1 = __webpack_require__(15);
+const hex_1 = __webpack_require__(14);
 exports.wrap_handler = handler => function (parser) {
     return parser_1.with_early_stopping(handler.bind(this))(parser);
 };
@@ -1359,10 +1363,10 @@ exports.keys = {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const React = __webpack_require__(0);
-const Prompt_1 = __webpack_require__(12);
+const Prompt_1 = __webpack_require__(11);
 const Text_1 = __webpack_require__(7);
-const TypeaheadList_1 = __webpack_require__(13);
-const History_1 = __webpack_require__(11);
+const TypeaheadList_1 = __webpack_require__(12);
+const History_1 = __webpack_require__(10);
 const text_tools_1 = __webpack_require__(3);
 const parser_1 = __webpack_require__(2);
 class Terminal extends React.Component {
@@ -1463,352 +1467,6 @@ exports.Terminal = Terminal;
 
 /***/ }),
 /* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-/*
-    a parser thread takes a parser and uses it to consume some of a token stream,
-    and returns some result
-
-    a thread can *split* the current parser state into N branches,
-    each of which consume their own things separately and return their own results
-    the thread which initiated the split is also responsible for combining the various results
-    before returning control to the thread.
-        the most common scenario is that only one of N branches is still valid
-    
-    internally, the parser receives instructions from the parser thread and consumes
-    pieces of the input token stream. it builds up a list of token match objects,
-    where each token in the stream consumed so far gets a status of "matched", "partial", "error"
-
-    by combining these token labellings from all the different parser threads that ran,
-    we determine:
-        - whether the currently-input string is valid and can be executed
-        - what colors to highlight the various input words with
-        - what to display beneath the input prompt as typeahead options
-
-
-
-
-*/
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const text_tools_1 = __webpack_require__(3);
-class NoMatch extends Error {}
-;
-class ParseRestart extends Error {
-    constructor(n_splits) {
-        super();
-        this.n_splits = n_splits;
-    }
-}
-;
-class ParseError extends Error {}
-;
-const SUBMIT_TOKEN = Symbol('SUBMIT');
-class ConsumeSpec {
-    constructor(token, token_type = { kind: 'Filler' }, typeahead_type = { kind: 'Available' }) {
-        this.token = token;
-        this.token_type = token_type;
-        this.typeahead_type = typeahead_type;
-        this.kind = 'ConsumeSpec';
-    }
-    static make(obj) {
-        if (ConsumeSpec.is_token(obj)) {
-            return new ConsumeSpec(obj);
-        }
-        return new ConsumeSpec(obj.token, obj.token_type, obj.typeahead_type);
-    }
-}
-exports.ConsumeSpec = ConsumeSpec;
-(function (ConsumeSpec) {
-    ConsumeSpec.NEVER_TOKEN = Symbol('NEVER');
-    function is_token(x) {
-        return typeof x === 'string' || x === SUBMIT_TOKEN || x === ConsumeSpec.NEVER_TOKEN;
-    }
-    ConsumeSpec.is_token = is_token;
-    function is_spec(x) {
-        return !is_token(x);
-    }
-    ConsumeSpec.is_spec = is_spec;
-})(ConsumeSpec = exports.ConsumeSpec || (exports.ConsumeSpec = {}));
-var TokenMatch;
-(function (TokenMatch) {
-    function is_match(m) {
-        return m.kind === 'Match';
-    }
-    TokenMatch.is_match = is_match;
-    function is_partial(m) {
-        return m.kind === 'Partial';
-    }
-    TokenMatch.is_partial = is_partial;
-    function is_error(m) {
-        return m.kind === 'Error';
-    }
-    TokenMatch.is_error = is_error;
-})(TokenMatch = exports.TokenMatch || (exports.TokenMatch = {}));
-function is_parse_result_valid(result) {
-    return result.length === 0 || TokenMatch.is_match(array_last(result).type);
-}
-// for each of the input tokens, how should they be displayed/highighted?
-function input_display(parse_results, input_stream) {
-    // find the first submittable row
-    let row;
-    let submittable = true;
-    row = parse_results.find(row => {
-        let last = array_last(row);
-        return TokenMatch.is_partial(last.type) && last.type.token === SUBMIT_TOKEN;
-    });
-    // if none, find the first non-error row
-    if (row === undefined) {
-        submittable = false;
-        row = parse_results.find(row => row.every(({ type }) => !TokenMatch.is_error(type)));
-    }
-    // if none, make everything error
-    if (row === undefined) {
-        row = input_stream.map(tok => ({
-            kind: 'TokenMatch',
-            token: tok,
-            type: {
-                kind: 'Error',
-                token: null
-            }
-        }));
-    }
-    return {
-        kind: 'InputDisplay',
-        matches: row,
-        submittable
-    };
-}
-/*
-Typeahead
-    For each non-valid row (ignoring errors, partial only)
-    If the row is at least the length of the input stream
-    Typeahead is the Partial TokenMatches suffix (always at the end)
-*/
-function typeahead(parse_results, input_stream) {
-    let rows_with_typeahead = parse_results.filter(pr => !TokenMatch.is_error(array_last(pr).type) && pr.slice(input_stream.length - 1).some(({ type }) => TokenMatch.is_partial(type)));
-    return rows_with_typeahead.map(pr => {
-        let start_idx = pr.findIndex(({ type }) => TokenMatch.is_partial(type));
-        let result = Array(start_idx).fill(null);
-        let elts = pr.slice(start_idx);
-        result.push(...elts.map(tm => tm.type));
-        return result;
-    });
-}
-class Parser {
-    constructor(input_stream, splits_to_take) {
-        this.pos = 0;
-        this.parse_result = [];
-        this.input_stream = input_stream;
-        this._split_iter = splits_to_take[Symbol.iterator]();
-    }
-    consume(tokens, result) {
-        let specs = tokens.map(ConsumeSpec.make);
-        this._consume(specs);
-        if (result instanceof Function) {
-            return result();
-        }
-        return result;
-    }
-    /*
-        This will throw a parse exception if the desired tokens can't be consumed.
-        It is expected that every ParserThread is wrapped in an exception handler for
-        this case.
-    */
-    _consume(tokens) {
-        if (!is_parse_result_valid(this.parse_result)) {
-            throw new ParseError('Tried to consume() on a done parser.');
-        }
-        let partial = false;
-        let error = false;
-        let i = 0;
-        // check if exact match
-        for (i = 0; i < tokens.length; i++) {
-            let spec = tokens[i];
-            let spec_value = spec.token;
-            if (spec_value === ConsumeSpec.NEVER_TOKEN) {
-                error = true;
-                break;
-            }
-            if (this.pos + i >= this.input_stream.length) {
-                partial = true;
-                break;
-            }
-            let input = this.input_stream[this.pos + i];
-            if (spec_value === input) {
-                if (spec.typeahead_type.kind === 'Locked') {
-                    // TODO: special case for typeahead = Locked
-                    error = true;
-                    break;
-                }
-                continue;
-            }
-            if (spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
-                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
-                error = true;
-                break;
-            }
-            if (text_tools_1.starts_with(spec_value, input)) {
-                if (this.pos + i < this.input_stream.length - 1) {
-                    error = true;
-                } else {
-                    partial = true;
-                }
-                break;
-            }
-            error = true;
-            break;
-        }
-        if (partial) {
-            // push all tokens as partials
-            this.parse_result.push(...tokens.map((t, j) => ({
-                kind: 'TokenMatch',
-                token: this.input_stream[this.pos + j] || '',
-                type: {
-                    kind: 'Partial',
-                    token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token,
-                    type: t.typeahead_type
-                }
-            })));
-            // increment pos
-            this.pos = this.input_stream.length;
-            throw new NoMatch();
-        }
-        if (error) {
-            // push all tokens as errors
-            this.parse_result.push(...tokens.map((t, j) => ({
-                kind: 'TokenMatch',
-                token: this.input_stream[this.pos + j] || '',
-                type: {
-                    kind: 'Error',
-                    token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token
-                }
-            })));
-            // increment pos
-            this.pos = this.input_stream.length;
-            throw new NoMatch();
-        }
-        // push all tokens as valid
-        this.parse_result.push(...tokens.map((t, j) => ({
-            kind: 'TokenMatch',
-            token: this.input_stream[this.pos + j],
-            type: { kind: 'Match', type: t.token_type }
-        })));
-        // increment pos
-        this.pos += tokens.length;
-    }
-    eliminate() {
-        /*
-            It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
-        */
-        return this.consume([ConsumeSpec.NEVER_TOKEN]);
-    }
-    submit(result) {
-        return this.consume([SUBMIT_TOKEN], result);
-    }
-    split(subthreads) {
-        let { value: split_value, done } = this._split_iter.next();
-        if (done) {
-            throw new ParseRestart(subthreads.length);
-        }
-        let st = subthreads[split_value];
-        return st(this);
-    }
-    static run_thread(t, tokens) {
-        let frontier = [[]];
-        let results = [];
-        let parse_results = [];
-        while (frontier.length > 0) {
-            let path = frontier.pop();
-            let splits_to_take;
-            if (path.length === 0) {
-                splits_to_take = path;
-            } else {
-                let n = array_last(path).next();
-                if (n.done) {
-                    continue;
-                } else {
-                    frontier.push(path);
-                }
-                splits_to_take = [...path.slice(0, -1), n.value];
-            }
-            let p = new Parser(tokens, splits_to_take);
-            let result;
-            try {
-                result = t(p);
-            } catch (e) {
-                if (e instanceof NoMatch) {
-                    result = e;
-                } else if (e instanceof ParseRestart) {
-                    let new_splits = [];
-                    for (let i = 0; i < e.n_splits; i++) {
-                        new_splits.push(i);
-                    }
-                    // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
-                    frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    // frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    continue;
-                } else {
-                    throw e;
-                }
-            }
-            results.push(result);
-            parse_results.push(p.parse_result);
-        }
-        let valid_results = results.filter(r => !(r instanceof NoMatch));
-        if (valid_results.length === 0) {
-            return [new NoMatch(), parse_results];
-        }
-        if (valid_results.length > 1) {
-            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
-        }
-        return [valid_results[0], parse_results];
-    }
-}
-function array_last(arr) {
-    return arr[arr.length - 1];
-}
-function test() {
-    function main_thread(p) {
-        p.consume([{ token: 'look', token_type: { kind: 'Keyword' } }]);
-        let who = p.split([() => p.consume(['at', 'me'], 'me'), () => p.consume(['at', 'mewtwo'], 'mewtwo'), () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'), () => p.consume(['at', 'steven'], () => 'steven'), () => p.consume(['at', 'martha'], 'martha'), () => p.eliminate()]);
-        if (who === 'steven') {
-            p.eliminate();
-        }
-        let how = p.split([() => p.consume([{ token: 'happily', typeahead_type: { kind: 'Locked' } }], 'happily'), () => p.consume(['sadly'], 'sadly'), () => 'neutrally']);
-        p.submit();
-        return `Looked at ${who} ${how}`;
-    }
-    let input = ['look', 'at', 'steven'];
-    let [result, parses] = Parser.run_thread(main_thread, input);
-    console.log(result);
-    let id = input_display(parses, input);
-    console.log(id);
-    console.log(array_last(id.matches).type);
-    let ta = typeahead(parses, input);
-    console.log(ta);
-    if (ta.length > 0) {
-        console.log(array_last(ta[0]).type);
-    }
-    /*
-        TODO
-        Get rid of auto-option, it needs to be explicit
-        Change types of typeahead to support different typeahead styles
-            (new, old, locked)
-       
-        (Way Later) Write a tester that runs through every possible input for a given main_thread,
-        to find runtime error states
-            - ambiguous parses
-            - any other exceptions thrown
-    */
-}
-exports.test = test;
-test();
-
-/***/ }),
-/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1980,7 +1638,7 @@ class History extends React.Component {
 exports.History = History;
 
 /***/ }),
-/* 12 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2087,7 +1745,7 @@ class Prompt extends React.Component {
 exports.Prompt = Prompt;
 
 /***/ }),
-/* 13 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2174,15 +1832,13 @@ class TypeaheadList extends React.Component {
 exports.TypeaheadList = TypeaheadList;
 
 /***/ }),
-/* 14 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const parser2_1 = __webpack_require__(10);
-parser2_1.test;
 const React = __webpack_require__(0);
 const ReactDom = __webpack_require__(6);
 const Terminal_1 = __webpack_require__(9);
@@ -2201,7 +1857,7 @@ let world_driver = new commands_1.WorldDriver(new venience_world_1.VenienceWorld
 ReactDom.render(React.createElement(Terminal_1.Terminal, { world_driver: world_driver }), document.getElementById('terminal'));
 
 /***/ }),
-/* 15 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2716,7 +2372,7 @@ exports.default = {
 };
 
 /***/ }),
-/* 16 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

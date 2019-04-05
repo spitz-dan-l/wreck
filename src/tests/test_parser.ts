@@ -7,7 +7,7 @@ import {
 
 import { array_last } from '../typescript/datatypes';
 
-export function test() {
+function test() {
     function main_thread(p: Parser) {
         p.consume([{token: 'look', token_type: { kind: 'Keyword' }}]);
 
@@ -38,7 +38,7 @@ export function test() {
     let input: Token[] = ['look', 'at', 'steven'];
 
     let [result, parses] = Parser.run_thread(main_thread, input);
-    
+
     console.log(result);
 
     let id = input_display(parses, input);
