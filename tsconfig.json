@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "outDir": "./dist/",
+        "outDir": "./build/",
         "sourceMap": true,
         "noImplicitAny": false,
         "module": "commonjs",
@@ -10,6 +10,7 @@
         "incremental": true
     },
     "include": [
+        "./src/tests",
         "./src/typescript/*",
         "./src/typescript/venience/*",
         "./src/components/*"

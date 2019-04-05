@@ -23,7 +23,7 @@
 
 */
 
-import { FuckSet, struct } from './datatypes'
+import { FuckSet, array_last } from './datatypes'
 import { starts_with } from './text_tools'
 
 class NoMatch extends Error {};
@@ -37,11 +37,11 @@ class ParseRestart extends Error {
 };
 class ParseError extends Error {};
 
-const SUBMIT_TOKEN = Symbol('SUBMIT');
-type Token = string | typeof SUBMIT_TOKEN;
+export const SUBMIT_TOKEN = Symbol('SUBMIT');
+export type Token = string | typeof SUBMIT_TOKEN;
 
 
-export class ConsumeSpec {
+class ConsumeSpec_Tainted {
     kind: 'ConsumeSpec' = 'ConsumeSpec';
 
     constructor(
@@ -50,13 +50,18 @@ export class ConsumeSpec {
         public typeahead_type: ConsumeSpec.TypeaheadType = { kind: 'Available' }
     ) {}
 
-    static make(obj: ConsumeSpec.Consumable): ConsumeSpec {
+    static make(obj: ConsumeSpec.Consumable_Tainted): ConsumeSpec_Tainted {
         if (ConsumeSpec.is_token(obj)) {
-            return new ConsumeSpec(obj);
+            return new ConsumeSpec_Tainted(obj);
         }
-        return new ConsumeSpec(obj.token, obj.token_type, obj.typeahead_type);
+        return new ConsumeSpec_Tainted(obj.token, obj.token_type, obj.typeahead_type);
     }
 }
+
+export interface ConsumeSpec extends ConsumeSpec_Tainted {
+    token: Token;
+}
+
 
 export namespace ConsumeSpec {
     export type TokenType = 
@@ -73,14 +78,18 @@ export namespace ConsumeSpec {
     export type TaintedToken = Token | typeof NEVER_TOKEN;
 
     export type Consumable =
-        TaintedToken |
-        (Partial<ConsumeSpec> & { token: TaintedToken });
+        Token |
+        (Partial<ConsumeSpec> & { token: Token });
 
-    export function is_token(x: Consumable): x is TaintedToken {
+    export type Consumable_Tainted =
+        TaintedToken |
+        (Partial<ConsumeSpec_Tainted> & { token: TaintedToken });
+
+    export function is_token(x: Consumable_Tainted): x is TaintedToken {
         return typeof x === 'string' || x === SUBMIT_TOKEN || x === NEVER_TOKEN;
     }
 
-    export function is_spec(x: Consumable): x is ConsumeSpec {
+    export function is_spec(x: Consumable_Tainted): x is ConsumeSpec {
         return !is_token(x);
     }
 }
@@ -124,14 +133,14 @@ export type InputDisplay = {
     submittable: boolean
 };
 
-type ParseResult = TokenMatch[];
+export type ParseResult = TokenMatch[];
 
-function is_parse_result_valid(result: ParseResult) {
+export function is_parse_result_valid(result: ParseResult) {
     return result.length === 0 || TokenMatch.is_match(array_last(result).type);
 }
 
 // for each of the input tokens, how should they be displayed/highighted?
-function input_display(parse_results: ParseResult[], input_stream: Token[]): InputDisplay {
+export function input_display(parse_results: ParseResult[], input_stream: Token[]): InputDisplay {
     // find the first submittable row
     let row: ParseResult;
     let submittable = true;
@@ -169,7 +178,7 @@ Typeahead
     If the row is at least the length of the input stream
     Typeahead is the Partial TokenMatches suffix (always at the end)
 */
-function typeahead(parse_results: ParseResult[], input_stream: Token[]): TokenMatch.Partial[][] {
+export function typeahead(parse_results: ParseResult[], input_stream: Token[]): TokenMatch.Partial[][] {
     let rows_with_typeahead = parse_results.filter(pr => 
         !(TokenMatch.is_error(array_last(pr).type))
         && pr.slice(input_stream.length - 1).some(({ type }) => 
@@ -187,7 +196,7 @@ function typeahead(parse_results: ParseResult[], input_stream: Token[]): TokenMa
 }
 
 
-class Parser {
+export class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
         this.input_stream = input_stream;
         
@@ -205,7 +214,7 @@ class Parser {
     consume<T>(tokens: ConsumeSpec.Consumable[], callback: () => T): T;
     consume<T>(tokens: ConsumeSpec.Consumable[], result: T): T;
     consume(tokens: ConsumeSpec.Consumable[], result?: any): any {
-        let specs: ConsumeSpec[] = tokens.map(ConsumeSpec.make);
+        let specs: ConsumeSpec_Tainted[] = tokens.map(ConsumeSpec_Tainted.make);
 
         this._consume(specs);
         if (result instanceof Function) {
@@ -219,7 +228,7 @@ class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    _consume<T>(tokens: ConsumeSpec[]) {
+    _consume<T>(tokens: ConsumeSpec_Tainted[]) {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
@@ -318,7 +327,7 @@ class Parser {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        return <never>this.consume([ConsumeSpec.NEVER_TOKEN]);
+        return <never>this._consume([ConsumeSpec_Tainted.make(ConsumeSpec.NEVER_TOKEN)]);
 
     }
 
@@ -412,72 +421,7 @@ class Parser {
 
 // Question: should the parser input be mandatory?
 // Doesn't seem to complain when i leave out the first arg, even with this type
-type ParserThread<T> = (p: Parser) => T;
-type ParserThreads<T> =  ParserThread<T>[];
-
-
-function array_last<T>(arr: T[]): T {
-    return arr[arr.length - 1];
-}
-
-
-export function test() {
-    function main_thread(p: Parser) {
-        p.consume([{token: 'look', token_type: { kind: 'Keyword' }}]);
-
-        let who = p.split([
-            () => p.consume(['at', 'me'], 'me'),
-            () => p.consume(['at', 'mewtwo'], 'mewtwo'),
-            () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'),
-            () => p.consume(['at', 'steven'], () => 'steven'),
-            () => p.consume(['at', 'martha'], 'martha'),
-            () => p.eliminate() 
-        ]);
-
-        if (who === 'steven') {
-            p.eliminate();
-        }
-
-        let how = p.split([
-            () => p.consume([{ token: 'happily', typeahead_type: { kind: 'Locked' }}], 'happily'),
-            () => p.consume(['sadly'], 'sadly'),
-            () => 'neutrally'
-        ]);
-
-        p.submit();
-
-        return `Looked at ${who} ${how}`;
-    }
-
-    let input: Token[] = ['look', 'at', 'steven'];
-
-    let [result, parses] = Parser.run_thread(main_thread, input);
-    
-    console.log(result);
-
-    let id = input_display(parses, input);
-    console.log(id);
-    console.log(array_last(id.matches).type);
-
-    let ta = typeahead(parses, input);
-    console.log(ta);
-    if (ta.length > 0) {
-        console.log(array_last(ta[0]).type);
-    }
-    /*
-        TODO
-        Get rid of auto-option, it needs to be explicit
-        Change types of typeahead to support different typeahead styles
-            (new, old, locked)
-       
-        (Way Later) Write a tester that runs through every possible input for a given main_thread,
-        to find runtime error states
-            - ambiguous parses
-            - any other exceptions thrown
-    */
-
-}
-
-test()
+export type ParserThread<T> = (p: Parser) => T;
+export type ParserThreads<T> =  ParserThread<T>[];
 
 

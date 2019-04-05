@@ -477,3 +477,7 @@ export function field_getter<S extends Struct>(x: S): StructProxy<S> {
     }
     return result;
 }
+
+export function array_last<T>(arr: T[]): T {
+    return arr[arr.length - 1];
+}
