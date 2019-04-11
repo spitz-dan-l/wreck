@@ -2,7 +2,10 @@ import {
     Parser,
     Token,
     input_display,
-    typeahead
+    typeahead,
+    make_consumer,
+    SUBMIT_TOKEN,
+    TokenMatch
 } from '../typescript/parser2';
 
 import { array_last } from '../typescript/datatypes';
@@ -40,9 +43,9 @@ describe('parser', () => {
             return `Looked at ${who} ${how}`;
         }
 
-        let input: Token[] = ['look', 'at', 'steven'];
+        let input: Token[] = ['look', 'at', 'me'];
 
-        let [result, parses] = Parser.run_thread(main_thread, input);
+        let [result, parses] = Parser.run_thread(input, main_thread);
 
         console.log(result);
 
@@ -55,19 +58,42 @@ describe('parser', () => {
         if (ta.length > 0) {
             console.log(array_last(ta[0]).type);
         }
-
-        assert.ok(false, 'you should have done a better job');
         /*
-            TODO
-            Get rid of auto-option, it needs to be explicit
-            Change types of typeahead to support different typeahead styles
-                (new, old, locked)
-           
-            (Way Later) Write a tester that runs through every possible input for a given main_thread,
+            TODO: (Way Later) Write a tester that runs through every possible input for a given main_thread,
             to find runtime error states
                 - ambiguous parses
                 - any other exceptions thrown
         */
+    });
+
+    it('should do the dsl thing', () => {
+        let main_thread = make_consumer("*daniel didn't &wash", (p) => p.submit('unclean'));
+
+        let input: Token[] = ["daniel",  "didn't",  "wash", SUBMIT_TOKEN];
+
+        let [result, parses] = Parser.run_thread(input, main_thread);
+        assert.equal(result, 'unclean', 'daniel was too clean');
+        assert.equal(parses.length, 1);
+        
+        let display = input_display(parses, input);
+        let expected_matches: TokenMatch[] = [
+            { kind: 'TokenMatch', token: 'daniel', type: { kind: 'Match', type: { kind: 'Keyword' } } },
+            { kind: 'TokenMatch', token: "didn't", type: { kind: 'Match', type: { kind: 'Filler' } } },
+            { kind: 'TokenMatch', token: 'wash', type: { kind: 'Match', type: { kind: 'Option' } } },
+            { kind: 'TokenMatch', token: SUBMIT_TOKEN, type: { kind: 'Match', type: { kind: 'Filler' } } }
+        ];
+        assert.deepEqual(display.matches, expected_matches);
+    });
+
+    it('should string split() calls', () => {
+        let main_thread = (p: Parser) => p.split([
+            () => p.consume(['daniel'], 'daniel'),
+            () => p.consume(['jason'], 'jason')
+        ], (who) => p.submit(`it was ${who} all along`));
+
+        let [result, ] = Parser.run_thread(['jason', SUBMIT_TOKEN], main_thread);
+
+        assert.equal(result, 'it was jason all along');
     });
 });
 
