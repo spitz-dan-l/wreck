@@ -40,85 +40,61 @@ import {
     DeepImmutable
 } from './datatypes';
 
-import { Parser, Token, ParseResult, NoMatch, is_parse_result_valid } from './parser2';
+import { Parser, Token, ParseResult, NoMatch, is_match, is_parse_result_valid } from './parser2';
 
-
-export class World2<T extends {}> {
-    public constructor(
-        readonly state: DeepImmutable<T>,
-        readonly message: HTMLDivElement = undefined,
-        readonly parses: ParseResult[] = [],
-        readonly index: number = 0,
-        readonly interpretations: HistoryInterpretation = []
-    ) {}
-
-    update(obj: {
-        state?: DeepImmutable<T>,
-        message?: HTMLDivElement,
-        parses?: ParseResult[],
-        index?: number,
-        interpretations?: HistoryInterpretation
-    }): this {
-        let merged = {...this, ...obj};
-        
-        // this will be polymorphic, we say typeof World2 to lie to the type checker so it compiles
-        return new (this.constructor as typeof World2)(
-            merged.state,
-            merged.message,
-            merged.parses,
-            merged.index,
-            merged.interpretations
-        ) as this;
-    }
-
-    update_state(updater: Updater<T>): this {
-        let new_state: T = update(<T>this.state, updater);
-        return this.update({
-            state: <DeepImmutable<T>>new_state
-        })
-    }
-
-}
-
-export class World3 {
-    public constructor(
-        readonly message: HTMLDivElement = undefined,
-        readonly parses: ParseResult[] = [],
-        readonly index: number = 0,
-        readonly interpretations: HistoryInterpretation = []
-    ) {}
-
-    _update(obj: {
-        message?: HTMLDivElement,
-        parses?: ParseResult[],
-        index?: number,
-        interpretations?: HistoryInterpretation
-    }): this {
-        let merged = {...this, ...obj};
-        
-        // this will be polymorphic, we say typeof World3 to lie to the type checker so it compiles
-        return new (this.constructor as typeof World3)(
-            merged.message,
-            merged.parses,
-            merged.index,
-            merged.interpretations
-        ) as this;
-    }
-
-    update(updater: Updater<this>): this {
-        let new_state: this = update(this, updater);
-        return this._update(new_state);
-    }
-
-}
 
 namespace World4 {
+    // TODO: We probably want a data structure for this
+    // Question is how DOM-like will it wind up being and should we just use the DOM
+    type message = string;
+
+    type InterpretationLabel = string;
+    type InterpretationNode = {
+        readonly labels: readonly InterpretationLabel[],
+        previous: InterpretationNode
+    }
+
+    type InterpretationOp =
+        { kind: 'Add', label: InterpretationLabel } |
+        { kind: 'Remove', label: InterpretationLabel };
+
+    function apply_interpretation_op(interp: readonly InterpretationLabel[], op: InterpretationOp): readonly InterpretationLabel[] {
+        if (op.kind === 'Add'){
+            if (interp.indexOf(op.label) === -1) {
+                return [...interp, op.label];
+            }
+        }
+        if (op.kind === 'Remove'){
+            let idx = interp.indexOf(op.label);
+            if (idx !== -1) {
+                let new_interp = [...interp];
+                new_interp.splice(idx, 1);
+                return new_interp
+            }
+        }
+
+        return interp;
+    }
+
+    function apply_interpretation_ops(interp: readonly InterpretationLabel[], ops: InterpretationOp[]): readonly InterpretationLabel[] {
+        return ops.reduce(apply_interpretation_op, interp);
+    }
+
     export interface World {
-        readonly message: HTMLDivElement,
+        readonly message: string,
         readonly parses: ParseResult[],
-        readonly index: number,
-        readonly prev: this,
-        readonly interpretations: HistoryInterpretation
+        readonly previous: this,
+        readonly current_interpretation: InterpretationNode
+    }
+
+    // TODO: need a more concise and cute term than "object level"
+    export type ObjectLevel<W extends World> =
+            Pick<W, Exclude<keyof W, 'parses' | 'previous' | 'current_interpretation'>>;
+    
+    export function object_level<W extends World>(w: W): ObjectLevel<W> {
+        let updater: Updater<World> = { parses: undefined, previous: undefined, current_interpretation: undefined };
+
+        return <ObjectLevel<W>> update(w, updater)
     }
 
     export class WorldDriver<W extends World> {
@@ -126,8 +102,14 @@ namespace World4 {
         possible_world: W;
 
         constructor(
-            readonly initial_world: W & { index: 0, prev: null },
-            readonly handle_command: (parser: Parser, world: W) => W
+            readonly initial_world: W,
+
+            // Should return a new world with world set to the new world's prev
+            readonly handle_command: (parser: Parser, world: ObjectLevel<W>) => ObjectLevel<W>,
+
+            // Given an historically previous world and the current (new) world,
+            // return any history interpretation ops to be applied to the previous world
+            readonly interpret_history: (old_world: ObjectLevel<W>, new_world: ObjectLevel<W>) => InterpretationOp[]
         ) { 
             this.current_world = initial_world;
             
@@ -135,22 +117,49 @@ namespace World4 {
         }
 
         apply_command(cmd: Token[], commit: boolean = true) {
-            let prev_state = this.current_world; //unwrap(this.history[this.history.length - 1]);
+            let prev_state = this.current_world;
             
-            let [next_state, parses] = Parser.run_thread(cmd, p => this.handle_command(p, prev_state));
+            // First handle the command
+            let [maybe_next_state, parses] = Parser.run_thread(cmd, p => this.handle_command(p, prev_state) as W);
 
-            if (next_state instanceof NoMatch) {
-
-            } else {
-                let x: Updater<World> = {};
-                
-                let next_state1: W = next_state;
-
-                // TODO: This badboy isn't typechecking
-                update(next_state1, { prev : next_state1 });
-
+            if (!is_match(maybe_next_state)) {
+                return; // TODO do more here
             }
+            let next_state: W = maybe_next_state;
+            next_state = <W>update(next_state as World, { previous: prev_state, parses });;
+            
+            // Next apply history interp
+            next_state = <W>update(next_state as World, {
+                current_interpretation: { labels: [], previous: next_state.current_interpretation }
+            });;
+            
+            let hist_state = next_state;
+            let hist_interp = next_state.current_interpretation;
+            let parent_link: InterpretationNode = null; // null means root, aka next_state.current_interpretation.
+            while (hist_state !== null) {
+                let ops = this.interpret_history(hist_state, next_state);
 
+                if (ops !== undefined) {
+                    let new_hist_interp = update(hist_interp, {
+                        labels: _ => apply_interpretation_ops(_, ops)
+                    });
+
+                    // unnecessary optimization but w/e
+                    if (new_hist_interp !== hist_interp) {
+                        if (parent_link === null) {
+                            next_state = <W>update(next_state as World, { current_interpretation: hist_interp });
+                        } else {
+                            parent_link.previous = hist_interp;
+                        }
+                    }
+                }
+
+                hist_state = hist_state.previous;
+                parent_link = hist_interp;
+                hist_interp = hist_interp.previous;
+            }
+            
+            // Next pop this in this.possible_world and either commit or don't.
             
 
 

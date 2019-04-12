@@ -24,9 +24,9 @@
 */
 
 import { FuckSet, array_last } from './datatypes'
-import { starts_with } from './text_tools'
+import { starts_with, tokenize } from './text_tools'
 
-class NoMatch extends Error {};
+export class NoMatch extends Error {};
 class ParseRestart extends Error {
     constructor(n_splits: number) {
         super();
@@ -35,7 +35,7 @@ class ParseRestart extends Error {
 
     n_splits: number;
 };
-class ParseError extends Error {};
+export class ParseError extends Error {};
 
 export const SUBMIT_TOKEN = Symbol('SUBMIT');
 export type Token = string | typeof SUBMIT_TOKEN;
@@ -196,6 +196,21 @@ export function typeahead(parse_results: ParseResult[], input_stream: Token[]): 
 }
 
 
+/*
+    Helper function for parser methods that take an optional callback or return value on success
+    The pattern is to use function overloading to get the types right, and call this
+    function to get the behavior right.
+
+    TODO: Can we get what we want using promises?
+*/
+function call_or_return(parser: Parser, result?: any): any {
+    if (result instanceof Function) {
+        return result(parser);
+    }
+    return result;
+}
+
+
 export class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
         this.input_stream = input_stream;
@@ -211,16 +226,14 @@ export class Parser {
     _split_iter: Iterator<number>;
     
     consume(tokens: ConsumeSpec.Consumable[]): void;
-    consume<T>(tokens: ConsumeSpec.Consumable[], callback: () => T): T;
+    consume<T>(tokens: ConsumeSpec.Consumable[], callback: ParserThread<T>): T;
     consume<T>(tokens: ConsumeSpec.Consumable[], result: T): T;
     consume(tokens: ConsumeSpec.Consumable[], result?: any): any {
         let specs: ConsumeSpec_Tainted[] = tokens.map(ConsumeSpec_Tainted.make);
 
         this._consume(specs);
-        if (result instanceof Function) {
-            return result();
-        }
-        return result;
+        
+        return call_or_return(this, result);
     }
 
     /*
@@ -332,23 +345,36 @@ export class Parser {
     }
 
     submit(): void;
-    submit<T>(callback: () => T): T;
+    submit<T>(callback: ParserThread<T>): T;
     submit<T>(result: T): T;
     submit<T>(result?: any) {
-        return this.consume([SUBMIT_TOKEN], result);
+        this._consume([ConsumeSpec_Tainted.make(SUBMIT_TOKEN)]);
+
+        return call_or_return(this, result);
     }
 
-    split<T>(subthreads: ParserThread<T>[]): T {
+    /*
+        TODO: support a callback for split() which takes both the result value, and the parser.
+    */
+    split<T>(subthreads: ParserThread<T>[]): T;
+    split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => R): R;
+    split(subthreads: ParserThread<any>[], callback?: any): any {
         let {value: split_value, done} = this._split_iter.next();
         if (done) {
             throw new ParseRestart(subthreads.length);
         }
         
         let st = subthreads[split_value];
-        return st(this);
+        let result = st(this);
+
+        if (callback === undefined) {
+            return result;
+        }
+
+        return callback(result, this);
     }
 
-    static run_thread<T>(t: ParserThread<T>, tokens: Token[]): [T | NoMatch, ParseResult[]] {
+    static run_thread<T>(tokens: Token[], t: ParserThread<T>): [T | NoMatch, ParseResult[]] {
         let frontier = [[]];
         let results: (T | NoMatch)[] = [];
         let parse_results: ParseResult[] = [];
@@ -419,9 +445,48 @@ export class Parser {
     // }
 }
 
+export function is_match<T>(x: T | NoMatch): x is T {
+    return !(x instanceof NoMatch);
+}
+
 // Question: should the parser input be mandatory?
 // Doesn't seem to complain when i leave out the first arg, even with this type
-export type ParserThread<T> = (p: Parser) => T;
+export type ParserThread<T> = (p?: Parser) => T;
 export type ParserThreads<T> =  ParserThread<T>[];
 
+/*
+    Little DSL to more concisely express sequences of tokens to consume
+
+    TODO: support Used typeahead type
+*/
+export function make_consumer(spec: string): (parser: Parser) => void;
+export function make_consumer<R>(spec: string, callback: ParserThread<R>): ParserThread<R>;
+export function make_consumer<T>(spec: string, result: T): ParserThread<T>
+export function make_consumer(spec: string, result?: any): ParserThread<any> {
+    let toks = tokenize(spec)[0];
+
+    return (parser) => {
+        for (let t of toks) {
+            let token_type: ConsumeSpec.TokenType;
+            let typeahead_type: ConsumeSpec.TypeaheadType;
+
+            if (t.startsWith('~')) {
+                typeahead_type = { kind: 'Locked' };
+                t = t.slice(1);
+            }
+
+            if (t.startsWith('*')) {
+                token_type = { kind: 'Keyword' };
+                t = t.slice(1);
+            } else if (t.startsWith('&')) {
+                token_type = { kind: 'Option' };
+                t = t.slice(1);
+            }
+
+            parser.consume(t.split('_').map(t => ({ token: t, token_type, typeahead_type })));
+        }
+
+        return call_or_return(parser, result);
+    }
+}
 

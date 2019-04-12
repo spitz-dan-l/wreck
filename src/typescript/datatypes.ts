@@ -152,43 +152,117 @@ export function chain_update(target: Object, source: Object, replace_keys: strin
     return updated;
 }
 
+// https://github.com/Microsoft/TypeScript/issues/13923
+type Primitive = undefined | null | boolean | string | number | Function
 
-type Updater = { [K: string]: Updater | ((x: any) => any) };
+export type DeepImmutable<T> =
+    T extends Primitive ? T :
+        T extends Array<infer U> ? DeepImmutableArray<U> :
+            T extends Map<infer K, infer V> ? DeepImmutableMap<K, V> :
+                T extends object ? DeepImmutableObject<T> : unknown;
 
-export function update(source: any, updater: Updater): any {
-    if (updater.constructor === Object) {
-        let result;
-        if (source.constructor === Object) {
-            result = {...source};
-        } else {
-            result = {};
+interface DeepImmutableArray<T> extends ReadonlyArray<DeepImmutable<T>> {}
+interface DeepImmutableMap<K, V> extends ReadonlyMap<DeepImmutable<K>, DeepImmutable<V>> {}
+type DeepImmutableObject<T> = {
+    readonly [K in keyof T]: DeepImmutable<T[K]>
+}
+
+
+/*
+    Two versions of update.
+
+    First one, always returns the same type as the input.
+        In this case, there on constraints we can assume for the Updater type.
+    Second one, no such guarantee.
+*/
+
+namespace Updater {
+    type Primitive = undefined | null | boolean | string | number;
+
+    export type Updater<T> =  
+        (T extends Function ? never :  
+            T extends Primitive ? PrimitiveUpdater<T> :
+                T extends Array<infer U> ? PrimitiveUpdater<T> :
+                    T extends object ? ObjectUpdater<T> :
+                        unknown) |
+        ((x: T) => T);
+
+    type PrimitiveUpdater<T> = T;
+
+    type ObjectUpdater<T> = {
+        [K in keyof T]?: Updater<T[K]>
+    };
+
+    // export type Updater<T> = any
+
+    export function update<T>(source: T, updater: Updater<T>): T {
+        if (updater instanceof Function) {
+            return updater(source);
         }
-        
-        for (let [n, v] of Object.entries(updater)) {
-            if (v === undefined) {
-                delete result[n];
+
+        // not a function, not a non-array object
+        if (updater instanceof Array || !(updater instanceof Object)) {
+            return <T>updater;
+        }
+
+        if (updater instanceof Object) {
+            let result: Partial<T>;
+            if (source.constructor === Object) {
+                result = {...source};
             } else {
-                result[n] = update(result[n], v as any);
+                result = {};
             }
+            
+            for (let [n, v] of Object.entries(updater)) {
+                if (v === undefined) {
+                    delete result[n];
+                } else {
+                    result[n] = update(result[n], v);
+                }
+            }
+
+            return <T>result;
         }
 
-        return result;
-    } else if (updater.constructor === Function){
-        let updater: ((x: any) => any);
-        return updater(source);
-    } else {
-        //just "replacing" source with updater
-        let updater: any;
-        return updater;
+        throw Error('Should never get here');
     }
 }
 
-// let obj = { a: 1, b: { c: [2,3], d: 5 } };
-// let updated: typeof obj = update(obj, { b: { c: _ => [..._, 4] } } );
+export type Updater<T> = Updater.Updater<T>;
+export let update = Updater.update;
 
-// update(obj, { e: { f: _ => 6 }});
+// type AnyUpdater = { [K: string]: AnyUpdater | ((x: any) => any) };
 
-// let x = 5;
+// export function update_any(source: any, updater: Updater<any>): any {
+//     if (updater.constructor === Object) {
+//         let result;
+//         if (source.constructor === Object) {
+//             result = {...source};
+//         } else {
+//             result = {};
+//         }
+        
+//         for (let [n, v] of Object.entries(updater)) {
+//             if (v === undefined) {
+//                 delete result[n];
+//             } else {
+//                 result[n] = update_any(result[n], v as any);
+//             }
+//         }
+
+//         return result;
+//     } else if (updater.constructor === Function){
+//         let updater: ((x: any) => any);
+//         return updater(source);
+//     } else {
+//         //just "replacing" source with updater
+//         let updater: any;
+//         return updater;
+//     }
+// }
+// export function update<T>(source: T, updater: Updater<T>): T {
+//     return update_any(source, updater);
+// }
 
 export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
     if (ar1.length !== ar2.length) {
@@ -445,6 +519,7 @@ export type ValidatedString<V extends StringValidator> = string & StringValidity
 export type ValidString<V extends StringValidator> = string & _StringValidity.valid;
 
 
+// EDIT: actually, the below is made irrelevant by "as const" in 3.4.
 // Holy dang this is cool:
 // https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
 //
@@ -454,30 +529,8 @@ export function infer_literal_array<T extends string>(...arr: T[]): T[] {
   return arr;
 }
 
-export function struct<K extends string, R extends object>(kind: K, rest?: R) {
-    return { ...rest, kind };
-}
-
-let r = struct('Horse', {kind: 4});
-
-let x = r.kind
-
-// A Struct is a tuple whose first element is an enum containing the rest of the struct's field names
-type Struct = {0:{[k: string]: any}};
-type StructType<S extends Struct> = S[0];
-type StructFields<S extends Struct> = keyof StructType<S>;
-type StructProxy<S extends Struct> = { [K in StructFields<S>]: StructType<S>[K]}
-
-export function field_getter<S extends Struct>(x: S): StructProxy<S> {
-    let result: any = {};
-    for (let key in x[0]) {
-        Object.defineProperty(result, key, {
-            get: () => x[x[0][key]]
-        });
-    }
-    return result;
-}
-
 export function array_last<T>(arr: T[]): T {
     return arr[arr.length - 1];
 }
+
+
