@@ -207,7 +207,7 @@ namespace Updater {
 
         if (updater instanceof Object) {
             let result: Partial<T>;
-            if (source.constructor === Object) {
+            if (source instanceof Object) {
                 result = {...source};
             } else {
                 result = {};

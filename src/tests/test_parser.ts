@@ -1,11 +1,12 @@
 import {
     Parser,
     Token,
-    input_display,
-    typeahead,
     make_consumer,
     SUBMIT_TOKEN,
-    TokenMatch
+    TokenMatch,
+    Parsed,
+    consume,
+    raw
 } from '../typescript/parser2';
 
 import { array_last } from '../typescript/datatypes';
@@ -43,17 +44,14 @@ describe('parser', () => {
             return `Looked at ${who} ${how}`;
         }
 
-        let input: Token[] = ['look', 'at', 'me'];
-
-        let [result, parses] = Parser.run_thread(input, main_thread);
+        let result = Parser.run_thread(raw('look at me'), main_thread);
 
         console.log(result);
 
-        let id = input_display(parses, input);
-        console.log(id);
-        console.log(array_last(id.matches).type);
+        console.log(result.parsing.view);
+        console.log(array_last(result.parsing.view.matches).type);
 
-        let ta = typeahead(parses, input);
+        let ta = result.parsing.view.typeahead_grid;
         console.log(ta);
         if (ta.length > 0) {
             console.log(array_last(ta[0]).type);
@@ -69,20 +67,19 @@ describe('parser', () => {
     it('should do the dsl thing', () => {
         let main_thread = make_consumer("*daniel didn't &wash", (p) => p.submit('unclean'));
 
-        let input: Token[] = ["daniel",  "didn't",  "wash", SUBMIT_TOKEN];
-
-        let [result, parses] = Parser.run_thread(input, main_thread);
-        assert.equal(result, 'unclean', 'daniel was too clean');
-        assert.equal(parses.length, 1);
+        let result = <Parsed<string>>Parser.run_thread(raw("daniel didn't wash"), main_thread);
+        assert.equal(result.kind, 'Parsed');
+        assert.equal(result.result, 'unclean', 'daniel was too clean');
+        assert.equal(result.parsing.parses.length, 1);
         
-        let display = input_display(parses, input);
+        let view = result.parsing.view;
         let expected_matches: TokenMatch[] = [
             { kind: 'TokenMatch', token: 'daniel', type: { kind: 'Match', type: { kind: 'Keyword' } } },
             { kind: 'TokenMatch', token: "didn't", type: { kind: 'Match', type: { kind: 'Filler' } } },
             { kind: 'TokenMatch', token: 'wash', type: { kind: 'Match', type: { kind: 'Option' } } },
             { kind: 'TokenMatch', token: SUBMIT_TOKEN, type: { kind: 'Match', type: { kind: 'Filler' } } }
         ];
-        assert.deepEqual(display.matches, expected_matches);
+        assert.deepEqual(view.matches, expected_matches);
     });
 
     it('should string split() calls', () => {
@@ -91,9 +88,35 @@ describe('parser', () => {
             () => p.consume(['jason'], 'jason')
         ], (who) => p.submit(`it was ${who} all along`));
 
-        let [result, ] = Parser.run_thread(['jason', SUBMIT_TOKEN], main_thread);
+        let {result} = <Parsed<string>>Parser.run_thread(raw('jason'), main_thread);
 
         assert.equal(result, 'it was jason all along');
+    });
+
+    it('Lookahead works', () => {
+        let things = [
+            ['fluke', 'fish'],
+            ['fluke', 'coincidence']
+        ];
+
+        let result = Parser.run_thread(raw('it was all a fluke'), make_consumer('it was all a', (p) => {
+            let meaning = p.split(things.map(([noun, meaning]) => make_consumer(noun, meaning)));
+
+            // We want to retroactively eliminate the "fish" sense of the word "fluke".
+            if (meaning === 'fish') {
+                p.eliminate();
+
+                // (In practice, we might be better served filtering it out of the things passed
+                //  to p.split() above, but the point is, if we haven't factored our parser fragments
+                //  in that way, we don't have to refactor the whole thing.)
+            }
+            p.submit();
+            return meaning;
+        }));
+
+        assert.equal(result.kind, 'Parsed');
+
+        assert.equal((result as Parsed<string>).result, 'coincidence');
     });
 });
 

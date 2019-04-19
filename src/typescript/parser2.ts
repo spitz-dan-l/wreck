@@ -26,14 +26,9 @@
 import { FuckSet, array_last } from './datatypes'
 import { starts_with, tokenize } from './text_tools'
 
-export class NoMatch extends Error {};
-class ParseRestart extends Error {
-    constructor(n_splits: number) {
-        super();
-        this.n_splits = n_splits;
-    }
-
-    n_splits: number;
+export class NoMatch {};
+class ParseRestart {
+    constructor(public n_splits: number) {}
 };
 export class ParseError extends Error {};
 
@@ -95,6 +90,8 @@ export namespace ConsumeSpec {
 }
 
 export namespace TokenMatch {
+    export type MatchStatus = 'Match' | 'Partial' | 'Error';
+
     export type Match = { kind: 'Match', type: ConsumeSpec.TokenType };
     export type Partial = { kind: 'Partial', token: Token, type: ConsumeSpec.TypeaheadType };
     export type Error = { kind: 'Error', token: Token };
@@ -127,34 +124,81 @@ export type TokenMatch = TokenMatch.TokenMatch;
     Ready, Not Ready (to execute)
 
 */
-export type InputDisplay = {
-    kind: 'InputDisplay',
+export type ParsingView = {
+    kind: 'ParsingView',
+    
+    // How to display each token in the input
     matches: TokenMatch[],
-    submittable: boolean
+    
+    // If submittable, display a carriage return typeahead, and brighten text
+    /*
+        Two possible schemes:
+        1. It is possible to pass inputs to Parser.run_thread that don't end in a submit token.
+        In this case, the UI would insert the submit token on enter press, and the commit= option would
+        go away on WorldDriver.apply_command.
+
+        2. A submit token is always added to the input stream in Parser.run_thread.
+        Then, the concept of "submitability" does not matter directly to the Parser, it is a world
+        concept.
+
+        We are going with 1. 2 Doesn't actually work because it breaks autocomplete.
+    */
+    submittable: boolean,
+
+    submission: boolean,
+    
+    // Whether the whole command is Match, Partial, Error. Used to highlight and color.
+    match_status: TokenMatch.MatchStatus,
+
+    // Used to display typeahead during typing
+    typeahead_grid: TokenMatch.Partial[][]
 };
 
-export type ParseResult = TokenMatch[];
+/*
+    TODO:
+    Should we include the input display and typeahead results in the Parsing?
+    Should we add a top-level attribute saying whether the whole thing is Valid, Partial or Error?
+        This would guaranteed cause duplication of data.
+*/
+export type Parsing = {
+    kind: 'Parsing',
+    view: ParsingView,
+    parses: TokenMatch[][],
+    tokens: Token[],
+    whitespace: string[],
+    raw: RawInput
+}
 
-export function is_parse_result_valid(result: ParseResult) {
+export type Parsed<T> = { kind: 'Parsed', result: T, parsing: Parsing };
+export type NotParsed = { kind: 'NotParsed', parsing: Parsing };
+
+export type ParseResult<T> = Parsed<T> | NotParsed;
+
+export function is_parse_result_valid(result: TokenMatch[]) {
     return result.length === 0 || TokenMatch.is_match(array_last(result).type);
 }
 
 // for each of the input tokens, how should they be displayed/highighted?
-export function input_display(parse_results: ParseResult[], input_stream: Token[]): InputDisplay {
-    // find the first submittable row
-    let row: ParseResult;
-    let submittable = true;
-    row = parse_results.find(row => {
-        let last = array_last(row);
-        return TokenMatch.is_partial(last.type) && last.type.token === SUBMIT_TOKEN;
-    });
-    // if none, find the first non-error row
-    if (row === undefined) {
-        submittable = false;
-        row = parse_results.find(row => row.every(({ type }) => !TokenMatch.is_error(type)));
-    }
-    // if none, make everything error
-    if (row === undefined) {
+export function compute_view(parse_results: TokenMatch[][], input_stream: Token[]): ParsingView {
+    // let parse_results: TokenMatch[][] = parsing.parses;
+    // let input_stream: Token[] = parsing.tokens;
+
+    let match_status: TokenMatch.MatchStatus;
+    let submission = false;
+    let row: TokenMatch[];
+
+    if ((row = parse_results.find(row => array_last(row).type.kind === 'Match')) !== undefined) {
+        match_status = 'Match';
+        // TODO: throw a runtime exc here if we have a Match at the end but it's not SUBMIT_TOKEN ?
+        // Would imply a commmand thread that doesn't end in submit.
+        submission = array_last(row).token === SUBMIT_TOKEN;
+
+        if (!submission) {
+            throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
+        }
+    } else if ((row = parse_results.find(row => array_last(row).type.kind === 'Partial')) !== undefined) {
+        match_status = 'Partial';
+    } else {
         row = input_stream.map(tok => ({
             kind: 'TokenMatch',
             token: tok,
@@ -163,12 +207,19 @@ export function input_display(parse_results: ParseResult[], input_stream: Token[
                 token: null
             }
         }));
+        match_status = 'Error';
     }
 
+    let typeahead_grid = compute_typeahead(parse_results, input_stream);
+    let submittable = typeahead_grid.some(row => array_last(row).token === SUBMIT_TOKEN)
+
     return {
-        kind: 'InputDisplay',
+        kind: 'ParsingView',
         matches: row,
-        submittable
+        submittable,
+        submission,
+        match_status,
+        typeahead_grid
     };
 }
 
@@ -178,7 +229,9 @@ Typeahead
     If the row is at least the length of the input stream
     Typeahead is the Partial TokenMatches suffix (always at the end)
 */
-export function typeahead(parse_results: ParseResult[], input_stream: Token[]): TokenMatch.Partial[][] {
+export function compute_typeahead(parse_results: TokenMatch[][], input_stream: Token[]): TokenMatch.Partial[][] {
+    // let parse_results: TokenMatch[][] = parsing.parses;
+    // let input_stream: Token[] = parsing.tokens;
     let rows_with_typeahead = parse_results.filter(pr => 
         !(TokenMatch.is_error(array_last(pr).type))
         && pr.slice(input_stream.length - 1).some(({ type }) => 
@@ -193,6 +246,8 @@ export function typeahead(parse_results: ParseResult[], input_stream: Token[]): 
         result.push(...elts.map(tm => tm.type));
         return result;
     });
+
+    // TODO: add dedupe step here
 }
 
 
@@ -221,7 +276,7 @@ export class Parser {
     input_stream: Token[];
     pos: number = 0;
 
-    parse_result: ParseResult = [];
+    parse_result: TokenMatch[] = [];
     
     _split_iter: Iterator<number>;
     
@@ -374,18 +429,26 @@ export class Parser {
         return callback(result, this);
     }
 
-    static run_thread<T>(tokens: Token[], t: ParserThread<T>): [T | NoMatch, ParseResult[]] {
-        let frontier = [[]];
+    static run_thread<T>(raw: RawInput, t: ParserThread<T>): ParseResult<T> {
+        
+        let [tokens, whitespace]: [Token[], string[]] = tokenize(raw.text);
+        
+        if (raw.submit) {
+            tokens.push(SUBMIT_TOKEN);
+        }
+
+        type Path = (number | Iterator<number>)[];
+        let frontier: Path[] = [[]];
         let results: (T | NoMatch)[] = [];
-        let parse_results: ParseResult[] = [];
+        let parse_results: TokenMatch[][] = [];
 
         while (frontier.length > 0) {
-            let path = frontier.pop();
+            let path = <Path>frontier.pop();
             let splits_to_take;
             if (path.length === 0) {
                 splits_to_take = path;
             } else {
-                let n = array_last(path).next();
+                let n = (array_last(path) as Iterator<number>).next();
                 if (n.done) {
                     continue;
                 } else {
@@ -403,7 +466,7 @@ export class Parser {
                 if (e instanceof NoMatch) {
                     result = e;
                 } else if (e instanceof ParseRestart) {
-                    let new_splits = [];
+                    let new_splits: number[] = [];
                     for (let i = 0; i < e.n_splits; i++) {
                         new_splits.push(i);
                     } 
@@ -420,38 +483,49 @@ export class Parser {
             parse_results.push(p.parse_result);
         }
 
-        let valid_results = results.filter(r => !(r instanceof NoMatch));
-        if (valid_results.length === 0) {
-            return [new NoMatch(), parse_results];
-        }
-        if (valid_results.length > 1) {
-            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
-        }
-        return [valid_results[0], parse_results];
-    }
+        let view = compute_view(parse_results, tokens);
 
-    // demonstration of the overloaded
-    // bloop() {
-    //     let x = this.split([(p) => 4]);
-    //     let x2 = this.split(
-    //         <ParserThreads<string | number>>[
-    //             ((p) => 4),
-    //             ((p) => 'f')
-    //         ],
-    //         (rs) => 1);
-    //     // this will be an error because the inferred type of an empty array is {}[], and number is not compatible with {}
-    //     // in practice this should not matter because an empty array of subthreads is a runtime error.
-    //     // let x3 = this.split([], (x: number) => 4);
-    // }
+        let parsing: Parsing = {
+            kind: 'Parsing',
+            view,
+            parses: parse_results,
+            tokens,
+            whitespace,
+            raw
+        };
+
+        let valid_results = <T[]>results.filter(r => !(r instanceof NoMatch));
+        if (valid_results.length === 0) {
+            return {
+                kind: 'NotParsed',
+                parsing
+            }
+        } else if (valid_results.length > 1) {
+            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
+        } else {
+            return {
+                kind: 'Parsed',
+                result: valid_results[0],
+                parsing
+            }
+            
+        }
+    }
 }
 
-export function is_match<T>(x: T | NoMatch): x is T {
-    return !(x instanceof NoMatch);
+export type RawInput = {
+    kind: 'RawInput',
+    text: string,
+    submit: boolean
+};
+
+export function raw(text: string, submit: boolean = true): RawInput {
+    return { kind: 'RawInput', text, submit };
 }
 
 // Question: should the parser input be mandatory?
 // Doesn't seem to complain when i leave out the first arg, even with this type
-export type ParserThread<T> = (p?: Parser) => T;
+export type ParserThread<T> = (p: Parser) => T;
 export type ParserThreads<T> =  ParserThread<T>[];
 
 /*
@@ -490,3 +564,9 @@ export function make_consumer(spec: string, result?: any): ParserThread<any> {
     }
 }
 
+export function consume(parser: Parser, spec: string): void;
+export function consume<R>(parser: Parser, spec: string, callback: ParserThread<R>): R;
+export function consume<T>(parser: Parser, spec: string, result: T): T
+export function consume(parser: Parser, spec: string, result?: any): any {
+    return make_consumer(spec, result)(parser);
+}
