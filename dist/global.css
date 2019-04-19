@@ -10,13 +10,11 @@
       background: black;
       position: absolute;
       display: block;
-}
-
-.terminal {
       padding: 3em;
+     
 }
 
-.terminal:focus {
+#terminal:focus {
       outline: none;
 }
 

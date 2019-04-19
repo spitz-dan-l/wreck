@@ -151,6 +151,9 @@ export type ParsingView = {
     match_status: TokenMatch.MatchStatus,
 
     // Used to display typeahead during typing
+    // TODO: make decisions about how to indicate a typeahead row is locked
+    //    Currently it's a bit ugly as each token in the row could be locked on not
+    //    Also a view of the typeahead with correct whitespace inserted
     typeahead_grid: TokenMatch.Partial[][]
 };
 

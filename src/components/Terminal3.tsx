@@ -1,17 +1,17 @@
 import * as React from 'react';
 
 
-import {ParsedText2} from './Text2';
+import {ParsedText, OutputText} from './Text2';
 
-import {WorldDriver, World} from "../typescript/world";
+import { WorldDriver, World, Interpretations } from "../typescript/world";
 
 /*
 TODO steps to get this all working
 
-1. Make a static world/history viewer app
+DONE 1. Make a static world/history viewer app
   - no interactivity, just displays previous commands and the resulting messages
   - shows parser highlighting
-2. Add interpretation restyling to the static viewer
+DONE 2. Add interpretation restyling to the static viewer
 3. Add input prompt
   - Highlights tokens as the user types
   - Submission of command triggers rerender, new history element
@@ -23,18 +23,24 @@ TODO steps to get this all working
 
 */
 
-type AppProps = { world_driver: WorldDriver<any> };
+export const History: React.FunctionComponent<{world: World}> = ({world}) => (
+  <div className="history">
+    <HistoryElt world={world} interpretations={world.interpretations} />
+  </div>
+)
 
-const GameContext: React.Context<AppProps> = React.createContext(null);
-
-React.useReducer((x,y)=>x, undefined, )
-
-const App: React.FunctionComponent<AppProps> = (props) => (
-  <GameContext.Provider value={{world_driver: props.world_driver}}>
-    <div>
+const HistoryElt: React.FunctionComponent<{world: World, interpretations: Interpretations}> = ({world, interpretations}) => {
+  let i = interpretations[world.index];
+  let className = i !== undefined ? i.join(' ') : '';
+  return <>
+    {world.previous !== null ? <HistoryElt world={world.previous} interpretations={interpretations} /> : '' }
+    <div key={world.index} className={className}>
+      { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
+      <OutputText message={world.message} />
     </div>
-  </GameContext.Provider>
-);
+  </>;
+};
+
     
 // (
 //   <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>

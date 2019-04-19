@@ -8,6 +8,7 @@ import { World, WorldDriver, CommandHandler, HistoryInterpreter, get_initial_wor
 
 import { Parser, consume, make_consumer, raw } from '../typescript/parser2';
 
+
 describe('world', () => {
     it('thingy', () => {
         interface MyWorld extends World {
@@ -51,7 +52,6 @@ describe('world', () => {
 
         assert.equal(driver.current_world.message, 'You are currently down.');
         // This world is a flip flop.
-        debugger;
         driver.apply_command(raw('go down')); // this will be invalid
         driver.apply_command(raw('go up')); // this will be valid
         driver.apply_command(raw('go up')); // this will be invalid

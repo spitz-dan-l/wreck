@@ -47,7 +47,7 @@ type InterpretationLabel = string;
 type InterpretationOp =
     { kind: 'Add', label: InterpretationLabel } |
     { kind: 'Remove', label: InterpretationLabel };
-type Interpretations = { readonly [k: number]: readonly InterpretationLabel[] };
+export type Interpretations = { readonly [k: number]: readonly InterpretationLabel[] };
 
 
 function apply_interpretation_op(interp: readonly InterpretationLabel[], op: InterpretationOp): readonly InterpretationLabel[] {
@@ -91,7 +91,7 @@ export function object_level<W extends World>(w: W): ObjectLevel<W> {
 }
 
 export type CommandHandler<W extends World> = (parser: Parser, world: ObjectLevel<W>) => ObjectLevel<W>;
-export type HistoryInterpreter<W extends World> = (old_world: ObjectLevel<W>, new_world: ObjectLevel<W>) => InterpretationOp[] | null;
+export type HistoryInterpreter<W extends World> = (old_world: ObjectLevel<W>, new_world: ObjectLevel<W>) => InterpretationOp[] | undefined;
 
 const INITIAL_WORLD: World = {
     message: undefined,
@@ -134,8 +134,8 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
 
     let next_state: W = result.result;
     next_state = <W>update(next_state as World, {
-        previous: world,
-        parsing: result.parsing,
+        previous: _ => world,
+        parsing: _ => result.parsing,
         index: _ => _ + 1
     });
 
@@ -143,7 +143,7 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
     let hist_state: W | null = next_state;
     while (hist_state !== null) {
         let ops = spec.interpret_history(hist_state, next_state);
-        if (ops !== null) {
+        if (ops !== undefined) {
             let old_interp = next_state.interpretations[hist_state.index] || [];
             let new_interp: readonly InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
             if (old_interp !== new_interp) {
