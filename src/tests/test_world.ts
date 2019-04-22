@@ -24,6 +24,5 @@ describe('world', () => {
 
         assert.equal(driver.current_world.message, 'You are currently up.');
         assert.equal(driver.current_world.index, 1);
-
     });
 });
