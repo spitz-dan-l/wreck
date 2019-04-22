@@ -23,10 +23,10 @@
 
 */
 
-import { FuckSet, array_last } from './datatypes'
+import { array_last } from './datatypes'
 import { starts_with, tokenize } from './text_tools'
 
-export class NoMatch {};
+class NoMatch {};
 class ParseRestart {
     constructor(public n_splits: number) {}
 };
@@ -35,87 +35,51 @@ export class ParseError extends Error {};
 export const SUBMIT_TOKEN = Symbol('SUBMIT');
 export type Token = string | typeof SUBMIT_TOKEN;
 
+export const NEVER_TOKEN = Symbol('NEVER');
+export type TaintedToken = Token | typeof NEVER_TOKEN;
 
-class ConsumeSpec_Tainted {
-    kind: 'ConsumeSpec' = 'ConsumeSpec';
+export type TokenType = 
+    { kind: 'Filler' } |
+    { kind: 'Option' } |
+    { kind: 'Keyword' };
 
-    constructor(
-        public token: ConsumeSpec.TaintedToken,
-        public token_type: ConsumeSpec.TokenType = { kind: 'Filler' },
-        public typeahead_type: ConsumeSpec.TypeaheadType = { kind: 'Available' }
-    ) {}
+export type TypeaheadType =
+    { kind: 'Available' } |
+    { kind: 'Used' } |
+    { kind: 'Locked' }; // TODO: Need to actually make this invalid when parsed.
 
-    static make(obj: ConsumeSpec.Consumable_Tainted): ConsumeSpec_Tainted {
-        if (ConsumeSpec.is_token(obj)) {
-            return new ConsumeSpec_Tainted(obj);
-        }
-        return new ConsumeSpec_Tainted(obj.token, obj.token_type, obj.typeahead_type);
-    }
+export interface ConsumeSpec {
+    kind: 'ConsumeSpec';
+    token: TaintedToken;
+    token_type: TokenType;
+    typeahead_type: TypeaheadType;
 }
 
-export interface ConsumeSpec extends ConsumeSpec_Tainted {
-    token: Token;
+
+export type MatchStatus = 'Match' | 'PartialMatch' | 'ErrorMatch';
+
+export type Match = { kind: 'Match', type: TokenType };
+export type PartialMatch = { kind: 'PartialMatch', token: Token, type: TypeaheadType };
+export type ErrorMatch = { kind: 'ErrorMatch', token: Token };
+
+export type MatchType = 
+    Match |
+    PartialMatch |
+    ErrorMatch;
+
+export function is_match(m: TokenMatch): m is TokenMatch & {type: Match} {
+    return m.type.kind === 'Match'
 }
 
-
-export namespace ConsumeSpec {
-    export type TokenType = 
-        { kind: 'Filler' } |
-        { kind: 'Option' } |
-        { kind: 'Keyword' };
-
-    export type TypeaheadType =
-        { kind: 'Available' } |
-        { kind: 'Used' } |
-        { kind: 'Locked' }; // TODO: Need to actually make this invalid when parsed.
-
-    export const NEVER_TOKEN = Symbol('NEVER');
-    export type TaintedToken = Token | typeof NEVER_TOKEN;
-
-    export type Consumable =
-        Token |
-        (Partial<ConsumeSpec> & { token: Token });
-
-    export type Consumable_Tainted =
-        TaintedToken |
-        (Partial<ConsumeSpec_Tainted> & { token: TaintedToken });
-
-    export function is_token(x: Consumable_Tainted): x is TaintedToken {
-        return typeof x === 'string' || x === SUBMIT_TOKEN || x === NEVER_TOKEN;
-    }
-
-    export function is_spec(x: Consumable_Tainted): x is ConsumeSpec {
-        return !is_token(x);
-    }
+export function is_partial(m: TokenMatch): m is TokenMatch & {type: PartialMatch} {
+    return m.type.kind === 'PartialMatch'
 }
 
-export namespace TokenMatch {
-    export type MatchStatus = 'Match' | 'Partial' | 'Error';
-
-    export type Match = { kind: 'Match', type: ConsumeSpec.TokenType };
-    export type Partial = { kind: 'Partial', token: Token, type: ConsumeSpec.TypeaheadType };
-    export type Error = { kind: 'Error', token: Token };
-    
-    export type Type = 
-        Match |
-        Partial |
-        Error;
- 
-    export function is_match(m: Type): m is Match {
-        return m.kind === 'Match'
-    }
-
-    export function is_partial(m: Type): m is Partial {
-        return m.kind === 'Partial'
-    }
-
-    export function is_error(m: Type): m is Error {
-        return m.kind === 'Error'
-    }
-
-    export type TokenMatch = { kind: 'TokenMatch', token: Token, type: Type };
+export function is_error(m: TokenMatch): m is TokenMatch & {type: ErrorMatch} {
+    return m.type.kind === 'ErrorMatch'
 }
-export type TokenMatch = TokenMatch.TokenMatch;
+
+export type TokenMatch = { kind: 'TokenMatch', token: Token, type: MatchType };
 
 /*
 
@@ -148,13 +112,13 @@ export type ParsingView = {
     submission: boolean,
     
     // Whether the whole command is Match, Partial, Error. Used to highlight and color.
-    match_status: TokenMatch.MatchStatus,
+    match_status: MatchStatus,
 
     // Used to display typeahead during typing
     // TODO: make decisions about how to indicate a typeahead row is locked
     //    Currently it's a bit ugly as each token in the row could be locked on not
     //    Also a view of the typeahead with correct whitespace inserted
-    typeahead_grid: TokenMatch.Partial[][]
+    typeahead_grid: PartialMatch[][]
 };
 
 /*
@@ -178,7 +142,7 @@ export type NotParsed = { kind: 'NotParsed', parsing: Parsing };
 export type ParseResult<T> = Parsed<T> | NotParsed;
 
 export function is_parse_result_valid(result: TokenMatch[]) {
-    return result.length === 0 || TokenMatch.is_match(array_last(result).type);
+    return result.length === 0 || is_match(array_last(result));
 }
 
 // for each of the input tokens, how should they be displayed/highighted?
@@ -186,7 +150,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
     // let parse_results: TokenMatch[][] = parsing.parses;
     // let input_stream: Token[] = parsing.tokens;
 
-    let match_status: TokenMatch.MatchStatus;
+    let match_status: MatchStatus;
     let submission = false;
     let row: TokenMatch[];
 
@@ -199,18 +163,18 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
         if (!submission) {
             throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
         }
-    } else if ((row = parse_results.find(row => array_last(row).type.kind === 'Partial')) !== undefined) {
-        match_status = 'Partial';
+    } else if ((row = parse_results.find(row => is_partial(array_last(row)))) !== undefined) {
+        match_status = 'PartialMatch';
     } else {
         row = input_stream.map(tok => ({
             kind: 'TokenMatch',
             token: tok,
             type: {
-                kind: 'Error',
+                kind: 'ErrorMatch',
                 token: null
             }
         }));
-        match_status = 'Error';
+        match_status = 'ErrorMatch';
     }
 
     let typeahead_grid = compute_typeahead(parse_results, input_stream);
@@ -232,20 +196,18 @@ Typeahead
     If the row is at least the length of the input stream
     Typeahead is the Partial TokenMatches suffix (always at the end)
 */
-export function compute_typeahead(parse_results: TokenMatch[][], input_stream: Token[]): TokenMatch.Partial[][] {
+export function compute_typeahead(parse_results: TokenMatch[][], input_stream: Token[]): PartialMatch[][] {
     // let parse_results: TokenMatch[][] = parsing.parses;
     // let input_stream: Token[] = parsing.tokens;
     let rows_with_typeahead = parse_results.filter(pr => 
-        !(TokenMatch.is_error(array_last(pr).type))
-        && pr.slice(input_stream.length - 1).some(({ type }) => 
-            TokenMatch.is_partial(type)
-        )
+        !(is_error(array_last(pr)))
+        && pr.slice(input_stream.length - 1).some(is_partial)
     );
 
     return rows_with_typeahead.map(pr => {
-        let start_idx = pr.findIndex(({ type }) => TokenMatch.is_partial(type));
-        let result: TokenMatch.Partial[] = Array(start_idx).fill(null);
-        let elts = <{ type: TokenMatch.Partial }[]>pr.slice(start_idx);
+        let start_idx = pr.findIndex(is_partial);
+        let result: PartialMatch[] = Array(start_idx).fill(null);
+        let elts = <{ type: PartialMatch }[]>pr.slice(start_idx);
         result.push(...elts.map(tm => tm.type));
         return result;
     });
@@ -282,16 +244,47 @@ export class Parser {
     parse_result: TokenMatch[] = [];
     
     _split_iter: Iterator<number>;
-    
-    consume(tokens: ConsumeSpec.Consumable[]): void;
-    consume<T>(tokens: ConsumeSpec.Consumable[], callback: ParserThread<T>): T;
-    consume<T>(tokens: ConsumeSpec.Consumable[], result: T): T;
-    consume(tokens: ConsumeSpec.Consumable[], result?: any): any {
-        let specs: ConsumeSpec_Tainted[] = tokens.map(ConsumeSpec_Tainted.make);
 
-        this._consume(specs);
-        
+
+    consume(spec: string | ConsumeSpec[]): void;
+    consume<T>(spec: string | ConsumeSpec[], callback: ParserThread<T>): T;
+    consume<T>(spec: string | ConsumeSpec[], result: T): T;
+    consume(spec: string | ConsumeSpec[], result?: any): any {
+        if (typeof spec === 'string') {
+            this._consume_dsl(spec);
+        } else {
+            this._consume(spec);
+        }
         return call_or_return(this, result);
+    }
+
+    _consume_dsl(dsl: string): void {
+        let toks = tokenize(dsl)[0];
+
+        for (let t of toks) {
+            let token_type: TokenType = { kind: 'Filler' };
+            let typeahead_type: TypeaheadType  = { kind: 'Available' };;
+
+            if (t.startsWith('~')) {
+                typeahead_type = { kind: 'Locked' };
+                t = t.slice(1);
+            }
+
+            if (t.startsWith('*')) {
+                token_type = { kind: 'Keyword' };
+                t = t.slice(1);
+            } else if (t.startsWith('&')) {
+                token_type = { kind: 'Option' };
+                t = t.slice(1);
+            }
+
+            this._consume(t.split('_').map(t => ({
+                kind: 'ConsumeSpec',
+                token: t,
+                token_type,
+                typeahead_type
+            })));
+        }
     }
 
     /*
@@ -299,7 +292,7 @@ export class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    _consume<T>(tokens: ConsumeSpec_Tainted[]) {
+    _consume(tokens: ConsumeSpec[]) {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
@@ -312,7 +305,7 @@ export class Parser {
             let spec = tokens[i];
             let spec_value = spec.token;
 
-            if (spec_value === ConsumeSpec.NEVER_TOKEN) {
+            if (spec_value === NEVER_TOKEN) {
                 error = true;
                 break;
             }
@@ -356,8 +349,8 @@ export class Parser {
                     kind: 'TokenMatch',
                     token: this.input_stream[this.pos + j] || '',
                     type: {
-                        kind: 'Partial',
-                        token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token,
+                        kind: 'PartialMatch',
+                        token: t.token === NEVER_TOKEN ? '' : t.token,
                         type: t.typeahead_type
                     }
                 } as const)));
@@ -373,8 +366,8 @@ export class Parser {
                     kind: 'TokenMatch',
                     token: this.input_stream[this.pos + j] || '',
                     type: {
-                        kind: 'Error',
-                        token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token
+                        kind: 'ErrorMatch',
+                        token: t.token === NEVER_TOKEN ? '' : t.token
                     }
                 } as const)));
             // increment pos
@@ -398,15 +391,24 @@ export class Parser {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        return <never>this._consume([ConsumeSpec_Tainted.make(ConsumeSpec.NEVER_TOKEN)]);
-
+        return <never>this._consume([{
+            kind: 'ConsumeSpec',
+            token: NEVER_TOKEN,
+            token_type: { kind: 'Filler' },
+            typeahead_type: { kind: 'Available' }
+        }]);
     }
 
     submit(): void;
     submit<T>(callback: ParserThread<T>): T;
     submit<T>(result: T): T;
     submit<T>(result?: any) {
-        this._consume([ConsumeSpec_Tainted.make(SUBMIT_TOKEN)]);
+        this._consume([{
+            kind: 'ConsumeSpec',
+            token: SUBMIT_TOKEN,
+            token_type: { kind: 'Filler' },
+            typeahead_type: { kind: 'Available' }
+        }]);
 
         return call_or_return(this, result);
     }
@@ -530,46 +532,3 @@ export function raw(text: string, submit: boolean = true): RawInput {
 // Doesn't seem to complain when i leave out the first arg, even with this type
 export type ParserThread<T> = (p: Parser) => T;
 export type ParserThreads<T> =  ParserThread<T>[];
-
-/*
-    Little DSL to more concisely express sequences of tokens to consume
-
-    TODO: support Used typeahead type
-*/
-export function make_consumer(spec: string): (parser: Parser) => void;
-export function make_consumer<R>(spec: string, callback: ParserThread<R>): ParserThread<R>;
-export function make_consumer<T>(spec: string, result: T): ParserThread<T>
-export function make_consumer(spec: string, result?: any): ParserThread<any> {
-    let toks = tokenize(spec)[0];
-
-    return (parser) => {
-        for (let t of toks) {
-            let token_type: ConsumeSpec.TokenType;
-            let typeahead_type: ConsumeSpec.TypeaheadType;
-
-            if (t.startsWith('~')) {
-                typeahead_type = { kind: 'Locked' };
-                t = t.slice(1);
-            }
-
-            if (t.startsWith('*')) {
-                token_type = { kind: 'Keyword' };
-                t = t.slice(1);
-            } else if (t.startsWith('&')) {
-                token_type = { kind: 'Option' };
-                t = t.slice(1);
-            }
-
-            parser.consume(t.split('_').map(t => ({ token: t, token_type, typeahead_type })));
-        }
-
-        return call_or_return(parser, result);
-    }
-}
-
-export function consume(parser: Parser, spec: string): void;
-export function consume<R>(parser: Parser, spec: string, callback: ParserThread<R>): R;
-export function consume<T>(parser: Parser, spec: string, result: T): T
-export function consume(parser: Parser, spec: string, result?: any): any {
-    return make_consumer(spec, result)(parser);
-}

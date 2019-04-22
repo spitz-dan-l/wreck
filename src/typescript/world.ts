@@ -30,11 +30,8 @@ import {
     raw,
     RawInput,
     Parser,
-    Token,
     ParseResult,
-    Parsing,
-    NoMatch,
-    is_parse_result_valid
+    Parsing
 } from './parser2';
 
 import * as assert from 'assert';

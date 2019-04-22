@@ -21,7 +21,7 @@ import {
     array_fuck_contains,
     set_enabled,
     annotate,
-    ValidString
+    // ValidString
 } from '../datatypes';
 
 import {
@@ -190,7 +190,7 @@ export class VenienceWorld extends World<VenienceWorldState>{
 
             // we know these are valid because we indexed them
             // too lazy/busy to thread the validity tag up thru the types :(
-            let cmd_options = <ValidString<PhraseDSLValidator>[][]>om.transitions.map(([cmd, om_id]) => cmd)
+            let cmd_options = <string[][]>om.transitions.map(([cmd, om_id]) => cmd)
 
             if (cmd_options.length === 0) {
                 yield parser.done();

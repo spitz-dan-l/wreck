@@ -1,27 +1,34 @@
 TODOs
 
 Priority
-- build for cmd, reachability test
-- Commands
-        - use new parser type
+- Why webpack sourcemap no work
+- UI back up to parity
+    DONE 1. Make a static world/history viewer app
+      - no interactivity, just displays previous commands and the resulting messages
+      - shows parser highlighting
+    DONE 2. Add interpretation restyling to the static viewer
+    3. Add input prompt
+      - Highlights tokens as the user types
+      - Submission of command triggers rerender, new history element
+    4. Support view update due to new interpreatation
+    5. Typeahead added to prompt
+      - Autoocomplete options display with correct indentation
+      - Select typeahead option with keybooard, mouse
+    6. Support "locked" typeahead options
+- reachability test
+    - Given a world, walk every possible text input via typeahead options
+        - Verify that, for every option, it results in a submittable command
+        - No exceptions are thrown for any inputs
+    - Extend this to auto-explore a world?
 - eslint, reachability test as lint rule
 - integrate parser2 into rest of codebase
     - TODO: start unpacking how to do this for each part of the engine
-    - UI
-        - new API for text display info from parser
-        - support the SUBMIT_TOKEN
-        - logic for tracking whitespace between tokens no longer in parser.ts - migrate somewhere
+
     - OMs
         - migrate to the new parser API
         - port declarative DSL
         - port make_look_consumer()
 
-
-
-parser2.ts
-    Use exceptions instead of generators for parser -> no need for "function\*"
-    Don't rely on "this" at all
-    Allow no-arg closures to get used as sub-handlers (rather than explicitly requiring parser arg. it's a closure, it has it already)
 
 
 - Do a better job stealing focus

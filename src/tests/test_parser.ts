@@ -1,11 +1,9 @@
 import {
     Parser,
     Token,
-    make_consumer,
     SUBMIT_TOKEN,
     TokenMatch,
     Parsed,
-    consume,
     raw
 } from '../typescript/parser2';
 
@@ -18,15 +16,15 @@ import * as assert from 'assert';
 describe('parser', () => {
     it('should do a thing', () => {
         function main_thread(p: Parser) {
-            p.consume([{token: 'look', token_type: { kind: 'Keyword' }}]);
+            p.consume('*look');
 
             let who = p.split([
-                () => p.consume(['at', 'me'], 'me'),
-                () => p.consume(['at', 'mewtwo'], 'mewtwo'),
-                () => p.consume(['at', 'mewtwo', 'steve'], 'mewtwo steve'),
-                () => p.consume(['at', 'steven'], () => 'steven'),
-                () => p.consume(['at', 'martha'], 'martha'),
-                () => p.eliminate() 
+                () => p.consume('at me', 'me'),
+                () => p.consume('at mewtwo', 'mewtwo'),
+                () => p.consume('at mewtwo steve', 'mewtwo steve'),
+                () => p.consume('at steven', () => 'steven'),
+                () => p.consume('at martha', 'martha'),
+                () => p.eliminate()
             ]);
 
             if (who === 'steven') {
@@ -34,8 +32,8 @@ describe('parser', () => {
             }
 
             let how = p.split([
-                () => p.consume([{ token: 'happily', typeahead_type: { kind: 'Locked' }}], 'happily'),
-                () => p.consume(['sadly'], 'sadly'),
+                () => p.consume('~happily', 'happily'),
+                () => p.consume('sadly', 'sadly'),
                 () => 'neutrally'
             ]);
 
@@ -65,7 +63,7 @@ describe('parser', () => {
     });
 
     it('should do the dsl thing', () => {
-        let main_thread = make_consumer("*daniel didn't &wash", (p) => p.submit('unclean'));
+        let main_thread = (p) => p.consume("*daniel didn't &wash", () => p.submit('unclean'));
 
         let result = <Parsed<string>>Parser.run_thread(raw("daniel didn't wash"), main_thread);
         assert.equal(result.kind, 'Parsed');
@@ -84,8 +82,8 @@ describe('parser', () => {
 
     it('should string split() calls', () => {
         let main_thread = (p: Parser) => p.split([
-            () => p.consume(['daniel'], 'daniel'),
-            () => p.consume(['jason'], 'jason')
+            () => p.consume('daniel', 'daniel'),
+            () => p.consume('jason', 'jason')
         ], (who) => p.submit(`it was ${who} all along`));
 
         let {result} = <Parsed<string>>Parser.run_thread(raw('jason'), main_thread);
@@ -99,8 +97,8 @@ describe('parser', () => {
             ['fluke', 'coincidence']
         ];
 
-        let result = Parser.run_thread(raw('it was all a fluke'), make_consumer('it was all a', (p) => {
-            let meaning = p.split(things.map(([noun, meaning]) => make_consumer(noun, meaning)));
+        let result = Parser.run_thread(raw('it was all a fluke'), (p) => p.consume('it was all a', () => {
+            let meaning = p.split(things.map(([noun, meaning]) => () => p.consume(noun, meaning)));
 
             // We want to retroactively eliminate the "fish" sense of the word "fluke".
             if (meaning === 'fish') {

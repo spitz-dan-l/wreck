@@ -1,11 +1,11 @@
 import * as React from 'react';
 
-import {TokenMatch, Parsing} from '../typescript/parser2';
+import {TokenMatch, is_match, is_partial, is_error, Parsing} from '../typescript/parser2';
 
 export const Carat = () => <span>>&nbsp;</span>;
 
 function get_display_color(tm: TokenMatch) {
-  if (tm.type.kind === 'Match') {
+  if (is_match(tm)) {
     switch (tm.type.type.kind) {
       case 'Keyword':
         return 'aqua';
@@ -15,11 +15,11 @@ function get_display_color(tm: TokenMatch) {
         return 'ivory';
     }
   }
-  if (tm.type.kind === 'Partial') {
+  if (is_partial(tm)) {
     return 'silver';
   }
 
-  if (tm.type.kind === 'Error') {
+  if (is_error(tm)) {
     return 'red';
   }
 }
@@ -39,7 +39,7 @@ export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
     style.fontWeight = '900';
   } else {
     style.fontWeight = '100';
-    if (view.match_status === 'Error') {
+    if (view.match_status === 'ErrorMatch') {
       style.opacity = '0.6';
     }
   }

@@ -1,8 +1,6 @@
 import {
     // FuckDict,
     FuckSet,
-    ValidatedString,
-    ValidString,
     set_enabled,
     is_enabled,
     chain_update,
@@ -90,7 +88,7 @@ export type ContentionID = typeof ContentionIDs[number];
 
 
 export type TransitionList = (
-    [ValidatedString<PhraseDSLValidator>[], ObserverMomentID][]
+    [string[], ObserverMomentID][]
 );
 export type TransitionListI = {
     transitions: TransitionList,
@@ -144,7 +142,7 @@ export function index_oms(oms: ObserverMoment[]): {[K in ObserverMomentID]: Obse
         if (are_transitions_declarative(om)) {
             for (let [cmd, dest] of om.transitions) {
                 for (let phrase of cmd) {
-                    if (!PhraseDSLValidator.validate(phrase)) {
+                    if (!PhraseDSLValidator.is_valid(phrase)) {
                         throw `Transition phrase "${phrase}" in ObserverMoment ${om.id} has ~ or * or & somewhere other than the start.`;
                     }
                 }

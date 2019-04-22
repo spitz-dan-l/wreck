@@ -153,21 +153,6 @@ export function chain_update(target: Object, source: Object, replace_keys: strin
 }
 
 // https://github.com/Microsoft/TypeScript/issues/13923
-type Primitive = undefined | null | boolean | string | number | Function
-
-export type DeepImmutable<T> =
-    T extends Primitive ? T :
-        T extends Array<infer U> ? DeepImmutableArray<U> :
-            T extends Map<infer K, infer V> ? DeepImmutableMap<K, V> :
-                T extends object ? DeepImmutableObject<T> : unknown;
-
-interface DeepImmutableArray<T> extends ReadonlyArray<DeepImmutable<T>> {}
-interface DeepImmutableMap<K, V> extends ReadonlyMap<DeepImmutable<K>, DeepImmutable<V>> {}
-type DeepImmutableObject<T> = {
-    readonly [K in keyof T]: DeepImmutable<T[K]>
-}
-
-
 /*
     Two versions of update.
 
@@ -176,60 +161,55 @@ type DeepImmutableObject<T> = {
     Second one, no such guarantee.
 */
 
-namespace Updater {
-    type Primitive = undefined | null | boolean | string | number;
+type Primitive = undefined | null | boolean | string | number;
 
-    export type Updater<T> =  
-        (T extends Function ? never :  
-            T extends Primitive ? PrimitiveUpdater<T> :
-                T extends Array<infer U> ? PrimitiveUpdater<T> :
-                    T extends object ? ObjectUpdater<T> :
-                        unknown) |
-        ((x: T) => T);
+export type Updater<T> =  
+    (T extends Function ? never :  
+        T extends Primitive ? PrimitiveUpdater<T> :
+            T extends Array<infer U> ? PrimitiveUpdater<T> :
+                T extends object ? ObjectUpdater<T> :
+                    unknown) |
+    ((x: T) => T);
 
-    type PrimitiveUpdater<T> = T;
+type PrimitiveUpdater<T> = T;
 
-    type ObjectUpdater<T> = {
-        [K in keyof T]?: Updater<T[K]>
-    };
+type ObjectUpdater<T> = {
+    [K in keyof T]?: Updater<T[K]>
+};
 
-    // export type Updater<T> = any
+// export type Updater<T> = any
 
-    export function update<T>(source: T, updater: Updater<T>): T {
-        if (updater instanceof Function) {
-            return updater(source);
-        }
-
-        // not a function, not a non-array object
-        if (updater instanceof Array || !(updater instanceof Object)) {
-            return <T>updater;
-        }
-
-        if (updater instanceof Object) {
-            let result: Partial<T>;
-            if (source instanceof Object) {
-                result = {...source};
-            } else {
-                result = {};
-            }
-            
-            for (let [n, v] of Object.entries(updater)) {
-                if (v === undefined) {
-                    delete result[n];
-                } else {
-                    result[n] = update(result[n], v);
-                }
-            }
-
-            return <T>result;
-        }
-
-        throw Error('Should never get here');
+export function update<T>(source: T, updater: Updater<T>): T {
+    if (updater instanceof Function) {
+        return updater(source);
     }
-}
 
-export type Updater<T> = Updater.Updater<T>;
-export let update = Updater.update;
+    // not a function, not a non-array object
+    if (updater instanceof Array || !(updater instanceof Object)) {
+        return <T>updater;
+    }
+
+    if (updater instanceof Object) {
+        let result: Partial<T>;
+        if (source instanceof Object) {
+            result = {...source};
+        } else {
+            result = {};
+        }
+        
+        for (let [n, v] of Object.entries(updater)) {
+            if (v === undefined) {
+                delete result[n];
+            } else {
+                result[n] = update(result[n], v);
+            }
+        }
+
+        return <T>result;
+    }
+
+    throw Error('Should never get here');
+}
 
 // type AnyUpdater = { [K: string]: AnyUpdater | ((x: any) => any) };
 
@@ -498,25 +478,6 @@ export function is_enabled<T>(x: Disablable<T>): boolean {
 
 export type Numbered<T> = Annotatable<T, number>
 
-
-const enum _StringValidity {
-    valid
-}
-
-export type StringValidity = _StringValidity | string;
-
-export class StringValidator {
-    static validate<V extends StringValidator>(s: string): s is ValidString<V> {
-        return new this().is_valid(s);
-    }
-
-    is_valid(s: ValidatedString<this>): s is ValidString<this> {
-        return false;
-    }
-}
-
-export type ValidatedString<V extends StringValidator> = string & StringValidity;
-export type ValidString<V extends StringValidator> = string & _StringValidity.valid;
 
 
 // EDIT: actually, the below is made irrelevant by "as const" in 3.4.

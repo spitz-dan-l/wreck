@@ -33,18 +33,35 @@
 /******/ 	// expose the module cache
 /******/ 	__webpack_require__.c = installedModules;
 /******/
-/******/ 	// identity function for calling harmony imports with the correct context
-/******/ 	__webpack_require__.i = function(value) { return value; };
-/******/
 /******/ 	// define getter function for harmony exports
 /******/ 	__webpack_require__.d = function(exports, name, getter) {
 /******/ 		if(!__webpack_require__.o(exports, name)) {
-/******/ 			Object.defineProperty(exports, name, {
-/******/ 				configurable: false,
-/******/ 				enumerable: true,
-/******/ 				get: getter
-/******/ 			});
+/******/ 			Object.defineProperty(exports, name, { enumerable: true, get: getter });
 /******/ 		}
+/******/ 	};
+/******/
+/******/ 	// define __esModule on exports
+/******/ 	__webpack_require__.r = function(exports) {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
+/******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/
+/******/ 	// create a fake namespace object
+/******/ 	// mode & 1: value is a module id, require it
+/******/ 	// mode & 2: merge all properties of value into the ns
+/******/ 	// mode & 4: return value when already ns object
+/******/ 	// mode & 8|1: behave like require
+/******/ 	__webpack_require__.t = function(value, mode) {
+/******/ 		if(mode & 1) value = __webpack_require__(value);
+/******/ 		if(mode & 8) return value;
+/******/ 		if((mode & 4) && typeof value === 'object' && value && value.__esModule) return value;
+/******/ 		var ns = Object.create(null);
+/******/ 		__webpack_require__.r(ns);
+/******/ 		Object.defineProperty(ns, 'default', { enumerable: true, value: value });
+/******/ 		if(mode & 2 && typeof value != 'string') for(var key in value) __webpack_require__.d(ns, key, function(key) { return value[key]; }.bind(null, key));
+/******/ 		return ns;
 /******/ 	};
 /******/
 /******/ 	// getDefaultExport function for compatibility with non-harmony modules
@@ -62,1280 +79,18 @@
 /******/ 	// __webpack_public_path__
 /******/ 	__webpack_require__.p = "";
 /******/
+/******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 12);
+/******/ 	return __webpack_require__(__webpack_require__.s = "./src/typescript/main.tsx");
 /******/ })
 /************************************************************************/
-/******/ ([
-/* 0 */
-/***/ (function(module, exports) {
-
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-
-/***/ }),
-/* 1 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(process) {
-
-if (process.env.NODE_ENV === 'production') {
-  module.exports = __webpack_require__(20);
-} else {
-  module.exports = __webpack_require__(19);
-}
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/*
-object-assign
-(c) Sindre Sorhus
-@license MIT
-*/
-
-
-/* eslint-disable no-unused-vars */
-var getOwnPropertySymbols = Object.getOwnPropertySymbols;
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-var propIsEnumerable = Object.prototype.propertyIsEnumerable;
-
-function toObject(val) {
-	if (val === null || val === undefined) {
-		throw new TypeError('Object.assign cannot be called with null or undefined');
-	}
-
-	return Object(val);
-}
-
-function shouldUseNative() {
-	try {
-		if (!Object.assign) {
-			return false;
-		}
-
-		// Detect buggy property enumeration order in older V8 versions.
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
-		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
-		test1[5] = 'de';
-		if (Object.getOwnPropertyNames(test1)[0] === '5') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test2 = {};
-		for (var i = 0; i < 10; i++) {
-			test2['_' + String.fromCharCode(i)] = i;
-		}
-		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
-			return test2[n];
-		});
-		if (order2.join('') !== '0123456789') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test3 = {};
-		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
-			test3[letter] = letter;
-		});
-		if (Object.keys(Object.assign({}, test3)).join('') !==
-				'abcdefghijklmnopqrst') {
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		// We don't expect any of the above to throw, but better to be safe.
-		return false;
-	}
-}
-
-module.exports = shouldUseNative() ? Object.assign : function (target, source) {
-	var from;
-	var to = toObject(target);
-	var symbols;
-
-	for (var s = 1; s < arguments.length; s++) {
-		from = Object(arguments[s]);
-
-		for (var key in from) {
-			if (hasOwnProperty.call(from, key)) {
-				to[key] = from[key];
-			}
-		}
-
-		if (getOwnPropertySymbols) {
-			symbols = getOwnPropertySymbols(from);
-			for (var i = 0; i < symbols.length; i++) {
-				if (propIsEnumerable.call(from, symbols[i])) {
-					to[symbols[i]] = from[symbols[i]];
-				}
-			}
-		}
-	}
-
-	return to;
-};
-
-
-/***/ }),
-/* 3 */
-/***/ (function(module, exports) {
-
-var g;
-
-// This works in non-strict mode
-g = (function() {
-	return this;
-})();
-
-try {
-	// This works if eval is allowed (see CSP)
-	g = g || Function("return this")() || (1,eval)("this");
-} catch(e) {
-	// This works if the window reference is available
-	if(typeof window === "object")
-		g = window;
-}
-
-// g can still be undefined, but nothing to do about it...
-// We return undefined, instead of nothing here, so it's
-// easier to handle this case. if(!global) { ...}
-
-module.exports = g;
-
-
-/***/ }),
-/* 4 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-class FuckDict {
-    constructor(a) {
-        this.size = 0;
-        this.keys_map = new Map();
-        this.values_map = new Map();
-        if (a !== undefined) {
-            for (let [k, v] of a) {
-                this.set(k, v);
-            }
-        }
-    }
-    set(k, v) {
-        let s = k.toString();
-        this.keys_map.set(s, k);
-        this.values_map.set(s, v);
-        this.size = this.keys_map.size;
-        return this;
-    }
-    get(k, default_value) {
-        if (!this.has_key(k) && default_value !== undefined) {
-            this.set(k, default_value);
-            return default_value;
-        }
-        let s = k.toString();
-        return this.values_map.get(s);
-    }
-    update(a) {
-        let updated = this.copy();
-        for (let [k, v] of a) {
-            updated.set(k, v);
-        }
-        return updated;
-    }
-    has_key(k) {
-        return this.keys_map.has(k.toString());
-    }
-    keys_array() {
-        return Array.from(this.keys_map.values());
-    }
-    values_array() {
-        return Array.from(this.values_map.values());
-    }
-    entries_array() {
-        let result = [];
-        for (let [s, k] of this.keys_map.entries()) {
-            result.push([k, this.values_map.get(s)]);
-        }
-        return result;
-    }
-    keys_equal(other) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)) {
-                return false;
-            }
-        }
-        for (let elem of other.keys_array()) {
-            if (!this.has_key(elem)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    keys_intersect(other) {
-        let result = [];
-        for (let k of this.keys_array()) {
-            if (other.has_key(k)) {
-                result.push(k);
-            }
-        }
-        return result;
-    }
-    keys_subset(other) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    toString() {
-        let entry_strings = this.entries_array().map(x => x.toString()).sort();
-        return `FuckDict<${entry_strings.join(',')}>`;
-    }
-    copy() {
-        return new FuckDict(this.entries_array());
-    }
-}
-exports.FuckDict = FuckDict;
-// export type FuckSet<T> = FuckDict<T, undefined>;
-class FuckSet extends FuckDict {
-    constructor(a) {
-        if (a !== undefined) {
-            super(a.map(t => [t, undefined]));
-        } else {
-            super();
-        }
-    }
-}
-exports.FuckSet = FuckSet;
-function chain_object(src) {
-    return new Proxy(src, {
-        get: function (target, key) {
-            if (target[key] === undefined) {
-                target[key] = {};
-            }
-            let v = target[key];
-            if (typeof v === 'object' && !(v instanceof Array)) {
-                return chain_object(v);
-            } else {
-                return v;
-            }
-        }
-    });
-}
-exports.chain_object = chain_object;
-function chain_update(target, source, replace_keys = [], inplace = false) {
-    let updated;
-    if (inplace) {
-        updated = target || {};
-    } else {
-        updated = Object.assign({}, target);
-    }
-    for (let [n, v] of Object.entries(source)) {
-        if (!replace_keys.includes(n) && typeof v === 'object' && !(v instanceof Array)) {
-            updated[n] = chain_update(updated[n], v, replace_keys, inplace);
-        } else {
-            updated[n] = v;
-        }
-    }
-    return updated;
-}
-exports.chain_update = chain_update;
-/*
-    Two versions of update.
-
-    First one, always returns the same type as the input.
-        In this case, there on constraints we can assume for the Updater type.
-    Second one, no such guarantee.
-*/
-var Updater;
-(function (Updater) {
-    // export type Updater<T> = any
-    function update(source, updater) {
-        if (updater instanceof Function) {
-            return updater(source);
-        }
-        // not a function, not a non-array object
-        if (updater instanceof Array || !(updater instanceof Object)) {
-            return updater;
-        }
-        if (updater instanceof Object) {
-            let result;
-            if (source instanceof Object) {
-                result = Object.assign({}, source);
-            } else {
-                result = {};
-            }
-            for (let [n, v] of Object.entries(updater)) {
-                if (v === undefined) {
-                    delete result[n];
-                } else {
-                    result[n] = update(result[n], v);
-                }
-            }
-            return result;
-        }
-        throw Error('Should never get here');
-    }
-    Updater.update = update;
-})(Updater || (Updater = {}));
-exports.update = Updater.update;
-// type AnyUpdater = { [K: string]: AnyUpdater | ((x: any) => any) };
-// export function update_any(source: any, updater: Updater<any>): any {
-//     if (updater.constructor === Object) {
-//         let result;
-//         if (source.constructor === Object) {
-//             result = {...source};
-//         } else {
-//             result = {};
-//         }
-//         for (let [n, v] of Object.entries(updater)) {
-//             if (v === undefined) {
-//                 delete result[n];
-//             } else {
-//                 result[n] = update_any(result[n], v as any);
-//             }
-//         }
-//         return result;
-//     } else if (updater.constructor === Function){
-//         let updater: ((x: any) => any);
-//         return updater(source);
-//     } else {
-//         //just "replacing" source with updater
-//         let updater: any;
-//         return updater;
-//     }
-// }
-// export function update<T>(source: T, updater: Updater<T>): T {
-//     return update_any(source, updater);
-// }
-function arrays_fuck_equal(ar1, ar2) {
-    if (ar1.length !== ar2.length) {
-        return false;
-    }
-    for (let i = 0; i < ar1.length; i++) {
-        if (ar1[i].toString() !== ar2[i].toString()) {
-            return false;
-        }
-    }
-    return true;
-}
-exports.arrays_fuck_equal = arrays_fuck_equal;
-function array_fuck_contains(ar, elt) {
-    return ar.some(x => x.toString() === elt.toString());
-}
-exports.array_fuck_contains = array_fuck_contains;
-function make_matrix2(data_obj) {
-    let dim_y = data_obj.length;
-    let dim_x = data_obj[0].length;
-    let data = new Int16Array(data_obj.reduce((x, y) => x.concat(y)));
-    // TODO complain if the total length is wrong
-    return new Matrix2(data, dim_x, dim_y);
-}
-exports.make_matrix2 = make_matrix2;
-function zeros(dim_x, dim_y) {
-    return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);
-}
-exports.zeros = zeros;
-class Matrix2 {
-    constructor(data, dim_x, dim_y) {
-        this.data = data;
-        this.dim_x = dim_x;
-        this.dim_y = dim_y;
-    }
-    get(x, y) {
-        return this.data[y * this.dim_x + x];
-    }
-    set(x, y, value) {
-        this.data[y * this.dim_x + x] = value;
-    }
-    rotate(degrees) {
-        //validate input better
-        if (degrees == 360 || degrees == 0) {
-            return this;
-        }
-        const n_rotations = degrees / 90;
-        let m = this;
-        const dim_x = this.dim_x;
-        const dim_y = this.dim_y;
-        for (let i = 0; i < n_rotations; i++) {
-            let new_data = new Int16Array(dim_x * dim_y);
-            let new_mat2 = new Matrix2(new_data, dim_y, dim_x);
-            for (let y = 0; y < dim_y; y++) {
-                for (let x = 0; x < dim_x; x++) {
-                    new_mat2.set(dim_y - 1 - y, x, m.get(x, y));
-                }
-            }
-            m = new_mat2;
-        }
-        return m;
-    }
-    contains(value) {
-        return this.data.indexOf(value) !== -1;
-    }
-    copy() {
-        return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);
-    }
-}
-exports.Matrix2 = Matrix2;
-function counter_add(counter, key, inc) {
-    let cur_val = 0;
-    if (counter.has(key)) {
-        cur_val = counter.get(key);
-    }
-    return counter.set(key, cur_val + inc);
-}
-exports.counter_add = counter_add;
-function counter_get(counter, key) {
-    let cur_val = 0;
-    if (counter.has(key)) {
-        cur_val = counter.get(key);
-    }
-    return cur_val;
-}
-exports.counter_get = counter_get;
-function counter_update(counter1, counter2) {
-    counter2.forEach(function (v, k) {
-        counter_add(counter1, k, v);
-    });
-    return counter1;
-}
-exports.counter_update = counter_update;
-function counter_order(counter, include_zero = false) {
-    let result = Array.from(counter.entries()).sort((a, b) => a[1] - b[1]);
-    if (!include_zero) {
-        result = result.filter(([t, i]) => i > 0);
-    }
-    return result.map(([t, i]) => t);
-}
-exports.counter_order = counter_order;
-//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
-//export type MergeAnnotations<T, > = 
-function is_annotated(x) {
-    if (x === undefined) {
-        return false;
-    }
-    return x.annotated !== undefined;
-}
-exports.is_annotated = is_annotated;
-function annotate(x, annotation) {
-    if (annotation === undefined) {
-        annotation = {};
-    }
-    if (is_annotated(x)) {
-        Object.assign(x.annotation, annotation);
-        return x;
-    } else {
-        let result = { value: x, annotated: true, annotation };
-        return result;
-    }
-}
-exports.annotate = annotate;
-function unwrap(x) {
-    if (is_annotated(x)) {
-        return x.value;
-    } else {
-        return x;
-    }
-}
-exports.unwrap = unwrap;
-function with_annotatable(f, default_value) {
-    return x => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
-}
-exports.with_annotatable = with_annotatable;
-function get_annotation(x, default_value) {
-    if (is_annotated(x)) {
-        if (default_value !== undefined) {
-            return Object.assign({}, default_value, x.annotation);
-        } else {
-            return x.annotation;
-        }
-    } else {
-        return default_value;
-    }
-}
-exports.get_annotation = get_annotation;
-function set_enabled(x, enabled = true) {
-    return annotate(x, { enabled });
-}
-exports.set_enabled = set_enabled;
-function with_disablable(f) {
-    return with_annotatable(f, { enabled: true });
-}
-exports.with_disablable = with_disablable;
-function is_enabled(x) {
-    let result = get_annotation(x);
-    if (result === undefined) {
-        return true;
-    }
-    return result.enabled;
-}
-exports.is_enabled = is_enabled;
-class StringValidator {
-    static validate(s) {
-        return new this().is_valid(s);
-    }
-    is_valid(s) {
-        return false;
-    }
-}
-exports.StringValidator = StringValidator;
-// EDIT: actually, the below is made irrelevant by "as const" in 3.4.
-// Holy dang this is cool:
-// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
-//
-// Point here is to define the list of ObserverMomentIDs and PerceptionIDs
-// as a constant, and get string literal typechecking elsewhere in the code.
-function infer_literal_array(...arr) {
-    return arr;
-}
-exports.infer_literal_array = infer_literal_array;
-function array_last(arr) {
-    return arr[arr.length - 1];
-}
-exports.array_last = array_last;
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-/*
-    a parser thread takes a parser and uses it to consume some of a token stream,
-    and returns some result
-
-    a thread can *split* the current parser state into N branches,
-    each of which consume their own things separately and return their own results
-    the thread which initiated the split is also responsible for combining the various results
-    before returning control to the thread.
-        the most common scenario is that only one of N branches is still valid
-    
-    internally, the parser receives instructions from the parser thread and consumes
-    pieces of the input token stream. it builds up a list of token match objects,
-    where each token in the stream consumed so far gets a status of "matched", "partial", "error"
-
-    by combining these token labellings from all the different parser threads that ran,
-    we determine:
-        - whether the currently-input string is valid and can be executed
-        - what colors to highlight the various input words with
-        - what to display beneath the input prompt as typeahead options
-
-
-
-
-*/
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(4);
-const text_tools_1 = __webpack_require__(13);
-class NoMatch {}
-exports.NoMatch = NoMatch;
-;
-class ParseRestart {
-    constructor(n_splits) {
-        this.n_splits = n_splits;
-    }
-}
-;
-class ParseError extends Error {}
-exports.ParseError = ParseError;
-;
-exports.SUBMIT_TOKEN = Symbol('SUBMIT');
-class ConsumeSpec_Tainted {
-    constructor(token, token_type = { kind: 'Filler' }, typeahead_type = { kind: 'Available' }) {
-        this.token = token;
-        this.token_type = token_type;
-        this.typeahead_type = typeahead_type;
-        this.kind = 'ConsumeSpec';
-    }
-    static make(obj) {
-        if (ConsumeSpec.is_token(obj)) {
-            return new ConsumeSpec_Tainted(obj);
-        }
-        return new ConsumeSpec_Tainted(obj.token, obj.token_type, obj.typeahead_type);
-    }
-}
-var ConsumeSpec;
-(function (ConsumeSpec) {
-    ConsumeSpec.NEVER_TOKEN = Symbol('NEVER');
-    function is_token(x) {
-        return typeof x === 'string' || x === exports.SUBMIT_TOKEN || x === ConsumeSpec.NEVER_TOKEN;
-    }
-    ConsumeSpec.is_token = is_token;
-    function is_spec(x) {
-        return !is_token(x);
-    }
-    ConsumeSpec.is_spec = is_spec;
-})(ConsumeSpec = exports.ConsumeSpec || (exports.ConsumeSpec = {}));
-var TokenMatch;
-(function (TokenMatch) {
-    function is_match(m) {
-        return m.kind === 'Match';
-    }
-    TokenMatch.is_match = is_match;
-    function is_partial(m) {
-        return m.kind === 'Partial';
-    }
-    TokenMatch.is_partial = is_partial;
-    function is_error(m) {
-        return m.kind === 'Error';
-    }
-    TokenMatch.is_error = is_error;
-})(TokenMatch = exports.TokenMatch || (exports.TokenMatch = {}));
-function is_parse_result_valid(result) {
-    return result.length === 0 || TokenMatch.is_match(datatypes_1.array_last(result).type);
-}
-exports.is_parse_result_valid = is_parse_result_valid;
-// for each of the input tokens, how should they be displayed/highighted?
-function compute_view(parse_results, input_stream) {
-    // let parse_results: TokenMatch[][] = parsing.parses;
-    // let input_stream: Token[] = parsing.tokens;
-    let match_status;
-    let submission = false;
-    let row;
-    if ((row = parse_results.find(row => datatypes_1.array_last(row).type.kind === 'Match')) !== undefined) {
-        match_status = 'Match';
-        // TODO: throw a runtime exc here if we have a Match at the end but it's not SUBMIT_TOKEN ?
-        // Would imply a commmand thread that doesn't end in submit.
-        submission = datatypes_1.array_last(row).token === exports.SUBMIT_TOKEN;
-        if (!submission) {
-            throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
-        }
-    } else if ((row = parse_results.find(row => datatypes_1.array_last(row).type.kind === 'Partial')) !== undefined) {
-        match_status = 'Partial';
-    } else {
-        row = input_stream.map(tok => ({
-            kind: 'TokenMatch',
-            token: tok,
-            type: {
-                kind: 'Error',
-                token: null
-            }
-        }));
-        match_status = 'Error';
-    }
-    let typeahead_grid = compute_typeahead(parse_results, input_stream);
-    let submittable = typeahead_grid.some(row => datatypes_1.array_last(row).token === exports.SUBMIT_TOKEN);
-    return {
-        kind: 'ParsingView',
-        matches: row,
-        submittable,
-        submission,
-        match_status,
-        typeahead_grid
-    };
-}
-exports.compute_view = compute_view;
-/*
-Typeahead
-    For each non-valid row (ignoring errors, partial only)
-    If the row is at least the length of the input stream
-    Typeahead is the Partial TokenMatches suffix (always at the end)
-*/
-function compute_typeahead(parse_results, input_stream) {
-    // let parse_results: TokenMatch[][] = parsing.parses;
-    // let input_stream: Token[] = parsing.tokens;
-    let rows_with_typeahead = parse_results.filter(pr => !TokenMatch.is_error(datatypes_1.array_last(pr).type) && pr.slice(input_stream.length - 1).some(({ type }) => TokenMatch.is_partial(type)));
-    return rows_with_typeahead.map(pr => {
-        let start_idx = pr.findIndex(({ type }) => TokenMatch.is_partial(type));
-        let result = Array(start_idx).fill(null);
-        let elts = pr.slice(start_idx);
-        result.push(...elts.map(tm => tm.type));
-        return result;
-    });
-    // TODO: add dedupe step here
-}
-exports.compute_typeahead = compute_typeahead;
-/*
-    Helper function for parser methods that take an optional callback or return value on success
-    The pattern is to use function overloading to get the types right, and call this
-    function to get the behavior right.
-
-    TODO: Can we get what we want using promises?
-*/
-function call_or_return(parser, result) {
-    if (result instanceof Function) {
-        return result(parser);
-    }
-    return result;
-}
-class Parser {
-    constructor(input_stream, splits_to_take) {
-        this.pos = 0;
-        this.parse_result = [];
-        this.input_stream = input_stream;
-        this._split_iter = splits_to_take[Symbol.iterator]();
-    }
-    consume(tokens, result) {
-        let specs = tokens.map(ConsumeSpec_Tainted.make);
-        this._consume(specs);
-        return call_or_return(this, result);
-    }
-    /*
-        This will throw a parse exception if the desired tokens can't be consumed.
-        It is expected that every ParserThread is wrapped in an exception handler for
-        this case.
-    */
-    _consume(tokens) {
-        if (!is_parse_result_valid(this.parse_result)) {
-            throw new ParseError('Tried to consume() on a done parser.');
-        }
-        let partial = false;
-        let error = false;
-        let i = 0;
-        // check if exact match
-        for (i = 0; i < tokens.length; i++) {
-            let spec = tokens[i];
-            let spec_value = spec.token;
-            if (spec_value === ConsumeSpec.NEVER_TOKEN) {
-                error = true;
-                break;
-            }
-            if (this.pos + i >= this.input_stream.length) {
-                partial = true;
-                break;
-            }
-            let input = this.input_stream[this.pos + i];
-            if (spec_value === input) {
-                if (spec.typeahead_type.kind === 'Locked') {
-                    // TODO: special case for typeahead = Locked
-                    error = true;
-                    break;
-                }
-                continue;
-            }
-            if (spec_value === exports.SUBMIT_TOKEN || input === exports.SUBMIT_TOKEN) {
-                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
-                error = true;
-                break;
-            }
-            if (text_tools_1.starts_with(spec_value, input)) {
-                if (this.pos + i < this.input_stream.length - 1) {
-                    error = true;
-                } else {
-                    partial = true;
-                }
-                break;
-            }
-            error = true;
-            break;
-        }
-        if (partial) {
-            // push all tokens as partials
-            this.parse_result.push(...tokens.map((t, j) => ({
-                kind: 'TokenMatch',
-                token: this.input_stream[this.pos + j] || '',
-                type: {
-                    kind: 'Partial',
-                    token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token,
-                    type: t.typeahead_type
-                }
-            })));
-            // increment pos
-            this.pos = this.input_stream.length;
-            throw new NoMatch();
-        }
-        if (error) {
-            // push all tokens as errors
-            this.parse_result.push(...tokens.map((t, j) => ({
-                kind: 'TokenMatch',
-                token: this.input_stream[this.pos + j] || '',
-                type: {
-                    kind: 'Error',
-                    token: t.token === ConsumeSpec.NEVER_TOKEN ? '' : t.token
-                }
-            })));
-            // increment pos
-            this.pos = this.input_stream.length;
-            throw new NoMatch();
-        }
-        // push all tokens as valid
-        this.parse_result.push(...tokens.map((t, j) => ({
-            kind: 'TokenMatch',
-            token: this.input_stream[this.pos + j],
-            type: { kind: 'Match', type: t.token_type }
-        })));
-        // increment pos
-        this.pos += tokens.length;
-    }
-    eliminate() {
-        /*
-            It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
-        */
-        return this._consume([ConsumeSpec_Tainted.make(ConsumeSpec.NEVER_TOKEN)]);
-    }
-    submit(result) {
-        this._consume([ConsumeSpec_Tainted.make(exports.SUBMIT_TOKEN)]);
-        return call_or_return(this, result);
-    }
-    split(subthreads, callback) {
-        let { value: split_value, done } = this._split_iter.next();
-        if (done) {
-            throw new ParseRestart(subthreads.length);
-        }
-        let st = subthreads[split_value];
-        let result = st(this);
-        if (callback === undefined) {
-            return result;
-        }
-        return callback(result, this);
-    }
-    static run_thread(raw, t) {
-        let [tokens, whitespace] = text_tools_1.tokenize(raw.text);
-        if (raw.submit) {
-            tokens.push(exports.SUBMIT_TOKEN);
-        }
-        let frontier = [[]];
-        let results = [];
-        let parse_results = [];
-        while (frontier.length > 0) {
-            let path = frontier.pop();
-            let splits_to_take;
-            if (path.length === 0) {
-                splits_to_take = path;
-            } else {
-                let n = datatypes_1.array_last(path).next();
-                if (n.done) {
-                    continue;
-                } else {
-                    frontier.push(path);
-                }
-                splits_to_take = [...path.slice(0, -1), n.value];
-            }
-            let p = new Parser(tokens, splits_to_take);
-            let result;
-            try {
-                result = t(p);
-            } catch (e) {
-                if (e instanceof NoMatch) {
-                    result = e;
-                } else if (e instanceof ParseRestart) {
-                    let new_splits = [];
-                    for (let i = 0; i < e.n_splits; i++) {
-                        new_splits.push(i);
-                    }
-                    // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
-                    frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    // frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    continue;
-                } else {
-                    throw e;
-                }
-            }
-            results.push(result);
-            parse_results.push(p.parse_result);
-        }
-        let view = compute_view(parse_results, tokens);
-        let parsing = {
-            kind: 'Parsing',
-            view,
-            parses: parse_results,
-            tokens,
-            whitespace,
-            raw
-        };
-        let valid_results = results.filter(r => !(r instanceof NoMatch));
-        if (valid_results.length === 0) {
-            return {
-                kind: 'NotParsed',
-                parsing
-            };
-        } else if (valid_results.length > 1) {
-            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
-        } else {
-            return {
-                kind: 'Parsed',
-                result: valid_results[0],
-                parsing
-            };
-        }
-    }
-}
-exports.Parser = Parser;
-function raw(text, submit = true) {
-    return { kind: 'RawInput', text, submit };
-}
-exports.raw = raw;
-function make_consumer(spec, result) {
-    let toks = text_tools_1.tokenize(spec)[0];
-    return parser => {
-        for (let t of toks) {
-            let token_type;
-            let typeahead_type;
-            if (t.startsWith('~')) {
-                typeahead_type = { kind: 'Locked' };
-                t = t.slice(1);
-            }
-            if (t.startsWith('*')) {
-                token_type = { kind: 'Keyword' };
-                t = t.slice(1);
-            } else if (t.startsWith('&')) {
-                token_type = { kind: 'Option' };
-                t = t.slice(1);
-            }
-            parser.consume(t.split('_').map(t => ({ token: t, token_type, typeahead_type })));
-        }
-        return call_or_return(parser, result);
-    };
-}
-exports.make_consumer = make_consumer;
-function consume(parser, spec, result) {
-    return make_consumer(spec, result)(parser);
-}
-exports.consume = consume;
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(process) {
-
-if (process.env.NODE_ENV === 'production') {
-  module.exports = __webpack_require__(26);
-} else {
-  module.exports = __webpack_require__(25);
-}
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
-const Text2_1 = __webpack_require__(11);
-/*
-TODO steps to get this all working
-
-1. Make a static world/history viewer app
-  - no interactivity, just displays previous commands and the resulting messages
-  - shows parser highlighting
-2. Add interpretation restyling to the static viewer
-3. Add input prompt
-  - Highlights tokens as the user types
-  - Submission of command triggers rerender, new history element
-4. Support view update due to new interpreatation
-5. Typeahead added to prompt
-  - Autoocomplete options display with correct indentation
-  - Select typeahead option with keybooard, mouse
-6. Support "locked" typeahead options
-
-*/
-exports.History = ({ world }) => React.createElement("div", { className: "history" }, React.createElement(HistoryElt, { world: world, interpretations: world.interpretations }));
-const HistoryElt = ({ world, interpretations }) => {
-  let i = interpretations[world.index];
-  let className = i !== undefined ? i.join(' ') : '';
-  return React.createElement(React.Fragment, null, world.previous !== null ? React.createElement(HistoryElt, { world: world.previous, interpretations: interpretations }) : '', React.createElement("div", { key: world.index, className: className }, world.parsing !== undefined ? React.createElement(Text2_1.ParsedText, { parsing: world.parsing }) : '', React.createElement(Text2_1.OutputText, { message: world.message })));
-};
-// (
-//   <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
-//     { /*<Preface on_start_game={() => this.prompt.focus()} /> */}
-//     <History
-//       timeout={700}
-//       onAnimationFinish={this.scrollToPrompt}
-//       history={this.state.world_driver.history}
-//       possible_history={this.state.world_driver.possible_history}
-//       ref={h => this.history = h}
-//       />
-//     <Prompt
-//       onSubmit={this.handleSubmit}
-//       onChange={this.handlePromptChange}
-//       ref={p => this.prompt = p}>
-//       <ParsedText2 parsing={this.currentParsing()}>
-//         <TypeaheadList
-//           typeahead={this.currentTypeahead()}
-//           indentation={this.currentIndentation()}
-//           onTypeaheadSelection={this.handleTypeaheadSelection}
-//           ref={t => this.typeahead_list = t}
-//         />
-//       </ParsedText2>
-//     </Prompt>
-//   </div>
-// );
-
-/***/ }),
-/* 8 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(4);
-const world_1 = __webpack_require__(14);
-let initial_world = Object.assign({}, world_1.get_initial_world(), { is_in_heaven: false, message: 'You are currently down.' });
-let handle_command = (parser, world) => {
-    parser.consume([{ token: 'go', token_type: { kind: 'Keyword' } }]);
-    let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
-    let dir = parser.split(['up', 'down'].map(dir => () => parser.consume([{
-        token: dir,
-        token_type: { kind: 'Option' },
-        typeahead_type: is_locked[dir] ? { kind: 'Locked' } : { kind: 'Available' }
-    }], dir)));
-    parser.submit();
-    return datatypes_1.update(world, {
-        message: `You are currently ${dir}.`,
-        is_in_heaven: _ => !_
-    });
-};
-let interpret_history = (old_world, new_world) => {
-    if (old_world.is_in_heaven) {
-        return [{ kind: 'Add', label: 'happy' }];
-    }
-};
-function new_bird_world() {
-    return new world_1.WorldDriver({ initial_world, handle_command, interpret_history });
-}
-exports.new_bird_world = new_bird_world;
-
-/***/ }),
-/* 9 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(process) {
-
-function checkDCE() {
-  /* global __REACT_DEVTOOLS_GLOBAL_HOOK__ */
-  if (
-    typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === 'undefined' ||
-    typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE !== 'function'
-  ) {
-    return;
-  }
-  if (process.env.NODE_ENV !== 'production') {
-    // This branch is unreachable because this function is only called
-    // in production, but the condition is true only in development.
-    // Therefore if the branch is still here, dead code elimination wasn't
-    // properly applied.
-    // Don't change the message. React DevTools relies on it. Also make sure
-    // this message doesn't occur elsewhere in this function, or it will cause
-    // a false positive.
-    throw new Error('^_^');
-  }
-  try {
-    // Verify that the code above has been dead code eliminated (DCE'd).
-    __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE(checkDCE);
-  } catch (err) {
-    // DevTools shouldn't crash React, no matter what.
-    // We should still report in case we break this code.
-    console.error(err);
-  }
-}
-
-if (process.env.NODE_ENV === 'production') {
-  // DCE check should happen before ReactDOM bundle executes so that
-  // DevTools can report bad minification during injection.
-  checkDCE();
-  module.exports = __webpack_require__(16);
-} else {
-  module.exports = __webpack_require__(15);
-}
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
-
-/***/ }),
-/* 10 */
+/******/ ({
+
+/***/ "./node_modules/assert/assert.js":
+/*!***************************************!*\
+  !*** ./node_modules/assert/assert.js ***!
+  \***************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1407,7 +162,7 @@ function isBuffer(b) {
 // ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var util = __webpack_require__(30);
+var util = __webpack_require__(/*! util/ */ "./node_modules/node-libs-browser/node_modules/util/util.js");
 var hasOwn = Object.prototype.hasOwnProperty;
 var pSlice = Array.prototype.slice;
 var functionsHaveNames = (function () {
@@ -1830,381 +585,1081 @@ var objectKeys = Object.keys || function (obj) {
   return keys;
 };
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
 
 /***/ }),
-/* 11 */
+
+/***/ "./node_modules/inherits/inherits_browser.js":
+/*!***************************************************!*\
+  !*** ./node_modules/inherits/inherits_browser.js ***!
+  \***************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+if (typeof Object.create === 'function') {
+  // implementation from standard node.js 'util' module
+  module.exports = function inherits(ctor, superCtor) {
+    ctor.super_ = superCtor
+    ctor.prototype = Object.create(superCtor.prototype, {
+      constructor: {
+        value: ctor,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      }
+    });
+  };
+} else {
+  // old school shim for old browsers
+  module.exports = function inherits(ctor, superCtor) {
+    ctor.super_ = superCtor
+    var TempCtor = function () {}
+    TempCtor.prototype = superCtor.prototype
+    ctor.prototype = new TempCtor()
+    ctor.prototype.constructor = ctor
+  }
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/node-libs-browser/node_modules/util/support/isBufferBrowser.js":
+/*!*************************************************************************************!*\
+  !*** ./node_modules/node-libs-browser/node_modules/util/support/isBufferBrowser.js ***!
+  \*************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = function isBuffer(arg) {
+  return arg && typeof arg === 'object'
+    && typeof arg.copy === 'function'
+    && typeof arg.fill === 'function'
+    && typeof arg.readUInt8 === 'function';
+}
+
+/***/ }),
+
+/***/ "./node_modules/node-libs-browser/node_modules/util/util.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/node-libs-browser/node_modules/util/util.js ***!
+  \******************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+var getOwnPropertyDescriptors = Object.getOwnPropertyDescriptors ||
+  function getOwnPropertyDescriptors(obj) {
+    var keys = Object.keys(obj);
+    var descriptors = {};
+    for (var i = 0; i < keys.length; i++) {
+      descriptors[keys[i]] = Object.getOwnPropertyDescriptor(obj, keys[i]);
+    }
+    return descriptors;
+  };
 
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
-exports.Carat = () => React.createElement("span", null, ">\u00A0");
-function get_display_color(tm) {
-    if (tm.type.kind === 'Match') {
-        switch (tm.type.type.kind) {
-            case 'Keyword':
-                return 'aqua';
-            case 'Option':
-                return 'orange';
-            case 'Filler':
-                return 'ivory';
+var formatRegExp = /%[sdj%]/g;
+exports.format = function(f) {
+  if (!isString(f)) {
+    var objects = [];
+    for (var i = 0; i < arguments.length; i++) {
+      objects.push(inspect(arguments[i]));
+    }
+    return objects.join(' ');
+  }
+
+  var i = 1;
+  var args = arguments;
+  var len = args.length;
+  var str = String(f).replace(formatRegExp, function(x) {
+    if (x === '%%') return '%';
+    if (i >= len) return x;
+    switch (x) {
+      case '%s': return String(args[i++]);
+      case '%d': return Number(args[i++]);
+      case '%j':
+        try {
+          return JSON.stringify(args[i++]);
+        } catch (_) {
+          return '[Circular]';
         }
+      default:
+        return x;
     }
-    if (tm.type.kind === 'Partial') {
-        return 'silver';
-    }
-    if (tm.type.kind === 'Error') {
-        return 'red';
-    }
-}
-exports.ParsedText = props => {
-    let parsing = props.parsing;
-    let children = props.children;
-    let style = {
-        whiteSpace: 'pre-wrap',
-        position: 'relative'
-    };
-    let view = parsing.view;
-    if (view.submittable || view.submission) {
-        style.fontWeight = '900';
+  });
+  for (var x = args[i]; i < len; x = args[++i]) {
+    if (isNull(x) || !isObject(x)) {
+      str += ' ' + x;
     } else {
-        style.fontWeight = '100';
-        if (view.match_status === 'Error') {
-            style.opacity = '0.6';
-        }
+      str += ' ' + inspect(x);
     }
-    return React.createElement("div", { className: "parsed-text" }, React.createElement(exports.Carat, null), React.createElement("div", { style: style }, view.matches.map((elt, i) => React.createElement("div", { key: i.toString(), style: { color: get_display_color(elt) } }, React.createElement("span", null, parsing.whitespace[i] + (typeof elt.token === 'string' ? elt.token : '')), i === 0 ? children : ''))));
-};
-exports.OutputText = props => {
-    const { message } = props;
-    return React.createElement("div", { className: "output-text", dangerouslySetInnerHTML: { __html: message } });
+  }
+  return str;
 };
 
+
+// Mark that a method should not be used.
+// Returns a modified function which warns once by default.
+// If --no-deprecation is set, then it is a no-op.
+exports.deprecate = function(fn, msg) {
+  if (typeof process !== 'undefined' && process.noDeprecation === true) {
+    return fn;
+  }
+
+  // Allow for deprecating things in the process of starting up.
+  if (typeof process === 'undefined') {
+    return function() {
+      return exports.deprecate(fn, msg).apply(this, arguments);
+    };
+  }
+
+  var warned = false;
+  function deprecated() {
+    if (!warned) {
+      if (process.throwDeprecation) {
+        throw new Error(msg);
+      } else if (process.traceDeprecation) {
+        console.trace(msg);
+      } else {
+        console.error(msg);
+      }
+      warned = true;
+    }
+    return fn.apply(this, arguments);
+  }
+
+  return deprecated;
+};
+
+
+var debugs = {};
+var debugEnviron;
+exports.debuglog = function(set) {
+  if (isUndefined(debugEnviron))
+    debugEnviron = process.env.NODE_DEBUG || '';
+  set = set.toUpperCase();
+  if (!debugs[set]) {
+    if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
+      var pid = process.pid;
+      debugs[set] = function() {
+        var msg = exports.format.apply(exports, arguments);
+        console.error('%s %d: %s', set, pid, msg);
+      };
+    } else {
+      debugs[set] = function() {};
+    }
+  }
+  return debugs[set];
+};
+
+
+/**
+ * Echos the value of a value. Trys to print the value out
+ * in the best way possible given the different types.
+ *
+ * @param {Object} obj The object to print out.
+ * @param {Object} opts Optional options object that alters the output.
+ */
+/* legacy: obj, showHidden, depth, colors*/
+function inspect(obj, opts) {
+  // default options
+  var ctx = {
+    seen: [],
+    stylize: stylizeNoColor
+  };
+  // legacy...
+  if (arguments.length >= 3) ctx.depth = arguments[2];
+  if (arguments.length >= 4) ctx.colors = arguments[3];
+  if (isBoolean(opts)) {
+    // legacy...
+    ctx.showHidden = opts;
+  } else if (opts) {
+    // got an "options" object
+    exports._extend(ctx, opts);
+  }
+  // set default options
+  if (isUndefined(ctx.showHidden)) ctx.showHidden = false;
+  if (isUndefined(ctx.depth)) ctx.depth = 2;
+  if (isUndefined(ctx.colors)) ctx.colors = false;
+  if (isUndefined(ctx.customInspect)) ctx.customInspect = true;
+  if (ctx.colors) ctx.stylize = stylizeWithColor;
+  return formatValue(ctx, obj, ctx.depth);
+}
+exports.inspect = inspect;
+
+
+// http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
+inspect.colors = {
+  'bold' : [1, 22],
+  'italic' : [3, 23],
+  'underline' : [4, 24],
+  'inverse' : [7, 27],
+  'white' : [37, 39],
+  'grey' : [90, 39],
+  'black' : [30, 39],
+  'blue' : [34, 39],
+  'cyan' : [36, 39],
+  'green' : [32, 39],
+  'magenta' : [35, 39],
+  'red' : [31, 39],
+  'yellow' : [33, 39]
+};
+
+// Don't use 'blue' not visible on cmd.exe
+inspect.styles = {
+  'special': 'cyan',
+  'number': 'yellow',
+  'boolean': 'yellow',
+  'undefined': 'grey',
+  'null': 'bold',
+  'string': 'green',
+  'date': 'magenta',
+  // "name": intentionally not styling
+  'regexp': 'red'
+};
+
+
+function stylizeWithColor(str, styleType) {
+  var style = inspect.styles[styleType];
+
+  if (style) {
+    return '\u001b[' + inspect.colors[style][0] + 'm' + str +
+           '\u001b[' + inspect.colors[style][1] + 'm';
+  } else {
+    return str;
+  }
+}
+
+
+function stylizeNoColor(str, styleType) {
+  return str;
+}
+
+
+function arrayToHash(array) {
+  var hash = {};
+
+  array.forEach(function(val, idx) {
+    hash[val] = true;
+  });
+
+  return hash;
+}
+
+
+function formatValue(ctx, value, recurseTimes) {
+  // Provide a hook for user-specified inspect functions.
+  // Check that value is an object with an inspect function on it
+  if (ctx.customInspect &&
+      value &&
+      isFunction(value.inspect) &&
+      // Filter out the util module, it's inspect function is special
+      value.inspect !== exports.inspect &&
+      // Also filter out any prototype objects using the circular check.
+      !(value.constructor && value.constructor.prototype === value)) {
+    var ret = value.inspect(recurseTimes, ctx);
+    if (!isString(ret)) {
+      ret = formatValue(ctx, ret, recurseTimes);
+    }
+    return ret;
+  }
+
+  // Primitive types cannot have properties
+  var primitive = formatPrimitive(ctx, value);
+  if (primitive) {
+    return primitive;
+  }
+
+  // Look up the keys of the object.
+  var keys = Object.keys(value);
+  var visibleKeys = arrayToHash(keys);
+
+  if (ctx.showHidden) {
+    keys = Object.getOwnPropertyNames(value);
+  }
+
+  // IE doesn't make error fields non-enumerable
+  // http://msdn.microsoft.com/en-us/library/ie/dww52sbt(v=vs.94).aspx
+  if (isError(value)
+      && (keys.indexOf('message') >= 0 || keys.indexOf('description') >= 0)) {
+    return formatError(value);
+  }
+
+  // Some type of object without properties can be shortcutted.
+  if (keys.length === 0) {
+    if (isFunction(value)) {
+      var name = value.name ? ': ' + value.name : '';
+      return ctx.stylize('[Function' + name + ']', 'special');
+    }
+    if (isRegExp(value)) {
+      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
+    }
+    if (isDate(value)) {
+      return ctx.stylize(Date.prototype.toString.call(value), 'date');
+    }
+    if (isError(value)) {
+      return formatError(value);
+    }
+  }
+
+  var base = '', array = false, braces = ['{', '}'];
+
+  // Make Array say that they are Array
+  if (isArray(value)) {
+    array = true;
+    braces = ['[', ']'];
+  }
+
+  // Make functions say that they are functions
+  if (isFunction(value)) {
+    var n = value.name ? ': ' + value.name : '';
+    base = ' [Function' + n + ']';
+  }
+
+  // Make RegExps say that they are RegExps
+  if (isRegExp(value)) {
+    base = ' ' + RegExp.prototype.toString.call(value);
+  }
+
+  // Make dates with properties first say the date
+  if (isDate(value)) {
+    base = ' ' + Date.prototype.toUTCString.call(value);
+  }
+
+  // Make error with message first say the error
+  if (isError(value)) {
+    base = ' ' + formatError(value);
+  }
+
+  if (keys.length === 0 && (!array || value.length == 0)) {
+    return braces[0] + base + braces[1];
+  }
+
+  if (recurseTimes < 0) {
+    if (isRegExp(value)) {
+      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
+    } else {
+      return ctx.stylize('[Object]', 'special');
+    }
+  }
+
+  ctx.seen.push(value);
+
+  var output;
+  if (array) {
+    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
+  } else {
+    output = keys.map(function(key) {
+      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
+    });
+  }
+
+  ctx.seen.pop();
+
+  return reduceToSingleString(output, base, braces);
+}
+
+
+function formatPrimitive(ctx, value) {
+  if (isUndefined(value))
+    return ctx.stylize('undefined', 'undefined');
+  if (isString(value)) {
+    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
+                                             .replace(/'/g, "\\'")
+                                             .replace(/\\"/g, '"') + '\'';
+    return ctx.stylize(simple, 'string');
+  }
+  if (isNumber(value))
+    return ctx.stylize('' + value, 'number');
+  if (isBoolean(value))
+    return ctx.stylize('' + value, 'boolean');
+  // For some reason typeof null is "object", so special case here.
+  if (isNull(value))
+    return ctx.stylize('null', 'null');
+}
+
+
+function formatError(value) {
+  return '[' + Error.prototype.toString.call(value) + ']';
+}
+
+
+function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
+  var output = [];
+  for (var i = 0, l = value.length; i < l; ++i) {
+    if (hasOwnProperty(value, String(i))) {
+      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+          String(i), true));
+    } else {
+      output.push('');
+    }
+  }
+  keys.forEach(function(key) {
+    if (!key.match(/^\d+$/)) {
+      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+          key, true));
+    }
+  });
+  return output;
+}
+
+
+function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
+  var name, str, desc;
+  desc = Object.getOwnPropertyDescriptor(value, key) || { value: value[key] };
+  if (desc.get) {
+    if (desc.set) {
+      str = ctx.stylize('[Getter/Setter]', 'special');
+    } else {
+      str = ctx.stylize('[Getter]', 'special');
+    }
+  } else {
+    if (desc.set) {
+      str = ctx.stylize('[Setter]', 'special');
+    }
+  }
+  if (!hasOwnProperty(visibleKeys, key)) {
+    name = '[' + key + ']';
+  }
+  if (!str) {
+    if (ctx.seen.indexOf(desc.value) < 0) {
+      if (isNull(recurseTimes)) {
+        str = formatValue(ctx, desc.value, null);
+      } else {
+        str = formatValue(ctx, desc.value, recurseTimes - 1);
+      }
+      if (str.indexOf('\n') > -1) {
+        if (array) {
+          str = str.split('\n').map(function(line) {
+            return '  ' + line;
+          }).join('\n').substr(2);
+        } else {
+          str = '\n' + str.split('\n').map(function(line) {
+            return '   ' + line;
+          }).join('\n');
+        }
+      }
+    } else {
+      str = ctx.stylize('[Circular]', 'special');
+    }
+  }
+  if (isUndefined(name)) {
+    if (array && key.match(/^\d+$/)) {
+      return str;
+    }
+    name = JSON.stringify('' + key);
+    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
+      name = name.substr(1, name.length - 2);
+      name = ctx.stylize(name, 'name');
+    } else {
+      name = name.replace(/'/g, "\\'")
+                 .replace(/\\"/g, '"')
+                 .replace(/(^"|"$)/g, "'");
+      name = ctx.stylize(name, 'string');
+    }
+  }
+
+  return name + ': ' + str;
+}
+
+
+function reduceToSingleString(output, base, braces) {
+  var numLinesEst = 0;
+  var length = output.reduce(function(prev, cur) {
+    numLinesEst++;
+    if (cur.indexOf('\n') >= 0) numLinesEst++;
+    return prev + cur.replace(/\u001b\[\d\d?m/g, '').length + 1;
+  }, 0);
+
+  if (length > 60) {
+    return braces[0] +
+           (base === '' ? '' : base + '\n ') +
+           ' ' +
+           output.join(',\n  ') +
+           ' ' +
+           braces[1];
+  }
+
+  return braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
+}
+
+
+// NOTE: These type checking functions intentionally don't use `instanceof`
+// because it is fragile and can be easily faked with `Object.create()`.
+function isArray(ar) {
+  return Array.isArray(ar);
+}
+exports.isArray = isArray;
+
+function isBoolean(arg) {
+  return typeof arg === 'boolean';
+}
+exports.isBoolean = isBoolean;
+
+function isNull(arg) {
+  return arg === null;
+}
+exports.isNull = isNull;
+
+function isNullOrUndefined(arg) {
+  return arg == null;
+}
+exports.isNullOrUndefined = isNullOrUndefined;
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+exports.isNumber = isNumber;
+
+function isString(arg) {
+  return typeof arg === 'string';
+}
+exports.isString = isString;
+
+function isSymbol(arg) {
+  return typeof arg === 'symbol';
+}
+exports.isSymbol = isSymbol;
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+exports.isUndefined = isUndefined;
+
+function isRegExp(re) {
+  return isObject(re) && objectToString(re) === '[object RegExp]';
+}
+exports.isRegExp = isRegExp;
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+exports.isObject = isObject;
+
+function isDate(d) {
+  return isObject(d) && objectToString(d) === '[object Date]';
+}
+exports.isDate = isDate;
+
+function isError(e) {
+  return isObject(e) &&
+      (objectToString(e) === '[object Error]' || e instanceof Error);
+}
+exports.isError = isError;
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+exports.isFunction = isFunction;
+
+function isPrimitive(arg) {
+  return arg === null ||
+         typeof arg === 'boolean' ||
+         typeof arg === 'number' ||
+         typeof arg === 'string' ||
+         typeof arg === 'symbol' ||  // ES6 symbol
+         typeof arg === 'undefined';
+}
+exports.isPrimitive = isPrimitive;
+
+exports.isBuffer = __webpack_require__(/*! ./support/isBuffer */ "./node_modules/node-libs-browser/node_modules/util/support/isBufferBrowser.js");
+
+function objectToString(o) {
+  return Object.prototype.toString.call(o);
+}
+
+
+function pad(n) {
+  return n < 10 ? '0' + n.toString(10) : n.toString(10);
+}
+
+
+var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+              'Oct', 'Nov', 'Dec'];
+
+// 26 Feb 16:19:34
+function timestamp() {
+  var d = new Date();
+  var time = [pad(d.getHours()),
+              pad(d.getMinutes()),
+              pad(d.getSeconds())].join(':');
+  return [d.getDate(), months[d.getMonth()], time].join(' ');
+}
+
+
+// log is just a thin wrapper to console.log that prepends a timestamp
+exports.log = function() {
+  console.log('%s - %s', timestamp(), exports.format.apply(exports, arguments));
+};
+
+
+/**
+ * Inherit the prototype methods from one constructor into another.
+ *
+ * The Function.prototype.inherits from lang.js rewritten as a standalone
+ * function (not on Function.prototype). NOTE: If this file is to be loaded
+ * during bootstrapping this function needs to be rewritten using some native
+ * functions as prototype setup using normal JavaScript does not work as
+ * expected during bootstrapping (see mirror.js in r114903).
+ *
+ * @param {function} ctor Constructor function which needs to inherit the
+ *     prototype.
+ * @param {function} superCtor Constructor function to inherit prototype from.
+ */
+exports.inherits = __webpack_require__(/*! inherits */ "./node_modules/inherits/inherits_browser.js");
+
+exports._extend = function(origin, add) {
+  // Don't do anything if add isn't an object
+  if (!add || !isObject(add)) return origin;
+
+  var keys = Object.keys(add);
+  var i = keys.length;
+  while (i--) {
+    origin[keys[i]] = add[keys[i]];
+  }
+  return origin;
+};
+
+function hasOwnProperty(obj, prop) {
+  return Object.prototype.hasOwnProperty.call(obj, prop);
+}
+
+var kCustomPromisifiedSymbol = typeof Symbol !== 'undefined' ? Symbol('util.promisify.custom') : undefined;
+
+exports.promisify = function promisify(original) {
+  if (typeof original !== 'function')
+    throw new TypeError('The "original" argument must be of type Function');
+
+  if (kCustomPromisifiedSymbol && original[kCustomPromisifiedSymbol]) {
+    var fn = original[kCustomPromisifiedSymbol];
+    if (typeof fn !== 'function') {
+      throw new TypeError('The "util.promisify.custom" argument must be of type Function');
+    }
+    Object.defineProperty(fn, kCustomPromisifiedSymbol, {
+      value: fn, enumerable: false, writable: false, configurable: true
+    });
+    return fn;
+  }
+
+  function fn() {
+    var promiseResolve, promiseReject;
+    var promise = new Promise(function (resolve, reject) {
+      promiseResolve = resolve;
+      promiseReject = reject;
+    });
+
+    var args = [];
+    for (var i = 0; i < arguments.length; i++) {
+      args.push(arguments[i]);
+    }
+    args.push(function (err, value) {
+      if (err) {
+        promiseReject(err);
+      } else {
+        promiseResolve(value);
+      }
+    });
+
+    try {
+      original.apply(this, args);
+    } catch (err) {
+      promiseReject(err);
+    }
+
+    return promise;
+  }
+
+  Object.setPrototypeOf(fn, Object.getPrototypeOf(original));
+
+  if (kCustomPromisifiedSymbol) Object.defineProperty(fn, kCustomPromisifiedSymbol, {
+    value: fn, enumerable: false, writable: false, configurable: true
+  });
+  return Object.defineProperties(
+    fn,
+    getOwnPropertyDescriptors(original)
+  );
+}
+
+exports.promisify.custom = kCustomPromisifiedSymbol
+
+function callbackifyOnRejected(reason, cb) {
+  // `!reason` guard inspired by bluebird (Ref: https://goo.gl/t5IS6M).
+  // Because `null` is a special error value in callbacks which means "no error
+  // occurred", we error-wrap so the callback consumer can distinguish between
+  // "the promise rejected with null" or "the promise fulfilled with undefined".
+  if (!reason) {
+    var newReason = new Error('Promise was rejected with a falsy value');
+    newReason.reason = reason;
+    reason = newReason;
+  }
+  return cb(reason);
+}
+
+function callbackify(original) {
+  if (typeof original !== 'function') {
+    throw new TypeError('The "original" argument must be of type Function');
+  }
+
+  // We DO NOT return the promise as it gives the user a false sense that
+  // the promise is actually somehow related to the callback's execution
+  // and that the callback throwing will reject the promise.
+  function callbackified() {
+    var args = [];
+    for (var i = 0; i < arguments.length; i++) {
+      args.push(arguments[i]);
+    }
+
+    var maybeCb = args.pop();
+    if (typeof maybeCb !== 'function') {
+      throw new TypeError('The last argument must be of type Function');
+    }
+    var self = this;
+    var cb = function() {
+      return maybeCb.apply(self, arguments);
+    };
+    // In true node style we process the callback on `nextTick` with all the
+    // implications (stack, `uncaughtException`, `async_hooks`)
+    original.apply(this, args)
+      .then(function(ret) { process.nextTick(cb, null, ret) },
+            function(rej) { process.nextTick(callbackifyOnRejected, rej, cb) });
+  }
+
+  Object.setPrototypeOf(callbackified, Object.getPrototypeOf(original));
+  Object.defineProperties(callbackified,
+                          getOwnPropertyDescriptors(original));
+  return callbackified;
+}
+exports.callbackify = callbackify;
+
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../../process/browser.js */ "./node_modules/process/browser.js")))
+
 /***/ }),
-/* 12 */
+
+/***/ "./node_modules/object-assign/index.js":
+/*!*********************************************!*\
+  !*** ./node_modules/object-assign/index.js ***!
+  \*********************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const React = __webpack_require__(1);
-const ReactDom = __webpack_require__(9);
-const parser2_1 = __webpack_require__(5);
-const Terminal3_1 = __webpack_require__(7);
-const bird_world_1 = __webpack_require__(8);
-console.time('world_build');
-let driver = bird_world_1.new_bird_world();
-for (let i = 0; i < 10; i++) {
-    driver.apply_command(parser2_1.raw('go up'));
-    driver.apply_command(parser2_1.raw('go down'));
-}
-console.timeEnd('world_build');
-console.time('render');
-ReactDom.render(React.createElement(Terminal3_1.History, { world: driver.current_world }), document.getElementById('terminal'));
-console.timeEnd('render');
-// import {Terminal} from "../components/Terminal";
-// import {WorldDriver} from "../typescript/commands";
-// import {VenienceWorld, VenienceWorldState} from '../typescript/venience/venience_world';
-// let start: VenienceWorldState = {};
-// // start.experiences = ['grass, asking 2'];
-// //start.experiences = ['alcove, entering the forest']; 
-// // start.experiences = ['woods, ending interpretation'];
-// // start.experiences = ['bed, sitting up 2'];
-// // start.experiences = ['woods, crossing the boundary 2'];
-// // start.experiences = ['woods, clearing'];
-// // start.has_regarded = {'tangle, 3': true};
-// // start.has_understood = {'tangle, 3': true};
-// let world_driver = new WorldDriver(new VenienceWorld(start))
-// ReactDom.render(<Terminal world_driver={world_driver} />, document.getElementById('terminal'));
-
-/***/ }),
-/* 13 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", { value: true });
-function uncapitalize(msg) {
-    return msg[0].toLowerCase() + msg.slice(1);
-}
-exports.uncapitalize = uncapitalize;
-function capitalize(msg) {
-    return msg[0].toUpperCase() + msg.slice(1);
-}
-exports.capitalize = capitalize;
-function starts_with(str, searchString, position) {
-    position = position || 0;
-    return str.substr(position, searchString.length) === searchString;
-}
-exports.starts_with = starts_with;
-function tokens_equal(tks1, tks2) {
-    if (tks1.length !== tks2.length) {
-        return false;
-    }
-    for (let i = 0; i < tks1.length; i++) {
-        if (tks1[i] !== tks2[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-exports.tokens_equal = tokens_equal;
-function tokenize(s) {
-    let word_pat = /[\S]+/g;
-    let space_pat = /[^\S]+/g;
-    let tokens = s.split(space_pat);
-    let gaps = s.split(word_pat);
-    if (tokens.length > 0) {
-        if (tokens[0] === '') {
-            tokens.splice(0, 1);
-        }
-        if (tokens[tokens.length - 1] === '' && gaps[gaps.length - 1] === '') {
-            tokens.splice(tokens.length - 1, 1);
-        }
-    }
-    return [tokens, gaps];
-}
-exports.tokenize = tokenize;
-function split_tokens(s) {
-    let space_pat = /[^\S]+/g;
-    let tokens = s.split(space_pat);
-    if (tokens.length > 0) {
-        if (tokens[0] === '') {
-            tokens.splice(0, 1);
-        }
-        if (tokens[tokens.length - 1] === '') {
-            tokens.splice(tokens.length - 1, 1);
-        }
-    }
-    return tokens;
-}
-exports.split_tokens = split_tokens;
-function tokenize_tests() {
-    console.log('tokenize tests');
-    console.log(tokenize(' l'));
-}
-function untokenize(tokens, gaps) {
-    if (gaps === undefined) {
-        return tokens.join(' ');
-    }
-    let result = '';
-    let i = 0;
-    for (i = 0; i < gaps.length; i++) {
-        result += gaps[i];
-        if (i < tokens.length) {
-            result += tokens[i];
-        }
-    }
-    return result;
-}
-exports.untokenize = untokenize;
-function get_indenting_whitespace(s) {
-    let space_pat = /^[^\S]+/;
-    let result = space_pat.exec(s);
-    if (result === null) {
-        return '';
-    }
-    return result[0];
-}
-exports.get_indenting_whitespace = get_indenting_whitespace;
-function ends_with_whitespace(s) {
-    let last_space_pat = /\s$/;
-    return last_space_pat.exec(s) !== null;
-}
-exports.ends_with_whitespace = ends_with_whitespace;
-function normalize_whitespace(s) {
-    return s.trim().replace(/\s+/g, ' ');
-}
-exports.normalize_whitespace = normalize_whitespace;
-function last(x) {
-    return x[x.length - 1];
-}
-exports.last = last;
-function random_choice(choices) {
-    var index = Math.floor(Math.random() * choices.length);
-    return choices[index];
-}
-exports.random_choice = random_choice;
-function dedent(strs, ...args) {
-    // do interpolation
-    let result = strs[0];
-    for (let i = 0; i < args.length; i++) {
-        result += args[i] + strs[i + 1];
-    }
-    //find the first newline with whitespace after it
-    let pat = /\n +/;
-    let m = pat.exec(result);
-    if (m === null) {
-        return result;
-    }
-    let replace_pat = new RegExp(m[0], 'g');
-    let result2 = result.replace(replace_pat, '\n');
-    return result2;
-}
-exports.dedent = dedent;
-function wrap_in_div(message) {
-    let elt = document.createElement('div');
-    elt.innerHTML = message;
-    return elt;
-}
-exports.wrap_in_div = wrap_in_div;
-
-/***/ }),
-/* 14 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
 /*
-
-    This module provides the highest level abstractions about game state and history.
-    TODO: rename from commands to world?
-
-    It defines what comprises the game state, including
-        user input
-        parse results
-        current world state
-        current world message
-        past world states/messages
-        history interpretation tags
-
-    Notable concerns:
-        All game state has to be serializable (for save/load)
-            Meaning, functions/closures either can't be part of the state, or we need to define a serialization protocol for them
-        Infinite undo (so all previous states must be saved at all time)
-
-
-
+object-assign
+(c) Sindre Sorhus
+@license MIT
 */
 
-Object.defineProperty(exports, "__esModule", { value: true });
-const datatypes_1 = __webpack_require__(4);
-const parser2_1 = __webpack_require__(5);
-const assert = __webpack_require__(10);
-function apply_interpretation_op(interp, op) {
-    if (op.kind === 'Add') {
-        if (interp.indexOf(op.label) === -1) {
-            return [...interp, op.label];
-        }
-    }
-    if (op.kind === 'Remove') {
-        let idx = interp.indexOf(op.label);
-        if (idx !== -1) {
-            let new_interp = [...interp];
-            new_interp.splice(idx, 1);
-            return new_interp;
-        }
-    }
-    return interp;
+
+/* eslint-disable no-unused-vars */
+var getOwnPropertySymbols = Object.getOwnPropertySymbols;
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+var propIsEnumerable = Object.prototype.propertyIsEnumerable;
+
+function toObject(val) {
+	if (val === null || val === undefined) {
+		throw new TypeError('Object.assign cannot be called with null or undefined');
+	}
+
+	return Object(val);
 }
-function apply_interpretation_ops(interp, ops) {
-    return ops.reduce(apply_interpretation_op, interp);
+
+function shouldUseNative() {
+	try {
+		if (!Object.assign) {
+			return false;
+		}
+
+		// Detect buggy property enumeration order in older V8 versions.
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
+		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
+		test1[5] = 'de';
+		if (Object.getOwnPropertyNames(test1)[0] === '5') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test2 = {};
+		for (var i = 0; i < 10; i++) {
+			test2['_' + String.fromCharCode(i)] = i;
+		}
+		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
+			return test2[n];
+		});
+		if (order2.join('') !== '0123456789') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test3 = {};
+		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
+			test3[letter] = letter;
+		});
+		if (Object.keys(Object.assign({}, test3)).join('') !==
+				'abcdefghijklmnopqrst') {
+			return false;
+		}
+
+		return true;
+	} catch (err) {
+		// We don't expect any of the above to throw, but better to be safe.
+		return false;
+	}
 }
-function object_level(w) {
-    const updater = { parsing: undefined, previous: undefined, index: undefined, interpretations: undefined };
-    return datatypes_1.update(w, updater);
-}
-exports.object_level = object_level;
-const INITIAL_WORLD = {
-    message: undefined,
-    parsing: undefined,
-    previous: null,
-    index: 0,
-    interpretations: {}
+
+module.exports = shouldUseNative() ? Object.assign : function (target, source) {
+	var from;
+	var to = toObject(target);
+	var symbols;
+
+	for (var s = 1; s < arguments.length; s++) {
+		from = Object(arguments[s]);
+
+		for (var key in from) {
+			if (hasOwnProperty.call(from, key)) {
+				to[key] = from[key];
+			}
+		}
+
+		if (getOwnPropertySymbols) {
+			symbols = getOwnPropertySymbols(from);
+			for (var i = 0; i < symbols.length; i++) {
+				if (propIsEnumerable.call(from, symbols[i])) {
+					to[symbols[i]] = from[symbols[i]];
+				}
+			}
+		}
+	}
+
+	return to;
 };
-// Helper to return INITIAL_WORLD constant as any kind of W type.
-function get_initial_world() {
-    return INITIAL_WORLD;
+
+
+/***/ }),
+
+/***/ "./node_modules/process/browser.js":
+/*!*****************************************!*\
+  !*** ./node_modules/process/browser.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+// shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
 }
-exports.get_initial_world = get_initial_world;
-function apply_command(spec, world, command) {
-    // First handle the command
-    let result = parser2_1.Parser.run_thread(command, p => spec.handle_command(p, world));
-    if (result.kind === 'NotParsed') {
-        return {
-            kind: 'CommandResult',
-            parsing: result.parsing,
-            world: null
-        };
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
     }
-    let next_state = result.result;
-    next_state = datatypes_1.update(next_state, {
-        previous: _ => world,
-        parsing: _ => result.parsing,
-        index: _ => _ + 1
-    });
-    // Next apply history interp            
-    let hist_state = next_state;
-    while (hist_state !== null) {
-        let ops = spec.interpret_history(hist_state, next_state);
-        if (ops !== undefined) {
-            let old_interp = next_state.interpretations[hist_state.index] || [];
-            let new_interp = apply_interpretation_ops(old_interp, ops);
-            if (old_interp !== new_interp) {
-                if (new_interp.length === 0) {
-                    new_interp = undefined;
-                }
-                next_state = datatypes_1.update(next_state, {
-                    interpretations: { [hist_state.index]: new_interp }
-                });
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
             }
         }
-        hist_state = hist_state.previous;
+        queueIndex = -1;
+        len = queue.length;
     }
-    return {
-        kind: 'CommandResult',
-        parsing: result.parsing,
-        world: next_state
-    };
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
 }
-exports.apply_command = apply_command;
-class WorldDriver {
-    constructor(spec) {
-        this.spec = spec;
-        this.current_world = this.spec.initial_world;
-        this.apply_command(parser2_1.raw('', false));
-    }
-    apply_command(cmd) {
-        let result = apply_command(this.spec, this.current_world, cmd);
-        this.current_parsing = result.parsing;
-        this.possible_world = null;
-        if (result.parsing.view.submission) {
-            assert.ok(result.world !== null);
-            this.current_world = result.world;
-            this.apply_command(parser2_1.raw('', false));
-        } else if (result.parsing.view.submittable) {
-            // See what would happen if they submitted this command.
-            // This is used for UI effects when an entered, but not submitted, command
-            // would cause interpretations to change
-            let r = apply_command(this.spec, this.current_world, datatypes_1.update(cmd, { submit: true }));
-            // TODO add null check runtime error
-            assert.ok(r.world !== null);
-            this.possible_world = r.world;
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
         }
     }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
 }
-exports.WorldDriver = WorldDriver;
-/*
-TODO:
-    World Validator, tests out a world by fully traversing its command space
-        - Find any states that produced invalid commands
-            Raised an error given an input
-            Did not accept a submit token at the end
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
 
+function noop() {}
 
-*/
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
 
 /***/ }),
-/* 15 */
+
+/***/ "./node_modules/react-dom/cjs/react-dom.development.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/react-dom/cjs/react-dom.development.js ***!
+  \*************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {/** @license React v16.8.6
+/** @license React v16.8.6
  * react-dom.development.js
  *
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -2217,15 +1672,15 @@ TODO:
 
 
 
-if (process.env.NODE_ENV !== "production") {
+if (true) {
   (function() {
 'use strict';
 
-var React = __webpack_require__(1);
-var _assign = __webpack_require__(2);
-var checkPropTypes = __webpack_require__(17);
-var scheduler = __webpack_require__(6);
-var tracing = __webpack_require__(27);
+var React = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+var _assign = __webpack_require__(/*! object-assign */ "./node_modules/object-assign/index.js");
+var checkPropTypes = __webpack_require__(/*! prop-types/checkPropTypes */ "./node_modules/react-dom/node_modules/prop-types/checkPropTypes.js");
+var scheduler = __webpack_require__(/*! scheduler */ "./node_modules/scheduler/index.js");
+var tracing = __webpack_require__(/*! scheduler/tracing */ "./node_modules/scheduler/tracing.js");
 
 /**
  * Use invariant() to assert state which your program assumes to be true.
@@ -9787,7 +9242,7 @@ function setInitialDOMProperties(tag, domElement, rootContainerElement, nextProp
       // on server rendering (but we *do* want to emit it in SSR).
     } else if (registrationNameModules.hasOwnProperty(propKey)) {
       if (nextProp != null) {
-        if (true && typeof nextProp !== 'function') {
+        if ( true && typeof nextProp !== 'function') {
           warnForInvalidEventListener(propKey, nextProp);
         }
         ensureListeningTo(rootContainerElement, propKey);
@@ -10143,7 +9598,7 @@ function diffProperties(domElement, tag, lastRawProps, nextRawProps, rootContain
     } else if (registrationNameModules.hasOwnProperty(propKey)) {
       if (nextProp != null) {
         // We eagerly listen to this even though we haven't committed yet.
-        if (true && typeof nextProp !== 'function') {
+        if ( true && typeof nextProp !== 'function') {
           warnForInvalidEventListener(propKey, nextProp);
         }
         ensureListeningTo(rootContainerElement, propKey);
@@ -10328,14 +9783,14 @@ function diffHydratedProperties(domElement, tag, rawProps, parentNamespace, root
       // TODO: Should we use domElement.firstChild.nodeValue to compare?
       if (typeof nextProp === 'string') {
         if (domElement.textContent !== nextProp) {
-          if (true && !suppressHydrationWarning) {
+          if ( true && !suppressHydrationWarning) {
             warnForTextDifference(domElement.textContent, nextProp);
           }
           updatePayload = [CHILDREN, nextProp];
         }
       } else if (typeof nextProp === 'number') {
         if (domElement.textContent !== '' + nextProp) {
-          if (true && !suppressHydrationWarning) {
+          if ( true && !suppressHydrationWarning) {
             warnForTextDifference(domElement.textContent, nextProp);
           }
           updatePayload = [CHILDREN, '' + nextProp];
@@ -10343,12 +9798,12 @@ function diffHydratedProperties(domElement, tag, rawProps, parentNamespace, root
       }
     } else if (registrationNameModules.hasOwnProperty(propKey)) {
       if (nextProp != null) {
-        if (true && typeof nextProp !== 'function') {
+        if ( true && typeof nextProp !== 'function') {
           warnForInvalidEventListener(propKey, nextProp);
         }
         ensureListeningTo(rootContainerElement, propKey);
       }
-    } else if (true &&
+    } else if ( true &&
     // Convince Flow we've calculated it (it's DEV-only in this method.)
     typeof isCustomComponentTag === 'boolean') {
       // Validate that the properties correspond to their expected values.
@@ -11247,7 +10702,7 @@ function didNotMatchHydratedContainerTextInstance(parentContainer, textInstance,
 }
 
 function didNotMatchHydratedTextInstance(parentType, parentProps, parentInstance, textInstance, text) {
-  if (true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
+  if ( true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
     warnForUnmatchedText(textInstance, text);
   }
 }
@@ -11265,7 +10720,7 @@ function didNotHydrateContainerInstance(parentContainer, instance) {
 }
 
 function didNotHydrateInstance(parentType, parentProps, parentInstance, instance) {
-  if (true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
+  if ( true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
     if (instance.nodeType === ELEMENT_NODE) {
       warnForDeletedHydratableElement(parentInstance, instance);
     } else if (instance.nodeType === COMMENT_NODE) {
@@ -11291,19 +10746,19 @@ function didNotFindHydratableContainerTextInstance(parentContainer, text) {
 
 
 function didNotFindHydratableInstance(parentType, parentProps, parentInstance, type, props) {
-  if (true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
+  if ( true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
     warnForInsertedHydratedElement(parentInstance, type, props);
   }
 }
 
 function didNotFindHydratableTextInstance(parentType, parentProps, parentInstance, text) {
-  if (true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
+  if ( true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
     warnForInsertedHydratedText(parentInstance, text);
   }
 }
 
 function didNotFindHydratableSuspenseInstance(parentType, parentProps, parentInstance) {
-  if (true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
+  if ( true && parentProps[SUPPRESS_HYDRATION_WARNING] !== true) {
     // TODO: warnForInsertedHydratedSuspense(parentInstance);
   }
 }
@@ -12015,7 +11470,7 @@ function catchErrors(fn) {
     try {
       return fn(arg);
     } catch (err) {
-      if (true && !hasLoggedError) {
+      if ( true && !hasLoggedError) {
         hasLoggedError = true;
         warningWithoutStack$1(false, 'React DevTools encountered an error: %s', err);
       }
@@ -20734,7 +20189,7 @@ var mayReplayFailedUnitOfWork = void 0;
 var isReplayingFailedUnitOfWork = void 0;
 var originalReplayError = void 0;
 var rethrowOriginalError = void 0;
-if (true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
+if ( true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
   stashedWorkInProgressProperties = null;
   mayReplayFailedUnitOfWork = true;
   isReplayingFailedUnitOfWork = false;
@@ -21189,7 +20644,7 @@ function commitRoot(root, finishedWork) {
   stopCommitLifeCyclesTimer();
   stopCommitTimer();
   onCommitRoot(finishedWork.stateNode);
-  if (true && ReactFiberInstrumentation_1.debugTool) {
+  if ( true && ReactFiberInstrumentation_1.debugTool) {
     ReactFiberInstrumentation_1.debugTool.onCommitWork(finishedWork);
   }
 
@@ -21334,7 +20789,7 @@ function completeUnitOfWork(workInProgress) {
     var siblingFiber = workInProgress.sibling;
 
     if ((workInProgress.effectTag & Incomplete) === NoEffect) {
-      if (true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
+      if ( true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
         // Don't replay if it fails during completion phase.
         mayReplayFailedUnitOfWork = false;
       }
@@ -21353,7 +20808,7 @@ function completeUnitOfWork(workInProgress) {
       } else {
         nextUnitOfWork = completeWork(current$$1, workInProgress, nextRenderExpirationTime);
       }
-      if (true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
+      if ( true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
         // We're out of completion phase so replaying is fine now.
         mayReplayFailedUnitOfWork = true;
       }
@@ -21403,7 +20858,7 @@ function completeUnitOfWork(workInProgress) {
         }
       }
 
-      if (true && ReactFiberInstrumentation_1.debugTool) {
+      if ( true && ReactFiberInstrumentation_1.debugTool) {
         ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
       }
 
@@ -21451,7 +20906,7 @@ function completeUnitOfWork(workInProgress) {
 
       if (next !== null) {
         stopWorkTimer(workInProgress);
-        if (true && ReactFiberInstrumentation_1.debugTool) {
+        if ( true && ReactFiberInstrumentation_1.debugTool) {
           ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
         }
 
@@ -21469,7 +20924,7 @@ function completeUnitOfWork(workInProgress) {
         returnFiber.effectTag |= Incomplete;
       }
 
-      if (true && ReactFiberInstrumentation_1.debugTool) {
+      if ( true && ReactFiberInstrumentation_1.debugTool) {
         ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
       }
 
@@ -21505,7 +20960,7 @@ function performUnitOfWork(workInProgress) {
     setCurrentFiber(workInProgress);
   }
 
-  if (true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
+  if ( true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
     stashedWorkInProgressProperties = assignFiberPropertiesInDEV(stashedWorkInProgressProperties, workInProgress);
   }
 
@@ -21537,7 +20992,7 @@ function performUnitOfWork(workInProgress) {
       rethrowOriginalError();
     }
   }
-  if (true && ReactFiberInstrumentation_1.debugTool) {
+  if ( true && ReactFiberInstrumentation_1.debugTool) {
     ReactFiberInstrumentation_1.debugTool.onBeginWork(workInProgress);
   }
 
@@ -21646,7 +21101,7 @@ function renderRoot(root, isYieldy) {
       // Reset in case completion throws.
       // This is only used in DEV and when replaying is on.
       var mayReplay = void 0;
-      if (true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
+      if ( true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
         mayReplay = mayReplayFailedUnitOfWork;
         mayReplayFailedUnitOfWork = true;
       }
@@ -21668,7 +21123,7 @@ function renderRoot(root, isYieldy) {
           resetCurrentlyProcessingQueue();
         }
 
-        if (true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
+        if ( true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
           if (mayReplay) {
             var failedUnitOfWork = nextUnitOfWork;
             replayUnitOfWork(failedUnitOfWork, thrownValue, isYieldy);
@@ -23483,290 +22938,63 @@ module.exports = reactDom;
   })();
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 16 */
+
+/***/ "./node_modules/react-dom/index.js":
+/*!*****************************************!*\
+  !*** ./node_modules/react-dom/index.js ***!
+  \*****************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/** @license React v16.8.6
- * react-dom.production.min.js
- *
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
 
-/*
- Modernizr 3.0.0pre (Custom Build) | MIT
-*/
-var aa=__webpack_require__(1),n=__webpack_require__(2),r=__webpack_require__(6);function ba(a,b,c,d,e,f,g,h){if(!a){a=void 0;if(void 0===b)a=Error("Minified exception occurred; use the non-minified dev environment for the full error message and additional helpful warnings.");else{var l=[c,d,e,f,g,h],k=0;a=Error(b.replace(/%s/g,function(){return l[k++]}));a.name="Invariant Violation"}a.framesToPop=1;throw a;}}
-function x(a){for(var b=arguments.length-1,c="https://reactjs.org/docs/error-decoder.html?invariant="+a,d=0;d<b;d++)c+="&args[]="+encodeURIComponent(arguments[d+1]);ba(!1,"Minified React error #"+a+"; visit %s for the full message or use the non-minified dev environment for full errors and additional helpful warnings. ",c)}aa?void 0:x("227");function ca(a,b,c,d,e,f,g,h,l){var k=Array.prototype.slice.call(arguments,3);try{b.apply(c,k)}catch(m){this.onError(m)}}
-var da=!1,ea=null,fa=!1,ha=null,ia={onError:function(a){da=!0;ea=a}};function ja(a,b,c,d,e,f,g,h,l){da=!1;ea=null;ca.apply(ia,arguments)}function ka(a,b,c,d,e,f,g,h,l){ja.apply(this,arguments);if(da){if(da){var k=ea;da=!1;ea=null}else x("198"),k=void 0;fa||(fa=!0,ha=k)}}var la=null,ma={};
-function na(){if(la)for(var a in ma){var b=ma[a],c=la.indexOf(a);-1<c?void 0:x("96",a);if(!oa[c]){b.extractEvents?void 0:x("97",a);oa[c]=b;c=b.eventTypes;for(var d in c){var e=void 0;var f=c[d],g=b,h=d;pa.hasOwnProperty(h)?x("99",h):void 0;pa[h]=f;var l=f.phasedRegistrationNames;if(l){for(e in l)l.hasOwnProperty(e)&&qa(l[e],g,h);e=!0}else f.registrationName?(qa(f.registrationName,g,h),e=!0):e=!1;e?void 0:x("98",d,a)}}}}
-function qa(a,b,c){ra[a]?x("100",a):void 0;ra[a]=b;sa[a]=b.eventTypes[c].dependencies}var oa=[],pa={},ra={},sa={},ta=null,ua=null,va=null;function wa(a,b,c){var d=a.type||"unknown-event";a.currentTarget=va(c);ka(d,b,void 0,a);a.currentTarget=null}function xa(a,b){null==b?x("30"):void 0;if(null==a)return b;if(Array.isArray(a)){if(Array.isArray(b))return a.push.apply(a,b),a;a.push(b);return a}return Array.isArray(b)?[a].concat(b):[a,b]}
-function ya(a,b,c){Array.isArray(a)?a.forEach(b,c):a&&b.call(c,a)}var za=null;function Aa(a){if(a){var b=a._dispatchListeners,c=a._dispatchInstances;if(Array.isArray(b))for(var d=0;d<b.length&&!a.isPropagationStopped();d++)wa(a,b[d],c[d]);else b&&wa(a,b,c);a._dispatchListeners=null;a._dispatchInstances=null;a.isPersistent()||a.constructor.release(a)}}
-var Ba={injectEventPluginOrder:function(a){la?x("101"):void 0;la=Array.prototype.slice.call(a);na()},injectEventPluginsByName:function(a){var b=!1,c;for(c in a)if(a.hasOwnProperty(c)){var d=a[c];ma.hasOwnProperty(c)&&ma[c]===d||(ma[c]?x("102",c):void 0,ma[c]=d,b=!0)}b&&na()}};
-function Ca(a,b){var c=a.stateNode;if(!c)return null;var d=ta(c);if(!d)return null;c=d[b];a:switch(b){case "onClick":case "onClickCapture":case "onDoubleClick":case "onDoubleClickCapture":case "onMouseDown":case "onMouseDownCapture":case "onMouseMove":case "onMouseMoveCapture":case "onMouseUp":case "onMouseUpCapture":(d=!d.disabled)||(a=a.type,d=!("button"===a||"input"===a||"select"===a||"textarea"===a));a=!d;break a;default:a=!1}if(a)return null;c&&"function"!==typeof c?x("231",b,typeof c):void 0;
-return c}function Da(a){null!==a&&(za=xa(za,a));a=za;za=null;if(a&&(ya(a,Aa),za?x("95"):void 0,fa))throw a=ha,fa=!1,ha=null,a;}var Ea=Math.random().toString(36).slice(2),Fa="__reactInternalInstance$"+Ea,Ga="__reactEventHandlers$"+Ea;function Ha(a){if(a[Fa])return a[Fa];for(;!a[Fa];)if(a.parentNode)a=a.parentNode;else return null;a=a[Fa];return 5===a.tag||6===a.tag?a:null}function Ia(a){a=a[Fa];return!a||5!==a.tag&&6!==a.tag?null:a}
-function Ja(a){if(5===a.tag||6===a.tag)return a.stateNode;x("33")}function Ka(a){return a[Ga]||null}function La(a){do a=a.return;while(a&&5!==a.tag);return a?a:null}function Ma(a,b,c){if(b=Ca(a,c.dispatchConfig.phasedRegistrationNames[b]))c._dispatchListeners=xa(c._dispatchListeners,b),c._dispatchInstances=xa(c._dispatchInstances,a)}
-function Na(a){if(a&&a.dispatchConfig.phasedRegistrationNames){for(var b=a._targetInst,c=[];b;)c.push(b),b=La(b);for(b=c.length;0<b--;)Ma(c[b],"captured",a);for(b=0;b<c.length;b++)Ma(c[b],"bubbled",a)}}function Oa(a,b,c){a&&c&&c.dispatchConfig.registrationName&&(b=Ca(a,c.dispatchConfig.registrationName))&&(c._dispatchListeners=xa(c._dispatchListeners,b),c._dispatchInstances=xa(c._dispatchInstances,a))}function Pa(a){a&&a.dispatchConfig.registrationName&&Oa(a._targetInst,null,a)}
-function Qa(a){ya(a,Na)}var Ra=!("undefined"===typeof window||!window.document||!window.document.createElement);function Sa(a,b){var c={};c[a.toLowerCase()]=b.toLowerCase();c["Webkit"+a]="webkit"+b;c["Moz"+a]="moz"+b;return c}var Ta={animationend:Sa("Animation","AnimationEnd"),animationiteration:Sa("Animation","AnimationIteration"),animationstart:Sa("Animation","AnimationStart"),transitionend:Sa("Transition","TransitionEnd")},Ua={},Va={};
-Ra&&(Va=document.createElement("div").style,"AnimationEvent"in window||(delete Ta.animationend.animation,delete Ta.animationiteration.animation,delete Ta.animationstart.animation),"TransitionEvent"in window||delete Ta.transitionend.transition);function Wa(a){if(Ua[a])return Ua[a];if(!Ta[a])return a;var b=Ta[a],c;for(c in b)if(b.hasOwnProperty(c)&&c in Va)return Ua[a]=b[c];return a}
-var Xa=Wa("animationend"),Ya=Wa("animationiteration"),Za=Wa("animationstart"),$a=Wa("transitionend"),ab="abort canplay canplaythrough durationchange emptied encrypted ended error loadeddata loadedmetadata loadstart pause play playing progress ratechange seeked seeking stalled suspend timeupdate volumechange waiting".split(" "),bb=null,cb=null,db=null;
-function eb(){if(db)return db;var a,b=cb,c=b.length,d,e="value"in bb?bb.value:bb.textContent,f=e.length;for(a=0;a<c&&b[a]===e[a];a++);var g=c-a;for(d=1;d<=g&&b[c-d]===e[f-d];d++);return db=e.slice(a,1<d?1-d:void 0)}function fb(){return!0}function gb(){return!1}
-function y(a,b,c,d){this.dispatchConfig=a;this._targetInst=b;this.nativeEvent=c;a=this.constructor.Interface;for(var e in a)a.hasOwnProperty(e)&&((b=a[e])?this[e]=b(c):"target"===e?this.target=d:this[e]=c[e]);this.isDefaultPrevented=(null!=c.defaultPrevented?c.defaultPrevented:!1===c.returnValue)?fb:gb;this.isPropagationStopped=gb;return this}
-n(y.prototype,{preventDefault:function(){this.defaultPrevented=!0;var a=this.nativeEvent;a&&(a.preventDefault?a.preventDefault():"unknown"!==typeof a.returnValue&&(a.returnValue=!1),this.isDefaultPrevented=fb)},stopPropagation:function(){var a=this.nativeEvent;a&&(a.stopPropagation?a.stopPropagation():"unknown"!==typeof a.cancelBubble&&(a.cancelBubble=!0),this.isPropagationStopped=fb)},persist:function(){this.isPersistent=fb},isPersistent:gb,destructor:function(){var a=this.constructor.Interface,
-b;for(b in a)this[b]=null;this.nativeEvent=this._targetInst=this.dispatchConfig=null;this.isPropagationStopped=this.isDefaultPrevented=gb;this._dispatchInstances=this._dispatchListeners=null}});y.Interface={type:null,target:null,currentTarget:function(){return null},eventPhase:null,bubbles:null,cancelable:null,timeStamp:function(a){return a.timeStamp||Date.now()},defaultPrevented:null,isTrusted:null};
-y.extend=function(a){function b(){}function c(){return d.apply(this,arguments)}var d=this;b.prototype=d.prototype;var e=new b;n(e,c.prototype);c.prototype=e;c.prototype.constructor=c;c.Interface=n({},d.Interface,a);c.extend=d.extend;hb(c);return c};hb(y);function ib(a,b,c,d){if(this.eventPool.length){var e=this.eventPool.pop();this.call(e,a,b,c,d);return e}return new this(a,b,c,d)}function jb(a){a instanceof this?void 0:x("279");a.destructor();10>this.eventPool.length&&this.eventPool.push(a)}
-function hb(a){a.eventPool=[];a.getPooled=ib;a.release=jb}var kb=y.extend({data:null}),lb=y.extend({data:null}),mb=[9,13,27,32],nb=Ra&&"CompositionEvent"in window,ob=null;Ra&&"documentMode"in document&&(ob=document.documentMode);
-var pb=Ra&&"TextEvent"in window&&!ob,qb=Ra&&(!nb||ob&&8<ob&&11>=ob),rb=String.fromCharCode(32),sb={beforeInput:{phasedRegistrationNames:{bubbled:"onBeforeInput",captured:"onBeforeInputCapture"},dependencies:["compositionend","keypress","textInput","paste"]},compositionEnd:{phasedRegistrationNames:{bubbled:"onCompositionEnd",captured:"onCompositionEndCapture"},dependencies:"blur compositionend keydown keypress keyup mousedown".split(" ")},compositionStart:{phasedRegistrationNames:{bubbled:"onCompositionStart",
-captured:"onCompositionStartCapture"},dependencies:"blur compositionstart keydown keypress keyup mousedown".split(" ")},compositionUpdate:{phasedRegistrationNames:{bubbled:"onCompositionUpdate",captured:"onCompositionUpdateCapture"},dependencies:"blur compositionupdate keydown keypress keyup mousedown".split(" ")}},tb=!1;
-function ub(a,b){switch(a){case "keyup":return-1!==mb.indexOf(b.keyCode);case "keydown":return 229!==b.keyCode;case "keypress":case "mousedown":case "blur":return!0;default:return!1}}function vb(a){a=a.detail;return"object"===typeof a&&"data"in a?a.data:null}var wb=!1;function xb(a,b){switch(a){case "compositionend":return vb(b);case "keypress":if(32!==b.which)return null;tb=!0;return rb;case "textInput":return a=b.data,a===rb&&tb?null:a;default:return null}}
-function yb(a,b){if(wb)return"compositionend"===a||!nb&&ub(a,b)?(a=eb(),db=cb=bb=null,wb=!1,a):null;switch(a){case "paste":return null;case "keypress":if(!(b.ctrlKey||b.altKey||b.metaKey)||b.ctrlKey&&b.altKey){if(b.char&&1<b.char.length)return b.char;if(b.which)return String.fromCharCode(b.which)}return null;case "compositionend":return qb&&"ko"!==b.locale?null:b.data;default:return null}}
-var zb={eventTypes:sb,extractEvents:function(a,b,c,d){var e=void 0;var f=void 0;if(nb)b:{switch(a){case "compositionstart":e=sb.compositionStart;break b;case "compositionend":e=sb.compositionEnd;break b;case "compositionupdate":e=sb.compositionUpdate;break b}e=void 0}else wb?ub(a,c)&&(e=sb.compositionEnd):"keydown"===a&&229===c.keyCode&&(e=sb.compositionStart);e?(qb&&"ko"!==c.locale&&(wb||e!==sb.compositionStart?e===sb.compositionEnd&&wb&&(f=eb()):(bb=d,cb="value"in bb?bb.value:bb.textContent,wb=
-!0)),e=kb.getPooled(e,b,c,d),f?e.data=f:(f=vb(c),null!==f&&(e.data=f)),Qa(e),f=e):f=null;(a=pb?xb(a,c):yb(a,c))?(b=lb.getPooled(sb.beforeInput,b,c,d),b.data=a,Qa(b)):b=null;return null===f?b:null===b?f:[f,b]}},Ab=null,Bb=null,Cb=null;function Db(a){if(a=ua(a)){"function"!==typeof Ab?x("280"):void 0;var b=ta(a.stateNode);Ab(a.stateNode,a.type,b)}}function Eb(a){Bb?Cb?Cb.push(a):Cb=[a]:Bb=a}function Fb(){if(Bb){var a=Bb,b=Cb;Cb=Bb=null;Db(a);if(b)for(a=0;a<b.length;a++)Db(b[a])}}
-function Gb(a,b){return a(b)}function Hb(a,b,c){return a(b,c)}function Ib(){}var Jb=!1;function Kb(a,b){if(Jb)return a(b);Jb=!0;try{return Gb(a,b)}finally{if(Jb=!1,null!==Bb||null!==Cb)Ib(),Fb()}}var Lb={color:!0,date:!0,datetime:!0,"datetime-local":!0,email:!0,month:!0,number:!0,password:!0,range:!0,search:!0,tel:!0,text:!0,time:!0,url:!0,week:!0};function Mb(a){var b=a&&a.nodeName&&a.nodeName.toLowerCase();return"input"===b?!!Lb[a.type]:"textarea"===b?!0:!1}
-function Nb(a){a=a.target||a.srcElement||window;a.correspondingUseElement&&(a=a.correspondingUseElement);return 3===a.nodeType?a.parentNode:a}function Ob(a){if(!Ra)return!1;a="on"+a;var b=a in document;b||(b=document.createElement("div"),b.setAttribute(a,"return;"),b="function"===typeof b[a]);return b}function Pb(a){var b=a.type;return(a=a.nodeName)&&"input"===a.toLowerCase()&&("checkbox"===b||"radio"===b)}
-function Qb(a){var b=Pb(a)?"checked":"value",c=Object.getOwnPropertyDescriptor(a.constructor.prototype,b),d=""+a[b];if(!a.hasOwnProperty(b)&&"undefined"!==typeof c&&"function"===typeof c.get&&"function"===typeof c.set){var e=c.get,f=c.set;Object.defineProperty(a,b,{configurable:!0,get:function(){return e.call(this)},set:function(a){d=""+a;f.call(this,a)}});Object.defineProperty(a,b,{enumerable:c.enumerable});return{getValue:function(){return d},setValue:function(a){d=""+a},stopTracking:function(){a._valueTracker=
-null;delete a[b]}}}}function Rb(a){a._valueTracker||(a._valueTracker=Qb(a))}function Sb(a){if(!a)return!1;var b=a._valueTracker;if(!b)return!0;var c=b.getValue();var d="";a&&(d=Pb(a)?a.checked?"true":"false":a.value);a=d;return a!==c?(b.setValue(a),!0):!1}var Tb=aa.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;Tb.hasOwnProperty("ReactCurrentDispatcher")||(Tb.ReactCurrentDispatcher={current:null});
-var Ub=/^(.*)[\\\/]/,z="function"===typeof Symbol&&Symbol.for,Vb=z?Symbol.for("react.element"):60103,Wb=z?Symbol.for("react.portal"):60106,Xb=z?Symbol.for("react.fragment"):60107,Yb=z?Symbol.for("react.strict_mode"):60108,Zb=z?Symbol.for("react.profiler"):60114,$b=z?Symbol.for("react.provider"):60109,ac=z?Symbol.for("react.context"):60110,bc=z?Symbol.for("react.concurrent_mode"):60111,cc=z?Symbol.for("react.forward_ref"):60112,dc=z?Symbol.for("react.suspense"):60113,ec=z?Symbol.for("react.memo"):
-60115,fc=z?Symbol.for("react.lazy"):60116,gc="function"===typeof Symbol&&Symbol.iterator;function hc(a){if(null===a||"object"!==typeof a)return null;a=gc&&a[gc]||a["@@iterator"];return"function"===typeof a?a:null}
-function ic(a){if(null==a)return null;if("function"===typeof a)return a.displayName||a.name||null;if("string"===typeof a)return a;switch(a){case bc:return"ConcurrentMode";case Xb:return"Fragment";case Wb:return"Portal";case Zb:return"Profiler";case Yb:return"StrictMode";case dc:return"Suspense"}if("object"===typeof a)switch(a.$$typeof){case ac:return"Context.Consumer";case $b:return"Context.Provider";case cc:var b=a.render;b=b.displayName||b.name||"";return a.displayName||(""!==b?"ForwardRef("+b+
-")":"ForwardRef");case ec:return ic(a.type);case fc:if(a=1===a._status?a._result:null)return ic(a)}return null}function jc(a){var b="";do{a:switch(a.tag){case 3:case 4:case 6:case 7:case 10:case 9:var c="";break a;default:var d=a._debugOwner,e=a._debugSource,f=ic(a.type);c=null;d&&(c=ic(d.type));d=f;f="";e?f=" (at "+e.fileName.replace(Ub,"")+":"+e.lineNumber+")":c&&(f=" (created by "+c+")");c="\n    in "+(d||"Unknown")+f}b+=c;a=a.return}while(a);return b}
-var kc=/^[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD][:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\-.0-9\u00B7\u0300-\u036F\u203F-\u2040]*$/,lc=Object.prototype.hasOwnProperty,mc={},nc={};
-function oc(a){if(lc.call(nc,a))return!0;if(lc.call(mc,a))return!1;if(kc.test(a))return nc[a]=!0;mc[a]=!0;return!1}function pc(a,b,c,d){if(null!==c&&0===c.type)return!1;switch(typeof b){case "function":case "symbol":return!0;case "boolean":if(d)return!1;if(null!==c)return!c.acceptsBooleans;a=a.toLowerCase().slice(0,5);return"data-"!==a&&"aria-"!==a;default:return!1}}
-function qc(a,b,c,d){if(null===b||"undefined"===typeof b||pc(a,b,c,d))return!0;if(d)return!1;if(null!==c)switch(c.type){case 3:return!b;case 4:return!1===b;case 5:return isNaN(b);case 6:return isNaN(b)||1>b}return!1}function C(a,b,c,d,e){this.acceptsBooleans=2===b||3===b||4===b;this.attributeName=d;this.attributeNamespace=e;this.mustUseProperty=c;this.propertyName=a;this.type=b}var D={};
-"children dangerouslySetInnerHTML defaultValue defaultChecked innerHTML suppressContentEditableWarning suppressHydrationWarning style".split(" ").forEach(function(a){D[a]=new C(a,0,!1,a,null)});[["acceptCharset","accept-charset"],["className","class"],["htmlFor","for"],["httpEquiv","http-equiv"]].forEach(function(a){var b=a[0];D[b]=new C(b,1,!1,a[1],null)});["contentEditable","draggable","spellCheck","value"].forEach(function(a){D[a]=new C(a,2,!1,a.toLowerCase(),null)});
-["autoReverse","externalResourcesRequired","focusable","preserveAlpha"].forEach(function(a){D[a]=new C(a,2,!1,a,null)});"allowFullScreen async autoFocus autoPlay controls default defer disabled formNoValidate hidden loop noModule noValidate open playsInline readOnly required reversed scoped seamless itemScope".split(" ").forEach(function(a){D[a]=new C(a,3,!1,a.toLowerCase(),null)});["checked","multiple","muted","selected"].forEach(function(a){D[a]=new C(a,3,!0,a,null)});
-["capture","download"].forEach(function(a){D[a]=new C(a,4,!1,a,null)});["cols","rows","size","span"].forEach(function(a){D[a]=new C(a,6,!1,a,null)});["rowSpan","start"].forEach(function(a){D[a]=new C(a,5,!1,a.toLowerCase(),null)});var rc=/[\-:]([a-z])/g;function sc(a){return a[1].toUpperCase()}
-"accent-height alignment-baseline arabic-form baseline-shift cap-height clip-path clip-rule color-interpolation color-interpolation-filters color-profile color-rendering dominant-baseline enable-background fill-opacity fill-rule flood-color flood-opacity font-family font-size font-size-adjust font-stretch font-style font-variant font-weight glyph-name glyph-orientation-horizontal glyph-orientation-vertical horiz-adv-x horiz-origin-x image-rendering letter-spacing lighting-color marker-end marker-mid marker-start overline-position overline-thickness paint-order panose-1 pointer-events rendering-intent shape-rendering stop-color stop-opacity strikethrough-position strikethrough-thickness stroke-dasharray stroke-dashoffset stroke-linecap stroke-linejoin stroke-miterlimit stroke-opacity stroke-width text-anchor text-decoration text-rendering underline-position underline-thickness unicode-bidi unicode-range units-per-em v-alphabetic v-hanging v-ideographic v-mathematical vector-effect vert-adv-y vert-origin-x vert-origin-y word-spacing writing-mode xmlns:xlink x-height".split(" ").forEach(function(a){var b=a.replace(rc,
-sc);D[b]=new C(b,1,!1,a,null)});"xlink:actuate xlink:arcrole xlink:href xlink:role xlink:show xlink:title xlink:type".split(" ").forEach(function(a){var b=a.replace(rc,sc);D[b]=new C(b,1,!1,a,"http://www.w3.org/1999/xlink")});["xml:base","xml:lang","xml:space"].forEach(function(a){var b=a.replace(rc,sc);D[b]=new C(b,1,!1,a,"http://www.w3.org/XML/1998/namespace")});["tabIndex","crossOrigin"].forEach(function(a){D[a]=new C(a,1,!1,a.toLowerCase(),null)});
-function tc(a,b,c,d){var e=D.hasOwnProperty(b)?D[b]:null;var f=null!==e?0===e.type:d?!1:!(2<b.length)||"o"!==b[0]&&"O"!==b[0]||"n"!==b[1]&&"N"!==b[1]?!1:!0;f||(qc(b,c,e,d)&&(c=null),d||null===e?oc(b)&&(null===c?a.removeAttribute(b):a.setAttribute(b,""+c)):e.mustUseProperty?a[e.propertyName]=null===c?3===e.type?!1:"":c:(b=e.attributeName,d=e.attributeNamespace,null===c?a.removeAttribute(b):(e=e.type,c=3===e||4===e&&!0===c?"":""+c,d?a.setAttributeNS(d,b,c):a.setAttribute(b,c))))}
-function uc(a){switch(typeof a){case "boolean":case "number":case "object":case "string":case "undefined":return a;default:return""}}function vc(a,b){var c=b.checked;return n({},b,{defaultChecked:void 0,defaultValue:void 0,value:void 0,checked:null!=c?c:a._wrapperState.initialChecked})}
-function wc(a,b){var c=null==b.defaultValue?"":b.defaultValue,d=null!=b.checked?b.checked:b.defaultChecked;c=uc(null!=b.value?b.value:c);a._wrapperState={initialChecked:d,initialValue:c,controlled:"checkbox"===b.type||"radio"===b.type?null!=b.checked:null!=b.value}}function xc(a,b){b=b.checked;null!=b&&tc(a,"checked",b,!1)}
-function yc(a,b){xc(a,b);var c=uc(b.value),d=b.type;if(null!=c)if("number"===d){if(0===c&&""===a.value||a.value!=c)a.value=""+c}else a.value!==""+c&&(a.value=""+c);else if("submit"===d||"reset"===d){a.removeAttribute("value");return}b.hasOwnProperty("value")?zc(a,b.type,c):b.hasOwnProperty("defaultValue")&&zc(a,b.type,uc(b.defaultValue));null==b.checked&&null!=b.defaultChecked&&(a.defaultChecked=!!b.defaultChecked)}
-function Ac(a,b,c){if(b.hasOwnProperty("value")||b.hasOwnProperty("defaultValue")){var d=b.type;if(!("submit"!==d&&"reset"!==d||void 0!==b.value&&null!==b.value))return;b=""+a._wrapperState.initialValue;c||b===a.value||(a.value=b);a.defaultValue=b}c=a.name;""!==c&&(a.name="");a.defaultChecked=!a.defaultChecked;a.defaultChecked=!!a._wrapperState.initialChecked;""!==c&&(a.name=c)}
-function zc(a,b,c){if("number"!==b||a.ownerDocument.activeElement!==a)null==c?a.defaultValue=""+a._wrapperState.initialValue:a.defaultValue!==""+c&&(a.defaultValue=""+c)}var Bc={change:{phasedRegistrationNames:{bubbled:"onChange",captured:"onChangeCapture"},dependencies:"blur change click focus input keydown keyup selectionchange".split(" ")}};function Cc(a,b,c){a=y.getPooled(Bc.change,a,b,c);a.type="change";Eb(c);Qa(a);return a}var Dc=null,Ec=null;function Fc(a){Da(a)}
-function Gc(a){var b=Ja(a);if(Sb(b))return a}function Hc(a,b){if("change"===a)return b}var Ic=!1;Ra&&(Ic=Ob("input")&&(!document.documentMode||9<document.documentMode));function Jc(){Dc&&(Dc.detachEvent("onpropertychange",Kc),Ec=Dc=null)}function Kc(a){"value"===a.propertyName&&Gc(Ec)&&(a=Cc(Ec,a,Nb(a)),Kb(Fc,a))}function Lc(a,b,c){"focus"===a?(Jc(),Dc=b,Ec=c,Dc.attachEvent("onpropertychange",Kc)):"blur"===a&&Jc()}function Mc(a){if("selectionchange"===a||"keyup"===a||"keydown"===a)return Gc(Ec)}
-function Nc(a,b){if("click"===a)return Gc(b)}function Oc(a,b){if("input"===a||"change"===a)return Gc(b)}
-var Pc={eventTypes:Bc,_isInputEventSupported:Ic,extractEvents:function(a,b,c,d){var e=b?Ja(b):window,f=void 0,g=void 0,h=e.nodeName&&e.nodeName.toLowerCase();"select"===h||"input"===h&&"file"===e.type?f=Hc:Mb(e)?Ic?f=Oc:(f=Mc,g=Lc):(h=e.nodeName)&&"input"===h.toLowerCase()&&("checkbox"===e.type||"radio"===e.type)&&(f=Nc);if(f&&(f=f(a,b)))return Cc(f,c,d);g&&g(a,e,b);"blur"===a&&(a=e._wrapperState)&&a.controlled&&"number"===e.type&&zc(e,"number",e.value)}},Qc=y.extend({view:null,detail:null}),Rc={Alt:"altKey",
-Control:"ctrlKey",Meta:"metaKey",Shift:"shiftKey"};function Sc(a){var b=this.nativeEvent;return b.getModifierState?b.getModifierState(a):(a=Rc[a])?!!b[a]:!1}function Tc(){return Sc}
-var Uc=0,Vc=0,Wc=!1,Xc=!1,Yc=Qc.extend({screenX:null,screenY:null,clientX:null,clientY:null,pageX:null,pageY:null,ctrlKey:null,shiftKey:null,altKey:null,metaKey:null,getModifierState:Tc,button:null,buttons:null,relatedTarget:function(a){return a.relatedTarget||(a.fromElement===a.srcElement?a.toElement:a.fromElement)},movementX:function(a){if("movementX"in a)return a.movementX;var b=Uc;Uc=a.screenX;return Wc?"mousemove"===a.type?a.screenX-b:0:(Wc=!0,0)},movementY:function(a){if("movementY"in a)return a.movementY;
-var b=Vc;Vc=a.screenY;return Xc?"mousemove"===a.type?a.screenY-b:0:(Xc=!0,0)}}),Zc=Yc.extend({pointerId:null,width:null,height:null,pressure:null,tangentialPressure:null,tiltX:null,tiltY:null,twist:null,pointerType:null,isPrimary:null}),$c={mouseEnter:{registrationName:"onMouseEnter",dependencies:["mouseout","mouseover"]},mouseLeave:{registrationName:"onMouseLeave",dependencies:["mouseout","mouseover"]},pointerEnter:{registrationName:"onPointerEnter",dependencies:["pointerout","pointerover"]},pointerLeave:{registrationName:"onPointerLeave",
-dependencies:["pointerout","pointerover"]}},ad={eventTypes:$c,extractEvents:function(a,b,c,d){var e="mouseover"===a||"pointerover"===a,f="mouseout"===a||"pointerout"===a;if(e&&(c.relatedTarget||c.fromElement)||!f&&!e)return null;e=d.window===d?d:(e=d.ownerDocument)?e.defaultView||e.parentWindow:window;f?(f=b,b=(b=c.relatedTarget||c.toElement)?Ha(b):null):f=null;if(f===b)return null;var g=void 0,h=void 0,l=void 0,k=void 0;if("mouseout"===a||"mouseover"===a)g=Yc,h=$c.mouseLeave,l=$c.mouseEnter,k="mouse";
-else if("pointerout"===a||"pointerover"===a)g=Zc,h=$c.pointerLeave,l=$c.pointerEnter,k="pointer";var m=null==f?e:Ja(f);e=null==b?e:Ja(b);a=g.getPooled(h,f,c,d);a.type=k+"leave";a.target=m;a.relatedTarget=e;c=g.getPooled(l,b,c,d);c.type=k+"enter";c.target=e;c.relatedTarget=m;d=b;if(f&&d)a:{b=f;e=d;k=0;for(g=b;g;g=La(g))k++;g=0;for(l=e;l;l=La(l))g++;for(;0<k-g;)b=La(b),k--;for(;0<g-k;)e=La(e),g--;for(;k--;){if(b===e||b===e.alternate)break a;b=La(b);e=La(e)}b=null}else b=null;e=b;for(b=[];f&&f!==e;){k=
-f.alternate;if(null!==k&&k===e)break;b.push(f);f=La(f)}for(f=[];d&&d!==e;){k=d.alternate;if(null!==k&&k===e)break;f.push(d);d=La(d)}for(d=0;d<b.length;d++)Oa(b[d],"bubbled",a);for(d=f.length;0<d--;)Oa(f[d],"captured",c);return[a,c]}};function bd(a,b){return a===b&&(0!==a||1/a===1/b)||a!==a&&b!==b}var cd=Object.prototype.hasOwnProperty;
-function dd(a,b){if(bd(a,b))return!0;if("object"!==typeof a||null===a||"object"!==typeof b||null===b)return!1;var c=Object.keys(a),d=Object.keys(b);if(c.length!==d.length)return!1;for(d=0;d<c.length;d++)if(!cd.call(b,c[d])||!bd(a[c[d]],b[c[d]]))return!1;return!0}function ed(a){var b=a;if(a.alternate)for(;b.return;)b=b.return;else{if(0!==(b.effectTag&2))return 1;for(;b.return;)if(b=b.return,0!==(b.effectTag&2))return 1}return 3===b.tag?2:3}function fd(a){2!==ed(a)?x("188"):void 0}
-function gd(a){var b=a.alternate;if(!b)return b=ed(a),3===b?x("188"):void 0,1===b?null:a;for(var c=a,d=b;;){var e=c.return,f=e?e.alternate:null;if(!e||!f)break;if(e.child===f.child){for(var g=e.child;g;){if(g===c)return fd(e),a;if(g===d)return fd(e),b;g=g.sibling}x("188")}if(c.return!==d.return)c=e,d=f;else{g=!1;for(var h=e.child;h;){if(h===c){g=!0;c=e;d=f;break}if(h===d){g=!0;d=e;c=f;break}h=h.sibling}if(!g){for(h=f.child;h;){if(h===c){g=!0;c=f;d=e;break}if(h===d){g=!0;d=f;c=e;break}h=h.sibling}g?
-void 0:x("189")}}c.alternate!==d?x("190"):void 0}3!==c.tag?x("188"):void 0;return c.stateNode.current===c?a:b}function hd(a){a=gd(a);if(!a)return null;for(var b=a;;){if(5===b.tag||6===b.tag)return b;if(b.child)b.child.return=b,b=b.child;else{if(b===a)break;for(;!b.sibling;){if(!b.return||b.return===a)return null;b=b.return}b.sibling.return=b.return;b=b.sibling}}return null}
-var id=y.extend({animationName:null,elapsedTime:null,pseudoElement:null}),jd=y.extend({clipboardData:function(a){return"clipboardData"in a?a.clipboardData:window.clipboardData}}),kd=Qc.extend({relatedTarget:null});function ld(a){var b=a.keyCode;"charCode"in a?(a=a.charCode,0===a&&13===b&&(a=13)):a=b;10===a&&(a=13);return 32<=a||13===a?a:0}
-var md={Esc:"Escape",Spacebar:" ",Left:"ArrowLeft",Up:"ArrowUp",Right:"ArrowRight",Down:"ArrowDown",Del:"Delete",Win:"OS",Menu:"ContextMenu",Apps:"ContextMenu",Scroll:"ScrollLock",MozPrintableKey:"Unidentified"},nd={8:"Backspace",9:"Tab",12:"Clear",13:"Enter",16:"Shift",17:"Control",18:"Alt",19:"Pause",20:"CapsLock",27:"Escape",32:" ",33:"PageUp",34:"PageDown",35:"End",36:"Home",37:"ArrowLeft",38:"ArrowUp",39:"ArrowRight",40:"ArrowDown",45:"Insert",46:"Delete",112:"F1",113:"F2",114:"F3",115:"F4",
-116:"F5",117:"F6",118:"F7",119:"F8",120:"F9",121:"F10",122:"F11",123:"F12",144:"NumLock",145:"ScrollLock",224:"Meta"},od=Qc.extend({key:function(a){if(a.key){var b=md[a.key]||a.key;if("Unidentified"!==b)return b}return"keypress"===a.type?(a=ld(a),13===a?"Enter":String.fromCharCode(a)):"keydown"===a.type||"keyup"===a.type?nd[a.keyCode]||"Unidentified":""},location:null,ctrlKey:null,shiftKey:null,altKey:null,metaKey:null,repeat:null,locale:null,getModifierState:Tc,charCode:function(a){return"keypress"===
-a.type?ld(a):0},keyCode:function(a){return"keydown"===a.type||"keyup"===a.type?a.keyCode:0},which:function(a){return"keypress"===a.type?ld(a):"keydown"===a.type||"keyup"===a.type?a.keyCode:0}}),pd=Yc.extend({dataTransfer:null}),qd=Qc.extend({touches:null,targetTouches:null,changedTouches:null,altKey:null,metaKey:null,ctrlKey:null,shiftKey:null,getModifierState:Tc}),rd=y.extend({propertyName:null,elapsedTime:null,pseudoElement:null}),sd=Yc.extend({deltaX:function(a){return"deltaX"in a?a.deltaX:"wheelDeltaX"in
-a?-a.wheelDeltaX:0},deltaY:function(a){return"deltaY"in a?a.deltaY:"wheelDeltaY"in a?-a.wheelDeltaY:"wheelDelta"in a?-a.wheelDelta:0},deltaZ:null,deltaMode:null}),td=[["abort","abort"],[Xa,"animationEnd"],[Ya,"animationIteration"],[Za,"animationStart"],["canplay","canPlay"],["canplaythrough","canPlayThrough"],["drag","drag"],["dragenter","dragEnter"],["dragexit","dragExit"],["dragleave","dragLeave"],["dragover","dragOver"],["durationchange","durationChange"],["emptied","emptied"],["encrypted","encrypted"],
-["ended","ended"],["error","error"],["gotpointercapture","gotPointerCapture"],["load","load"],["loadeddata","loadedData"],["loadedmetadata","loadedMetadata"],["loadstart","loadStart"],["lostpointercapture","lostPointerCapture"],["mousemove","mouseMove"],["mouseout","mouseOut"],["mouseover","mouseOver"],["playing","playing"],["pointermove","pointerMove"],["pointerout","pointerOut"],["pointerover","pointerOver"],["progress","progress"],["scroll","scroll"],["seeking","seeking"],["stalled","stalled"],
-["suspend","suspend"],["timeupdate","timeUpdate"],["toggle","toggle"],["touchmove","touchMove"],[$a,"transitionEnd"],["waiting","waiting"],["wheel","wheel"]],ud={},vd={};function wd(a,b){var c=a[0];a=a[1];var d="on"+(a[0].toUpperCase()+a.slice(1));b={phasedRegistrationNames:{bubbled:d,captured:d+"Capture"},dependencies:[c],isInteractive:b};ud[a]=b;vd[c]=b}
-[["blur","blur"],["cancel","cancel"],["click","click"],["close","close"],["contextmenu","contextMenu"],["copy","copy"],["cut","cut"],["auxclick","auxClick"],["dblclick","doubleClick"],["dragend","dragEnd"],["dragstart","dragStart"],["drop","drop"],["focus","focus"],["input","input"],["invalid","invalid"],["keydown","keyDown"],["keypress","keyPress"],["keyup","keyUp"],["mousedown","mouseDown"],["mouseup","mouseUp"],["paste","paste"],["pause","pause"],["play","play"],["pointercancel","pointerCancel"],
-["pointerdown","pointerDown"],["pointerup","pointerUp"],["ratechange","rateChange"],["reset","reset"],["seeked","seeked"],["submit","submit"],["touchcancel","touchCancel"],["touchend","touchEnd"],["touchstart","touchStart"],["volumechange","volumeChange"]].forEach(function(a){wd(a,!0)});td.forEach(function(a){wd(a,!1)});
-var xd={eventTypes:ud,isInteractiveTopLevelEventType:function(a){a=vd[a];return void 0!==a&&!0===a.isInteractive},extractEvents:function(a,b,c,d){var e=vd[a];if(!e)return null;switch(a){case "keypress":if(0===ld(c))return null;case "keydown":case "keyup":a=od;break;case "blur":case "focus":a=kd;break;case "click":if(2===c.button)return null;case "auxclick":case "dblclick":case "mousedown":case "mousemove":case "mouseup":case "mouseout":case "mouseover":case "contextmenu":a=Yc;break;case "drag":case "dragend":case "dragenter":case "dragexit":case "dragleave":case "dragover":case "dragstart":case "drop":a=
-pd;break;case "touchcancel":case "touchend":case "touchmove":case "touchstart":a=qd;break;case Xa:case Ya:case Za:a=id;break;case $a:a=rd;break;case "scroll":a=Qc;break;case "wheel":a=sd;break;case "copy":case "cut":case "paste":a=jd;break;case "gotpointercapture":case "lostpointercapture":case "pointercancel":case "pointerdown":case "pointermove":case "pointerout":case "pointerover":case "pointerup":a=Zc;break;default:a=y}b=a.getPooled(e,b,c,d);Qa(b);return b}},yd=xd.isInteractiveTopLevelEventType,
-zd=[];function Ad(a){var b=a.targetInst,c=b;do{if(!c){a.ancestors.push(c);break}var d;for(d=c;d.return;)d=d.return;d=3!==d.tag?null:d.stateNode.containerInfo;if(!d)break;a.ancestors.push(c);c=Ha(d)}while(c);for(c=0;c<a.ancestors.length;c++){b=a.ancestors[c];var e=Nb(a.nativeEvent);d=a.topLevelType;for(var f=a.nativeEvent,g=null,h=0;h<oa.length;h++){var l=oa[h];l&&(l=l.extractEvents(d,b,f,e))&&(g=xa(g,l))}Da(g)}}var Bd=!0;
-function E(a,b){if(!b)return null;var c=(yd(a)?Cd:Dd).bind(null,a);b.addEventListener(a,c,!1)}function Ed(a,b){if(!b)return null;var c=(yd(a)?Cd:Dd).bind(null,a);b.addEventListener(a,c,!0)}function Cd(a,b){Hb(Dd,a,b)}
-function Dd(a,b){if(Bd){var c=Nb(b);c=Ha(c);null===c||"number"!==typeof c.tag||2===ed(c)||(c=null);if(zd.length){var d=zd.pop();d.topLevelType=a;d.nativeEvent=b;d.targetInst=c;a=d}else a={topLevelType:a,nativeEvent:b,targetInst:c,ancestors:[]};try{Kb(Ad,a)}finally{a.topLevelType=null,a.nativeEvent=null,a.targetInst=null,a.ancestors.length=0,10>zd.length&&zd.push(a)}}}var Fd={},Gd=0,Hd="_reactListenersID"+(""+Math.random()).slice(2);
-function Id(a){Object.prototype.hasOwnProperty.call(a,Hd)||(a[Hd]=Gd++,Fd[a[Hd]]={});return Fd[a[Hd]]}function Jd(a){a=a||("undefined"!==typeof document?document:void 0);if("undefined"===typeof a)return null;try{return a.activeElement||a.body}catch(b){return a.body}}function Kd(a){for(;a&&a.firstChild;)a=a.firstChild;return a}
-function Ld(a,b){var c=Kd(a);a=0;for(var d;c;){if(3===c.nodeType){d=a+c.textContent.length;if(a<=b&&d>=b)return{node:c,offset:b-a};a=d}a:{for(;c;){if(c.nextSibling){c=c.nextSibling;break a}c=c.parentNode}c=void 0}c=Kd(c)}}function Md(a,b){return a&&b?a===b?!0:a&&3===a.nodeType?!1:b&&3===b.nodeType?Md(a,b.parentNode):"contains"in a?a.contains(b):a.compareDocumentPosition?!!(a.compareDocumentPosition(b)&16):!1:!1}
-function Nd(){for(var a=window,b=Jd();b instanceof a.HTMLIFrameElement;){try{var c="string"===typeof b.contentWindow.location.href}catch(d){c=!1}if(c)a=b.contentWindow;else break;b=Jd(a.document)}return b}function Od(a){var b=a&&a.nodeName&&a.nodeName.toLowerCase();return b&&("input"===b&&("text"===a.type||"search"===a.type||"tel"===a.type||"url"===a.type||"password"===a.type)||"textarea"===b||"true"===a.contentEditable)}
-function Pd(){var a=Nd();if(Od(a)){if("selectionStart"in a)var b={start:a.selectionStart,end:a.selectionEnd};else a:{b=(b=a.ownerDocument)&&b.defaultView||window;var c=b.getSelection&&b.getSelection();if(c&&0!==c.rangeCount){b=c.anchorNode;var d=c.anchorOffset,e=c.focusNode;c=c.focusOffset;try{b.nodeType,e.nodeType}catch(A){b=null;break a}var f=0,g=-1,h=-1,l=0,k=0,m=a,p=null;b:for(;;){for(var t;;){m!==b||0!==d&&3!==m.nodeType||(g=f+d);m!==e||0!==c&&3!==m.nodeType||(h=f+c);3===m.nodeType&&(f+=m.nodeValue.length);
-if(null===(t=m.firstChild))break;p=m;m=t}for(;;){if(m===a)break b;p===b&&++l===d&&(g=f);p===e&&++k===c&&(h=f);if(null!==(t=m.nextSibling))break;m=p;p=m.parentNode}m=t}b=-1===g||-1===h?null:{start:g,end:h}}else b=null}b=b||{start:0,end:0}}else b=null;return{focusedElem:a,selectionRange:b}}
-function Qd(a){var b=Nd(),c=a.focusedElem,d=a.selectionRange;if(b!==c&&c&&c.ownerDocument&&Md(c.ownerDocument.documentElement,c)){if(null!==d&&Od(c))if(b=d.start,a=d.end,void 0===a&&(a=b),"selectionStart"in c)c.selectionStart=b,c.selectionEnd=Math.min(a,c.value.length);else if(a=(b=c.ownerDocument||document)&&b.defaultView||window,a.getSelection){a=a.getSelection();var e=c.textContent.length,f=Math.min(d.start,e);d=void 0===d.end?f:Math.min(d.end,e);!a.extend&&f>d&&(e=d,d=f,f=e);e=Ld(c,f);var g=Ld(c,
-d);e&&g&&(1!==a.rangeCount||a.anchorNode!==e.node||a.anchorOffset!==e.offset||a.focusNode!==g.node||a.focusOffset!==g.offset)&&(b=b.createRange(),b.setStart(e.node,e.offset),a.removeAllRanges(),f>d?(a.addRange(b),a.extend(g.node,g.offset)):(b.setEnd(g.node,g.offset),a.addRange(b)))}b=[];for(a=c;a=a.parentNode;)1===a.nodeType&&b.push({element:a,left:a.scrollLeft,top:a.scrollTop});"function"===typeof c.focus&&c.focus();for(c=0;c<b.length;c++)a=b[c],a.element.scrollLeft=a.left,a.element.scrollTop=a.top}}
-var Rd=Ra&&"documentMode"in document&&11>=document.documentMode,Sd={select:{phasedRegistrationNames:{bubbled:"onSelect",captured:"onSelectCapture"},dependencies:"blur contextmenu dragend focus keydown keyup mousedown mouseup selectionchange".split(" ")}},Td=null,Ud=null,Vd=null,Wd=!1;
-function Xd(a,b){var c=b.window===b?b.document:9===b.nodeType?b:b.ownerDocument;if(Wd||null==Td||Td!==Jd(c))return null;c=Td;"selectionStart"in c&&Od(c)?c={start:c.selectionStart,end:c.selectionEnd}:(c=(c.ownerDocument&&c.ownerDocument.defaultView||window).getSelection(),c={anchorNode:c.anchorNode,anchorOffset:c.anchorOffset,focusNode:c.focusNode,focusOffset:c.focusOffset});return Vd&&dd(Vd,c)?null:(Vd=c,a=y.getPooled(Sd.select,Ud,a,b),a.type="select",a.target=Td,Qa(a),a)}
-var Yd={eventTypes:Sd,extractEvents:function(a,b,c,d){var e=d.window===d?d.document:9===d.nodeType?d:d.ownerDocument,f;if(!(f=!e)){a:{e=Id(e);f=sa.onSelect;for(var g=0;g<f.length;g++){var h=f[g];if(!e.hasOwnProperty(h)||!e[h]){e=!1;break a}}e=!0}f=!e}if(f)return null;e=b?Ja(b):window;switch(a){case "focus":if(Mb(e)||"true"===e.contentEditable)Td=e,Ud=b,Vd=null;break;case "blur":Vd=Ud=Td=null;break;case "mousedown":Wd=!0;break;case "contextmenu":case "mouseup":case "dragend":return Wd=!1,Xd(c,d);case "selectionchange":if(Rd)break;
-case "keydown":case "keyup":return Xd(c,d)}return null}};Ba.injectEventPluginOrder("ResponderEventPlugin SimpleEventPlugin EnterLeaveEventPlugin ChangeEventPlugin SelectEventPlugin BeforeInputEventPlugin".split(" "));ta=Ka;ua=Ia;va=Ja;Ba.injectEventPluginsByName({SimpleEventPlugin:xd,EnterLeaveEventPlugin:ad,ChangeEventPlugin:Pc,SelectEventPlugin:Yd,BeforeInputEventPlugin:zb});function Zd(a){var b="";aa.Children.forEach(a,function(a){null!=a&&(b+=a)});return b}
-function $d(a,b){a=n({children:void 0},b);if(b=Zd(b.children))a.children=b;return a}function ae(a,b,c,d){a=a.options;if(b){b={};for(var e=0;e<c.length;e++)b["$"+c[e]]=!0;for(c=0;c<a.length;c++)e=b.hasOwnProperty("$"+a[c].value),a[c].selected!==e&&(a[c].selected=e),e&&d&&(a[c].defaultSelected=!0)}else{c=""+uc(c);b=null;for(e=0;e<a.length;e++){if(a[e].value===c){a[e].selected=!0;d&&(a[e].defaultSelected=!0);return}null!==b||a[e].disabled||(b=a[e])}null!==b&&(b.selected=!0)}}
-function be(a,b){null!=b.dangerouslySetInnerHTML?x("91"):void 0;return n({},b,{value:void 0,defaultValue:void 0,children:""+a._wrapperState.initialValue})}function ce(a,b){var c=b.value;null==c&&(c=b.defaultValue,b=b.children,null!=b&&(null!=c?x("92"):void 0,Array.isArray(b)&&(1>=b.length?void 0:x("93"),b=b[0]),c=b),null==c&&(c=""));a._wrapperState={initialValue:uc(c)}}
-function de(a,b){var c=uc(b.value),d=uc(b.defaultValue);null!=c&&(c=""+c,c!==a.value&&(a.value=c),null==b.defaultValue&&a.defaultValue!==c&&(a.defaultValue=c));null!=d&&(a.defaultValue=""+d)}function ee(a){var b=a.textContent;b===a._wrapperState.initialValue&&(a.value=b)}var fe={html:"http://www.w3.org/1999/xhtml",mathml:"http://www.w3.org/1998/Math/MathML",svg:"http://www.w3.org/2000/svg"};
-function ge(a){switch(a){case "svg":return"http://www.w3.org/2000/svg";case "math":return"http://www.w3.org/1998/Math/MathML";default:return"http://www.w3.org/1999/xhtml"}}function he(a,b){return null==a||"http://www.w3.org/1999/xhtml"===a?ge(b):"http://www.w3.org/2000/svg"===a&&"foreignObject"===b?"http://www.w3.org/1999/xhtml":a}
-var ie=void 0,je=function(a){return"undefined"!==typeof MSApp&&MSApp.execUnsafeLocalFunction?function(b,c,d,e){MSApp.execUnsafeLocalFunction(function(){return a(b,c,d,e)})}:a}(function(a,b){if(a.namespaceURI!==fe.svg||"innerHTML"in a)a.innerHTML=b;else{ie=ie||document.createElement("div");ie.innerHTML="<svg>"+b+"</svg>";for(b=ie.firstChild;a.firstChild;)a.removeChild(a.firstChild);for(;b.firstChild;)a.appendChild(b.firstChild)}});
-function ke(a,b){if(b){var c=a.firstChild;if(c&&c===a.lastChild&&3===c.nodeType){c.nodeValue=b;return}}a.textContent=b}
-var le={animationIterationCount:!0,borderImageOutset:!0,borderImageSlice:!0,borderImageWidth:!0,boxFlex:!0,boxFlexGroup:!0,boxOrdinalGroup:!0,columnCount:!0,columns:!0,flex:!0,flexGrow:!0,flexPositive:!0,flexShrink:!0,flexNegative:!0,flexOrder:!0,gridArea:!0,gridRow:!0,gridRowEnd:!0,gridRowSpan:!0,gridRowStart:!0,gridColumn:!0,gridColumnEnd:!0,gridColumnSpan:!0,gridColumnStart:!0,fontWeight:!0,lineClamp:!0,lineHeight:!0,opacity:!0,order:!0,orphans:!0,tabSize:!0,widows:!0,zIndex:!0,zoom:!0,fillOpacity:!0,
-floodOpacity:!0,stopOpacity:!0,strokeDasharray:!0,strokeDashoffset:!0,strokeMiterlimit:!0,strokeOpacity:!0,strokeWidth:!0},me=["Webkit","ms","Moz","O"];Object.keys(le).forEach(function(a){me.forEach(function(b){b=b+a.charAt(0).toUpperCase()+a.substring(1);le[b]=le[a]})});function ne(a,b,c){return null==b||"boolean"===typeof b||""===b?"":c||"number"!==typeof b||0===b||le.hasOwnProperty(a)&&le[a]?(""+b).trim():b+"px"}
-function oe(a,b){a=a.style;for(var c in b)if(b.hasOwnProperty(c)){var d=0===c.indexOf("--"),e=ne(c,b[c],d);"float"===c&&(c="cssFloat");d?a.setProperty(c,e):a[c]=e}}var pe=n({menuitem:!0},{area:!0,base:!0,br:!0,col:!0,embed:!0,hr:!0,img:!0,input:!0,keygen:!0,link:!0,meta:!0,param:!0,source:!0,track:!0,wbr:!0});
-function qe(a,b){b&&(pe[a]&&(null!=b.children||null!=b.dangerouslySetInnerHTML?x("137",a,""):void 0),null!=b.dangerouslySetInnerHTML&&(null!=b.children?x("60"):void 0,"object"===typeof b.dangerouslySetInnerHTML&&"__html"in b.dangerouslySetInnerHTML?void 0:x("61")),null!=b.style&&"object"!==typeof b.style?x("62",""):void 0)}
-function re(a,b){if(-1===a.indexOf("-"))return"string"===typeof b.is;switch(a){case "annotation-xml":case "color-profile":case "font-face":case "font-face-src":case "font-face-uri":case "font-face-format":case "font-face-name":case "missing-glyph":return!1;default:return!0}}
-function se(a,b){a=9===a.nodeType||11===a.nodeType?a:a.ownerDocument;var c=Id(a);b=sa[b];for(var d=0;d<b.length;d++){var e=b[d];if(!c.hasOwnProperty(e)||!c[e]){switch(e){case "scroll":Ed("scroll",a);break;case "focus":case "blur":Ed("focus",a);Ed("blur",a);c.blur=!0;c.focus=!0;break;case "cancel":case "close":Ob(e)&&Ed(e,a);break;case "invalid":case "submit":case "reset":break;default:-1===ab.indexOf(e)&&E(e,a)}c[e]=!0}}}function te(){}var ue=null,ve=null;
-function we(a,b){switch(a){case "button":case "input":case "select":case "textarea":return!!b.autoFocus}return!1}function xe(a,b){return"textarea"===a||"option"===a||"noscript"===a||"string"===typeof b.children||"number"===typeof b.children||"object"===typeof b.dangerouslySetInnerHTML&&null!==b.dangerouslySetInnerHTML&&null!=b.dangerouslySetInnerHTML.__html}
-var ye="function"===typeof setTimeout?setTimeout:void 0,ze="function"===typeof clearTimeout?clearTimeout:void 0,Ae=r.unstable_scheduleCallback,Be=r.unstable_cancelCallback;
-function Ce(a,b,c,d,e){a[Ga]=e;"input"===c&&"radio"===e.type&&null!=e.name&&xc(a,e);re(c,d);d=re(c,e);for(var f=0;f<b.length;f+=2){var g=b[f],h=b[f+1];"style"===g?oe(a,h):"dangerouslySetInnerHTML"===g?je(a,h):"children"===g?ke(a,h):tc(a,g,h,d)}switch(c){case "input":yc(a,e);break;case "textarea":de(a,e);break;case "select":b=a._wrapperState.wasMultiple,a._wrapperState.wasMultiple=!!e.multiple,c=e.value,null!=c?ae(a,!!e.multiple,c,!1):b!==!!e.multiple&&(null!=e.defaultValue?ae(a,!!e.multiple,e.defaultValue,
-!0):ae(a,!!e.multiple,e.multiple?[]:"",!1))}}function De(a){for(a=a.nextSibling;a&&1!==a.nodeType&&3!==a.nodeType;)a=a.nextSibling;return a}function Ee(a){for(a=a.firstChild;a&&1!==a.nodeType&&3!==a.nodeType;)a=a.nextSibling;return a}new Set;var Fe=[],Ge=-1;function F(a){0>Ge||(a.current=Fe[Ge],Fe[Ge]=null,Ge--)}function G(a,b){Ge++;Fe[Ge]=a.current;a.current=b}var He={},H={current:He},I={current:!1},Ie=He;
-function Je(a,b){var c=a.type.contextTypes;if(!c)return He;var d=a.stateNode;if(d&&d.__reactInternalMemoizedUnmaskedChildContext===b)return d.__reactInternalMemoizedMaskedChildContext;var e={},f;for(f in c)e[f]=b[f];d&&(a=a.stateNode,a.__reactInternalMemoizedUnmaskedChildContext=b,a.__reactInternalMemoizedMaskedChildContext=e);return e}function J(a){a=a.childContextTypes;return null!==a&&void 0!==a}function Ke(a){F(I,a);F(H,a)}function Le(a){F(I,a);F(H,a)}
-function Me(a,b,c){H.current!==He?x("168"):void 0;G(H,b,a);G(I,c,a)}function Ne(a,b,c){var d=a.stateNode;a=b.childContextTypes;if("function"!==typeof d.getChildContext)return c;d=d.getChildContext();for(var e in d)e in a?void 0:x("108",ic(b)||"Unknown",e);return n({},c,d)}function Oe(a){var b=a.stateNode;b=b&&b.__reactInternalMemoizedMergedChildContext||He;Ie=H.current;G(H,b,a);G(I,I.current,a);return!0}
-function Pe(a,b,c){var d=a.stateNode;d?void 0:x("169");c?(b=Ne(a,b,Ie),d.__reactInternalMemoizedMergedChildContext=b,F(I,a),F(H,a),G(H,b,a)):F(I,a);G(I,c,a)}var Qe=null,Re=null;function Se(a){return function(b){try{return a(b)}catch(c){}}}
-function Te(a){if("undefined"===typeof __REACT_DEVTOOLS_GLOBAL_HOOK__)return!1;var b=__REACT_DEVTOOLS_GLOBAL_HOOK__;if(b.isDisabled||!b.supportsFiber)return!0;try{var c=b.inject(a);Qe=Se(function(a){return b.onCommitFiberRoot(c,a)});Re=Se(function(a){return b.onCommitFiberUnmount(c,a)})}catch(d){}return!0}
-function Ue(a,b,c,d){this.tag=a;this.key=c;this.sibling=this.child=this.return=this.stateNode=this.type=this.elementType=null;this.index=0;this.ref=null;this.pendingProps=b;this.contextDependencies=this.memoizedState=this.updateQueue=this.memoizedProps=null;this.mode=d;this.effectTag=0;this.lastEffect=this.firstEffect=this.nextEffect=null;this.childExpirationTime=this.expirationTime=0;this.alternate=null}function K(a,b,c,d){return new Ue(a,b,c,d)}
-function Ve(a){a=a.prototype;return!(!a||!a.isReactComponent)}function We(a){if("function"===typeof a)return Ve(a)?1:0;if(void 0!==a&&null!==a){a=a.$$typeof;if(a===cc)return 11;if(a===ec)return 14}return 2}
-function Xe(a,b){var c=a.alternate;null===c?(c=K(a.tag,b,a.key,a.mode),c.elementType=a.elementType,c.type=a.type,c.stateNode=a.stateNode,c.alternate=a,a.alternate=c):(c.pendingProps=b,c.effectTag=0,c.nextEffect=null,c.firstEffect=null,c.lastEffect=null);c.childExpirationTime=a.childExpirationTime;c.expirationTime=a.expirationTime;c.child=a.child;c.memoizedProps=a.memoizedProps;c.memoizedState=a.memoizedState;c.updateQueue=a.updateQueue;c.contextDependencies=a.contextDependencies;c.sibling=a.sibling;
-c.index=a.index;c.ref=a.ref;return c}
-function Ye(a,b,c,d,e,f){var g=2;d=a;if("function"===typeof a)Ve(a)&&(g=1);else if("string"===typeof a)g=5;else a:switch(a){case Xb:return Ze(c.children,e,f,b);case bc:return $e(c,e|3,f,b);case Yb:return $e(c,e|2,f,b);case Zb:return a=K(12,c,b,e|4),a.elementType=Zb,a.type=Zb,a.expirationTime=f,a;case dc:return a=K(13,c,b,e),a.elementType=dc,a.type=dc,a.expirationTime=f,a;default:if("object"===typeof a&&null!==a)switch(a.$$typeof){case $b:g=10;break a;case ac:g=9;break a;case cc:g=11;break a;case ec:g=
-14;break a;case fc:g=16;d=null;break a}x("130",null==a?a:typeof a,"")}b=K(g,c,b,e);b.elementType=a;b.type=d;b.expirationTime=f;return b}function Ze(a,b,c,d){a=K(7,a,d,b);a.expirationTime=c;return a}function $e(a,b,c,d){a=K(8,a,d,b);b=0===(b&1)?Yb:bc;a.elementType=b;a.type=b;a.expirationTime=c;return a}function af(a,b,c){a=K(6,a,null,b);a.expirationTime=c;return a}
-function bf(a,b,c){b=K(4,null!==a.children?a.children:[],a.key,b);b.expirationTime=c;b.stateNode={containerInfo:a.containerInfo,pendingChildren:null,implementation:a.implementation};return b}function cf(a,b){a.didError=!1;var c=a.earliestPendingTime;0===c?a.earliestPendingTime=a.latestPendingTime=b:c<b?a.earliestPendingTime=b:a.latestPendingTime>b&&(a.latestPendingTime=b);df(b,a)}
-function ef(a,b){a.didError=!1;if(0===b)a.earliestPendingTime=0,a.latestPendingTime=0,a.earliestSuspendedTime=0,a.latestSuspendedTime=0,a.latestPingedTime=0;else{b<a.latestPingedTime&&(a.latestPingedTime=0);var c=a.latestPendingTime;0!==c&&(c>b?a.earliestPendingTime=a.latestPendingTime=0:a.earliestPendingTime>b&&(a.earliestPendingTime=a.latestPendingTime));c=a.earliestSuspendedTime;0===c?cf(a,b):b<a.latestSuspendedTime?(a.earliestSuspendedTime=0,a.latestSuspendedTime=0,a.latestPingedTime=0,cf(a,b)):
-b>c&&cf(a,b)}df(0,a)}function ff(a,b){a.didError=!1;a.latestPingedTime>=b&&(a.latestPingedTime=0);var c=a.earliestPendingTime,d=a.latestPendingTime;c===b?a.earliestPendingTime=d===b?a.latestPendingTime=0:d:d===b&&(a.latestPendingTime=c);c=a.earliestSuspendedTime;d=a.latestSuspendedTime;0===c?a.earliestSuspendedTime=a.latestSuspendedTime=b:c<b?a.earliestSuspendedTime=b:d>b&&(a.latestSuspendedTime=b);df(b,a)}
-function gf(a,b){var c=a.earliestPendingTime;a=a.earliestSuspendedTime;c>b&&(b=c);a>b&&(b=a);return b}function df(a,b){var c=b.earliestSuspendedTime,d=b.latestSuspendedTime,e=b.earliestPendingTime,f=b.latestPingedTime;e=0!==e?e:f;0===e&&(0===a||d<a)&&(e=d);a=e;0!==a&&c>a&&(a=c);b.nextExpirationTimeToWorkOn=e;b.expirationTime=a}function L(a,b){if(a&&a.defaultProps){b=n({},b);a=a.defaultProps;for(var c in a)void 0===b[c]&&(b[c]=a[c])}return b}
-function hf(a){var b=a._result;switch(a._status){case 1:return b;case 2:throw b;case 0:throw b;default:a._status=0;b=a._ctor;b=b();b.then(function(b){0===a._status&&(b=b.default,a._status=1,a._result=b)},function(b){0===a._status&&(a._status=2,a._result=b)});switch(a._status){case 1:return a._result;case 2:throw a._result;}a._result=b;throw b;}}var jf=(new aa.Component).refs;
-function kf(a,b,c,d){b=a.memoizedState;c=c(d,b);c=null===c||void 0===c?b:n({},b,c);a.memoizedState=c;d=a.updateQueue;null!==d&&0===a.expirationTime&&(d.baseState=c)}
-var tf={isMounted:function(a){return(a=a._reactInternalFiber)?2===ed(a):!1},enqueueSetState:function(a,b,c){a=a._reactInternalFiber;var d=lf();d=mf(d,a);var e=nf(d);e.payload=b;void 0!==c&&null!==c&&(e.callback=c);of();pf(a,e);qf(a,d)},enqueueReplaceState:function(a,b,c){a=a._reactInternalFiber;var d=lf();d=mf(d,a);var e=nf(d);e.tag=rf;e.payload=b;void 0!==c&&null!==c&&(e.callback=c);of();pf(a,e);qf(a,d)},enqueueForceUpdate:function(a,b){a=a._reactInternalFiber;var c=lf();c=mf(c,a);var d=nf(c);d.tag=
-sf;void 0!==b&&null!==b&&(d.callback=b);of();pf(a,d);qf(a,c)}};function uf(a,b,c,d,e,f,g){a=a.stateNode;return"function"===typeof a.shouldComponentUpdate?a.shouldComponentUpdate(d,f,g):b.prototype&&b.prototype.isPureReactComponent?!dd(c,d)||!dd(e,f):!0}
-function vf(a,b,c){var d=!1,e=He;var f=b.contextType;"object"===typeof f&&null!==f?f=M(f):(e=J(b)?Ie:H.current,d=b.contextTypes,f=(d=null!==d&&void 0!==d)?Je(a,e):He);b=new b(c,f);a.memoizedState=null!==b.state&&void 0!==b.state?b.state:null;b.updater=tf;a.stateNode=b;b._reactInternalFiber=a;d&&(a=a.stateNode,a.__reactInternalMemoizedUnmaskedChildContext=e,a.__reactInternalMemoizedMaskedChildContext=f);return b}
-function wf(a,b,c,d){a=b.state;"function"===typeof b.componentWillReceiveProps&&b.componentWillReceiveProps(c,d);"function"===typeof b.UNSAFE_componentWillReceiveProps&&b.UNSAFE_componentWillReceiveProps(c,d);b.state!==a&&tf.enqueueReplaceState(b,b.state,null)}
-function xf(a,b,c,d){var e=a.stateNode;e.props=c;e.state=a.memoizedState;e.refs=jf;var f=b.contextType;"object"===typeof f&&null!==f?e.context=M(f):(f=J(b)?Ie:H.current,e.context=Je(a,f));f=a.updateQueue;null!==f&&(yf(a,f,c,e,d),e.state=a.memoizedState);f=b.getDerivedStateFromProps;"function"===typeof f&&(kf(a,b,f,c),e.state=a.memoizedState);"function"===typeof b.getDerivedStateFromProps||"function"===typeof e.getSnapshotBeforeUpdate||"function"!==typeof e.UNSAFE_componentWillMount&&"function"!==
-typeof e.componentWillMount||(b=e.state,"function"===typeof e.componentWillMount&&e.componentWillMount(),"function"===typeof e.UNSAFE_componentWillMount&&e.UNSAFE_componentWillMount(),b!==e.state&&tf.enqueueReplaceState(e,e.state,null),f=a.updateQueue,null!==f&&(yf(a,f,c,e,d),e.state=a.memoizedState));"function"===typeof e.componentDidMount&&(a.effectTag|=4)}var zf=Array.isArray;
-function Af(a,b,c){a=c.ref;if(null!==a&&"function"!==typeof a&&"object"!==typeof a){if(c._owner){c=c._owner;var d=void 0;c&&(1!==c.tag?x("309"):void 0,d=c.stateNode);d?void 0:x("147",a);var e=""+a;if(null!==b&&null!==b.ref&&"function"===typeof b.ref&&b.ref._stringRef===e)return b.ref;b=function(a){var b=d.refs;b===jf&&(b=d.refs={});null===a?delete b[e]:b[e]=a};b._stringRef=e;return b}"string"!==typeof a?x("284"):void 0;c._owner?void 0:x("290",a)}return a}
-function Bf(a,b){"textarea"!==a.type&&x("31","[object Object]"===Object.prototype.toString.call(b)?"object with keys {"+Object.keys(b).join(", ")+"}":b,"")}
-function Cf(a){function b(b,c){if(a){var d=b.lastEffect;null!==d?(d.nextEffect=c,b.lastEffect=c):b.firstEffect=b.lastEffect=c;c.nextEffect=null;c.effectTag=8}}function c(c,d){if(!a)return null;for(;null!==d;)b(c,d),d=d.sibling;return null}function d(a,b){for(a=new Map;null!==b;)null!==b.key?a.set(b.key,b):a.set(b.index,b),b=b.sibling;return a}function e(a,b,c){a=Xe(a,b,c);a.index=0;a.sibling=null;return a}function f(b,c,d){b.index=d;if(!a)return c;d=b.alternate;if(null!==d)return d=d.index,d<c?(b.effectTag=
-2,c):d;b.effectTag=2;return c}function g(b){a&&null===b.alternate&&(b.effectTag=2);return b}function h(a,b,c,d){if(null===b||6!==b.tag)return b=af(c,a.mode,d),b.return=a,b;b=e(b,c,d);b.return=a;return b}function l(a,b,c,d){if(null!==b&&b.elementType===c.type)return d=e(b,c.props,d),d.ref=Af(a,b,c),d.return=a,d;d=Ye(c.type,c.key,c.props,null,a.mode,d);d.ref=Af(a,b,c);d.return=a;return d}function k(a,b,c,d){if(null===b||4!==b.tag||b.stateNode.containerInfo!==c.containerInfo||b.stateNode.implementation!==
-c.implementation)return b=bf(c,a.mode,d),b.return=a,b;b=e(b,c.children||[],d);b.return=a;return b}function m(a,b,c,d,f){if(null===b||7!==b.tag)return b=Ze(c,a.mode,d,f),b.return=a,b;b=e(b,c,d);b.return=a;return b}function p(a,b,c){if("string"===typeof b||"number"===typeof b)return b=af(""+b,a.mode,c),b.return=a,b;if("object"===typeof b&&null!==b){switch(b.$$typeof){case Vb:return c=Ye(b.type,b.key,b.props,null,a.mode,c),c.ref=Af(a,null,b),c.return=a,c;case Wb:return b=bf(b,a.mode,c),b.return=a,b}if(zf(b)||
-hc(b))return b=Ze(b,a.mode,c,null),b.return=a,b;Bf(a,b)}return null}function t(a,b,c,d){var e=null!==b?b.key:null;if("string"===typeof c||"number"===typeof c)return null!==e?null:h(a,b,""+c,d);if("object"===typeof c&&null!==c){switch(c.$$typeof){case Vb:return c.key===e?c.type===Xb?m(a,b,c.props.children,d,e):l(a,b,c,d):null;case Wb:return c.key===e?k(a,b,c,d):null}if(zf(c)||hc(c))return null!==e?null:m(a,b,c,d,null);Bf(a,c)}return null}function A(a,b,c,d,e){if("string"===typeof d||"number"===typeof d)return a=
-a.get(c)||null,h(b,a,""+d,e);if("object"===typeof d&&null!==d){switch(d.$$typeof){case Vb:return a=a.get(null===d.key?c:d.key)||null,d.type===Xb?m(b,a,d.props.children,e,d.key):l(b,a,d,e);case Wb:return a=a.get(null===d.key?c:d.key)||null,k(b,a,d,e)}if(zf(d)||hc(d))return a=a.get(c)||null,m(b,a,d,e,null);Bf(b,d)}return null}function v(e,g,h,k){for(var l=null,m=null,q=g,u=g=0,B=null;null!==q&&u<h.length;u++){q.index>u?(B=q,q=null):B=q.sibling;var w=t(e,q,h[u],k);if(null===w){null===q&&(q=B);break}a&&
-q&&null===w.alternate&&b(e,q);g=f(w,g,u);null===m?l=w:m.sibling=w;m=w;q=B}if(u===h.length)return c(e,q),l;if(null===q){for(;u<h.length;u++)if(q=p(e,h[u],k))g=f(q,g,u),null===m?l=q:m.sibling=q,m=q;return l}for(q=d(e,q);u<h.length;u++)if(B=A(q,e,u,h[u],k))a&&null!==B.alternate&&q.delete(null===B.key?u:B.key),g=f(B,g,u),null===m?l=B:m.sibling=B,m=B;a&&q.forEach(function(a){return b(e,a)});return l}function R(e,g,h,k){var l=hc(h);"function"!==typeof l?x("150"):void 0;h=l.call(h);null==h?x("151"):void 0;
-for(var m=l=null,q=g,u=g=0,B=null,w=h.next();null!==q&&!w.done;u++,w=h.next()){q.index>u?(B=q,q=null):B=q.sibling;var v=t(e,q,w.value,k);if(null===v){q||(q=B);break}a&&q&&null===v.alternate&&b(e,q);g=f(v,g,u);null===m?l=v:m.sibling=v;m=v;q=B}if(w.done)return c(e,q),l;if(null===q){for(;!w.done;u++,w=h.next())w=p(e,w.value,k),null!==w&&(g=f(w,g,u),null===m?l=w:m.sibling=w,m=w);return l}for(q=d(e,q);!w.done;u++,w=h.next())w=A(q,e,u,w.value,k),null!==w&&(a&&null!==w.alternate&&q.delete(null===w.key?u:
-w.key),g=f(w,g,u),null===m?l=w:m.sibling=w,m=w);a&&q.forEach(function(a){return b(e,a)});return l}return function(a,d,f,h){var k="object"===typeof f&&null!==f&&f.type===Xb&&null===f.key;k&&(f=f.props.children);var l="object"===typeof f&&null!==f;if(l)switch(f.$$typeof){case Vb:a:{l=f.key;for(k=d;null!==k;){if(k.key===l)if(7===k.tag?f.type===Xb:k.elementType===f.type){c(a,k.sibling);d=e(k,f.type===Xb?f.props.children:f.props,h);d.ref=Af(a,k,f);d.return=a;a=d;break a}else{c(a,k);break}else b(a,k);k=
-k.sibling}f.type===Xb?(d=Ze(f.props.children,a.mode,h,f.key),d.return=a,a=d):(h=Ye(f.type,f.key,f.props,null,a.mode,h),h.ref=Af(a,d,f),h.return=a,a=h)}return g(a);case Wb:a:{for(k=f.key;null!==d;){if(d.key===k)if(4===d.tag&&d.stateNode.containerInfo===f.containerInfo&&d.stateNode.implementation===f.implementation){c(a,d.sibling);d=e(d,f.children||[],h);d.return=a;a=d;break a}else{c(a,d);break}else b(a,d);d=d.sibling}d=bf(f,a.mode,h);d.return=a;a=d}return g(a)}if("string"===typeof f||"number"===typeof f)return f=
-""+f,null!==d&&6===d.tag?(c(a,d.sibling),d=e(d,f,h),d.return=a,a=d):(c(a,d),d=af(f,a.mode,h),d.return=a,a=d),g(a);if(zf(f))return v(a,d,f,h);if(hc(f))return R(a,d,f,h);l&&Bf(a,f);if("undefined"===typeof f&&!k)switch(a.tag){case 1:case 0:h=a.type,x("152",h.displayName||h.name||"Component")}return c(a,d)}}var Df=Cf(!0),Ef=Cf(!1),Ff={},N={current:Ff},Gf={current:Ff},Hf={current:Ff};function If(a){a===Ff?x("174"):void 0;return a}
-function Jf(a,b){G(Hf,b,a);G(Gf,a,a);G(N,Ff,a);var c=b.nodeType;switch(c){case 9:case 11:b=(b=b.documentElement)?b.namespaceURI:he(null,"");break;default:c=8===c?b.parentNode:b,b=c.namespaceURI||null,c=c.tagName,b=he(b,c)}F(N,a);G(N,b,a)}function Kf(a){F(N,a);F(Gf,a);F(Hf,a)}function Lf(a){If(Hf.current);var b=If(N.current);var c=he(b,a.type);b!==c&&(G(Gf,a,a),G(N,c,a))}function Mf(a){Gf.current===a&&(F(N,a),F(Gf,a))}
-var Nf=0,Of=2,Pf=4,Qf=8,Rf=16,Sf=32,Tf=64,Uf=128,Vf=Tb.ReactCurrentDispatcher,Wf=0,Xf=null,O=null,P=null,Yf=null,Q=null,Zf=null,$f=0,ag=null,bg=0,cg=!1,dg=null,eg=0;function fg(){x("321")}function gg(a,b){if(null===b)return!1;for(var c=0;c<b.length&&c<a.length;c++)if(!bd(a[c],b[c]))return!1;return!0}
-function hg(a,b,c,d,e,f){Wf=f;Xf=b;P=null!==a?a.memoizedState:null;Vf.current=null===P?ig:jg;b=c(d,e);if(cg){do cg=!1,eg+=1,P=null!==a?a.memoizedState:null,Zf=Yf,ag=Q=O=null,Vf.current=jg,b=c(d,e);while(cg);dg=null;eg=0}Vf.current=kg;a=Xf;a.memoizedState=Yf;a.expirationTime=$f;a.updateQueue=ag;a.effectTag|=bg;a=null!==O&&null!==O.next;Wf=0;Zf=Q=Yf=P=O=Xf=null;$f=0;ag=null;bg=0;a?x("300"):void 0;return b}function lg(){Vf.current=kg;Wf=0;Zf=Q=Yf=P=O=Xf=null;$f=0;ag=null;bg=0;cg=!1;dg=null;eg=0}
-function mg(){var a={memoizedState:null,baseState:null,queue:null,baseUpdate:null,next:null};null===Q?Yf=Q=a:Q=Q.next=a;return Q}function ng(){if(null!==Zf)Q=Zf,Zf=Q.next,O=P,P=null!==O?O.next:null;else{null===P?x("310"):void 0;O=P;var a={memoizedState:O.memoizedState,baseState:O.baseState,queue:O.queue,baseUpdate:O.baseUpdate,next:null};Q=null===Q?Yf=a:Q.next=a;P=O.next}return Q}function og(a,b){return"function"===typeof b?b(a):b}
-function pg(a){var b=ng(),c=b.queue;null===c?x("311"):void 0;c.lastRenderedReducer=a;if(0<eg){var d=c.dispatch;if(null!==dg){var e=dg.get(c);if(void 0!==e){dg.delete(c);var f=b.memoizedState;do f=a(f,e.action),e=e.next;while(null!==e);bd(f,b.memoizedState)||(qg=!0);b.memoizedState=f;b.baseUpdate===c.last&&(b.baseState=f);c.lastRenderedState=f;return[f,d]}}return[b.memoizedState,d]}d=c.last;var g=b.baseUpdate;f=b.baseState;null!==g?(null!==d&&(d.next=null),d=g.next):d=null!==d?d.next:null;if(null!==
-d){var h=e=null,l=d,k=!1;do{var m=l.expirationTime;m<Wf?(k||(k=!0,h=g,e=f),m>$f&&($f=m)):f=l.eagerReducer===a?l.eagerState:a(f,l.action);g=l;l=l.next}while(null!==l&&l!==d);k||(h=g,e=f);bd(f,b.memoizedState)||(qg=!0);b.memoizedState=f;b.baseUpdate=h;b.baseState=e;c.lastRenderedState=f}return[b.memoizedState,c.dispatch]}
-function rg(a,b,c,d){a={tag:a,create:b,destroy:c,deps:d,next:null};null===ag?(ag={lastEffect:null},ag.lastEffect=a.next=a):(b=ag.lastEffect,null===b?ag.lastEffect=a.next=a:(c=b.next,b.next=a,a.next=c,ag.lastEffect=a));return a}function sg(a,b,c,d){var e=mg();bg|=a;e.memoizedState=rg(b,c,void 0,void 0===d?null:d)}
-function tg(a,b,c,d){var e=ng();d=void 0===d?null:d;var f=void 0;if(null!==O){var g=O.memoizedState;f=g.destroy;if(null!==d&&gg(d,g.deps)){rg(Nf,c,f,d);return}}bg|=a;e.memoizedState=rg(b,c,f,d)}function ug(a,b){if("function"===typeof b)return a=a(),b(a),function(){b(null)};if(null!==b&&void 0!==b)return a=a(),b.current=a,function(){b.current=null}}function vg(){}
-function wg(a,b,c){25>eg?void 0:x("301");var d=a.alternate;if(a===Xf||null!==d&&d===Xf)if(cg=!0,a={expirationTime:Wf,action:c,eagerReducer:null,eagerState:null,next:null},null===dg&&(dg=new Map),c=dg.get(b),void 0===c)dg.set(b,a);else{for(b=c;null!==b.next;)b=b.next;b.next=a}else{of();var e=lf();e=mf(e,a);var f={expirationTime:e,action:c,eagerReducer:null,eagerState:null,next:null},g=b.last;if(null===g)f.next=f;else{var h=g.next;null!==h&&(f.next=h);g.next=f}b.last=f;if(0===a.expirationTime&&(null===
-d||0===d.expirationTime)&&(d=b.lastRenderedReducer,null!==d))try{var l=b.lastRenderedState,k=d(l,c);f.eagerReducer=d;f.eagerState=k;if(bd(k,l))return}catch(m){}finally{}qf(a,e)}}
-var kg={readContext:M,useCallback:fg,useContext:fg,useEffect:fg,useImperativeHandle:fg,useLayoutEffect:fg,useMemo:fg,useReducer:fg,useRef:fg,useState:fg,useDebugValue:fg},ig={readContext:M,useCallback:function(a,b){mg().memoizedState=[a,void 0===b?null:b];return a},useContext:M,useEffect:function(a,b){return sg(516,Uf|Tf,a,b)},useImperativeHandle:function(a,b,c){c=null!==c&&void 0!==c?c.concat([a]):null;return sg(4,Pf|Sf,ug.bind(null,b,a),c)},useLayoutEffect:function(a,b){return sg(4,Pf|Sf,a,b)},
-useMemo:function(a,b){var c=mg();b=void 0===b?null:b;a=a();c.memoizedState=[a,b];return a},useReducer:function(a,b,c){var d=mg();b=void 0!==c?c(b):b;d.memoizedState=d.baseState=b;a=d.queue={last:null,dispatch:null,lastRenderedReducer:a,lastRenderedState:b};a=a.dispatch=wg.bind(null,Xf,a);return[d.memoizedState,a]},useRef:function(a){var b=mg();a={current:a};return b.memoizedState=a},useState:function(a){var b=mg();"function"===typeof a&&(a=a());b.memoizedState=b.baseState=a;a=b.queue={last:null,dispatch:null,
-lastRenderedReducer:og,lastRenderedState:a};a=a.dispatch=wg.bind(null,Xf,a);return[b.memoizedState,a]},useDebugValue:vg},jg={readContext:M,useCallback:function(a,b){var c=ng();b=void 0===b?null:b;var d=c.memoizedState;if(null!==d&&null!==b&&gg(b,d[1]))return d[0];c.memoizedState=[a,b];return a},useContext:M,useEffect:function(a,b){return tg(516,Uf|Tf,a,b)},useImperativeHandle:function(a,b,c){c=null!==c&&void 0!==c?c.concat([a]):null;return tg(4,Pf|Sf,ug.bind(null,b,a),c)},useLayoutEffect:function(a,
-b){return tg(4,Pf|Sf,a,b)},useMemo:function(a,b){var c=ng();b=void 0===b?null:b;var d=c.memoizedState;if(null!==d&&null!==b&&gg(b,d[1]))return d[0];a=a();c.memoizedState=[a,b];return a},useReducer:pg,useRef:function(){return ng().memoizedState},useState:function(a){return pg(og,a)},useDebugValue:vg},xg=null,yg=null,zg=!1;
-function Ag(a,b){var c=K(5,null,null,0);c.elementType="DELETED";c.type="DELETED";c.stateNode=b;c.return=a;c.effectTag=8;null!==a.lastEffect?(a.lastEffect.nextEffect=c,a.lastEffect=c):a.firstEffect=a.lastEffect=c}function Bg(a,b){switch(a.tag){case 5:var c=a.type;b=1!==b.nodeType||c.toLowerCase()!==b.nodeName.toLowerCase()?null:b;return null!==b?(a.stateNode=b,!0):!1;case 6:return b=""===a.pendingProps||3!==b.nodeType?null:b,null!==b?(a.stateNode=b,!0):!1;case 13:return!1;default:return!1}}
-function Cg(a){if(zg){var b=yg;if(b){var c=b;if(!Bg(a,b)){b=De(c);if(!b||!Bg(a,b)){a.effectTag|=2;zg=!1;xg=a;return}Ag(xg,c)}xg=a;yg=Ee(b)}else a.effectTag|=2,zg=!1,xg=a}}function Dg(a){for(a=a.return;null!==a&&5!==a.tag&&3!==a.tag&&18!==a.tag;)a=a.return;xg=a}function Eg(a){if(a!==xg)return!1;if(!zg)return Dg(a),zg=!0,!1;var b=a.type;if(5!==a.tag||"head"!==b&&"body"!==b&&!xe(b,a.memoizedProps))for(b=yg;b;)Ag(a,b),b=De(b);Dg(a);yg=xg?De(a.stateNode):null;return!0}function Fg(){yg=xg=null;zg=!1}
-var Gg=Tb.ReactCurrentOwner,qg=!1;function S(a,b,c,d){b.child=null===a?Ef(b,null,c,d):Df(b,a.child,c,d)}function Hg(a,b,c,d,e){c=c.render;var f=b.ref;Ig(b,e);d=hg(a,b,c,d,f,e);if(null!==a&&!qg)return b.updateQueue=a.updateQueue,b.effectTag&=-517,a.expirationTime<=e&&(a.expirationTime=0),Jg(a,b,e);b.effectTag|=1;S(a,b,d,e);return b.child}
-function Kg(a,b,c,d,e,f){if(null===a){var g=c.type;if("function"===typeof g&&!Ve(g)&&void 0===g.defaultProps&&null===c.compare&&void 0===c.defaultProps)return b.tag=15,b.type=g,Lg(a,b,g,d,e,f);a=Ye(c.type,null,d,null,b.mode,f);a.ref=b.ref;a.return=b;return b.child=a}g=a.child;if(e<f&&(e=g.memoizedProps,c=c.compare,c=null!==c?c:dd,c(e,d)&&a.ref===b.ref))return Jg(a,b,f);b.effectTag|=1;a=Xe(g,d,f);a.ref=b.ref;a.return=b;return b.child=a}
-function Lg(a,b,c,d,e,f){return null!==a&&dd(a.memoizedProps,d)&&a.ref===b.ref&&(qg=!1,e<f)?Jg(a,b,f):Mg(a,b,c,d,f)}function Ng(a,b){var c=b.ref;if(null===a&&null!==c||null!==a&&a.ref!==c)b.effectTag|=128}function Mg(a,b,c,d,e){var f=J(c)?Ie:H.current;f=Je(b,f);Ig(b,e);c=hg(a,b,c,d,f,e);if(null!==a&&!qg)return b.updateQueue=a.updateQueue,b.effectTag&=-517,a.expirationTime<=e&&(a.expirationTime=0),Jg(a,b,e);b.effectTag|=1;S(a,b,c,e);return b.child}
-function Og(a,b,c,d,e){if(J(c)){var f=!0;Oe(b)}else f=!1;Ig(b,e);if(null===b.stateNode)null!==a&&(a.alternate=null,b.alternate=null,b.effectTag|=2),vf(b,c,d,e),xf(b,c,d,e),d=!0;else if(null===a){var g=b.stateNode,h=b.memoizedProps;g.props=h;var l=g.context,k=c.contextType;"object"===typeof k&&null!==k?k=M(k):(k=J(c)?Ie:H.current,k=Je(b,k));var m=c.getDerivedStateFromProps,p="function"===typeof m||"function"===typeof g.getSnapshotBeforeUpdate;p||"function"!==typeof g.UNSAFE_componentWillReceiveProps&&
-"function"!==typeof g.componentWillReceiveProps||(h!==d||l!==k)&&wf(b,g,d,k);Pg=!1;var t=b.memoizedState;l=g.state=t;var A=b.updateQueue;null!==A&&(yf(b,A,d,g,e),l=b.memoizedState);h!==d||t!==l||I.current||Pg?("function"===typeof m&&(kf(b,c,m,d),l=b.memoizedState),(h=Pg||uf(b,c,h,d,t,l,k))?(p||"function"!==typeof g.UNSAFE_componentWillMount&&"function"!==typeof g.componentWillMount||("function"===typeof g.componentWillMount&&g.componentWillMount(),"function"===typeof g.UNSAFE_componentWillMount&&
-g.UNSAFE_componentWillMount()),"function"===typeof g.componentDidMount&&(b.effectTag|=4)):("function"===typeof g.componentDidMount&&(b.effectTag|=4),b.memoizedProps=d,b.memoizedState=l),g.props=d,g.state=l,g.context=k,d=h):("function"===typeof g.componentDidMount&&(b.effectTag|=4),d=!1)}else g=b.stateNode,h=b.memoizedProps,g.props=b.type===b.elementType?h:L(b.type,h),l=g.context,k=c.contextType,"object"===typeof k&&null!==k?k=M(k):(k=J(c)?Ie:H.current,k=Je(b,k)),m=c.getDerivedStateFromProps,(p="function"===
-typeof m||"function"===typeof g.getSnapshotBeforeUpdate)||"function"!==typeof g.UNSAFE_componentWillReceiveProps&&"function"!==typeof g.componentWillReceiveProps||(h!==d||l!==k)&&wf(b,g,d,k),Pg=!1,l=b.memoizedState,t=g.state=l,A=b.updateQueue,null!==A&&(yf(b,A,d,g,e),t=b.memoizedState),h!==d||l!==t||I.current||Pg?("function"===typeof m&&(kf(b,c,m,d),t=b.memoizedState),(m=Pg||uf(b,c,h,d,l,t,k))?(p||"function"!==typeof g.UNSAFE_componentWillUpdate&&"function"!==typeof g.componentWillUpdate||("function"===
-typeof g.componentWillUpdate&&g.componentWillUpdate(d,t,k),"function"===typeof g.UNSAFE_componentWillUpdate&&g.UNSAFE_componentWillUpdate(d,t,k)),"function"===typeof g.componentDidUpdate&&(b.effectTag|=4),"function"===typeof g.getSnapshotBeforeUpdate&&(b.effectTag|=256)):("function"!==typeof g.componentDidUpdate||h===a.memoizedProps&&l===a.memoizedState||(b.effectTag|=4),"function"!==typeof g.getSnapshotBeforeUpdate||h===a.memoizedProps&&l===a.memoizedState||(b.effectTag|=256),b.memoizedProps=d,b.memoizedState=
-t),g.props=d,g.state=t,g.context=k,d=m):("function"!==typeof g.componentDidUpdate||h===a.memoizedProps&&l===a.memoizedState||(b.effectTag|=4),"function"!==typeof g.getSnapshotBeforeUpdate||h===a.memoizedProps&&l===a.memoizedState||(b.effectTag|=256),d=!1);return Qg(a,b,c,d,f,e)}
-function Qg(a,b,c,d,e,f){Ng(a,b);var g=0!==(b.effectTag&64);if(!d&&!g)return e&&Pe(b,c,!1),Jg(a,b,f);d=b.stateNode;Gg.current=b;var h=g&&"function"!==typeof c.getDerivedStateFromError?null:d.render();b.effectTag|=1;null!==a&&g?(b.child=Df(b,a.child,null,f),b.child=Df(b,null,h,f)):S(a,b,h,f);b.memoizedState=d.state;e&&Pe(b,c,!0);return b.child}function Rg(a){var b=a.stateNode;b.pendingContext?Me(a,b.pendingContext,b.pendingContext!==b.context):b.context&&Me(a,b.context,!1);Jf(a,b.containerInfo)}
-function Sg(a,b,c){var d=b.mode,e=b.pendingProps,f=b.memoizedState;if(0===(b.effectTag&64)){f=null;var g=!1}else f={timedOutAt:null!==f?f.timedOutAt:0},g=!0,b.effectTag&=-65;if(null===a)if(g){var h=e.fallback;a=Ze(null,d,0,null);0===(b.mode&1)&&(a.child=null!==b.memoizedState?b.child.child:b.child);d=Ze(h,d,c,null);a.sibling=d;c=a;c.return=d.return=b}else c=d=Ef(b,null,e.children,c);else null!==a.memoizedState?(d=a.child,h=d.sibling,g?(c=e.fallback,e=Xe(d,d.pendingProps,0),0===(b.mode&1)&&(g=null!==
-b.memoizedState?b.child.child:b.child,g!==d.child&&(e.child=g)),d=e.sibling=Xe(h,c,h.expirationTime),c=e,e.childExpirationTime=0,c.return=d.return=b):c=d=Df(b,d.child,e.children,c)):(h=a.child,g?(g=e.fallback,e=Ze(null,d,0,null),e.child=h,0===(b.mode&1)&&(e.child=null!==b.memoizedState?b.child.child:b.child),d=e.sibling=Ze(g,d,c,null),d.effectTag|=2,c=e,e.childExpirationTime=0,c.return=d.return=b):d=c=Df(b,h,e.children,c)),b.stateNode=a.stateNode;b.memoizedState=f;b.child=c;return d}
-function Jg(a,b,c){null!==a&&(b.contextDependencies=a.contextDependencies);if(b.childExpirationTime<c)return null;null!==a&&b.child!==a.child?x("153"):void 0;if(null!==b.child){a=b.child;c=Xe(a,a.pendingProps,a.expirationTime);b.child=c;for(c.return=b;null!==a.sibling;)a=a.sibling,c=c.sibling=Xe(a,a.pendingProps,a.expirationTime),c.return=b;c.sibling=null}return b.child}
-function Tg(a,b,c){var d=b.expirationTime;if(null!==a)if(a.memoizedProps!==b.pendingProps||I.current)qg=!0;else{if(d<c){qg=!1;switch(b.tag){case 3:Rg(b);Fg();break;case 5:Lf(b);break;case 1:J(b.type)&&Oe(b);break;case 4:Jf(b,b.stateNode.containerInfo);break;case 10:Ug(b,b.memoizedProps.value);break;case 13:if(null!==b.memoizedState){d=b.child.childExpirationTime;if(0!==d&&d>=c)return Sg(a,b,c);b=Jg(a,b,c);return null!==b?b.sibling:null}}return Jg(a,b,c)}}else qg=!1;b.expirationTime=0;switch(b.tag){case 2:d=
-b.elementType;null!==a&&(a.alternate=null,b.alternate=null,b.effectTag|=2);a=b.pendingProps;var e=Je(b,H.current);Ig(b,c);e=hg(null,b,d,a,e,c);b.effectTag|=1;if("object"===typeof e&&null!==e&&"function"===typeof e.render&&void 0===e.$$typeof){b.tag=1;lg();if(J(d)){var f=!0;Oe(b)}else f=!1;b.memoizedState=null!==e.state&&void 0!==e.state?e.state:null;var g=d.getDerivedStateFromProps;"function"===typeof g&&kf(b,d,g,a);e.updater=tf;b.stateNode=e;e._reactInternalFiber=b;xf(b,d,a,c);b=Qg(null,b,d,!0,f,
-c)}else b.tag=0,S(null,b,e,c),b=b.child;return b;case 16:e=b.elementType;null!==a&&(a.alternate=null,b.alternate=null,b.effectTag|=2);f=b.pendingProps;a=hf(e);b.type=a;e=b.tag=We(a);f=L(a,f);g=void 0;switch(e){case 0:g=Mg(null,b,a,f,c);break;case 1:g=Og(null,b,a,f,c);break;case 11:g=Hg(null,b,a,f,c);break;case 14:g=Kg(null,b,a,L(a.type,f),d,c);break;default:x("306",a,"")}return g;case 0:return d=b.type,e=b.pendingProps,e=b.elementType===d?e:L(d,e),Mg(a,b,d,e,c);case 1:return d=b.type,e=b.pendingProps,
-e=b.elementType===d?e:L(d,e),Og(a,b,d,e,c);case 3:Rg(b);d=b.updateQueue;null===d?x("282"):void 0;e=b.memoizedState;e=null!==e?e.element:null;yf(b,d,b.pendingProps,null,c);d=b.memoizedState.element;if(d===e)Fg(),b=Jg(a,b,c);else{e=b.stateNode;if(e=(null===a||null===a.child)&&e.hydrate)yg=Ee(b.stateNode.containerInfo),xg=b,e=zg=!0;e?(b.effectTag|=2,b.child=Ef(b,null,d,c)):(S(a,b,d,c),Fg());b=b.child}return b;case 5:return Lf(b),null===a&&Cg(b),d=b.type,e=b.pendingProps,f=null!==a?a.memoizedProps:null,
-g=e.children,xe(d,e)?g=null:null!==f&&xe(d,f)&&(b.effectTag|=16),Ng(a,b),1!==c&&b.mode&1&&e.hidden?(b.expirationTime=b.childExpirationTime=1,b=null):(S(a,b,g,c),b=b.child),b;case 6:return null===a&&Cg(b),null;case 13:return Sg(a,b,c);case 4:return Jf(b,b.stateNode.containerInfo),d=b.pendingProps,null===a?b.child=Df(b,null,d,c):S(a,b,d,c),b.child;case 11:return d=b.type,e=b.pendingProps,e=b.elementType===d?e:L(d,e),Hg(a,b,d,e,c);case 7:return S(a,b,b.pendingProps,c),b.child;case 8:return S(a,b,b.pendingProps.children,
-c),b.child;case 12:return S(a,b,b.pendingProps.children,c),b.child;case 10:a:{d=b.type._context;e=b.pendingProps;g=b.memoizedProps;f=e.value;Ug(b,f);if(null!==g){var h=g.value;f=bd(h,f)?0:("function"===typeof d._calculateChangedBits?d._calculateChangedBits(h,f):1073741823)|0;if(0===f){if(g.children===e.children&&!I.current){b=Jg(a,b,c);break a}}else for(h=b.child,null!==h&&(h.return=b);null!==h;){var l=h.contextDependencies;if(null!==l){g=h.child;for(var k=l.first;null!==k;){if(k.context===d&&0!==
-(k.observedBits&f)){1===h.tag&&(k=nf(c),k.tag=sf,pf(h,k));h.expirationTime<c&&(h.expirationTime=c);k=h.alternate;null!==k&&k.expirationTime<c&&(k.expirationTime=c);k=c;for(var m=h.return;null!==m;){var p=m.alternate;if(m.childExpirationTime<k)m.childExpirationTime=k,null!==p&&p.childExpirationTime<k&&(p.childExpirationTime=k);else if(null!==p&&p.childExpirationTime<k)p.childExpirationTime=k;else break;m=m.return}l.expirationTime<c&&(l.expirationTime=c);break}k=k.next}}else g=10===h.tag?h.type===b.type?
-null:h.child:h.child;if(null!==g)g.return=h;else for(g=h;null!==g;){if(g===b){g=null;break}h=g.sibling;if(null!==h){h.return=g.return;g=h;break}g=g.return}h=g}}S(a,b,e.children,c);b=b.child}return b;case 9:return e=b.type,f=b.pendingProps,d=f.children,Ig(b,c),e=M(e,f.unstable_observedBits),d=d(e),b.effectTag|=1,S(a,b,d,c),b.child;case 14:return e=b.type,f=L(e,b.pendingProps),f=L(e.type,f),Kg(a,b,e,f,d,c);case 15:return Lg(a,b,b.type,b.pendingProps,d,c);case 17:return d=b.type,e=b.pendingProps,e=b.elementType===
-d?e:L(d,e),null!==a&&(a.alternate=null,b.alternate=null,b.effectTag|=2),b.tag=1,J(d)?(a=!0,Oe(b)):a=!1,Ig(b,c),vf(b,d,e,c),xf(b,d,e,c),Qg(null,b,d,!0,a,c)}x("156")}var Vg={current:null},Wg=null,Xg=null,Yg=null;function Ug(a,b){var c=a.type._context;G(Vg,c._currentValue,a);c._currentValue=b}function Zg(a){var b=Vg.current;F(Vg,a);a.type._context._currentValue=b}function Ig(a,b){Wg=a;Yg=Xg=null;var c=a.contextDependencies;null!==c&&c.expirationTime>=b&&(qg=!0);a.contextDependencies=null}
-function M(a,b){if(Yg!==a&&!1!==b&&0!==b){if("number"!==typeof b||1073741823===b)Yg=a,b=1073741823;b={context:a,observedBits:b,next:null};null===Xg?(null===Wg?x("308"):void 0,Xg=b,Wg.contextDependencies={first:b,expirationTime:0}):Xg=Xg.next=b}return a._currentValue}var $g=0,rf=1,sf=2,ah=3,Pg=!1;function bh(a){return{baseState:a,firstUpdate:null,lastUpdate:null,firstCapturedUpdate:null,lastCapturedUpdate:null,firstEffect:null,lastEffect:null,firstCapturedEffect:null,lastCapturedEffect:null}}
-function ch(a){return{baseState:a.baseState,firstUpdate:a.firstUpdate,lastUpdate:a.lastUpdate,firstCapturedUpdate:null,lastCapturedUpdate:null,firstEffect:null,lastEffect:null,firstCapturedEffect:null,lastCapturedEffect:null}}function nf(a){return{expirationTime:a,tag:$g,payload:null,callback:null,next:null,nextEffect:null}}function dh(a,b){null===a.lastUpdate?a.firstUpdate=a.lastUpdate=b:(a.lastUpdate.next=b,a.lastUpdate=b)}
-function pf(a,b){var c=a.alternate;if(null===c){var d=a.updateQueue;var e=null;null===d&&(d=a.updateQueue=bh(a.memoizedState))}else d=a.updateQueue,e=c.updateQueue,null===d?null===e?(d=a.updateQueue=bh(a.memoizedState),e=c.updateQueue=bh(c.memoizedState)):d=a.updateQueue=ch(e):null===e&&(e=c.updateQueue=ch(d));null===e||d===e?dh(d,b):null===d.lastUpdate||null===e.lastUpdate?(dh(d,b),dh(e,b)):(dh(d,b),e.lastUpdate=b)}
-function eh(a,b){var c=a.updateQueue;c=null===c?a.updateQueue=bh(a.memoizedState):fh(a,c);null===c.lastCapturedUpdate?c.firstCapturedUpdate=c.lastCapturedUpdate=b:(c.lastCapturedUpdate.next=b,c.lastCapturedUpdate=b)}function fh(a,b){var c=a.alternate;null!==c&&b===c.updateQueue&&(b=a.updateQueue=ch(b));return b}
-function gh(a,b,c,d,e,f){switch(c.tag){case rf:return a=c.payload,"function"===typeof a?a.call(f,d,e):a;case ah:a.effectTag=a.effectTag&-2049|64;case $g:a=c.payload;e="function"===typeof a?a.call(f,d,e):a;if(null===e||void 0===e)break;return n({},d,e);case sf:Pg=!0}return d}
-function yf(a,b,c,d,e){Pg=!1;b=fh(a,b);for(var f=b.baseState,g=null,h=0,l=b.firstUpdate,k=f;null!==l;){var m=l.expirationTime;m<e?(null===g&&(g=l,f=k),h<m&&(h=m)):(k=gh(a,b,l,k,c,d),null!==l.callback&&(a.effectTag|=32,l.nextEffect=null,null===b.lastEffect?b.firstEffect=b.lastEffect=l:(b.lastEffect.nextEffect=l,b.lastEffect=l)));l=l.next}m=null;for(l=b.firstCapturedUpdate;null!==l;){var p=l.expirationTime;p<e?(null===m&&(m=l,null===g&&(f=k)),h<p&&(h=p)):(k=gh(a,b,l,k,c,d),null!==l.callback&&(a.effectTag|=
-32,l.nextEffect=null,null===b.lastCapturedEffect?b.firstCapturedEffect=b.lastCapturedEffect=l:(b.lastCapturedEffect.nextEffect=l,b.lastCapturedEffect=l)));l=l.next}null===g&&(b.lastUpdate=null);null===m?b.lastCapturedUpdate=null:a.effectTag|=32;null===g&&null===m&&(f=k);b.baseState=f;b.firstUpdate=g;b.firstCapturedUpdate=m;a.expirationTime=h;a.memoizedState=k}
-function hh(a,b,c){null!==b.firstCapturedUpdate&&(null!==b.lastUpdate&&(b.lastUpdate.next=b.firstCapturedUpdate,b.lastUpdate=b.lastCapturedUpdate),b.firstCapturedUpdate=b.lastCapturedUpdate=null);ih(b.firstEffect,c);b.firstEffect=b.lastEffect=null;ih(b.firstCapturedEffect,c);b.firstCapturedEffect=b.lastCapturedEffect=null}function ih(a,b){for(;null!==a;){var c=a.callback;if(null!==c){a.callback=null;var d=b;"function"!==typeof c?x("191",c):void 0;c.call(d)}a=a.nextEffect}}
-function jh(a,b){return{value:a,source:b,stack:jc(b)}}function kh(a){a.effectTag|=4}var lh=void 0,mh=void 0,nh=void 0,oh=void 0;lh=function(a,b){for(var c=b.child;null!==c;){if(5===c.tag||6===c.tag)a.appendChild(c.stateNode);else if(4!==c.tag&&null!==c.child){c.child.return=c;c=c.child;continue}if(c===b)break;for(;null===c.sibling;){if(null===c.return||c.return===b)return;c=c.return}c.sibling.return=c.return;c=c.sibling}};mh=function(){};
-nh=function(a,b,c,d,e){var f=a.memoizedProps;if(f!==d){var g=b.stateNode;If(N.current);a=null;switch(c){case "input":f=vc(g,f);d=vc(g,d);a=[];break;case "option":f=$d(g,f);d=$d(g,d);a=[];break;case "select":f=n({},f,{value:void 0});d=n({},d,{value:void 0});a=[];break;case "textarea":f=be(g,f);d=be(g,d);a=[];break;default:"function"!==typeof f.onClick&&"function"===typeof d.onClick&&(g.onclick=te)}qe(c,d);g=c=void 0;var h=null;for(c in f)if(!d.hasOwnProperty(c)&&f.hasOwnProperty(c)&&null!=f[c])if("style"===
-c){var l=f[c];for(g in l)l.hasOwnProperty(g)&&(h||(h={}),h[g]="")}else"dangerouslySetInnerHTML"!==c&&"children"!==c&&"suppressContentEditableWarning"!==c&&"suppressHydrationWarning"!==c&&"autoFocus"!==c&&(ra.hasOwnProperty(c)?a||(a=[]):(a=a||[]).push(c,null));for(c in d){var k=d[c];l=null!=f?f[c]:void 0;if(d.hasOwnProperty(c)&&k!==l&&(null!=k||null!=l))if("style"===c)if(l){for(g in l)!l.hasOwnProperty(g)||k&&k.hasOwnProperty(g)||(h||(h={}),h[g]="");for(g in k)k.hasOwnProperty(g)&&l[g]!==k[g]&&(h||
-(h={}),h[g]=k[g])}else h||(a||(a=[]),a.push(c,h)),h=k;else"dangerouslySetInnerHTML"===c?(k=k?k.__html:void 0,l=l?l.__html:void 0,null!=k&&l!==k&&(a=a||[]).push(c,""+k)):"children"===c?l===k||"string"!==typeof k&&"number"!==typeof k||(a=a||[]).push(c,""+k):"suppressContentEditableWarning"!==c&&"suppressHydrationWarning"!==c&&(ra.hasOwnProperty(c)?(null!=k&&se(e,c),a||l===k||(a=[])):(a=a||[]).push(c,k))}h&&(a=a||[]).push("style",h);e=a;(b.updateQueue=e)&&kh(b)}};oh=function(a,b,c,d){c!==d&&kh(b)};
-var ph="function"===typeof WeakSet?WeakSet:Set;function qh(a,b){var c=b.source,d=b.stack;null===d&&null!==c&&(d=jc(c));null!==c&&ic(c.type);b=b.value;null!==a&&1===a.tag&&ic(a.type);try{console.error(b)}catch(e){setTimeout(function(){throw e;})}}function rh(a){var b=a.ref;if(null!==b)if("function"===typeof b)try{b(null)}catch(c){sh(a,c)}else b.current=null}
-function th(a,b,c){c=c.updateQueue;c=null!==c?c.lastEffect:null;if(null!==c){var d=c=c.next;do{if((d.tag&a)!==Nf){var e=d.destroy;d.destroy=void 0;void 0!==e&&e()}(d.tag&b)!==Nf&&(e=d.create,d.destroy=e());d=d.next}while(d!==c)}}
-function uh(a,b){for(var c=a;;){if(5===c.tag){var d=c.stateNode;if(b)d.style.display="none";else{d=c.stateNode;var e=c.memoizedProps.style;e=void 0!==e&&null!==e&&e.hasOwnProperty("display")?e.display:null;d.style.display=ne("display",e)}}else if(6===c.tag)c.stateNode.nodeValue=b?"":c.memoizedProps;else if(13===c.tag&&null!==c.memoizedState){d=c.child.sibling;d.return=c;c=d;continue}else if(null!==c.child){c.child.return=c;c=c.child;continue}if(c===a)break;for(;null===c.sibling;){if(null===c.return||
-c.return===a)return;c=c.return}c.sibling.return=c.return;c=c.sibling}}
-function vh(a){"function"===typeof Re&&Re(a);switch(a.tag){case 0:case 11:case 14:case 15:var b=a.updateQueue;if(null!==b&&(b=b.lastEffect,null!==b)){var c=b=b.next;do{var d=c.destroy;if(void 0!==d){var e=a;try{d()}catch(f){sh(e,f)}}c=c.next}while(c!==b)}break;case 1:rh(a);b=a.stateNode;if("function"===typeof b.componentWillUnmount)try{b.props=a.memoizedProps,b.state=a.memoizedState,b.componentWillUnmount()}catch(f){sh(a,f)}break;case 5:rh(a);break;case 4:wh(a)}}
-function xh(a){return 5===a.tag||3===a.tag||4===a.tag}
-function yh(a){a:{for(var b=a.return;null!==b;){if(xh(b)){var c=b;break a}b=b.return}x("160");c=void 0}var d=b=void 0;switch(c.tag){case 5:b=c.stateNode;d=!1;break;case 3:b=c.stateNode.containerInfo;d=!0;break;case 4:b=c.stateNode.containerInfo;d=!0;break;default:x("161")}c.effectTag&16&&(ke(b,""),c.effectTag&=-17);a:b:for(c=a;;){for(;null===c.sibling;){if(null===c.return||xh(c.return)){c=null;break a}c=c.return}c.sibling.return=c.return;for(c=c.sibling;5!==c.tag&&6!==c.tag&&18!==c.tag;){if(c.effectTag&
-2)continue b;if(null===c.child||4===c.tag)continue b;else c.child.return=c,c=c.child}if(!(c.effectTag&2)){c=c.stateNode;break a}}for(var e=a;;){if(5===e.tag||6===e.tag)if(c)if(d){var f=b,g=e.stateNode,h=c;8===f.nodeType?f.parentNode.insertBefore(g,h):f.insertBefore(g,h)}else b.insertBefore(e.stateNode,c);else d?(g=b,h=e.stateNode,8===g.nodeType?(f=g.parentNode,f.insertBefore(h,g)):(f=g,f.appendChild(h)),g=g._reactRootContainer,null!==g&&void 0!==g||null!==f.onclick||(f.onclick=te)):b.appendChild(e.stateNode);
-else if(4!==e.tag&&null!==e.child){e.child.return=e;e=e.child;continue}if(e===a)break;for(;null===e.sibling;){if(null===e.return||e.return===a)return;e=e.return}e.sibling.return=e.return;e=e.sibling}}
-function wh(a){for(var b=a,c=!1,d=void 0,e=void 0;;){if(!c){c=b.return;a:for(;;){null===c?x("160"):void 0;switch(c.tag){case 5:d=c.stateNode;e=!1;break a;case 3:d=c.stateNode.containerInfo;e=!0;break a;case 4:d=c.stateNode.containerInfo;e=!0;break a}c=c.return}c=!0}if(5===b.tag||6===b.tag){a:for(var f=b,g=f;;)if(vh(g),null!==g.child&&4!==g.tag)g.child.return=g,g=g.child;else{if(g===f)break;for(;null===g.sibling;){if(null===g.return||g.return===f)break a;g=g.return}g.sibling.return=g.return;g=g.sibling}e?
-(f=d,g=b.stateNode,8===f.nodeType?f.parentNode.removeChild(g):f.removeChild(g)):d.removeChild(b.stateNode)}else if(4===b.tag){if(null!==b.child){d=b.stateNode.containerInfo;e=!0;b.child.return=b;b=b.child;continue}}else if(vh(b),null!==b.child){b.child.return=b;b=b.child;continue}if(b===a)break;for(;null===b.sibling;){if(null===b.return||b.return===a)return;b=b.return;4===b.tag&&(c=!1)}b.sibling.return=b.return;b=b.sibling}}
-function zh(a,b){switch(b.tag){case 0:case 11:case 14:case 15:th(Pf,Qf,b);break;case 1:break;case 5:var c=b.stateNode;if(null!=c){var d=b.memoizedProps;a=null!==a?a.memoizedProps:d;var e=b.type,f=b.updateQueue;b.updateQueue=null;null!==f&&Ce(c,f,e,a,d,b)}break;case 6:null===b.stateNode?x("162"):void 0;b.stateNode.nodeValue=b.memoizedProps;break;case 3:break;case 12:break;case 13:c=b.memoizedState;d=void 0;a=b;null===c?d=!1:(d=!0,a=b.child,0===c.timedOutAt&&(c.timedOutAt=lf()));null!==a&&uh(a,d);c=
-b.updateQueue;if(null!==c){b.updateQueue=null;var g=b.stateNode;null===g&&(g=b.stateNode=new ph);c.forEach(function(a){var c=Ah.bind(null,b,a);g.has(a)||(g.add(a),a.then(c,c))})}break;case 17:break;default:x("163")}}var Bh="function"===typeof WeakMap?WeakMap:Map;function Ch(a,b,c){c=nf(c);c.tag=ah;c.payload={element:null};var d=b.value;c.callback=function(){Dh(d);qh(a,b)};return c}
-function Eh(a,b,c){c=nf(c);c.tag=ah;var d=a.type.getDerivedStateFromError;if("function"===typeof d){var e=b.value;c.payload=function(){return d(e)}}var f=a.stateNode;null!==f&&"function"===typeof f.componentDidCatch&&(c.callback=function(){"function"!==typeof d&&(null===Fh?Fh=new Set([this]):Fh.add(this));var c=b.value,e=b.stack;qh(a,b);this.componentDidCatch(c,{componentStack:null!==e?e:""})});return c}
-function Gh(a){switch(a.tag){case 1:J(a.type)&&Ke(a);var b=a.effectTag;return b&2048?(a.effectTag=b&-2049|64,a):null;case 3:return Kf(a),Le(a),b=a.effectTag,0!==(b&64)?x("285"):void 0,a.effectTag=b&-2049|64,a;case 5:return Mf(a),null;case 13:return b=a.effectTag,b&2048?(a.effectTag=b&-2049|64,a):null;case 18:return null;case 4:return Kf(a),null;case 10:return Zg(a),null;default:return null}}
-var Hh=Tb.ReactCurrentDispatcher,Ih=Tb.ReactCurrentOwner,Jh=1073741822,Kh=!1,T=null,Lh=null,U=0,Mh=-1,Nh=!1,V=null,Oh=!1,Ph=null,Qh=null,Rh=null,Fh=null;function Sh(){if(null!==T)for(var a=T.return;null!==a;){var b=a;switch(b.tag){case 1:var c=b.type.childContextTypes;null!==c&&void 0!==c&&Ke(b);break;case 3:Kf(b);Le(b);break;case 5:Mf(b);break;case 4:Kf(b);break;case 10:Zg(b)}a=a.return}Lh=null;U=0;Mh=-1;Nh=!1;T=null}
-function Th(){for(;null!==V;){var a=V.effectTag;a&16&&ke(V.stateNode,"");if(a&128){var b=V.alternate;null!==b&&(b=b.ref,null!==b&&("function"===typeof b?b(null):b.current=null))}switch(a&14){case 2:yh(V);V.effectTag&=-3;break;case 6:yh(V);V.effectTag&=-3;zh(V.alternate,V);break;case 4:zh(V.alternate,V);break;case 8:a=V,wh(a),a.return=null,a.child=null,a.memoizedState=null,a.updateQueue=null,a=a.alternate,null!==a&&(a.return=null,a.child=null,a.memoizedState=null,a.updateQueue=null)}V=V.nextEffect}}
-function Uh(){for(;null!==V;){if(V.effectTag&256)a:{var a=V.alternate,b=V;switch(b.tag){case 0:case 11:case 15:th(Of,Nf,b);break a;case 1:if(b.effectTag&256&&null!==a){var c=a.memoizedProps,d=a.memoizedState;a=b.stateNode;b=a.getSnapshotBeforeUpdate(b.elementType===b.type?c:L(b.type,c),d);a.__reactInternalSnapshotBeforeUpdate=b}break a;case 3:case 5:case 6:case 4:case 17:break a;default:x("163")}}V=V.nextEffect}}
-function Vh(a,b){for(;null!==V;){var c=V.effectTag;if(c&36){var d=V.alternate,e=V,f=b;switch(e.tag){case 0:case 11:case 15:th(Rf,Sf,e);break;case 1:var g=e.stateNode;if(e.effectTag&4)if(null===d)g.componentDidMount();else{var h=e.elementType===e.type?d.memoizedProps:L(e.type,d.memoizedProps);g.componentDidUpdate(h,d.memoizedState,g.__reactInternalSnapshotBeforeUpdate)}d=e.updateQueue;null!==d&&hh(e,d,g,f);break;case 3:d=e.updateQueue;if(null!==d){g=null;if(null!==e.child)switch(e.child.tag){case 5:g=
-e.child.stateNode;break;case 1:g=e.child.stateNode}hh(e,d,g,f)}break;case 5:f=e.stateNode;null===d&&e.effectTag&4&&we(e.type,e.memoizedProps)&&f.focus();break;case 6:break;case 4:break;case 12:break;case 13:break;case 17:break;default:x("163")}}c&128&&(e=V.ref,null!==e&&(f=V.stateNode,"function"===typeof e?e(f):e.current=f));c&512&&(Ph=a);V=V.nextEffect}}
-function Wh(a,b){Rh=Qh=Ph=null;var c=W;W=!0;do{if(b.effectTag&512){var d=!1,e=void 0;try{var f=b;th(Uf,Nf,f);th(Nf,Tf,f)}catch(g){d=!0,e=g}d&&sh(b,e)}b=b.nextEffect}while(null!==b);W=c;c=a.expirationTime;0!==c&&Xh(a,c);X||W||Yh(1073741823,!1)}function of(){null!==Qh&&Be(Qh);null!==Rh&&Rh()}
-function Zh(a,b){Oh=Kh=!0;a.current===b?x("177"):void 0;var c=a.pendingCommitExpirationTime;0===c?x("261"):void 0;a.pendingCommitExpirationTime=0;var d=b.expirationTime,e=b.childExpirationTime;ef(a,e>d?e:d);Ih.current=null;d=void 0;1<b.effectTag?null!==b.lastEffect?(b.lastEffect.nextEffect=b,d=b.firstEffect):d=b:d=b.firstEffect;ue=Bd;ve=Pd();Bd=!1;for(V=d;null!==V;){e=!1;var f=void 0;try{Uh()}catch(h){e=!0,f=h}e&&(null===V?x("178"):void 0,sh(V,f),null!==V&&(V=V.nextEffect))}for(V=d;null!==V;){e=!1;
-f=void 0;try{Th()}catch(h){e=!0,f=h}e&&(null===V?x("178"):void 0,sh(V,f),null!==V&&(V=V.nextEffect))}Qd(ve);ve=null;Bd=!!ue;ue=null;a.current=b;for(V=d;null!==V;){e=!1;f=void 0;try{Vh(a,c)}catch(h){e=!0,f=h}e&&(null===V?x("178"):void 0,sh(V,f),null!==V&&(V=V.nextEffect))}if(null!==d&&null!==Ph){var g=Wh.bind(null,a,d);Qh=r.unstable_runWithPriority(r.unstable_NormalPriority,function(){return Ae(g)});Rh=g}Kh=Oh=!1;"function"===typeof Qe&&Qe(b.stateNode);c=b.expirationTime;b=b.childExpirationTime;b=
-b>c?b:c;0===b&&(Fh=null);$h(a,b)}
-function ai(a){for(;;){var b=a.alternate,c=a.return,d=a.sibling;if(0===(a.effectTag&1024)){T=a;a:{var e=b;b=a;var f=U;var g=b.pendingProps;switch(b.tag){case 2:break;case 16:break;case 15:case 0:break;case 1:J(b.type)&&Ke(b);break;case 3:Kf(b);Le(b);g=b.stateNode;g.pendingContext&&(g.context=g.pendingContext,g.pendingContext=null);if(null===e||null===e.child)Eg(b),b.effectTag&=-3;mh(b);break;case 5:Mf(b);var h=If(Hf.current);f=b.type;if(null!==e&&null!=b.stateNode)nh(e,b,f,g,h),e.ref!==b.ref&&(b.effectTag|=
-128);else if(g){var l=If(N.current);if(Eg(b)){g=b;e=g.stateNode;var k=g.type,m=g.memoizedProps,p=h;e[Fa]=g;e[Ga]=m;f=void 0;h=k;switch(h){case "iframe":case "object":E("load",e);break;case "video":case "audio":for(k=0;k<ab.length;k++)E(ab[k],e);break;case "source":E("error",e);break;case "img":case "image":case "link":E("error",e);E("load",e);break;case "form":E("reset",e);E("submit",e);break;case "details":E("toggle",e);break;case "input":wc(e,m);E("invalid",e);se(p,"onChange");break;case "select":e._wrapperState=
-{wasMultiple:!!m.multiple};E("invalid",e);se(p,"onChange");break;case "textarea":ce(e,m),E("invalid",e),se(p,"onChange")}qe(h,m);k=null;for(f in m)m.hasOwnProperty(f)&&(l=m[f],"children"===f?"string"===typeof l?e.textContent!==l&&(k=["children",l]):"number"===typeof l&&e.textContent!==""+l&&(k=["children",""+l]):ra.hasOwnProperty(f)&&null!=l&&se(p,f));switch(h){case "input":Rb(e);Ac(e,m,!0);break;case "textarea":Rb(e);ee(e,m);break;case "select":case "option":break;default:"function"===typeof m.onClick&&
-(e.onclick=te)}f=k;g.updateQueue=f;g=null!==f?!0:!1;g&&kh(b)}else{m=b;p=f;e=g;k=9===h.nodeType?h:h.ownerDocument;l===fe.html&&(l=ge(p));l===fe.html?"script"===p?(e=k.createElement("div"),e.innerHTML="<script>\x3c/script>",k=e.removeChild(e.firstChild)):"string"===typeof e.is?k=k.createElement(p,{is:e.is}):(k=k.createElement(p),"select"===p&&(p=k,e.multiple?p.multiple=!0:e.size&&(p.size=e.size))):k=k.createElementNS(l,p);e=k;e[Fa]=m;e[Ga]=g;lh(e,b,!1,!1);p=e;k=f;m=g;var t=h,A=re(k,m);switch(k){case "iframe":case "object":E("load",
-p);h=m;break;case "video":case "audio":for(h=0;h<ab.length;h++)E(ab[h],p);h=m;break;case "source":E("error",p);h=m;break;case "img":case "image":case "link":E("error",p);E("load",p);h=m;break;case "form":E("reset",p);E("submit",p);h=m;break;case "details":E("toggle",p);h=m;break;case "input":wc(p,m);h=vc(p,m);E("invalid",p);se(t,"onChange");break;case "option":h=$d(p,m);break;case "select":p._wrapperState={wasMultiple:!!m.multiple};h=n({},m,{value:void 0});E("invalid",p);se(t,"onChange");break;case "textarea":ce(p,
-m);h=be(p,m);E("invalid",p);se(t,"onChange");break;default:h=m}qe(k,h);l=void 0;var v=k,R=p,u=h;for(l in u)if(u.hasOwnProperty(l)){var q=u[l];"style"===l?oe(R,q):"dangerouslySetInnerHTML"===l?(q=q?q.__html:void 0,null!=q&&je(R,q)):"children"===l?"string"===typeof q?("textarea"!==v||""!==q)&&ke(R,q):"number"===typeof q&&ke(R,""+q):"suppressContentEditableWarning"!==l&&"suppressHydrationWarning"!==l&&"autoFocus"!==l&&(ra.hasOwnProperty(l)?null!=q&&se(t,l):null!=q&&tc(R,l,q,A))}switch(k){case "input":Rb(p);
-Ac(p,m,!1);break;case "textarea":Rb(p);ee(p,m);break;case "option":null!=m.value&&p.setAttribute("value",""+uc(m.value));break;case "select":h=p;h.multiple=!!m.multiple;p=m.value;null!=p?ae(h,!!m.multiple,p,!1):null!=m.defaultValue&&ae(h,!!m.multiple,m.defaultValue,!0);break;default:"function"===typeof h.onClick&&(p.onclick=te)}(g=we(f,g))&&kh(b);b.stateNode=e}null!==b.ref&&(b.effectTag|=128)}else null===b.stateNode?x("166"):void 0;break;case 6:e&&null!=b.stateNode?oh(e,b,e.memoizedProps,g):("string"!==
-typeof g&&(null===b.stateNode?x("166"):void 0),e=If(Hf.current),If(N.current),Eg(b)?(g=b,f=g.stateNode,e=g.memoizedProps,f[Fa]=g,(g=f.nodeValue!==e)&&kh(b)):(f=b,g=(9===e.nodeType?e:e.ownerDocument).createTextNode(g),g[Fa]=b,f.stateNode=g));break;case 11:break;case 13:g=b.memoizedState;if(0!==(b.effectTag&64)){b.expirationTime=f;T=b;break a}g=null!==g;f=null!==e&&null!==e.memoizedState;null!==e&&!g&&f&&(e=e.child.sibling,null!==e&&(h=b.firstEffect,null!==h?(b.firstEffect=e,e.nextEffect=h):(b.firstEffect=
-b.lastEffect=e,e.nextEffect=null),e.effectTag=8));if(g||f)b.effectTag|=4;break;case 7:break;case 8:break;case 12:break;case 4:Kf(b);mh(b);break;case 10:Zg(b);break;case 9:break;case 14:break;case 17:J(b.type)&&Ke(b);break;case 18:break;default:x("156")}T=null}b=a;if(1===U||1!==b.childExpirationTime){g=0;for(f=b.child;null!==f;)e=f.expirationTime,h=f.childExpirationTime,e>g&&(g=e),h>g&&(g=h),f=f.sibling;b.childExpirationTime=g}if(null!==T)return T;null!==c&&0===(c.effectTag&1024)&&(null===c.firstEffect&&
-(c.firstEffect=a.firstEffect),null!==a.lastEffect&&(null!==c.lastEffect&&(c.lastEffect.nextEffect=a.firstEffect),c.lastEffect=a.lastEffect),1<a.effectTag&&(null!==c.lastEffect?c.lastEffect.nextEffect=a:c.firstEffect=a,c.lastEffect=a))}else{a=Gh(a,U);if(null!==a)return a.effectTag&=1023,a;null!==c&&(c.firstEffect=c.lastEffect=null,c.effectTag|=1024)}if(null!==d)return d;if(null!==c)a=c;else break}return null}
-function bi(a){var b=Tg(a.alternate,a,U);a.memoizedProps=a.pendingProps;null===b&&(b=ai(a));Ih.current=null;return b}
-function ci(a,b){Kh?x("243"):void 0;of();Kh=!0;var c=Hh.current;Hh.current=kg;var d=a.nextExpirationTimeToWorkOn;if(d!==U||a!==Lh||null===T)Sh(),Lh=a,U=d,T=Xe(Lh.current,null,U),a.pendingCommitExpirationTime=0;var e=!1;do{try{if(b)for(;null!==T&&!di();)T=bi(T);else for(;null!==T;)T=bi(T)}catch(u){if(Yg=Xg=Wg=null,lg(),null===T)e=!0,Dh(u);else{null===T?x("271"):void 0;var f=T,g=f.return;if(null===g)e=!0,Dh(u);else{a:{var h=a,l=g,k=f,m=u;g=U;k.effectTag|=1024;k.firstEffect=k.lastEffect=null;if(null!==
-m&&"object"===typeof m&&"function"===typeof m.then){var p=m;m=l;var t=-1,A=-1;do{if(13===m.tag){var v=m.alternate;if(null!==v&&(v=v.memoizedState,null!==v)){A=10*(1073741822-v.timedOutAt);break}v=m.pendingProps.maxDuration;if("number"===typeof v)if(0>=v)t=0;else if(-1===t||v<t)t=v}m=m.return}while(null!==m);m=l;do{if(v=13===m.tag)v=void 0===m.memoizedProps.fallback?!1:null===m.memoizedState;if(v){l=m.updateQueue;null===l?(l=new Set,l.add(p),m.updateQueue=l):l.add(p);if(0===(m.mode&1)){m.effectTag|=
-64;k.effectTag&=-1957;1===k.tag&&(null===k.alternate?k.tag=17:(g=nf(1073741823),g.tag=sf,pf(k,g)));k.expirationTime=1073741823;break a}k=h;l=g;var R=k.pingCache;null===R?(R=k.pingCache=new Bh,v=new Set,R.set(p,v)):(v=R.get(p),void 0===v&&(v=new Set,R.set(p,v)));v.has(l)||(v.add(l),k=ei.bind(null,k,p,l),p.then(k,k));-1===t?h=1073741823:(-1===A&&(A=10*(1073741822-gf(h,g))-5E3),h=A+t);0<=h&&Mh<h&&(Mh=h);m.effectTag|=2048;m.expirationTime=g;break a}m=m.return}while(null!==m);m=Error((ic(k.type)||"A React component")+
-" suspended while rendering, but no fallback UI was specified.\n\nAdd a <Suspense fallback=...> component higher in the tree to provide a loading indicator or placeholder to display."+jc(k))}Nh=!0;m=jh(m,k);h=l;do{switch(h.tag){case 3:h.effectTag|=2048;h.expirationTime=g;g=Ch(h,m,g);eh(h,g);break a;case 1:if(t=m,A=h.type,k=h.stateNode,0===(h.effectTag&64)&&("function"===typeof A.getDerivedStateFromError||null!==k&&"function"===typeof k.componentDidCatch&&(null===Fh||!Fh.has(k)))){h.effectTag|=2048;
-h.expirationTime=g;g=Eh(h,t,g);eh(h,g);break a}}h=h.return}while(null!==h)}T=ai(f);continue}}}break}while(1);Kh=!1;Hh.current=c;Yg=Xg=Wg=null;lg();if(e)Lh=null,a.finishedWork=null;else if(null!==T)a.finishedWork=null;else{c=a.current.alternate;null===c?x("281"):void 0;Lh=null;if(Nh){e=a.latestPendingTime;f=a.latestSuspendedTime;g=a.latestPingedTime;if(0!==e&&e<d||0!==f&&f<d||0!==g&&g<d){ff(a,d);fi(a,c,d,a.expirationTime,-1);return}if(!a.didError&&b){a.didError=!0;d=a.nextExpirationTimeToWorkOn=d;
-b=a.expirationTime=1073741823;fi(a,c,d,b,-1);return}}b&&-1!==Mh?(ff(a,d),b=10*(1073741822-gf(a,d)),b<Mh&&(Mh=b),b=10*(1073741822-lf()),b=Mh-b,fi(a,c,d,a.expirationTime,0>b?0:b)):(a.pendingCommitExpirationTime=d,a.finishedWork=c)}}
-function sh(a,b){for(var c=a.return;null!==c;){switch(c.tag){case 1:var d=c.stateNode;if("function"===typeof c.type.getDerivedStateFromError||"function"===typeof d.componentDidCatch&&(null===Fh||!Fh.has(d))){a=jh(b,a);a=Eh(c,a,1073741823);pf(c,a);qf(c,1073741823);return}break;case 3:a=jh(b,a);a=Ch(c,a,1073741823);pf(c,a);qf(c,1073741823);return}c=c.return}3===a.tag&&(c=jh(b,a),c=Ch(a,c,1073741823),pf(a,c),qf(a,1073741823))}
-function mf(a,b){var c=r.unstable_getCurrentPriorityLevel(),d=void 0;if(0===(b.mode&1))d=1073741823;else if(Kh&&!Oh)d=U;else{switch(c){case r.unstable_ImmediatePriority:d=1073741823;break;case r.unstable_UserBlockingPriority:d=1073741822-10*(((1073741822-a+15)/10|0)+1);break;case r.unstable_NormalPriority:d=1073741822-25*(((1073741822-a+500)/25|0)+1);break;case r.unstable_LowPriority:case r.unstable_IdlePriority:d=1;break;default:x("313")}null!==Lh&&d===U&&--d}c===r.unstable_UserBlockingPriority&&
-(0===gi||d<gi)&&(gi=d);return d}function ei(a,b,c){var d=a.pingCache;null!==d&&d.delete(b);if(null!==Lh&&U===c)Lh=null;else if(b=a.earliestSuspendedTime,d=a.latestSuspendedTime,0!==b&&c<=b&&c>=d){a.didError=!1;b=a.latestPingedTime;if(0===b||b>c)a.latestPingedTime=c;df(c,a);c=a.expirationTime;0!==c&&Xh(a,c)}}function Ah(a,b){var c=a.stateNode;null!==c&&c.delete(b);b=lf();b=mf(b,a);a=hi(a,b);null!==a&&(cf(a,b),b=a.expirationTime,0!==b&&Xh(a,b))}
-function hi(a,b){a.expirationTime<b&&(a.expirationTime=b);var c=a.alternate;null!==c&&c.expirationTime<b&&(c.expirationTime=b);var d=a.return,e=null;if(null===d&&3===a.tag)e=a.stateNode;else for(;null!==d;){c=d.alternate;d.childExpirationTime<b&&(d.childExpirationTime=b);null!==c&&c.childExpirationTime<b&&(c.childExpirationTime=b);if(null===d.return&&3===d.tag){e=d.stateNode;break}d=d.return}return e}
-function qf(a,b){a=hi(a,b);null!==a&&(!Kh&&0!==U&&b>U&&Sh(),cf(a,b),Kh&&!Oh&&Lh===a||Xh(a,a.expirationTime),ii>ji&&(ii=0,x("185")))}function ki(a,b,c,d,e){return r.unstable_runWithPriority(r.unstable_ImmediatePriority,function(){return a(b,c,d,e)})}var li=null,Y=null,mi=0,ni=void 0,W=!1,oi=null,Z=0,gi=0,pi=!1,qi=null,X=!1,ri=!1,si=null,ti=r.unstable_now(),ui=1073741822-(ti/10|0),vi=ui,ji=50,ii=0,wi=null;function xi(){ui=1073741822-((r.unstable_now()-ti)/10|0)}
-function yi(a,b){if(0!==mi){if(b<mi)return;null!==ni&&r.unstable_cancelCallback(ni)}mi=b;a=r.unstable_now()-ti;ni=r.unstable_scheduleCallback(zi,{timeout:10*(1073741822-b)-a})}function fi(a,b,c,d,e){a.expirationTime=d;0!==e||di()?0<e&&(a.timeoutHandle=ye(Ai.bind(null,a,b,c),e)):(a.pendingCommitExpirationTime=c,a.finishedWork=b)}function Ai(a,b,c){a.pendingCommitExpirationTime=c;a.finishedWork=b;xi();vi=ui;Bi(a,c)}function $h(a,b){a.expirationTime=b;a.finishedWork=null}
-function lf(){if(W)return vi;Ci();if(0===Z||1===Z)xi(),vi=ui;return vi}function Xh(a,b){null===a.nextScheduledRoot?(a.expirationTime=b,null===Y?(li=Y=a,a.nextScheduledRoot=a):(Y=Y.nextScheduledRoot=a,Y.nextScheduledRoot=li)):b>a.expirationTime&&(a.expirationTime=b);W||(X?ri&&(oi=a,Z=1073741823,Di(a,1073741823,!1)):1073741823===b?Yh(1073741823,!1):yi(a,b))}
-function Ci(){var a=0,b=null;if(null!==Y)for(var c=Y,d=li;null!==d;){var e=d.expirationTime;if(0===e){null===c||null===Y?x("244"):void 0;if(d===d.nextScheduledRoot){li=Y=d.nextScheduledRoot=null;break}else if(d===li)li=e=d.nextScheduledRoot,Y.nextScheduledRoot=e,d.nextScheduledRoot=null;else if(d===Y){Y=c;Y.nextScheduledRoot=li;d.nextScheduledRoot=null;break}else c.nextScheduledRoot=d.nextScheduledRoot,d.nextScheduledRoot=null;d=c.nextScheduledRoot}else{e>a&&(a=e,b=d);if(d===Y)break;if(1073741823===
-a)break;c=d;d=d.nextScheduledRoot}}oi=b;Z=a}var Ei=!1;function di(){return Ei?!0:r.unstable_shouldYield()?Ei=!0:!1}function zi(){try{if(!di()&&null!==li){xi();var a=li;do{var b=a.expirationTime;0!==b&&ui<=b&&(a.nextExpirationTimeToWorkOn=ui);a=a.nextScheduledRoot}while(a!==li)}Yh(0,!0)}finally{Ei=!1}}
-function Yh(a,b){Ci();if(b)for(xi(),vi=ui;null!==oi&&0!==Z&&a<=Z&&!(Ei&&ui>Z);)Di(oi,Z,ui>Z),Ci(),xi(),vi=ui;else for(;null!==oi&&0!==Z&&a<=Z;)Di(oi,Z,!1),Ci();b&&(mi=0,ni=null);0!==Z&&yi(oi,Z);ii=0;wi=null;if(null!==si)for(a=si,si=null,b=0;b<a.length;b++){var c=a[b];try{c._onComplete()}catch(d){pi||(pi=!0,qi=d)}}if(pi)throw a=qi,qi=null,pi=!1,a;}function Bi(a,b){W?x("253"):void 0;oi=a;Z=b;Di(a,b,!1);Yh(1073741823,!1)}
-function Di(a,b,c){W?x("245"):void 0;W=!0;if(c){var d=a.finishedWork;null!==d?Fi(a,d,b):(a.finishedWork=null,d=a.timeoutHandle,-1!==d&&(a.timeoutHandle=-1,ze(d)),ci(a,c),d=a.finishedWork,null!==d&&(di()?a.finishedWork=d:Fi(a,d,b)))}else d=a.finishedWork,null!==d?Fi(a,d,b):(a.finishedWork=null,d=a.timeoutHandle,-1!==d&&(a.timeoutHandle=-1,ze(d)),ci(a,c),d=a.finishedWork,null!==d&&Fi(a,d,b));W=!1}
-function Fi(a,b,c){var d=a.firstBatch;if(null!==d&&d._expirationTime>=c&&(null===si?si=[d]:si.push(d),d._defer)){a.finishedWork=b;a.expirationTime=0;return}a.finishedWork=null;a===wi?ii++:(wi=a,ii=0);r.unstable_runWithPriority(r.unstable_ImmediatePriority,function(){Zh(a,b)})}function Dh(a){null===oi?x("246"):void 0;oi.expirationTime=0;pi||(pi=!0,qi=a)}function Gi(a,b){var c=X;X=!0;try{return a(b)}finally{(X=c)||W||Yh(1073741823,!1)}}
-function Hi(a,b){if(X&&!ri){ri=!0;try{return a(b)}finally{ri=!1}}return a(b)}function Ii(a,b,c){X||W||0===gi||(Yh(gi,!1),gi=0);var d=X;X=!0;try{return r.unstable_runWithPriority(r.unstable_UserBlockingPriority,function(){return a(b,c)})}finally{(X=d)||W||Yh(1073741823,!1)}}
-function Ji(a,b,c,d,e){var f=b.current;a:if(c){c=c._reactInternalFiber;b:{2===ed(c)&&1===c.tag?void 0:x("170");var g=c;do{switch(g.tag){case 3:g=g.stateNode.context;break b;case 1:if(J(g.type)){g=g.stateNode.__reactInternalMemoizedMergedChildContext;break b}}g=g.return}while(null!==g);x("171");g=void 0}if(1===c.tag){var h=c.type;if(J(h)){c=Ne(c,h,g);break a}}c=g}else c=He;null===b.context?b.context=c:b.pendingContext=c;b=e;e=nf(d);e.payload={element:a};b=void 0===b?null:b;null!==b&&(e.callback=b);
-of();pf(f,e);qf(f,d);return d}function Ki(a,b,c,d){var e=b.current,f=lf();e=mf(f,e);return Ji(a,b,c,e,d)}function Li(a){a=a.current;if(!a.child)return null;switch(a.child.tag){case 5:return a.child.stateNode;default:return a.child.stateNode}}function Mi(a,b,c){var d=3<arguments.length&&void 0!==arguments[3]?arguments[3]:null;return{$$typeof:Wb,key:null==d?null:""+d,children:a,containerInfo:b,implementation:c}}
-Ab=function(a,b,c){switch(b){case "input":yc(a,c);b=c.name;if("radio"===c.type&&null!=b){for(c=a;c.parentNode;)c=c.parentNode;c=c.querySelectorAll("input[name="+JSON.stringify(""+b)+'][type="radio"]');for(b=0;b<c.length;b++){var d=c[b];if(d!==a&&d.form===a.form){var e=Ka(d);e?void 0:x("90");Sb(d);yc(d,e)}}}break;case "textarea":de(a,c);break;case "select":b=c.value,null!=b&&ae(a,!!c.multiple,b,!1)}};
-function Ni(a){var b=1073741822-25*(((1073741822-lf()+500)/25|0)+1);b>=Jh&&(b=Jh-1);this._expirationTime=Jh=b;this._root=a;this._callbacks=this._next=null;this._hasChildren=this._didComplete=!1;this._children=null;this._defer=!0}Ni.prototype.render=function(a){this._defer?void 0:x("250");this._hasChildren=!0;this._children=a;var b=this._root._internalRoot,c=this._expirationTime,d=new Oi;Ji(a,b,null,c,d._onCommit);return d};
-Ni.prototype.then=function(a){if(this._didComplete)a();else{var b=this._callbacks;null===b&&(b=this._callbacks=[]);b.push(a)}};
-Ni.prototype.commit=function(){var a=this._root._internalRoot,b=a.firstBatch;this._defer&&null!==b?void 0:x("251");if(this._hasChildren){var c=this._expirationTime;if(b!==this){this._hasChildren&&(c=this._expirationTime=b._expirationTime,this.render(this._children));for(var d=null,e=b;e!==this;)d=e,e=e._next;null===d?x("251"):void 0;d._next=e._next;this._next=b;a.firstBatch=this}this._defer=!1;Bi(a,c);b=this._next;this._next=null;b=a.firstBatch=b;null!==b&&b._hasChildren&&b.render(b._children)}else this._next=
-null,this._defer=!1};Ni.prototype._onComplete=function(){if(!this._didComplete){this._didComplete=!0;var a=this._callbacks;if(null!==a)for(var b=0;b<a.length;b++)(0,a[b])()}};function Oi(){this._callbacks=null;this._didCommit=!1;this._onCommit=this._onCommit.bind(this)}Oi.prototype.then=function(a){if(this._didCommit)a();else{var b=this._callbacks;null===b&&(b=this._callbacks=[]);b.push(a)}};
-Oi.prototype._onCommit=function(){if(!this._didCommit){this._didCommit=!0;var a=this._callbacks;if(null!==a)for(var b=0;b<a.length;b++){var c=a[b];"function"!==typeof c?x("191",c):void 0;c()}}};
-function Pi(a,b,c){b=K(3,null,null,b?3:0);a={current:b,containerInfo:a,pendingChildren:null,pingCache:null,earliestPendingTime:0,latestPendingTime:0,earliestSuspendedTime:0,latestSuspendedTime:0,latestPingedTime:0,didError:!1,pendingCommitExpirationTime:0,finishedWork:null,timeoutHandle:-1,context:null,pendingContext:null,hydrate:c,nextExpirationTimeToWorkOn:0,expirationTime:0,firstBatch:null,nextScheduledRoot:null};this._internalRoot=b.stateNode=a}
-Pi.prototype.render=function(a,b){var c=this._internalRoot,d=new Oi;b=void 0===b?null:b;null!==b&&d.then(b);Ki(a,c,null,d._onCommit);return d};Pi.prototype.unmount=function(a){var b=this._internalRoot,c=new Oi;a=void 0===a?null:a;null!==a&&c.then(a);Ki(null,b,null,c._onCommit);return c};Pi.prototype.legacy_renderSubtreeIntoContainer=function(a,b,c){var d=this._internalRoot,e=new Oi;c=void 0===c?null:c;null!==c&&e.then(c);Ki(b,d,a,e._onCommit);return e};
-Pi.prototype.createBatch=function(){var a=new Ni(this),b=a._expirationTime,c=this._internalRoot,d=c.firstBatch;if(null===d)c.firstBatch=a,a._next=null;else{for(c=null;null!==d&&d._expirationTime>=b;)c=d,d=d._next;a._next=d;null!==c&&(c._next=a)}return a};function Qi(a){return!(!a||1!==a.nodeType&&9!==a.nodeType&&11!==a.nodeType&&(8!==a.nodeType||" react-mount-point-unstable "!==a.nodeValue))}Gb=Gi;Hb=Ii;Ib=function(){W||0===gi||(Yh(gi,!1),gi=0)};
-function Ri(a,b){b||(b=a?9===a.nodeType?a.documentElement:a.firstChild:null,b=!(!b||1!==b.nodeType||!b.hasAttribute("data-reactroot")));if(!b)for(var c;c=a.lastChild;)a.removeChild(c);return new Pi(a,!1,b)}
-function Si(a,b,c,d,e){var f=c._reactRootContainer;if(f){if("function"===typeof e){var g=e;e=function(){var a=Li(f._internalRoot);g.call(a)}}null!=a?f.legacy_renderSubtreeIntoContainer(a,b,e):f.render(b,e)}else{f=c._reactRootContainer=Ri(c,d);if("function"===typeof e){var h=e;e=function(){var a=Li(f._internalRoot);h.call(a)}}Hi(function(){null!=a?f.legacy_renderSubtreeIntoContainer(a,b,e):f.render(b,e)})}return Li(f._internalRoot)}
-function Ti(a,b){var c=2<arguments.length&&void 0!==arguments[2]?arguments[2]:null;Qi(b)?void 0:x("200");return Mi(a,b,null,c)}
-var Vi={createPortal:Ti,findDOMNode:function(a){if(null==a)return null;if(1===a.nodeType)return a;var b=a._reactInternalFiber;void 0===b&&("function"===typeof a.render?x("188"):x("268",Object.keys(a)));a=hd(b);a=null===a?null:a.stateNode;return a},hydrate:function(a,b,c){Qi(b)?void 0:x("200");return Si(null,a,b,!0,c)},render:function(a,b,c){Qi(b)?void 0:x("200");return Si(null,a,b,!1,c)},unstable_renderSubtreeIntoContainer:function(a,b,c,d){Qi(c)?void 0:x("200");null==a||void 0===a._reactInternalFiber?
-x("38"):void 0;return Si(a,b,c,!1,d)},unmountComponentAtNode:function(a){Qi(a)?void 0:x("40");return a._reactRootContainer?(Hi(function(){Si(null,null,a,!1,function(){a._reactRootContainer=null})}),!0):!1},unstable_createPortal:function(){return Ti.apply(void 0,arguments)},unstable_batchedUpdates:Gi,unstable_interactiveUpdates:Ii,flushSync:function(a,b){W?x("187"):void 0;var c=X;X=!0;try{return ki(a,b)}finally{X=c,Yh(1073741823,!1)}},unstable_createRoot:Ui,unstable_flushControlled:function(a){var b=
-X;X=!0;try{ki(a)}finally{(X=b)||W||Yh(1073741823,!1)}},__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED:{Events:[Ia,Ja,Ka,Ba.injectEventPluginsByName,pa,Qa,function(a){ya(a,Pa)},Eb,Fb,Dd,Da]}};function Ui(a,b){Qi(a)?void 0:x("299","unstable_createRoot");return new Pi(a,!0,null!=b&&!0===b.hydrate)}
-(function(a){var b=a.findFiberByHostInstance;return Te(n({},a,{overrideProps:null,currentDispatcherRef:Tb.ReactCurrentDispatcher,findHostInstanceByFiber:function(a){a=hd(a);return null===a?null:a.stateNode},findFiberByHostInstance:function(a){return b?b(a):null}}))})({findFiberByHostInstance:Ha,bundleType:0,version:"16.8.6",rendererPackageName:"react-dom"});var Wi={default:Vi},Xi=Wi&&Vi||Wi;module.exports=Xi.default||Xi;
+
+function checkDCE() {
+  /* global __REACT_DEVTOOLS_GLOBAL_HOOK__ */
+  if (
+    typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === 'undefined' ||
+    typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE !== 'function'
+  ) {
+    return;
+  }
+  if (true) {
+    // This branch is unreachable because this function is only called
+    // in production, but the condition is true only in development.
+    // Therefore if the branch is still here, dead code elimination wasn't
+    // properly applied.
+    // Don't change the message. React DevTools relies on it. Also make sure
+    // this message doesn't occur elsewhere in this function, or it will cause
+    // a false positive.
+    throw new Error('^_^');
+  }
+  try {
+    // Verify that the code above has been dead code eliminated (DCE'd).
+    __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE(checkDCE);
+  } catch (err) {
+    // DevTools shouldn't crash React, no matter what.
+    // We should still report in case we break this code.
+    console.error(err);
+  }
+}
+
+if (false) {} else {
+  module.exports = __webpack_require__(/*! ./cjs/react-dom.development.js */ "./node_modules/react-dom/cjs/react-dom.development.js");
+}
 
 
 /***/ }),
-/* 17 */
+
+/***/ "./node_modules/react-dom/node_modules/prop-types/checkPropTypes.js":
+/*!**************************************************************************!*\
+  !*** ./node_modules/react-dom/node_modules/prop-types/checkPropTypes.js ***!
+  \**************************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {/**
+/**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
@@ -23777,8 +23005,8 @@ X;X=!0;try{ki(a)}finally{(X=b)||W||Yh(1073741823,!1)}},__SECRET_INTERNALS_DO_NOT
 
 var printWarning = function() {};
 
-if (process.env.NODE_ENV !== 'production') {
-  var ReactPropTypesSecret = __webpack_require__(18);
+if (true) {
+  var ReactPropTypesSecret = __webpack_require__(/*! ./lib/ReactPropTypesSecret */ "./node_modules/react-dom/node_modules/prop-types/lib/ReactPropTypesSecret.js");
   var loggedTypeFailures = {};
   var has = Function.call.bind(Object.prototype.hasOwnProperty);
 
@@ -23808,7 +23036,7 @@ if (process.env.NODE_ENV !== 'production') {
  * @private
  */
 function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
-  if (process.env.NODE_ENV !== 'production') {
+  if (true) {
     for (var typeSpecName in typeSpecs) {
       if (has(typeSpecs, typeSpecName)) {
         var error;
@@ -23862,17 +23090,21 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
  * @private
  */
 checkPropTypes.resetWarningCache = function() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (true) {
     loggedTypeFailures = {};
   }
 }
 
 module.exports = checkPropTypes;
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 18 */
+
+/***/ "./node_modules/react-dom/node_modules/prop-types/lib/ReactPropTypesSecret.js":
+/*!************************************************************************************!*\
+  !*** ./node_modules/react-dom/node_modules/prop-types/lib/ReactPropTypesSecret.js ***!
+  \************************************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23891,11 +23123,16 @@ module.exports = ReactPropTypesSecret;
 
 
 /***/ }),
-/* 19 */
+
+/***/ "./node_modules/react/cjs/react.development.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/react/cjs/react.development.js ***!
+  \*****************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {/** @license React v16.8.6
+/** @license React v16.8.6
  * react.development.js
  *
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -23908,12 +23145,12 @@ module.exports = ReactPropTypesSecret;
 
 
 
-if (process.env.NODE_ENV !== "production") {
+if (true) {
   (function() {
 'use strict';
 
-var _assign = __webpack_require__(2);
-var checkPropTypes = __webpack_require__(21);
+var _assign = __webpack_require__(/*! object-assign */ "./node_modules/object-assign/index.js");
+var checkPropTypes = __webpack_require__(/*! prop-types/checkPropTypes */ "./node_modules/react/node_modules/prop-types/checkPropTypes.js");
 
 // TODO: this is special because it gets imported during build.
 
@@ -25797,46 +25034,35 @@ module.exports = react;
   })();
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 20 */
+
+/***/ "./node_modules/react/index.js":
+/*!*************************************!*\
+  !*** ./node_modules/react/index.js ***!
+  \*************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/** @license React v16.8.6
- * react.production.min.js
- *
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
 
-var k=__webpack_require__(2),n="function"===typeof Symbol&&Symbol.for,p=n?Symbol.for("react.element"):60103,q=n?Symbol.for("react.portal"):60106,r=n?Symbol.for("react.fragment"):60107,t=n?Symbol.for("react.strict_mode"):60108,u=n?Symbol.for("react.profiler"):60114,v=n?Symbol.for("react.provider"):60109,w=n?Symbol.for("react.context"):60110,x=n?Symbol.for("react.concurrent_mode"):60111,y=n?Symbol.for("react.forward_ref"):60112,z=n?Symbol.for("react.suspense"):60113,aa=n?Symbol.for("react.memo"):
-60115,ba=n?Symbol.for("react.lazy"):60116,A="function"===typeof Symbol&&Symbol.iterator;function ca(a,b,d,c,e,g,h,f){if(!a){a=void 0;if(void 0===b)a=Error("Minified exception occurred; use the non-minified dev environment for the full error message and additional helpful warnings.");else{var l=[d,c,e,g,h,f],m=0;a=Error(b.replace(/%s/g,function(){return l[m++]}));a.name="Invariant Violation"}a.framesToPop=1;throw a;}}
-function B(a){for(var b=arguments.length-1,d="https://reactjs.org/docs/error-decoder.html?invariant="+a,c=0;c<b;c++)d+="&args[]="+encodeURIComponent(arguments[c+1]);ca(!1,"Minified React error #"+a+"; visit %s for the full message or use the non-minified dev environment for full errors and additional helpful warnings. ",d)}var C={isMounted:function(){return!1},enqueueForceUpdate:function(){},enqueueReplaceState:function(){},enqueueSetState:function(){}},D={};
-function E(a,b,d){this.props=a;this.context=b;this.refs=D;this.updater=d||C}E.prototype.isReactComponent={};E.prototype.setState=function(a,b){"object"!==typeof a&&"function"!==typeof a&&null!=a?B("85"):void 0;this.updater.enqueueSetState(this,a,b,"setState")};E.prototype.forceUpdate=function(a){this.updater.enqueueForceUpdate(this,a,"forceUpdate")};function F(){}F.prototype=E.prototype;function G(a,b,d){this.props=a;this.context=b;this.refs=D;this.updater=d||C}var H=G.prototype=new F;
-H.constructor=G;k(H,E.prototype);H.isPureReactComponent=!0;var I={current:null},J={current:null},K=Object.prototype.hasOwnProperty,L={key:!0,ref:!0,__self:!0,__source:!0};
-function M(a,b,d){var c=void 0,e={},g=null,h=null;if(null!=b)for(c in void 0!==b.ref&&(h=b.ref),void 0!==b.key&&(g=""+b.key),b)K.call(b,c)&&!L.hasOwnProperty(c)&&(e[c]=b[c]);var f=arguments.length-2;if(1===f)e.children=d;else if(1<f){for(var l=Array(f),m=0;m<f;m++)l[m]=arguments[m+2];e.children=l}if(a&&a.defaultProps)for(c in f=a.defaultProps,f)void 0===e[c]&&(e[c]=f[c]);return{$$typeof:p,type:a,key:g,ref:h,props:e,_owner:J.current}}
-function da(a,b){return{$$typeof:p,type:a.type,key:b,ref:a.ref,props:a.props,_owner:a._owner}}function N(a){return"object"===typeof a&&null!==a&&a.$$typeof===p}function escape(a){var b={"=":"=0",":":"=2"};return"$"+(""+a).replace(/[=:]/g,function(a){return b[a]})}var O=/\/+/g,P=[];function Q(a,b,d,c){if(P.length){var e=P.pop();e.result=a;e.keyPrefix=b;e.func=d;e.context=c;e.count=0;return e}return{result:a,keyPrefix:b,func:d,context:c,count:0}}
-function R(a){a.result=null;a.keyPrefix=null;a.func=null;a.context=null;a.count=0;10>P.length&&P.push(a)}
-function S(a,b,d,c){var e=typeof a;if("undefined"===e||"boolean"===e)a=null;var g=!1;if(null===a)g=!0;else switch(e){case "string":case "number":g=!0;break;case "object":switch(a.$$typeof){case p:case q:g=!0}}if(g)return d(c,a,""===b?"."+T(a,0):b),1;g=0;b=""===b?".":b+":";if(Array.isArray(a))for(var h=0;h<a.length;h++){e=a[h];var f=b+T(e,h);g+=S(e,f,d,c)}else if(null===a||"object"!==typeof a?f=null:(f=A&&a[A]||a["@@iterator"],f="function"===typeof f?f:null),"function"===typeof f)for(a=f.call(a),h=
-0;!(e=a.next()).done;)e=e.value,f=b+T(e,h++),g+=S(e,f,d,c);else"object"===e&&(d=""+a,B("31","[object Object]"===d?"object with keys {"+Object.keys(a).join(", ")+"}":d,""));return g}function U(a,b,d){return null==a?0:S(a,"",b,d)}function T(a,b){return"object"===typeof a&&null!==a&&null!=a.key?escape(a.key):b.toString(36)}function ea(a,b){a.func.call(a.context,b,a.count++)}
-function fa(a,b,d){var c=a.result,e=a.keyPrefix;a=a.func.call(a.context,b,a.count++);Array.isArray(a)?V(a,c,d,function(a){return a}):null!=a&&(N(a)&&(a=da(a,e+(!a.key||b&&b.key===a.key?"":(""+a.key).replace(O,"$&/")+"/")+d)),c.push(a))}function V(a,b,d,c,e){var g="";null!=d&&(g=(""+d).replace(O,"$&/")+"/");b=Q(b,g,c,e);U(a,fa,b);R(b)}function W(){var a=I.current;null===a?B("321"):void 0;return a}
-var X={Children:{map:function(a,b,d){if(null==a)return a;var c=[];V(a,c,null,b,d);return c},forEach:function(a,b,d){if(null==a)return a;b=Q(null,null,b,d);U(a,ea,b);R(b)},count:function(a){return U(a,function(){return null},null)},toArray:function(a){var b=[];V(a,b,null,function(a){return a});return b},only:function(a){N(a)?void 0:B("143");return a}},createRef:function(){return{current:null}},Component:E,PureComponent:G,createContext:function(a,b){void 0===b&&(b=null);a={$$typeof:w,_calculateChangedBits:b,
-_currentValue:a,_currentValue2:a,_threadCount:0,Provider:null,Consumer:null};a.Provider={$$typeof:v,_context:a};return a.Consumer=a},forwardRef:function(a){return{$$typeof:y,render:a}},lazy:function(a){return{$$typeof:ba,_ctor:a,_status:-1,_result:null}},memo:function(a,b){return{$$typeof:aa,type:a,compare:void 0===b?null:b}},useCallback:function(a,b){return W().useCallback(a,b)},useContext:function(a,b){return W().useContext(a,b)},useEffect:function(a,b){return W().useEffect(a,b)},useImperativeHandle:function(a,
-b,d){return W().useImperativeHandle(a,b,d)},useDebugValue:function(){},useLayoutEffect:function(a,b){return W().useLayoutEffect(a,b)},useMemo:function(a,b){return W().useMemo(a,b)},useReducer:function(a,b,d){return W().useReducer(a,b,d)},useRef:function(a){return W().useRef(a)},useState:function(a){return W().useState(a)},Fragment:r,StrictMode:t,Suspense:z,createElement:M,cloneElement:function(a,b,d){null===a||void 0===a?B("267",a):void 0;var c=void 0,e=k({},a.props),g=a.key,h=a.ref,f=a._owner;if(null!=
-b){void 0!==b.ref&&(h=b.ref,f=J.current);void 0!==b.key&&(g=""+b.key);var l=void 0;a.type&&a.type.defaultProps&&(l=a.type.defaultProps);for(c in b)K.call(b,c)&&!L.hasOwnProperty(c)&&(e[c]=void 0===b[c]&&void 0!==l?l[c]:b[c])}c=arguments.length-2;if(1===c)e.children=d;else if(1<c){l=Array(c);for(var m=0;m<c;m++)l[m]=arguments[m+2];e.children=l}return{$$typeof:p,type:a.type,key:g,ref:h,props:e,_owner:f}},createFactory:function(a){var b=M.bind(null,a);b.type=a;return b},isValidElement:N,version:"16.8.6",
-unstable_ConcurrentMode:x,unstable_Profiler:u,__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED:{ReactCurrentDispatcher:I,ReactCurrentOwner:J,assign:k}},Y={default:X},Z=Y&&X||Y;module.exports=Z.default||Z;
+
+if (false) {} else {
+  module.exports = __webpack_require__(/*! ./cjs/react.development.js */ "./node_modules/react/cjs/react.development.js");
+}
 
 
 /***/ }),
-/* 21 */
+
+/***/ "./node_modules/react/node_modules/prop-types/checkPropTypes.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/react/node_modules/prop-types/checkPropTypes.js ***!
+  \**********************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {/**
+/**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
  * This source code is licensed under the MIT license found in the
@@ -25847,8 +25073,8 @@ unstable_ConcurrentMode:x,unstable_Profiler:u,__SECRET_INTERNALS_DO_NOT_USE_OR_Y
 
 var printWarning = function() {};
 
-if (process.env.NODE_ENV !== 'production') {
-  var ReactPropTypesSecret = __webpack_require__(22);
+if (true) {
+  var ReactPropTypesSecret = __webpack_require__(/*! ./lib/ReactPropTypesSecret */ "./node_modules/react/node_modules/prop-types/lib/ReactPropTypesSecret.js");
   var loggedTypeFailures = {};
   var has = Function.call.bind(Object.prototype.hasOwnProperty);
 
@@ -25878,7 +25104,7 @@ if (process.env.NODE_ENV !== 'production') {
  * @private
  */
 function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
-  if (process.env.NODE_ENV !== 'production') {
+  if (true) {
     for (var typeSpecName in typeSpecs) {
       if (has(typeSpecs, typeSpecName)) {
         var error;
@@ -25932,17 +25158,21 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
  * @private
  */
 checkPropTypes.resetWarningCache = function() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (true) {
     loggedTypeFailures = {};
   }
 }
 
 module.exports = checkPropTypes;
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 22 */
+
+/***/ "./node_modules/react/node_modules/prop-types/lib/ReactPropTypesSecret.js":
+/*!********************************************************************************!*\
+  !*** ./node_modules/react/node_modules/prop-types/lib/ReactPropTypesSecret.js ***!
+  \********************************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25961,11 +25191,16 @@ module.exports = ReactPropTypesSecret;
 
 
 /***/ }),
-/* 23 */
+
+/***/ "./node_modules/scheduler/cjs/scheduler-tracing.development.js":
+/*!*********************************************************************!*\
+  !*** ./node_modules/scheduler/cjs/scheduler-tracing.development.js ***!
+  \*********************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {/** @license React v0.13.6
+/** @license React v0.13.6
  * scheduler-tracing.development.js
  *
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -25978,7 +25213,7 @@ module.exports = ReactPropTypesSecret;
 
 
 
-if (process.env.NODE_ENV !== "production") {
+if (true) {
   (function() {
 'use strict';
 
@@ -26389,31 +25624,18 @@ exports.unstable_unsubscribe = unstable_unsubscribe;
   })();
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 24 */
+
+/***/ "./node_modules/scheduler/cjs/scheduler.development.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/scheduler/cjs/scheduler.development.js ***!
+  \*************************************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/** @license React v0.13.6
- * scheduler-tracing.production.min.js
- *
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
-Object.defineProperty(exports,"__esModule",{value:!0});var b=0;exports.__interactionsRef=null;exports.__subscriberRef=null;exports.unstable_clear=function(a){return a()};exports.unstable_getCurrent=function(){return null};exports.unstable_getThreadID=function(){return++b};exports.unstable_trace=function(a,d,c){return c()};exports.unstable_wrap=function(a){return a};exports.unstable_subscribe=function(){};exports.unstable_unsubscribe=function(){};
-
-
-/***/ }),
-/* 25 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(process, global) {/** @license React v0.13.6
+/* WEBPACK VAR INJECTION */(function(global) {/** @license React v0.13.6
  * scheduler.development.js
  *
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -26426,7 +25648,7 @@ Object.defineProperty(exports,"__esModule",{value:!0});var b=0;exports.__interac
 
 
 
-if (process.env.NODE_ENV !== "production") {
+if (true) {
   (function() {
 'use strict';
 
@@ -27113,685 +26335,169 @@ exports.unstable_getFirstCallbackNode = unstable_getFirstCallbackNode;
   })();
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0), __webpack_require__(3)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
 
 /***/ }),
-/* 26 */
+
+/***/ "./node_modules/scheduler/index.js":
+/*!*****************************************!*\
+  !*** ./node_modules/scheduler/index.js ***!
+  \*****************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(global) {/** @license React v0.13.6
- * scheduler.production.min.js
- *
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
 
-Object.defineProperty(exports,"__esModule",{value:!0});var d=null,e=!1,g=3,k=-1,l=-1,m=!1,n=!1;function p(){if(!m){var a=d.expirationTime;n?q():n=!0;r(t,a)}}
-function u(){var a=d,b=d.next;if(d===b)d=null;else{var c=d.previous;d=c.next=b;b.previous=c}a.next=a.previous=null;c=a.callback;b=a.expirationTime;a=a.priorityLevel;var f=g,Q=l;g=a;l=b;try{var h=c()}finally{g=f,l=Q}if("function"===typeof h)if(h={callback:h,priorityLevel:a,expirationTime:b,next:null,previous:null},null===d)d=h.next=h.previous=h;else{c=null;a=d;do{if(a.expirationTime>=b){c=a;break}a=a.next}while(a!==d);null===c?c=d:c===d&&(d=h,p());b=c.previous;b.next=c.previous=h;h.next=c;h.previous=
-b}}function v(){if(-1===k&&null!==d&&1===d.priorityLevel){m=!0;try{do u();while(null!==d&&1===d.priorityLevel)}finally{m=!1,null!==d?p():n=!1}}}function t(a){m=!0;var b=e;e=a;try{if(a)for(;null!==d;){var c=exports.unstable_now();if(d.expirationTime<=c){do u();while(null!==d&&d.expirationTime<=c)}else break}else if(null!==d){do u();while(null!==d&&!w())}}finally{m=!1,e=b,null!==d?p():n=!1,v()}}
-var x=Date,y="function"===typeof setTimeout?setTimeout:void 0,z="function"===typeof clearTimeout?clearTimeout:void 0,A="function"===typeof requestAnimationFrame?requestAnimationFrame:void 0,B="function"===typeof cancelAnimationFrame?cancelAnimationFrame:void 0,C,D;function E(a){C=A(function(b){z(D);a(b)});D=y(function(){B(C);a(exports.unstable_now())},100)}
-if("object"===typeof performance&&"function"===typeof performance.now){var F=performance;exports.unstable_now=function(){return F.now()}}else exports.unstable_now=function(){return x.now()};var r,q,w,G=null;"undefined"!==typeof window?G=window:"undefined"!==typeof global&&(G=global);
-if(G&&G._schedMock){var H=G._schedMock;r=H[0];q=H[1];w=H[2];exports.unstable_now=H[3]}else if("undefined"===typeof window||"function"!==typeof MessageChannel){var I=null,J=function(a){if(null!==I)try{I(a)}finally{I=null}};r=function(a){null!==I?setTimeout(r,0,a):(I=a,setTimeout(J,0,!1))};q=function(){I=null};w=function(){return!1}}else{"undefined"!==typeof console&&("function"!==typeof A&&console.error("This browser doesn't support requestAnimationFrame. Make sure that you load a polyfill in older browsers. https://fb.me/react-polyfills"),
-"function"!==typeof B&&console.error("This browser doesn't support cancelAnimationFrame. Make sure that you load a polyfill in older browsers. https://fb.me/react-polyfills"));var K=null,L=!1,M=-1,N=!1,O=!1,P=0,R=33,S=33;w=function(){return P<=exports.unstable_now()};var T=new MessageChannel,U=T.port2;T.port1.onmessage=function(){L=!1;var a=K,b=M;K=null;M=-1;var c=exports.unstable_now(),f=!1;if(0>=P-c)if(-1!==b&&b<=c)f=!0;else{N||(N=!0,E(V));K=a;M=b;return}if(null!==a){O=!0;try{a(f)}finally{O=!1}}};
-var V=function(a){if(null!==K){E(V);var b=a-P+S;b<S&&R<S?(8>b&&(b=8),S=b<R?R:b):R=b;P=a+S;L||(L=!0,U.postMessage(void 0))}else N=!1};r=function(a,b){K=a;M=b;O||0>b?U.postMessage(void 0):N||(N=!0,E(V))};q=function(){K=null;L=!1;M=-1}}exports.unstable_ImmediatePriority=1;exports.unstable_UserBlockingPriority=2;exports.unstable_NormalPriority=3;exports.unstable_IdlePriority=5;exports.unstable_LowPriority=4;
-exports.unstable_runWithPriority=function(a,b){switch(a){case 1:case 2:case 3:case 4:case 5:break;default:a=3}var c=g,f=k;g=a;k=exports.unstable_now();try{return b()}finally{g=c,k=f,v()}};exports.unstable_next=function(a){switch(g){case 1:case 2:case 3:var b=3;break;default:b=g}var c=g,f=k;g=b;k=exports.unstable_now();try{return a()}finally{g=c,k=f,v()}};
-exports.unstable_scheduleCallback=function(a,b){var c=-1!==k?k:exports.unstable_now();if("object"===typeof b&&null!==b&&"number"===typeof b.timeout)b=c+b.timeout;else switch(g){case 1:b=c+-1;break;case 2:b=c+250;break;case 5:b=c+1073741823;break;case 4:b=c+1E4;break;default:b=c+5E3}a={callback:a,priorityLevel:g,expirationTime:b,next:null,previous:null};if(null===d)d=a.next=a.previous=a,p();else{c=null;var f=d;do{if(f.expirationTime>b){c=f;break}f=f.next}while(f!==d);null===c?c=d:c===d&&(d=a,p());
-b=c.previous;b.next=c.previous=a;a.next=c;a.previous=b}return a};exports.unstable_cancelCallback=function(a){var b=a.next;if(null!==b){if(b===a)d=null;else{a===d&&(d=b);var c=a.previous;c.next=b;b.previous=c}a.next=a.previous=null}};exports.unstable_wrapCallback=function(a){var b=g;return function(){var c=g,f=k;g=b;k=exports.unstable_now();try{return a.apply(this,arguments)}finally{g=c,k=f,v()}}};exports.unstable_getCurrentPriorityLevel=function(){return g};
-exports.unstable_shouldYield=function(){return!e&&(null!==d&&d.expirationTime<l||w())};exports.unstable_continueExecution=function(){null!==d&&p()};exports.unstable_pauseExecution=function(){};exports.unstable_getFirstCallbackNode=function(){return d};
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3)))
+if (false) {} else {
+  module.exports = __webpack_require__(/*! ./cjs/scheduler.development.js */ "./node_modules/scheduler/cjs/scheduler.development.js");
+}
+
 
 /***/ }),
-/* 27 */
+
+/***/ "./node_modules/scheduler/tracing.js":
+/*!*******************************************!*\
+  !*** ./node_modules/scheduler/tracing.js ***!
+  \*******************************************/
+/*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {
 
-if (process.env.NODE_ENV === 'production') {
-  module.exports = __webpack_require__(24);
-} else {
-  module.exports = __webpack_require__(23);
+
+if (false) {} else {
+  module.exports = __webpack_require__(/*! ./cjs/scheduler-tracing.development.js */ "./node_modules/scheduler/cjs/scheduler-tracing.development.js");
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(0)))
 
 /***/ }),
-/* 28 */
+
+/***/ "./node_modules/webpack/buildin/global.js":
+/*!***********************************!*\
+  !*** (webpack)/buildin/global.js ***!
+  \***********************************/
+/*! no static exports found */
 /***/ (function(module, exports) {
 
-if (typeof Object.create === 'function') {
-  // implementation from standard node.js 'util' module
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    ctor.prototype = Object.create(superCtor.prototype, {
-      constructor: {
-        value: ctor,
-        enumerable: false,
-        writable: true,
-        configurable: true
-      }
-    });
-  };
-} else {
-  // old school shim for old browsers
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    var TempCtor = function () {}
-    TempCtor.prototype = superCtor.prototype
-    ctor.prototype = new TempCtor()
-    ctor.prototype.constructor = ctor
-  }
+var g;
+
+// This works in non-strict mode
+g = (function() {
+	return this;
+})();
+
+try {
+	// This works if eval is allowed (see CSP)
+	g = g || new Function("return this")();
+} catch (e) {
+	// This works if the window reference is available
+	if (typeof window === "object") g = window;
 }
+
+// g can still be undefined, but nothing to do about it...
+// We return undefined, instead of nothing here, so it's
+// easier to handle this case. if(!global) { ...}
+
+module.exports = g;
 
 
 /***/ }),
-/* 29 */
-/***/ (function(module, exports) {
 
-module.exports = function isBuffer(arg) {
-  return arg && typeof arg === 'object'
-    && typeof arg.copy === 'function'
-    && typeof arg.fill === 'function'
-    && typeof arg.readUInt8 === 'function';
-}
+/***/ "./src/components/Terminal3.tsx":
+/*!**************************************!*\
+  !*** ./src/components/Terminal3.tsx ***!
+  \**************************************/
+/*! exports provided: History */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"History\", function() { return History; });\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ \"./node_modules/react/index.js\");\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _Text2__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Text2 */ \"./src/components/Text2.tsx\");\n\n\n\n/*\nTODO steps to get this all working\n\nDONE 1. Make a static world/history viewer app\n  - no interactivity, just displays previous commands and the resulting messages\n  - shows parser highlighting\nDONE 2. Add interpretation restyling to the static viewer\n3. Add input prompt\n  - Highlights tokens as the user types\n  - Submission of command triggers rerender, new history element\n4. Support view update due to new interpreatation\n5. Typeahead added to prompt\n  - Autoocomplete options display with correct indentation\n  - Select typeahead option with keybooard, mouse\n6. Support \"locked\" typeahead options\n\n*/\nvar History = function History(_ref) {\n  var world = _ref.world;\n  var worlds = []; // unroll all the historical worlds\n\n  var w = world;\n\n  while (w !== null) {\n    worlds.unshift(w);\n    w = w.previous;\n  }\n\n  return react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"div\", {\n    className: \"history\"\n  }, worlds.map(function (w) {\n    return react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](HistoryElt, {\n      key: w.index,\n      world: w,\n      interpretation_labels: world.interpretations[w.index]\n    });\n  }));\n};\n\nvar HistoryElt = function HistoryElt(_ref2) {\n  var world = _ref2.world,\n      interpretation_labels = _ref2.interpretation_labels;\n  var i = interpretation_labels;\n  var className = i !== undefined ? i.join(' ') : '';\n  return react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"div\", {\n    className: className\n  }, world.parsing !== undefined ? react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](_Text2__WEBPACK_IMPORTED_MODULE_1__[\"ParsedText\"], {\n    parsing: world.parsing\n  }) : '', react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](_Text2__WEBPACK_IMPORTED_MODULE_1__[\"OutputText\"], {\n    message: world.message\n  }));\n};//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvY29tcG9uZW50cy9UZXJtaW5hbDMudHN4P2YzYjIiXSwibmFtZXMiOlsiSGlzdG9yeSIsIndvcmxkIiwid29ybGRzIiwidyIsInVuc2hpZnQiLCJwcmV2aW91cyIsIm1hcCIsImluZGV4IiwiaW50ZXJwcmV0YXRpb25zIiwiSGlzdG9yeUVsdCIsImludGVycHJldGF0aW9uX2xhYmVscyIsImkiLCJjbGFzc05hbWUiLCJ1bmRlZmluZWQiLCJqb2luIiwicGFyc2luZyIsIm1lc3NhZ2UiXSwibWFwcGluZ3MiOiJBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUdBOztBQUlBOzs7Ozs7Ozs7Ozs7Ozs7OztBQWtCTyxJQUFNQSxPQUFnRCxHQUFHLFNBQW5EQSxPQUFtRCxPQUFhO0FBQUEsTUFBWEMsS0FBVyxRQUFYQSxLQUFXO0FBQzNFLE1BQUlDLE1BQU0sR0FBRyxFQUFiLENBRDJFLENBRzNFOztBQUNBLE1BQUlDLENBQUMsR0FBR0YsS0FBUjs7QUFDQSxTQUFPRSxDQUFDLEtBQUssSUFBYixFQUFtQjtBQUNqQkQsVUFBTSxDQUFDRSxPQUFQLENBQWVELENBQWY7QUFDQUEsS0FBQyxHQUFHQSxDQUFDLENBQUNFLFFBQU47QUFDRDs7QUFFRCxTQUFPO0FBQUssYUFBUyxFQUFDO0FBQWYsS0FDSEgsTUFBTSxDQUFDSSxHQUFQLENBQVcsVUFBQUgsQ0FBQztBQUFBLFdBQUksb0RBQUMsVUFBRDtBQUFZLFNBQUcsRUFBRUEsQ0FBQyxDQUFDSSxLQUFuQjtBQUEwQixXQUFLLEVBQUVKLENBQWpDO0FBQW9DLDJCQUFxQixFQUFFRixLQUFLLENBQUNPLGVBQU4sQ0FBc0JMLENBQUMsQ0FBQ0ksS0FBeEI7QUFBM0QsTUFBSjtBQUFBLEdBQVosQ0FERyxDQUFQO0FBR0QsQ0FiTTs7QUFlUCxJQUFNRSxVQUFtRyxHQUFHLFNBQXRHQSxVQUFzRyxRQUFvQztBQUFBLE1BQWxDUixLQUFrQyxTQUFsQ0EsS0FBa0M7QUFBQSxNQUEzQlMscUJBQTJCLFNBQTNCQSxxQkFBMkI7QUFDOUksTUFBSUMsQ0FBQyxHQUFHRCxxQkFBUjtBQUNBLE1BQUlFLFNBQVMsR0FBR0QsQ0FBQyxLQUFLRSxTQUFOLEdBQWtCRixDQUFDLENBQUNHLElBQUYsQ0FBTyxHQUFQLENBQWxCLEdBQWdDLEVBQWhEO0FBQ0EsU0FBTztBQUFLLGFBQVMsRUFBRUY7QUFBaEIsS0FDSFgsS0FBSyxDQUFDYyxPQUFOLEtBQWtCRixTQUFsQixHQUE4QixvREFBQyxpREFBRDtBQUFZLFdBQU8sRUFBRVosS0FBSyxDQUFDYztBQUEzQixJQUE5QixHQUF1RSxFQURwRSxFQUVMLG9EQUFDLGlEQUFEO0FBQVksV0FBTyxFQUFFZCxLQUFLLENBQUNlO0FBQTNCLElBRkssQ0FBUDtBQUlELENBUEQiLCJmaWxlIjoiLi9zcmMvY29tcG9uZW50cy9UZXJtaW5hbDMudHN4LmpzIiwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0ICogYXMgUmVhY3QgZnJvbSAncmVhY3QnO1xuXG5cbmltcG9ydCB7UGFyc2VkVGV4dCwgT3V0cHV0VGV4dH0gZnJvbSAnLi9UZXh0Mic7XG5cbmltcG9ydCB7IFdvcmxkRHJpdmVyLCBXb3JsZCwgSW50ZXJwcmV0YXRpb25zIH0gZnJvbSBcIi4uL3R5cGVzY3JpcHQvd29ybGRcIjtcblxuLypcblRPRE8gc3RlcHMgdG8gZ2V0IHRoaXMgYWxsIHdvcmtpbmdcblxuRE9ORSAxLiBNYWtlIGEgc3RhdGljIHdvcmxkL2hpc3Rvcnkgdmlld2VyIGFwcFxuICAtIG5vIGludGVyYWN0aXZpdHksIGp1c3QgZGlzcGxheXMgcHJldmlvdXMgY29tbWFuZHMgYW5kIHRoZSByZXN1bHRpbmcgbWVzc2FnZXNcbiAgLSBzaG93cyBwYXJzZXIgaGlnaGxpZ2h0aW5nXG5ET05FIDIuIEFkZCBpbnRlcnByZXRhdGlvbiByZXN0eWxpbmcgdG8gdGhlIHN0YXRpYyB2aWV3ZXJcbjMuIEFkZCBpbnB1dCBwcm9tcHRcbiAgLSBIaWdobGlnaHRzIHRva2VucyBhcyB0aGUgdXNlciB0eXBlc1xuICAtIFN1Ym1pc3Npb24gb2YgY29tbWFuZCB0cmlnZ2VycyByZXJlbmRlciwgbmV3IGhpc3RvcnkgZWxlbWVudFxuNC4gU3VwcG9ydCB2aWV3IHVwZGF0ZSBkdWUgdG8gbmV3IGludGVycHJlYXRhdGlvblxuNS4gVHlwZWFoZWFkIGFkZGVkIHRvIHByb21wdFxuICAtIEF1dG9vY29tcGxldGUgb3B0aW9ucyBkaXNwbGF5IHdpdGggY29ycmVjdCBpbmRlbnRhdGlvblxuICAtIFNlbGVjdCB0eXBlYWhlYWQgb3B0aW9uIHdpdGgga2V5Ym9vYXJkLCBtb3VzZVxuNi4gU3VwcG9ydCBcImxvY2tlZFwiIHR5cGVhaGVhZCBvcHRpb25zXG5cbiovXG5cbmV4cG9ydCBjb25zdCBIaXN0b3J5OiBSZWFjdC5GdW5jdGlvbkNvbXBvbmVudDx7d29ybGQ6IFdvcmxkfT4gPSAoe3dvcmxkfSkgPT4ge1xuICBsZXQgd29ybGRzID0gW107XG5cbiAgLy8gdW5yb2xsIGFsbCB0aGUgaGlzdG9yaWNhbCB3b3JsZHNcbiAgbGV0IHcgPSB3b3JsZDtcbiAgd2hpbGUgKHcgIT09IG51bGwpIHtcbiAgICB3b3JsZHMudW5zaGlmdCh3KTtcbiAgICB3ID0gdy5wcmV2aW91cztcbiAgfVxuXG4gIHJldHVybiA8ZGl2IGNsYXNzTmFtZT1cImhpc3RvcnlcIj5cbiAgICB7IHdvcmxkcy5tYXAodyA9PiA8SGlzdG9yeUVsdCBrZXk9e3cuaW5kZXh9IHdvcmxkPXt3fSBpbnRlcnByZXRhdGlvbl9sYWJlbHM9e3dvcmxkLmludGVycHJldGF0aW9uc1t3LmluZGV4XX0gLz4pIH1cbiAgPC9kaXY+XG59O1xuXG5jb25zdCBIaXN0b3J5RWx0OiBSZWFjdC5GdW5jdGlvbkNvbXBvbmVudDx7d29ybGQ6IFdvcmxkLCBpbnRlcnByZXRhdGlvbl9sYWJlbHM6IEludGVycHJldGF0aW9uc1tudW1iZXJdfT4gPSAoe3dvcmxkLCBpbnRlcnByZXRhdGlvbl9sYWJlbHN9KSA9PiB7XG4gIGxldCBpID0gaW50ZXJwcmV0YXRpb25fbGFiZWxzO1xuICBsZXQgY2xhc3NOYW1lID0gaSAhPT0gdW5kZWZpbmVkID8gaS5qb2luKCcgJykgOiAnJztcbiAgcmV0dXJuIDxkaXYgY2xhc3NOYW1lPXtjbGFzc05hbWV9PlxuICAgIHsgd29ybGQucGFyc2luZyAhPT0gdW5kZWZpbmVkID8gPFBhcnNlZFRleHQgcGFyc2luZz17d29ybGQucGFyc2luZ30gLz4gOiAnJyB9XG4gICAgPE91dHB1dFRleHQgbWVzc2FnZT17d29ybGQubWVzc2FnZX0gLz5cbiAgPC9kaXY+O1xufTtcblxuIl0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///./src/components/Terminal3.tsx\n");
 
 /***/ }),
-/* 30 */
-/***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var formatRegExp = /%[sdj%]/g;
-exports.format = function(f) {
-  if (!isString(f)) {
-    var objects = [];
-    for (var i = 0; i < arguments.length; i++) {
-      objects.push(inspect(arguments[i]));
-    }
-    return objects.join(' ');
-  }
-
-  var i = 1;
-  var args = arguments;
-  var len = args.length;
-  var str = String(f).replace(formatRegExp, function(x) {
-    if (x === '%%') return '%';
-    if (i >= len) return x;
-    switch (x) {
-      case '%s': return String(args[i++]);
-      case '%d': return Number(args[i++]);
-      case '%j':
-        try {
-          return JSON.stringify(args[i++]);
-        } catch (_) {
-          return '[Circular]';
-        }
-      default:
-        return x;
-    }
-  });
-  for (var x = args[i]; i < len; x = args[++i]) {
-    if (isNull(x) || !isObject(x)) {
-      str += ' ' + x;
-    } else {
-      str += ' ' + inspect(x);
-    }
-  }
-  return str;
-};
-
-
-// Mark that a method should not be used.
-// Returns a modified function which warns once by default.
-// If --no-deprecation is set, then it is a no-op.
-exports.deprecate = function(fn, msg) {
-  // Allow for deprecating things in the process of starting up.
-  if (isUndefined(global.process)) {
-    return function() {
-      return exports.deprecate(fn, msg).apply(this, arguments);
-    };
-  }
-
-  if (process.noDeprecation === true) {
-    return fn;
-  }
-
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (process.throwDeprecation) {
-        throw new Error(msg);
-      } else if (process.traceDeprecation) {
-        console.trace(msg);
-      } else {
-        console.error(msg);
-      }
-      warned = true;
-    }
-    return fn.apply(this, arguments);
-  }
-
-  return deprecated;
-};
-
-
-var debugs = {};
-var debugEnviron;
-exports.debuglog = function(set) {
-  if (isUndefined(debugEnviron))
-    debugEnviron = process.env.NODE_DEBUG || '';
-  set = set.toUpperCase();
-  if (!debugs[set]) {
-    if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
-      var pid = process.pid;
-      debugs[set] = function() {
-        var msg = exports.format.apply(exports, arguments);
-        console.error('%s %d: %s', set, pid, msg);
-      };
-    } else {
-      debugs[set] = function() {};
-    }
-  }
-  return debugs[set];
-};
-
-
-/**
- * Echos the value of a value. Trys to print the value out
- * in the best way possible given the different types.
- *
- * @param {Object} obj The object to print out.
- * @param {Object} opts Optional options object that alters the output.
- */
-/* legacy: obj, showHidden, depth, colors*/
-function inspect(obj, opts) {
-  // default options
-  var ctx = {
-    seen: [],
-    stylize: stylizeNoColor
-  };
-  // legacy...
-  if (arguments.length >= 3) ctx.depth = arguments[2];
-  if (arguments.length >= 4) ctx.colors = arguments[3];
-  if (isBoolean(opts)) {
-    // legacy...
-    ctx.showHidden = opts;
-  } else if (opts) {
-    // got an "options" object
-    exports._extend(ctx, opts);
-  }
-  // set default options
-  if (isUndefined(ctx.showHidden)) ctx.showHidden = false;
-  if (isUndefined(ctx.depth)) ctx.depth = 2;
-  if (isUndefined(ctx.colors)) ctx.colors = false;
-  if (isUndefined(ctx.customInspect)) ctx.customInspect = true;
-  if (ctx.colors) ctx.stylize = stylizeWithColor;
-  return formatValue(ctx, obj, ctx.depth);
-}
-exports.inspect = inspect;
-
-
-// http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
-inspect.colors = {
-  'bold' : [1, 22],
-  'italic' : [3, 23],
-  'underline' : [4, 24],
-  'inverse' : [7, 27],
-  'white' : [37, 39],
-  'grey' : [90, 39],
-  'black' : [30, 39],
-  'blue' : [34, 39],
-  'cyan' : [36, 39],
-  'green' : [32, 39],
-  'magenta' : [35, 39],
-  'red' : [31, 39],
-  'yellow' : [33, 39]
-};
-
-// Don't use 'blue' not visible on cmd.exe
-inspect.styles = {
-  'special': 'cyan',
-  'number': 'yellow',
-  'boolean': 'yellow',
-  'undefined': 'grey',
-  'null': 'bold',
-  'string': 'green',
-  'date': 'magenta',
-  // "name": intentionally not styling
-  'regexp': 'red'
-};
-
-
-function stylizeWithColor(str, styleType) {
-  var style = inspect.styles[styleType];
-
-  if (style) {
-    return '\u001b[' + inspect.colors[style][0] + 'm' + str +
-           '\u001b[' + inspect.colors[style][1] + 'm';
-  } else {
-    return str;
-  }
-}
-
-
-function stylizeNoColor(str, styleType) {
-  return str;
-}
-
-
-function arrayToHash(array) {
-  var hash = {};
-
-  array.forEach(function(val, idx) {
-    hash[val] = true;
-  });
-
-  return hash;
-}
-
-
-function formatValue(ctx, value, recurseTimes) {
-  // Provide a hook for user-specified inspect functions.
-  // Check that value is an object with an inspect function on it
-  if (ctx.customInspect &&
-      value &&
-      isFunction(value.inspect) &&
-      // Filter out the util module, it's inspect function is special
-      value.inspect !== exports.inspect &&
-      // Also filter out any prototype objects using the circular check.
-      !(value.constructor && value.constructor.prototype === value)) {
-    var ret = value.inspect(recurseTimes, ctx);
-    if (!isString(ret)) {
-      ret = formatValue(ctx, ret, recurseTimes);
-    }
-    return ret;
-  }
-
-  // Primitive types cannot have properties
-  var primitive = formatPrimitive(ctx, value);
-  if (primitive) {
-    return primitive;
-  }
-
-  // Look up the keys of the object.
-  var keys = Object.keys(value);
-  var visibleKeys = arrayToHash(keys);
-
-  if (ctx.showHidden) {
-    keys = Object.getOwnPropertyNames(value);
-  }
-
-  // IE doesn't make error fields non-enumerable
-  // http://msdn.microsoft.com/en-us/library/ie/dww52sbt(v=vs.94).aspx
-  if (isError(value)
-      && (keys.indexOf('message') >= 0 || keys.indexOf('description') >= 0)) {
-    return formatError(value);
-  }
-
-  // Some type of object without properties can be shortcutted.
-  if (keys.length === 0) {
-    if (isFunction(value)) {
-      var name = value.name ? ': ' + value.name : '';
-      return ctx.stylize('[Function' + name + ']', 'special');
-    }
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    }
-    if (isDate(value)) {
-      return ctx.stylize(Date.prototype.toString.call(value), 'date');
-    }
-    if (isError(value)) {
-      return formatError(value);
-    }
-  }
-
-  var base = '', array = false, braces = ['{', '}'];
-
-  // Make Array say that they are Array
-  if (isArray(value)) {
-    array = true;
-    braces = ['[', ']'];
-  }
-
-  // Make functions say that they are functions
-  if (isFunction(value)) {
-    var n = value.name ? ': ' + value.name : '';
-    base = ' [Function' + n + ']';
-  }
-
-  // Make RegExps say that they are RegExps
-  if (isRegExp(value)) {
-    base = ' ' + RegExp.prototype.toString.call(value);
-  }
-
-  // Make dates with properties first say the date
-  if (isDate(value)) {
-    base = ' ' + Date.prototype.toUTCString.call(value);
-  }
-
-  // Make error with message first say the error
-  if (isError(value)) {
-    base = ' ' + formatError(value);
-  }
-
-  if (keys.length === 0 && (!array || value.length == 0)) {
-    return braces[0] + base + braces[1];
-  }
-
-  if (recurseTimes < 0) {
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    } else {
-      return ctx.stylize('[Object]', 'special');
-    }
-  }
-
-  ctx.seen.push(value);
-
-  var output;
-  if (array) {
-    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
-  } else {
-    output = keys.map(function(key) {
-      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
-    });
-  }
-
-  ctx.seen.pop();
-
-  return reduceToSingleString(output, base, braces);
-}
-
-
-function formatPrimitive(ctx, value) {
-  if (isUndefined(value))
-    return ctx.stylize('undefined', 'undefined');
-  if (isString(value)) {
-    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
-                                             .replace(/'/g, "\\'")
-                                             .replace(/\\"/g, '"') + '\'';
-    return ctx.stylize(simple, 'string');
-  }
-  if (isNumber(value))
-    return ctx.stylize('' + value, 'number');
-  if (isBoolean(value))
-    return ctx.stylize('' + value, 'boolean');
-  // For some reason typeof null is "object", so special case here.
-  if (isNull(value))
-    return ctx.stylize('null', 'null');
-}
-
-
-function formatError(value) {
-  return '[' + Error.prototype.toString.call(value) + ']';
-}
-
-
-function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
-  var output = [];
-  for (var i = 0, l = value.length; i < l; ++i) {
-    if (hasOwnProperty(value, String(i))) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          String(i), true));
-    } else {
-      output.push('');
-    }
-  }
-  keys.forEach(function(key) {
-    if (!key.match(/^\d+$/)) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          key, true));
-    }
-  });
-  return output;
-}
-
-
-function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
-  var name, str, desc;
-  desc = Object.getOwnPropertyDescriptor(value, key) || { value: value[key] };
-  if (desc.get) {
-    if (desc.set) {
-      str = ctx.stylize('[Getter/Setter]', 'special');
-    } else {
-      str = ctx.stylize('[Getter]', 'special');
-    }
-  } else {
-    if (desc.set) {
-      str = ctx.stylize('[Setter]', 'special');
-    }
-  }
-  if (!hasOwnProperty(visibleKeys, key)) {
-    name = '[' + key + ']';
-  }
-  if (!str) {
-    if (ctx.seen.indexOf(desc.value) < 0) {
-      if (isNull(recurseTimes)) {
-        str = formatValue(ctx, desc.value, null);
-      } else {
-        str = formatValue(ctx, desc.value, recurseTimes - 1);
-      }
-      if (str.indexOf('\n') > -1) {
-        if (array) {
-          str = str.split('\n').map(function(line) {
-            return '  ' + line;
-          }).join('\n').substr(2);
-        } else {
-          str = '\n' + str.split('\n').map(function(line) {
-            return '   ' + line;
-          }).join('\n');
-        }
-      }
-    } else {
-      str = ctx.stylize('[Circular]', 'special');
-    }
-  }
-  if (isUndefined(name)) {
-    if (array && key.match(/^\d+$/)) {
-      return str;
-    }
-    name = JSON.stringify('' + key);
-    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
-      name = name.substr(1, name.length - 2);
-      name = ctx.stylize(name, 'name');
-    } else {
-      name = name.replace(/'/g, "\\'")
-                 .replace(/\\"/g, '"')
-                 .replace(/(^"|"$)/g, "'");
-      name = ctx.stylize(name, 'string');
-    }
-  }
-
-  return name + ': ' + str;
-}
-
-
-function reduceToSingleString(output, base, braces) {
-  var numLinesEst = 0;
-  var length = output.reduce(function(prev, cur) {
-    numLinesEst++;
-    if (cur.indexOf('\n') >= 0) numLinesEst++;
-    return prev + cur.replace(/\u001b\[\d\d?m/g, '').length + 1;
-  }, 0);
-
-  if (length > 60) {
-    return braces[0] +
-           (base === '' ? '' : base + '\n ') +
-           ' ' +
-           output.join(',\n  ') +
-           ' ' +
-           braces[1];
-  }
-
-  return braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
-}
-
-
-// NOTE: These type checking functions intentionally don't use `instanceof`
-// because it is fragile and can be easily faked with `Object.create()`.
-function isArray(ar) {
-  return Array.isArray(ar);
-}
-exports.isArray = isArray;
-
-function isBoolean(arg) {
-  return typeof arg === 'boolean';
-}
-exports.isBoolean = isBoolean;
-
-function isNull(arg) {
-  return arg === null;
-}
-exports.isNull = isNull;
-
-function isNullOrUndefined(arg) {
-  return arg == null;
-}
-exports.isNullOrUndefined = isNullOrUndefined;
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-exports.isNumber = isNumber;
-
-function isString(arg) {
-  return typeof arg === 'string';
-}
-exports.isString = isString;
-
-function isSymbol(arg) {
-  return typeof arg === 'symbol';
-}
-exports.isSymbol = isSymbol;
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-exports.isUndefined = isUndefined;
-
-function isRegExp(re) {
-  return isObject(re) && objectToString(re) === '[object RegExp]';
-}
-exports.isRegExp = isRegExp;
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-exports.isObject = isObject;
-
-function isDate(d) {
-  return isObject(d) && objectToString(d) === '[object Date]';
-}
-exports.isDate = isDate;
-
-function isError(e) {
-  return isObject(e) &&
-      (objectToString(e) === '[object Error]' || e instanceof Error);
-}
-exports.isError = isError;
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-exports.isFunction = isFunction;
-
-function isPrimitive(arg) {
-  return arg === null ||
-         typeof arg === 'boolean' ||
-         typeof arg === 'number' ||
-         typeof arg === 'string' ||
-         typeof arg === 'symbol' ||  // ES6 symbol
-         typeof arg === 'undefined';
-}
-exports.isPrimitive = isPrimitive;
-
-exports.isBuffer = __webpack_require__(29);
-
-function objectToString(o) {
-  return Object.prototype.toString.call(o);
-}
-
-
-function pad(n) {
-  return n < 10 ? '0' + n.toString(10) : n.toString(10);
-}
-
-
-var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
-              'Oct', 'Nov', 'Dec'];
-
-// 26 Feb 16:19:34
-function timestamp() {
-  var d = new Date();
-  var time = [pad(d.getHours()),
-              pad(d.getMinutes()),
-              pad(d.getSeconds())].join(':');
-  return [d.getDate(), months[d.getMonth()], time].join(' ');
-}
-
-
-// log is just a thin wrapper to console.log that prepends a timestamp
-exports.log = function() {
-  console.log('%s - %s', timestamp(), exports.format.apply(exports, arguments));
-};
-
-
-/**
- * Inherit the prototype methods from one constructor into another.
- *
- * The Function.prototype.inherits from lang.js rewritten as a standalone
- * function (not on Function.prototype). NOTE: If this file is to be loaded
- * during bootstrapping this function needs to be rewritten using some native
- * functions as prototype setup using normal JavaScript does not work as
- * expected during bootstrapping (see mirror.js in r114903).
- *
- * @param {function} ctor Constructor function which needs to inherit the
- *     prototype.
- * @param {function} superCtor Constructor function to inherit prototype from.
- */
-exports.inherits = __webpack_require__(28);
-
-exports._extend = function(origin, add) {
-  // Don't do anything if add isn't an object
-  if (!add || !isObject(add)) return origin;
-
-  var keys = Object.keys(add);
-  var i = keys.length;
-  while (i--) {
-    origin[keys[i]] = add[keys[i]];
-  }
-  return origin;
-};
-
-function hasOwnProperty(obj, prop) {
-  return Object.prototype.hasOwnProperty.call(obj, prop);
-}
-
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3), __webpack_require__(0)))
+/***/ "./src/components/Text2.tsx":
+/*!**********************************!*\
+  !*** ./src/components/Text2.tsx ***!
+  \**********************************/
+/*! exports provided: Carat, ParsedText, OutputText */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"Carat\", function() { return Carat; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"ParsedText\", function() { return ParsedText; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"OutputText\", function() { return OutputText; });\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ \"./node_modules/react/index.js\");\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _typescript_parser2__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../typescript/parser2 */ \"./src/typescript/parser2.ts\");\n\n\nvar Carat = function Carat() {\n  return react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"span\", null, \">\\xA0\");\n};\n\nfunction get_display_color(tm) {\n  if (Object(_typescript_parser2__WEBPACK_IMPORTED_MODULE_1__[\"is_match\"])(tm)) {\n    switch (tm.type.type.kind) {\n      case 'Keyword':\n        return 'aqua';\n\n      case 'Option':\n        return 'orange';\n\n      case 'Filler':\n        return 'ivory';\n    }\n  }\n\n  if (Object(_typescript_parser2__WEBPACK_IMPORTED_MODULE_1__[\"is_partial\"])(tm)) {\n    return 'silver';\n  }\n\n  if (Object(_typescript_parser2__WEBPACK_IMPORTED_MODULE_1__[\"is_error\"])(tm)) {\n    return 'red';\n  }\n}\n\nvar ParsedText = function ParsedText(props) {\n  var parsing = props.parsing;\n  var children = props.children;\n  var style = {\n    whiteSpace: 'pre-wrap',\n    position: 'relative'\n  };\n  var view = parsing.view;\n\n  if (view.submittable || view.submission) {\n    style.fontWeight = '900';\n  } else {\n    style.fontWeight = '100';\n\n    if (view.match_status === 'ErrorMatch') {\n      style.opacity = '0.6';\n    }\n  }\n\n  return react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"div\", {\n    className: \"parsed-text\"\n  }, react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](Carat, null), react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"div\", {\n    style: style\n  }, view.matches.map(function (elt, i) {\n    return react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"div\", {\n      key: i.toString(),\n      style: {\n        color: get_display_color(elt)\n      }\n    }, react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"span\", null, parsing.whitespace[i] + (typeof elt.token === 'string' ? elt.token : '')), i === 0 ? children : '');\n  })));\n};\nvar OutputText = function OutputText(props) {\n  var message = props.message;\n  return react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](\"div\", {\n    className: \"output-text\",\n    dangerouslySetInnerHTML: {\n      __html: message\n    }\n  });\n};//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvY29tcG9uZW50cy9UZXh0Mi50c3g/NDY0NSJdLCJuYW1lcyI6WyJDYXJhdCIsImdldF9kaXNwbGF5X2NvbG9yIiwidG0iLCJpc19tYXRjaCIsInR5cGUiLCJraW5kIiwiaXNfcGFydGlhbCIsImlzX2Vycm9yIiwiUGFyc2VkVGV4dCIsInByb3BzIiwicGFyc2luZyIsImNoaWxkcmVuIiwic3R5bGUiLCJ3aGl0ZVNwYWNlIiwicG9zaXRpb24iLCJ2aWV3Iiwic3VibWl0dGFibGUiLCJzdWJtaXNzaW9uIiwiZm9udFdlaWdodCIsIm1hdGNoX3N0YXR1cyIsIm9wYWNpdHkiLCJtYXRjaGVzIiwibWFwIiwiZWx0IiwiaSIsInRvU3RyaW5nIiwiY29sb3IiLCJ3aGl0ZXNwYWNlIiwidG9rZW4iLCJPdXRwdXRUZXh0IiwibWVzc2FnZSIsIl9faHRtbCJdLCJtYXBwaW5ncyI6IkFBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUVBO0FBRU8sSUFBTUEsS0FBSyxHQUFHLFNBQVJBLEtBQVE7QUFBQSxTQUFNLDBFQUFOO0FBQUEsQ0FBZDs7QUFFUCxTQUFTQyxpQkFBVCxDQUEyQkMsRUFBM0IsRUFBMkM7QUFDekMsTUFBSUMsb0VBQVEsQ0FBQ0QsRUFBRCxDQUFaLEVBQWtCO0FBQ2hCLFlBQVFBLEVBQUUsQ0FBQ0UsSUFBSCxDQUFRQSxJQUFSLENBQWFDLElBQXJCO0FBQ0UsV0FBSyxTQUFMO0FBQ0UsZUFBTyxNQUFQOztBQUNGLFdBQUssUUFBTDtBQUNFLGVBQU8sUUFBUDs7QUFDRixXQUFLLFFBQUw7QUFDRSxlQUFPLE9BQVA7QUFOSjtBQVFEOztBQUNELE1BQUlDLHNFQUFVLENBQUNKLEVBQUQsQ0FBZCxFQUFvQjtBQUNsQixXQUFPLFFBQVA7QUFDRDs7QUFFRCxNQUFJSyxvRUFBUSxDQUFDTCxFQUFELENBQVosRUFBa0I7QUFDaEIsV0FBTyxLQUFQO0FBQ0Q7QUFDRjs7QUFFTSxJQUFNTSxVQUFVLEdBQUcsU0FBYkEsVUFBYSxDQUFDQyxLQUFELEVBQWlEO0FBQ3pFLE1BQUlDLE9BQWdCLEdBQUdELEtBQUssQ0FBQ0MsT0FBN0I7QUFDQSxNQUFJQyxRQUFRLEdBQUdGLEtBQUssQ0FBQ0UsUUFBckI7QUFFQSxNQUFJQyxLQUFVLEdBQUc7QUFDZkMsY0FBVSxFQUFFLFVBREc7QUFFZkMsWUFBUSxFQUFFO0FBRkssR0FBakI7QUFLQSxNQUFJQyxJQUFJLEdBQUdMLE9BQU8sQ0FBQ0ssSUFBbkI7O0FBRUEsTUFBSUEsSUFBSSxDQUFDQyxXQUFMLElBQW9CRCxJQUFJLENBQUNFLFVBQTdCLEVBQXlDO0FBQ3ZDTCxTQUFLLENBQUNNLFVBQU4sR0FBbUIsS0FBbkI7QUFDRCxHQUZELE1BRU87QUFDTE4sU0FBSyxDQUFDTSxVQUFOLEdBQW1CLEtBQW5COztBQUNBLFFBQUlILElBQUksQ0FBQ0ksWUFBTCxLQUFzQixZQUExQixFQUF3QztBQUN0Q1AsV0FBSyxDQUFDUSxPQUFOLEdBQWdCLEtBQWhCO0FBQ0Q7QUFDRjs7QUFFRCxTQUNFO0FBQUssYUFBUyxFQUFDO0FBQWYsS0FDRSxvREFBQyxLQUFELE9BREYsRUFFRTtBQUFLLFNBQUssRUFBRVI7QUFBWixLQUVJRyxJQUFJLENBQUNNLE9BQUwsQ0FBYUMsR0FBYixDQUFpQixVQUFDQyxHQUFELEVBQU1DLENBQU47QUFBQSxXQUNmO0FBQUssU0FBRyxFQUFFQSxDQUFDLENBQUNDLFFBQUYsRUFBVjtBQUF3QixXQUFLLEVBQUU7QUFBQ0MsYUFBSyxFQUFFekIsaUJBQWlCLENBQUNzQixHQUFEO0FBQXpCO0FBQS9CLE9BQ0Usa0VBQ0liLE9BQU8sQ0FBQ2lCLFVBQVIsQ0FBbUJILENBQW5CLEtBQTBCLE9BQU9ELEdBQUcsQ0FBQ0ssS0FBWCxLQUFxQixRQUF0QixHQUFrQ0wsR0FBRyxDQUFDSyxLQUF0QyxHQUE4QyxFQUF2RSxDQURKLENBREYsRUFJTUosQ0FBQyxLQUFLLENBQVIsR0FBY2IsUUFBZCxHQUF5QixFQUo3QixDQURlO0FBQUEsR0FBakIsQ0FGSixDQUZGLENBREY7QUFpQkQsQ0FyQ007QUF1Q0EsSUFBTWtCLFVBQVUsR0FBRyxTQUFiQSxVQUFhLENBQUNwQixLQUFELEVBQVc7QUFBQSxNQUM1QnFCLE9BRDRCLEdBQ2pCckIsS0FEaUIsQ0FDNUJxQixPQUQ0QjtBQUduQyxTQUNFO0FBQUssYUFBUyxFQUFDLGFBQWY7QUFBNkIsMkJBQXVCLEVBQUU7QUFBQ0MsWUFBTSxFQUFFRDtBQUFUO0FBQXRELElBREY7QUFHRCxDQU5NIiwiZmlsZSI6Ii4vc3JjL2NvbXBvbmVudHMvVGV4dDIudHN4LmpzIiwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0ICogYXMgUmVhY3QgZnJvbSAncmVhY3QnO1xuXG5pbXBvcnQge1Rva2VuTWF0Y2gsIGlzX21hdGNoLCBpc19wYXJ0aWFsLCBpc19lcnJvciwgUGFyc2luZ30gZnJvbSAnLi4vdHlwZXNjcmlwdC9wYXJzZXIyJztcblxuZXhwb3J0IGNvbnN0IENhcmF0ID0gKCkgPT4gPHNwYW4+PiZuYnNwOzwvc3Bhbj47XG5cbmZ1bmN0aW9uIGdldF9kaXNwbGF5X2NvbG9yKHRtOiBUb2tlbk1hdGNoKSB7XG4gIGlmIChpc19tYXRjaCh0bSkpIHtcbiAgICBzd2l0Y2ggKHRtLnR5cGUudHlwZS5raW5kKSB7XG4gICAgICBjYXNlICdLZXl3b3JkJzpcbiAgICAgICAgcmV0dXJuICdhcXVhJztcbiAgICAgIGNhc2UgJ09wdGlvbic6XG4gICAgICAgIHJldHVybiAnb3JhbmdlJztcbiAgICAgIGNhc2UgJ0ZpbGxlcic6XG4gICAgICAgIHJldHVybiAnaXZvcnknO1xuICAgIH1cbiAgfVxuICBpZiAoaXNfcGFydGlhbCh0bSkpIHtcbiAgICByZXR1cm4gJ3NpbHZlcic7XG4gIH1cblxuICBpZiAoaXNfZXJyb3IodG0pKSB7XG4gICAgcmV0dXJuICdyZWQnO1xuICB9XG59XG5cbmV4cG9ydCBjb25zdCBQYXJzZWRUZXh0ID0gKHByb3BzOiB7IHBhcnNpbmc6IFBhcnNpbmcsIGNoaWxkcmVuPzogYW55IH0pID0+IHtcbiAgbGV0IHBhcnNpbmc6IFBhcnNpbmcgPSBwcm9wcy5wYXJzaW5nO1xuICBsZXQgY2hpbGRyZW4gPSBwcm9wcy5jaGlsZHJlbjtcblxuICBsZXQgc3R5bGU6IGFueSA9IHtcbiAgICB3aGl0ZVNwYWNlOiAncHJlLXdyYXAnLFxuICAgIHBvc2l0aW9uOiAncmVsYXRpdmUnXG4gIH1cbiAgXG4gIGxldCB2aWV3ID0gcGFyc2luZy52aWV3O1xuXG4gIGlmICh2aWV3LnN1Ym1pdHRhYmxlIHx8IHZpZXcuc3VibWlzc2lvbikge1xuICAgIHN0eWxlLmZvbnRXZWlnaHQgPSAnOTAwJztcbiAgfSBlbHNlIHtcbiAgICBzdHlsZS5mb250V2VpZ2h0ID0gJzEwMCc7XG4gICAgaWYgKHZpZXcubWF0Y2hfc3RhdHVzID09PSAnRXJyb3JNYXRjaCcpIHtcbiAgICAgIHN0eWxlLm9wYWNpdHkgPSAnMC42JztcbiAgICB9XG4gIH1cblxuICByZXR1cm4gKFxuICAgIDxkaXYgY2xhc3NOYW1lPVwicGFyc2VkLXRleHRcIj5cbiAgICAgIDxDYXJhdCAvPlxuICAgICAgPGRpdiBzdHlsZT17c3R5bGV9PlxuICAgICAgICB7XG4gICAgICAgICAgdmlldy5tYXRjaGVzLm1hcCgoZWx0LCBpKSA9PiAoXG4gICAgICAgICAgICA8ZGl2IGtleT17aS50b1N0cmluZygpfSBzdHlsZT17e2NvbG9yOiBnZXRfZGlzcGxheV9jb2xvcihlbHQpfX0+XG4gICAgICAgICAgICAgIDxzcGFuPlxuICAgICAgICAgICAgICAgIHsgcGFyc2luZy53aGl0ZXNwYWNlW2ldICsgKCh0eXBlb2YgZWx0LnRva2VuID09PSAnc3RyaW5nJykgPyBlbHQudG9rZW4gOiAnJykgfVxuICAgICAgICAgICAgICA8L3NwYW4+XG4gICAgICAgICAgICAgIHsgKCBpID09PSAwICkgPyBjaGlsZHJlbiA6ICcnIH1cbiAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICkpXG4gICAgICAgIH1cbiAgICAgIDwvZGl2PlxuICAgIDwvZGl2PlxuICApO1xufVxuXG5leHBvcnQgY29uc3QgT3V0cHV0VGV4dCA9IChwcm9wcykgPT4ge1xuICBjb25zdCB7bWVzc2FnZX0gPSBwcm9wcztcblxuICByZXR1cm4gKFxuICAgIDxkaXYgY2xhc3NOYW1lPVwib3V0cHV0LXRleHRcIiBkYW5nZXJvdXNseVNldElubmVySFRNTD17e19faHRtbDogbWVzc2FnZX19IC8+XG4gICk7XG59Il0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///./src/components/Text2.tsx\n");
+
+/***/ }),
+
+/***/ "./src/typescript/datatypes.ts":
+/*!*************************************!*\
+  !*** ./src/typescript/datatypes.ts ***!
+  \*************************************/
+/*! exports provided: FuckDict, FuckSet, chain_object, chain_update, update, arrays_fuck_equal, array_fuck_contains, make_matrix2, zeros, Matrix2, counter_add, counter_get, counter_update, counter_order, is_annotated, annotate, unwrap, with_annotatable, get_annotation, set_enabled, with_disablable, is_enabled, infer_literal_array, array_last */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"FuckDict\", function() { return FuckDict; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"FuckSet\", function() { return FuckSet; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"chain_object\", function() { return chain_object; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"chain_update\", function() { return chain_update; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"update\", function() { return update; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"arrays_fuck_equal\", function() { return arrays_fuck_equal; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"array_fuck_contains\", function() { return array_fuck_contains; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"make_matrix2\", function() { return make_matrix2; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"zeros\", function() { return zeros; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"Matrix2\", function() { return Matrix2; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"counter_add\", function() { return counter_add; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"counter_get\", function() { return counter_get; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"counter_update\", function() { return counter_update; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"counter_order\", function() { return counter_order; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"is_annotated\", function() { return is_annotated; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"annotate\", function() { return annotate; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"unwrap\", function() { return unwrap; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"with_annotatable\", function() { return with_annotatable; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"get_annotation\", function() { return get_annotation; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"set_enabled\", function() { return set_enabled; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"with_disablable\", function() { return with_disablable; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"is_enabled\", function() { return is_enabled; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"infer_literal_array\", function() { return infer_literal_array; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"array_last\", function() { return array_last; });\nfunction _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; var ownKeys = Object.keys(source); if (typeof Object.getOwnPropertySymbols === 'function') { ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) { return Object.getOwnPropertyDescriptor(source, sym).enumerable; })); } ownKeys.forEach(function (key) { _defineProperty(target, key, source[key]); }); } return target; }\n\nfunction _typeof(obj) { if (typeof Symbol === \"function\" && typeof Symbol.iterator === \"symbol\") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === \"function\" && obj.constructor === Symbol && obj !== Symbol.prototype ? \"symbol\" : typeof obj; }; } return _typeof(obj); }\n\nfunction _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === \"object\" || typeof call === \"function\")) { return call; } return _assertThisInitialized(self); }\n\nfunction _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError(\"this hasn't been initialised - super() hasn't been called\"); } return self; }\n\nfunction _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }\n\nfunction _inherits(subClass, superClass) { if (typeof superClass !== \"function\" && superClass !== null) { throw new TypeError(\"Super expression must either be null or a function\"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }\n\nfunction _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }\n\nfunction _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }\n\nfunction _nonIterableRest() { throw new TypeError(\"Invalid attempt to destructure non-iterable instance\"); }\n\nfunction _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i[\"return\"] != null) _i[\"return\"](); } finally { if (_d) throw _e; } } return _arr; }\n\nfunction _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }\n\nfunction _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError(\"Cannot call a class as a function\"); } }\n\nfunction _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if (\"value\" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }\n\nfunction _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }\n\nfunction _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }\n\nvar FuckDict =\n/*#__PURE__*/\nfunction () {\n  function FuckDict(a) {\n    _classCallCheck(this, FuckDict);\n\n    _defineProperty(this, \"keys_map\", void 0);\n\n    _defineProperty(this, \"values_map\", void 0);\n\n    _defineProperty(this, \"size\", 0);\n\n    this.keys_map = new Map();\n    this.values_map = new Map();\n\n    if (a !== undefined) {\n      var _iteratorNormalCompletion = true;\n      var _didIteratorError = false;\n      var _iteratorError = undefined;\n\n      try {\n        for (var _iterator = a[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {\n          var _step$value = _slicedToArray(_step.value, 2),\n              k = _step$value[0],\n              v = _step$value[1];\n\n          this.set(k, v);\n        }\n      } catch (err) {\n        _didIteratorError = true;\n        _iteratorError = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion && _iterator[\"return\"] != null) {\n            _iterator[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError) {\n            throw _iteratorError;\n          }\n        }\n      }\n    }\n  }\n\n  _createClass(FuckDict, [{\n    key: \"set\",\n    value: function set(k, v) {\n      var s = k.toString();\n      this.keys_map.set(s, k);\n      this.values_map.set(s, v);\n      this.size = this.keys_map.size;\n      return this;\n    }\n  }, {\n    key: \"get\",\n    value: function get(k, default_value) {\n      if (!this.has_key(k) && default_value !== undefined) {\n        this.set(k, default_value);\n        return default_value;\n      }\n\n      var s = k.toString();\n      return this.values_map.get(s);\n    }\n  }, {\n    key: \"update\",\n    value: function update(a) {\n      var updated = this.copy();\n      var _iteratorNormalCompletion2 = true;\n      var _didIteratorError2 = false;\n      var _iteratorError2 = undefined;\n\n      try {\n        for (var _iterator2 = a[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {\n          var _step2$value = _slicedToArray(_step2.value, 2),\n              k = _step2$value[0],\n              v = _step2$value[1];\n\n          updated.set(k, v);\n        }\n      } catch (err) {\n        _didIteratorError2 = true;\n        _iteratorError2 = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion2 && _iterator2[\"return\"] != null) {\n            _iterator2[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError2) {\n            throw _iteratorError2;\n          }\n        }\n      }\n\n      return updated;\n    }\n  }, {\n    key: \"has_key\",\n    value: function has_key(k) {\n      return this.keys_map.has(k.toString());\n    }\n  }, {\n    key: \"keys_array\",\n    value: function keys_array() {\n      return Array.from(this.keys_map.values());\n    }\n  }, {\n    key: \"values_array\",\n    value: function values_array() {\n      return Array.from(this.values_map.values());\n    }\n  }, {\n    key: \"entries_array\",\n    value: function entries_array() {\n      var result = [];\n      var _iteratorNormalCompletion3 = true;\n      var _didIteratorError3 = false;\n      var _iteratorError3 = undefined;\n\n      try {\n        for (var _iterator3 = this.keys_map.entries()[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {\n          var _step3$value = _slicedToArray(_step3.value, 2),\n              s = _step3$value[0],\n              k = _step3$value[1];\n\n          result.push([k, this.values_map.get(s)]);\n        }\n      } catch (err) {\n        _didIteratorError3 = true;\n        _iteratorError3 = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion3 && _iterator3[\"return\"] != null) {\n            _iterator3[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError3) {\n            throw _iteratorError3;\n          }\n        }\n      }\n\n      return result;\n    }\n  }, {\n    key: \"keys_equal\",\n    value: function keys_equal(other) {\n      var _iteratorNormalCompletion4 = true;\n      var _didIteratorError4 = false;\n      var _iteratorError4 = undefined;\n\n      try {\n        for (var _iterator4 = this.keys_array()[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {\n          var elem = _step4.value;\n\n          if (!other.has_key(elem)) {\n            return false;\n          }\n        }\n      } catch (err) {\n        _didIteratorError4 = true;\n        _iteratorError4 = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion4 && _iterator4[\"return\"] != null) {\n            _iterator4[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError4) {\n            throw _iteratorError4;\n          }\n        }\n      }\n\n      var _iteratorNormalCompletion5 = true;\n      var _didIteratorError5 = false;\n      var _iteratorError5 = undefined;\n\n      try {\n        for (var _iterator5 = other.keys_array()[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {\n          var _elem = _step5.value;\n\n          if (!this.has_key(_elem)) {\n            return false;\n          }\n        }\n      } catch (err) {\n        _didIteratorError5 = true;\n        _iteratorError5 = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion5 && _iterator5[\"return\"] != null) {\n            _iterator5[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError5) {\n            throw _iteratorError5;\n          }\n        }\n      }\n\n      return true;\n    }\n  }, {\n    key: \"keys_intersect\",\n    value: function keys_intersect(other) {\n      var result = [];\n      var _iteratorNormalCompletion6 = true;\n      var _didIteratorError6 = false;\n      var _iteratorError6 = undefined;\n\n      try {\n        for (var _iterator6 = this.keys_array()[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {\n          var k = _step6.value;\n\n          if (other.has_key(k)) {\n            result.push(k);\n          }\n        }\n      } catch (err) {\n        _didIteratorError6 = true;\n        _iteratorError6 = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion6 && _iterator6[\"return\"] != null) {\n            _iterator6[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError6) {\n            throw _iteratorError6;\n          }\n        }\n      }\n\n      return result;\n    }\n  }, {\n    key: \"keys_subset\",\n    value: function keys_subset(other) {\n      var _iteratorNormalCompletion7 = true;\n      var _didIteratorError7 = false;\n      var _iteratorError7 = undefined;\n\n      try {\n        for (var _iterator7 = this.keys_array()[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {\n          var elem = _step7.value;\n\n          if (!other.has_key(elem)) {\n            return false;\n          }\n        }\n      } catch (err) {\n        _didIteratorError7 = true;\n        _iteratorError7 = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion7 && _iterator7[\"return\"] != null) {\n            _iterator7[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError7) {\n            throw _iteratorError7;\n          }\n        }\n      }\n\n      return true;\n    }\n  }, {\n    key: \"toString\",\n    value: function toString() {\n      var entry_strings = this.entries_array().map(function (x) {\n        return x.toString();\n      }).sort();\n      return \"FuckDict<\".concat(entry_strings.join(','), \">\");\n    }\n  }, {\n    key: \"copy\",\n    value: function copy() {\n      return new FuckDict(this.entries_array());\n    }\n  }]);\n\n  return FuckDict;\n}(); // export type FuckSet<T> = FuckDict<T, undefined>;\n\nvar FuckSet =\n/*#__PURE__*/\nfunction (_FuckDict) {\n  _inherits(FuckSet, _FuckDict);\n\n  function FuckSet(a) {\n    var _this;\n\n    _classCallCheck(this, FuckSet);\n\n    if (a !== undefined) {\n      _this = _possibleConstructorReturn(this, _getPrototypeOf(FuckSet).call(this, a.map(function (t) {\n        return [t, undefined];\n      })));\n    } else {\n      _this = _possibleConstructorReturn(this, _getPrototypeOf(FuckSet).call(this));\n    }\n\n    return _possibleConstructorReturn(_this);\n  }\n\n  return FuckSet;\n}(FuckDict);\nfunction chain_object(src) {\n  return new Proxy(src, {\n    get: function get(target, key) {\n      if (target[key] === undefined) {\n        target[key] = {};\n      }\n\n      var v = target[key];\n\n      if (_typeof(v) === 'object' && !(v instanceof Array)) {\n        return chain_object(v);\n      } else {\n        return v;\n      }\n    }\n  });\n}\nfunction chain_update(target, source) {\n  var replace_keys = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];\n  var inplace = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;\n  var updated;\n\n  if (inplace) {\n    updated = target || {};\n  } else {\n    updated = _objectSpread({}, target);\n  }\n\n  for (var _i2 = 0, _Object$entries = Object.entries(source); _i2 < _Object$entries.length; _i2++) {\n    var _Object$entries$_i = _slicedToArray(_Object$entries[_i2], 2),\n        n = _Object$entries$_i[0],\n        v = _Object$entries$_i[1];\n\n    if (!replace_keys.includes(n) && _typeof(v) === 'object' && !(v instanceof Array)) {\n      updated[n] = chain_update(updated[n], v, replace_keys, inplace);\n    } else {\n      updated[n] = v;\n    }\n  }\n\n  return updated;\n} // https://github.com/Microsoft/TypeScript/issues/13923\n\n/*\n    Two versions of update.\n\n    First one, always returns the same type as the input.\n        In this case, there on constraints we can assume for the Updater type.\n    Second one, no such guarantee.\n*/\n\n// export type Updater<T> = any\nfunction update(source, updater) {\n  if (updater instanceof Function) {\n    return updater(source);\n  } // not a function, not a non-array object\n\n\n  if (updater instanceof Array || !(updater instanceof Object)) {\n    return updater;\n  }\n\n  if (updater instanceof Object) {\n    var result;\n\n    if (source instanceof Object) {\n      result = _objectSpread({}, source);\n    } else {\n      result = {};\n    }\n\n    for (var _i3 = 0, _Object$entries2 = Object.entries(updater); _i3 < _Object$entries2.length; _i3++) {\n      var _Object$entries2$_i = _slicedToArray(_Object$entries2[_i3], 2),\n          n = _Object$entries2$_i[0],\n          v = _Object$entries2$_i[1];\n\n      if (v === undefined) {\n        delete result[n];\n      } else {\n        result[n] = update(result[n], v);\n      }\n    }\n\n    return result;\n  }\n\n  throw Error('Should never get here');\n} // type AnyUpdater = { [K: string]: AnyUpdater | ((x: any) => any) };\n// export function update_any(source: any, updater: Updater<any>): any {\n//     if (updater.constructor === Object) {\n//         let result;\n//         if (source.constructor === Object) {\n//             result = {...source};\n//         } else {\n//             result = {};\n//         }\n//         for (let [n, v] of Object.entries(updater)) {\n//             if (v === undefined) {\n//                 delete result[n];\n//             } else {\n//                 result[n] = update_any(result[n], v as any);\n//             }\n//         }\n//         return result;\n//     } else if (updater.constructor === Function){\n//         let updater: ((x: any) => any);\n//         return updater(source);\n//     } else {\n//         //just \"replacing\" source with updater\n//         let updater: any;\n//         return updater;\n//     }\n// }\n// export function update<T>(source: T, updater: Updater<T>): T {\n//     return update_any(source, updater);\n// }\n\nfunction arrays_fuck_equal(ar1, ar2) {\n  if (ar1.length !== ar2.length) {\n    return false;\n  }\n\n  for (var i = 0; i < ar1.length; i++) {\n    if (ar1[i].toString() !== ar2[i].toString()) {\n      return false;\n    }\n  }\n\n  return true;\n}\nfunction array_fuck_contains(ar, elt) {\n  return ar.some(function (x) {\n    return x.toString() === elt.toString();\n  });\n}\nfunction make_matrix2(data_obj) {\n  var dim_y = data_obj.length;\n  var dim_x = data_obj[0].length;\n  var data = new Int16Array(data_obj.reduce(function (x, y) {\n    return x.concat(y);\n  })); // TODO complain if the total length is wrong\n\n  return new Matrix2(data, dim_x, dim_y);\n}\nfunction zeros(dim_x, dim_y) {\n  return new Matrix2(new Int16Array(dim_x * dim_y), dim_x, dim_y);\n}\nvar Matrix2 =\n/*#__PURE__*/\nfunction () {\n  function Matrix2(data, dim_x, dim_y) {\n    _classCallCheck(this, Matrix2);\n\n    _defineProperty(this, \"dim_x\", void 0);\n\n    _defineProperty(this, \"dim_y\", void 0);\n\n    _defineProperty(this, \"data\", void 0);\n\n    this.data = data;\n    this.dim_x = dim_x;\n    this.dim_y = dim_y;\n  }\n\n  _createClass(Matrix2, [{\n    key: \"get\",\n    value: function get(x, y) {\n      return this.data[y * this.dim_x + x];\n    }\n  }, {\n    key: \"set\",\n    value: function set(x, y, value) {\n      this.data[y * this.dim_x + x] = value;\n    }\n  }, {\n    key: \"rotate\",\n    value: function rotate(degrees) {\n      //validate input better\n      if (degrees == 360 || degrees == 0) {\n        return this;\n      }\n\n      var n_rotations = degrees / 90;\n      var m = this;\n      var dim_x = this.dim_x;\n      var dim_y = this.dim_y;\n\n      for (var i = 0; i < n_rotations; i++) {\n        var new_data = new Int16Array(dim_x * dim_y);\n        var new_mat2 = new Matrix2(new_data, dim_y, dim_x);\n\n        for (var y = 0; y < dim_y; y++) {\n          for (var _x = 0; _x < dim_x; _x++) {\n            new_mat2.set(dim_y - 1 - y, _x, m.get(_x, y));\n          }\n        }\n\n        m = new_mat2;\n      }\n\n      return m;\n    }\n  }, {\n    key: \"contains\",\n    value: function contains(value) {\n      return this.data.indexOf(value) !== -1;\n    }\n  }, {\n    key: \"copy\",\n    value: function copy() {\n      return new Matrix2(this.data.slice(), this.dim_x, this.dim_y);\n    }\n  }]);\n\n  return Matrix2;\n}();\nfunction counter_add(counter, key, inc) {\n  var cur_val = 0;\n\n  if (counter.has(key)) {\n    cur_val = counter.get(key);\n  }\n\n  return counter.set(key, cur_val + inc);\n}\nfunction counter_get(counter, key) {\n  var cur_val = 0;\n\n  if (counter.has(key)) {\n    cur_val = counter.get(key);\n  }\n\n  return cur_val;\n}\nfunction counter_update(counter1, counter2) {\n  counter2.forEach(function (v, k) {\n    counter_add(counter1, k, v);\n  });\n  return counter1;\n}\nfunction counter_order(counter) {\n  var include_zero = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;\n  var result = Array.from(counter.entries()).sort(function (a, b) {\n    return a[1] - b[1];\n  });\n\n  if (!include_zero) {\n    result = result.filter(function (_ref) {\n      var _ref2 = _slicedToArray(_ref, 2),\n          t = _ref2[0],\n          i = _ref2[1];\n\n      return i > 0;\n    });\n  }\n\n  return result.map(function (_ref3) {\n    var _ref4 = _slicedToArray(_ref3, 2),\n        t = _ref4[0],\n        i = _ref4[1];\n\n    return t;\n  });\n} // export type Disablable<T> = T | DWrapped<T>;\n// export type DWrapped<T> = {value: T, disablable: true, enabled: boolean}\n// export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{\n//     return (<DWrapped<T>>x).disablable !== undefined;\n// }\n// export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{\n//     if (is_dwrapped(x)) {\n//         if (x.enabled !== enabled) {\n//             x.enabled = enabled; //could do check here for enabled being set properly already\n//         }\n//         return x;\n//     } else {\n//         let result: DWrapped<T> = {value: x, disablable: true, enabled};\n//         return result;\n//     }\n// }\n// export function unwrap<T>(x: Disablable<T>): T {\n//     if (is_dwrapped(x)) {\n//         return x.value;\n//     } else {\n//         return x;\n//     }\n// }\n// export function with_disablable<T1, T2>(x: Disablable<T1>, f: (t1: T1) => Disablable<T2>): Disablable<T2> {\n//     return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));\n// }\n// export function is_enabled<T>(x: Disablable<T>): boolean {\n//     if (is_dwrapped(x)){\n//         return x.enabled;\n//     } else {\n//         return true;\n//     }\n// }\n\n//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>\n//export type MergeAnnotations<T, > = \nfunction is_annotated(x) {\n  if (x === undefined) {\n    return false;\n  }\n\n  return x.annotated !== undefined;\n}\nfunction annotate(x, annotation) {\n  if (annotation === undefined) {\n    annotation = {};\n  }\n\n  if (is_annotated(x)) {\n    Object.assign(x.annotation, annotation);\n    return x;\n  } else {\n    var result = {\n      value: x,\n      annotated: true,\n      annotation: annotation\n    };\n    return result;\n  }\n}\nfunction unwrap(x) {\n  if (is_annotated(x)) {\n    return x.value;\n  } else {\n    return x;\n  }\n}\nfunction with_annotatable(f, default_value) {\n  return function (x) {\n    return annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));\n  };\n}\nfunction get_annotation(x, default_value) {\n  if (is_annotated(x)) {\n    if (default_value !== undefined) {\n      return _objectSpread({}, default_value, x.annotation);\n    } else {\n      return x.annotation;\n    }\n  } else {\n    return default_value;\n  }\n}\nfunction set_enabled(x) {\n  var enabled = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;\n  return annotate(x, {\n    enabled: enabled\n  });\n}\nfunction with_disablable(f) {\n  return with_annotatable(f, {\n    enabled: true\n  });\n}\nfunction is_enabled(x) {\n  var result = get_annotation(x);\n\n  if (result === undefined) {\n    return true;\n  }\n\n  return result.enabled;\n}\n// EDIT: actually, the below is made irrelevant by \"as const\" in 3.4.\n// Holy dang this is cool:\n// https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a\n//\n// Point here is to define the list of ObserverMomentIDs and PerceptionIDs\n// as a constant, and get string literal typechecking elsewhere in the code.\nfunction infer_literal_array() {\n  for (var _len = arguments.length, arr = new Array(_len), _key = 0; _key < _len; _key++) {\n    arr[_key] = arguments[_key];\n  }\n\n  return arr;\n}\nfunction array_last(arr) {\n  return arr[arr.length - 1];\n}//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvdHlwZXNjcmlwdC9kYXRhdHlwZXMudHM/MmQ5ZSJdLCJuYW1lcyI6WyJGdWNrRGljdCIsImEiLCJrZXlzX21hcCIsIk1hcCIsInZhbHVlc19tYXAiLCJ1bmRlZmluZWQiLCJrIiwidiIsInNldCIsInMiLCJ0b1N0cmluZyIsInNpemUiLCJkZWZhdWx0X3ZhbHVlIiwiaGFzX2tleSIsImdldCIsInVwZGF0ZWQiLCJjb3B5IiwiaGFzIiwiQXJyYXkiLCJmcm9tIiwidmFsdWVzIiwicmVzdWx0IiwiZW50cmllcyIsInB1c2giLCJvdGhlciIsImtleXNfYXJyYXkiLCJlbGVtIiwiZW50cnlfc3RyaW5ncyIsImVudHJpZXNfYXJyYXkiLCJtYXAiLCJ4Iiwic29ydCIsImpvaW4iLCJGdWNrU2V0IiwidCIsImNoYWluX29iamVjdCIsInNyYyIsIlByb3h5IiwidGFyZ2V0Iiwia2V5IiwiY2hhaW5fdXBkYXRlIiwic291cmNlIiwicmVwbGFjZV9rZXlzIiwiaW5wbGFjZSIsIk9iamVjdCIsIm4iLCJpbmNsdWRlcyIsInVwZGF0ZSIsInVwZGF0ZXIiLCJGdW5jdGlvbiIsIkVycm9yIiwiYXJyYXlzX2Z1Y2tfZXF1YWwiLCJhcjEiLCJhcjIiLCJsZW5ndGgiLCJpIiwiYXJyYXlfZnVja19jb250YWlucyIsImFyIiwiZWx0Iiwic29tZSIsIm1ha2VfbWF0cml4MiIsImRhdGFfb2JqIiwiZGltX3kiLCJkaW1feCIsImRhdGEiLCJJbnQxNkFycmF5IiwicmVkdWNlIiwieSIsImNvbmNhdCIsIk1hdHJpeDIiLCJ6ZXJvcyIsInZhbHVlIiwiZGVncmVlcyIsIm5fcm90YXRpb25zIiwibSIsIm5ld19kYXRhIiwibmV3X21hdDIiLCJpbmRleE9mIiwic2xpY2UiLCJjb3VudGVyX2FkZCIsImNvdW50ZXIiLCJpbmMiLCJjdXJfdmFsIiwiY291bnRlcl9nZXQiLCJjb3VudGVyX3VwZGF0ZSIsImNvdW50ZXIxIiwiY291bnRlcjIiLCJmb3JFYWNoIiwiY291bnRlcl9vcmRlciIsImluY2x1ZGVfemVybyIsImIiLCJmaWx0ZXIiLCJpc19hbm5vdGF0ZWQiLCJhbm5vdGF0ZWQiLCJhbm5vdGF0ZSIsImFubm90YXRpb24iLCJhc3NpZ24iLCJ1bndyYXAiLCJ3aXRoX2Fubm90YXRhYmxlIiwiZiIsImdldF9hbm5vdGF0aW9uIiwic2V0X2VuYWJsZWQiLCJlbmFibGVkIiwid2l0aF9kaXNhYmxhYmxlIiwiaXNfZW5hYmxlZCIsImluZmVyX2xpdGVyYWxfYXJyYXkiLCJhcnIiLCJhcnJheV9sYXN0Il0sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBQU8sSUFBTUEsUUFBYjtBQUFBO0FBQUE7QUFNSSxvQkFBWUMsQ0FBWixFQUEwQjtBQUFBOztBQUFBOztBQUFBOztBQUFBLGtDQUZYLENBRVc7O0FBQ3RCLFNBQUtDLFFBQUwsR0FBZ0IsSUFBSUMsR0FBSixFQUFoQjtBQUNBLFNBQUtDLFVBQUwsR0FBa0IsSUFBSUQsR0FBSixFQUFsQjs7QUFFQSxRQUFJRixDQUFDLEtBQUtJLFNBQVYsRUFBcUI7QUFBQTtBQUFBO0FBQUE7O0FBQUE7QUFDakIsNkJBQW1CSixDQUFuQiw4SEFBc0I7QUFBQTtBQUFBLGNBQVpLLENBQVk7QUFBQSxjQUFUQyxDQUFTOztBQUNsQixlQUFLQyxHQUFMLENBQVNGLENBQVQsRUFBWUMsQ0FBWjtBQUNIO0FBSGdCO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFJcEI7QUFDSjs7QUFmTDtBQUFBO0FBQUEsd0JBaUJRRCxDQWpCUixFQWlCY0MsQ0FqQmQsRUFpQm9CO0FBQ1osVUFBSUUsQ0FBQyxHQUFHSCxDQUFDLENBQUNJLFFBQUYsRUFBUjtBQUNBLFdBQUtSLFFBQUwsQ0FBY00sR0FBZCxDQUFrQkMsQ0FBbEIsRUFBcUJILENBQXJCO0FBQ0EsV0FBS0YsVUFBTCxDQUFnQkksR0FBaEIs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LnRzLmpzIiwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGNsYXNzIEZ1Y2tEaWN0PEssIFY+IHtcbiAgICByZWFkb25seSBrZXlzX21hcDogTWFwPHN0cmluZywgSz47XG4gICAgcmVhZG9ubHkgdmFsdWVzX21hcDogTWFwPHN0cmluZywgVj47XG5cbiAgICBzaXplOiBudW1iZXIgPSAwXG5cbiAgICBjb25zdHJ1Y3RvcihhPzogW0ssIFZdW10pIHtcbiAgICAgICAgdGhpcy5rZXlzX21hcCA9IG5ldyBNYXA8c3RyaW5nLCBLPigpO1xuICAgICAgICB0aGlzLnZhbHVlc19tYXAgPSBuZXcgTWFwPHN0cmluZywgVj4oKTtcblxuICAgICAgICBpZiAoYSAhPT0gdW5kZWZpbmVkKSB7XG4gICAgICAgICAgICBmb3IgKGxldCBbaywgdl0gb2YgYSkge1xuICAgICAgICAgICAgICAgIHRoaXMuc2V0KGssIHYpO1xuICAgICAgICAgICAgfVxuICAgICAgICB9XG4gICAgfVxuXG4gICAgc2V0KGs6IEssIHY6IFYpIHtcbiAgICAgICAgbGV0IHMgPSBrLnRvU3RyaW5nKCk7XG4gICAgICAgIHRoaXMua2V5c19tYXAuc2V0KHMsIGspO1xuICAgICAgICB0aGlzLnZhbHVlc19tYXAuc2V0KHMsIHYpO1xuICAgICAgICB0aGlzLnNpemUgPSB0aGlzLmtleXNfbWFwLnNpemU7XG4gICAgICAgIHJldHVybiB0aGlzO1xuICAgIH1cblxuICAgIGdldChrOiBLLCBkZWZhdWx0X3ZhbHVlPzogVik6IFYge1xuICAgICAgICBpZiAoIXRoaXMuaGFzX2tleShrKSAmJiBkZWZhdWx0X3ZhbHVlICE9PSB1bmRlZmluZWQpIHtcbiAgICAgICAgICAgIHRoaXMuc2V0KGssIGRlZmF1bHRfdmFsdWUpO1xuICAgICAgICAgICAgcmV0dXJuIGRlZmF1bHRfdmFsdWU7XG4gICAgICAgIH1cbiAgICAgICAgbGV0IHMgPSBrLnRvU3RyaW5nKCk7XG4gICAgICAgIHJldHVybiB0aGlzLnZhbHVlc19tYXAuZ2V0KHMpO1xuICAgIH1cblxuICAgIHVwZGF0ZShhOiBbSywgVl1bXSk6IEZ1Y2tEaWN0PEssIFY+IHtcbiAgICAgICAgbGV0IHVwZGF0ZWQgPSB0aGlzLmNvcHkoKTtcbiAgICAgICAgZm9yIChsZXQgW2ssIHZdIG9mIGEpIHtcbiAgICAgICAgICAgIHVwZGF0ZWQuc2V0KGssIHYpO1xuICAgICAgICB9XG4gICAgICAgIHJldHVybiB1cGRhdGVkO1xuICAgIH1cblxuICAgIGhhc19rZXkoazogSykge1xuICAgICAgICByZXR1cm4gdGhpcy5rZXlzX21hcC5oYXMoay50b1N0cmluZygpKTtcbiAgICB9XG5cbiAgICBrZXlzX2FycmF5KCkge1xuICAgICAgICByZXR1cm4gQXJyYXkuZnJvbSh0aGlzLmtleXNfbWFwLnZhbHVlcygpKTtcbiAgICB9XG5cbiAgICB2YWx1ZXNfYXJyYXkoKSB7XG4gICAgICAgIHJldHVybiBBcnJheS5mcm9tKHRoaXMudmFsdWVzX21hcC52YWx1ZXMoKSk7XG4gICAgfVxuXG4gICAgZW50cmllc19hcnJheSgpOiBbSywgVl1bXSB7XG4gICAgICAgIGxldCByZXN1bHQ6IFtLLCBWXVtdID0gW107XG4gICAgICAgIGZvciAobGV0IFtzLCBrXSBvZiB0aGlzLmtleXNfbWFwLmVudHJpZXMoKSkge1xuICAgICAgICAgICAgcmVzdWx0LnB1c2goW2ssIHRoaXMudmFsdWVzX21hcC5nZXQocyldKTtcbiAgICAgICAgfVxuICAgICAgICByZXR1cm4gcmVzdWx0O1xuICAgIH1cblxuICAgIGtleXNfZXF1YWwob3RoZXI6IEZ1Y2tEaWN0PEssIFY+KSB7XG4gICAgICAgIGZvciAobGV0IGVsZW0gb2YgdGhpcy5rZXlzX2FycmF5KCkpIHtcbiAgICAgICAgICAgIGlmICghb3RoZXIuaGFzX2tleShlbGVtKSl7XG4gICAgICAgICAgICAgICAgcmV0dXJuIGZhbHNlO1xuICAgICAgICAgICAgfVxuICAgICAgICB9XG5cbiAgICAgICAgZm9yIChsZXQgZWxlbSBvZiBvdGhlci5rZXlzX2FycmF5KCkpIHtcbiAgICAgICAgICAgIGlmICghdGhpcy5oYXNfa2V5KGVsZW0pKXtcbiAgICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7XG4gICAgICAgICAgICB9XG4gICAgICAgIH1cblxuICAgICAgICByZXR1cm4gdHJ1ZTtcbiAgICB9XG5cbiAgICBrZXlzX2ludGVyc2VjdChvdGhlcjogRnVja0RpY3Q8SywgVj4pIHtcbiAgICAgICAgbGV0IHJlc3VsdDogS1tdID0gW107XG4gICAgICAgIGZvciAobGV0IGsgb2YgdGhpcy5rZXlzX2FycmF5KCkpIHtcbiAgICAgICAgICAgIGlmIChvdGhlci5oYXNfa2V5KGspKSB7XG4gICAgICAgICAgICAgICAgcmVzdWx0LnB1c2goaylcbiAgICAgICAgICAgIH1cbiAgICAgICAgfVxuICAgICAgICByZXR1cm4gcmVzdWx0O1xuICAgIH1cblxuICAgIGtleXNfc3Vic2V0KG90aGVyOiBGdWNrRGljdDxLLCBWPikge1xuICAgICAgICBmb3IgKGxldCBlbGVtIG9mIHRoaXMua2V5c19hcnJheSgpKSB7XG4gICAgICAgICAgICBpZiAoIW90aGVyLmhhc19rZXkoZWxlbSkpe1xuICAgICAgICAgICAgICAgIHJldHVybiBmYWxzZTtcbiAgICAgICAgICAgIH1cbiAgICAgICAgfVxuICAgICAgICByZXR1cm4gdHJ1ZTtcbiAgICB9XG5cbiAgICB0b1N0cmluZygpIHtcbiAgICAgICAgbGV0IGVudHJ5X3N0cmluZ3M6IHN0cmluZ1tdID0gdGhpcy5lbnRyaWVzX2FycmF5KCkubWFwKCh4KSA9PiB4LnRvU3RyaW5nKCkpLnNvcnQoKTtcblxuICAgICAgICByZXR1cm4gYEZ1Y2tEaWN0PCR7ZW50cnlfc3RyaW5ncy5qb2luKCcsJyl9PmA7XG4gICAgfVxuXG4gICAgY29weSgpIHtcbiAgICAgICAgcmV0dXJuIG5ldyBGdWNrRGljdCh0aGlzLmVudHJpZXNfYXJyYXkoKSk7XG4gICAgfVxufVxuXG4vLyBleHBvcnQgdHlwZSBGdWNrU2V0PFQ+ID0gRnVja0RpY3Q8VCwgdW5kZWZpbmVkPjtcbmV4cG9ydCBjbGFzcyBGdWNrU2V0PFQ+IGV4dGVuZHMgRnVja0RpY3Q8VCwgdW5kZWZpbmVkPiB7XG4gICAgY29uc3RydWN0b3IoYT86IFRbXSkge1xuICAgICAgICBpZiAoYSAhPT0gdW5kZWZpbmVkKSB7XG4gICAgICAgICAgICBzdXBlcihhLm1hcCh0ID0+IDxbVCwgdW5kZWZpbmVkXT5bdCwgdW5kZWZpbmVkXSkpO1xuICAgICAgICB9IGVsc2Uge1xuICAgICAgICAgICAgc3VwZXIoKTtcbiAgICAgICAgfVxuICAgIH1cbn1cblxuXG5leHBvcnQgZnVuY3Rpb24gY2hhaW5fb2JqZWN0PFQgZXh0ZW5kcyBvYmplY3Q+KHNyYzogVCkge1xuICAgIHJldHVybiBuZXcgUHJveHk8VD4oc3JjLCB7XG4gICAgICAgIGdldDogZnVuY3Rpb24gKHRhcmdldCwga2V5KSB7XG4gICAgICAgICAgICBpZiAodGFyZ2V0W2tleV0gPT09IHVuZGVmaW5lZCkge1xuICAgICAgICAgICAgICAgIHRhcmdldFtrZXldID0ge307XG4gICAgICAgICAgICB9XG4gICAgICAgICAgICBsZXQgdiA9IHRhcmdldFtrZXldO1xuICAgICAgICAgICAgaWYgKHR5cGVvZiB2ID09PSAnb2JqZWN0JyAmJiAhKHYgaW5zdGFuY2VvZiBBcnJheSkpIHtcbiAgICAgICAgICAgICAgICByZXR1cm4gY2hhaW5fb2JqZWN0KHYpO1xuICAgICAgICAgICAgfSBlbHNlIHtcbiAgICAgICAgICAgICAgICByZXR1cm4gdjsgICAgXG4gICAgICAgICAgICB9ICBcbiAgICAgICAgfSAgICBcbiAgICB9KTtcbn0gXG5cbmV4cG9ydCBmdW5jdGlvbiBjaGFpbl91cGRhdGUodGFyZ2V0OiBPYmplY3QsIHNvdXJjZTogT2JqZWN0LCByZXBsYWNlX2tleXM6IHN0cmluZ1tdPVtdLCBpbnBsYWNlPWZhbHNlKSB7XG4gICAgbGV0IHVwZGF0ZWQ6IE9iamVjdDtcbiAgICBpZiAoaW5wbGFjZSkge1xuICAgICAgICB1cGRhdGVkID0gdGFyZ2V0IHx8IHt9O1xuICAgIH0gZWxzZSB7XG4gICAgICAgIHVwZGF0ZWQgPSB7Li4udGFyZ2V0fTtcbiAgICB9XG5cbiAgICBmb3IgKGxldCBbbiwgdl0gb2YgT2JqZWN0LmVudHJpZXMoc291cmNlKSkge1xuICAgICAgICBpZiAoIXJlcGxhY2Vfa2V5cy5pbmNsdWRlcyhuKSAmJiB0eXBlb2YgdiA9PT0gJ29iamVjdCcgJiYgISh2IGluc3RhbmNlb2YgQXJyYXkpKSB7XG4gICAgICAgICAgICB1cGRhdGVkW25dID0gY2hhaW5fdXBkYXRlKHVwZGF0ZWRbbl0sIHYsIHJlcGxhY2Vfa2V5cywgaW5wbGFjZSk7XG4gICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgICB1cGRhdGVkW25dID0gdjtcbiAgICAgICAgfVxuICAgIH1cbiAgICByZXR1cm4gdXBkYXRlZDtcbn1cblxuLy8gaHR0cHM6Ly9naXRodWIuY29tL01pY3Jvc29mdC9UeXBlU2NyaXB0L2lzc3Vlcy8xMzkyM1xuLypcbiAgICBUd28gdmVyc2lvbnMgb2YgdXBkYXRlLlxuXG4gICAgRmlyc3Qgb25lLCBhbHdheXMgcmV0dXJucyB0aGUgc2FtZSB0eXBlIGFzIHRoZSBpbnB1dC5cbiAgICAgICAgSW4gdGhpcyBjYXNlLCB0aGVyZSBvbiBjb25zdHJhaW50cyB3ZSBjYW4gYXNzdW1lIGZvciB0aGUgVXBkYXRlciB0eXBlLlxuICAgIFNlY29uZCBvbmUsIG5vIHN1Y2ggZ3VhcmFudGVlLlxuKi9cblxudHlwZSBQcmltaXRpdmUgPSB1bmRlZmluZWQgfCBudWxsIHwgYm9vbGVhbiB8IHN0cmluZyB8IG51bWJlcjtcblxuZXhwb3J0IHR5cGUgVXBkYXRlcjxUPiA9ICBcbiAgICAoVCBleHRlbmRzIEZ1bmN0aW9uID8gbmV2ZXIgOiAgXG4gICAgICAgIFQgZXh0ZW5kcyBQcmltaXRpdmUgPyBQcmltaXRpdmVVcGRhdGVyPFQ+IDpcbiAgICAgICAgICAgIFQgZXh0ZW5kcyBBcnJheTxpbmZlciBVPiA/IFByaW1pdGl2ZVVwZGF0ZXI8VD4gOlxuICAgICAgICAgICAgICAgIFQgZXh0ZW5kcyBvYmplY3QgPyBPYmplY3RVcGRhdGVyPFQ+IDpcbiAgICAgICAgICAgICAgICAgICAgdW5rbm93bikgfFxuICAgICgoeDogVCkgPT4gVCk7XG5cbnR5cGUgUHJpbWl0aXZlVXBkYXRlcjxUPiA9IFQ7XG5cbnR5cGUgT2JqZWN0VXBkYXRlcjxUPiA9IHtcbiAgICBbSyBpbiBrZXlvZiBUXT86IFVwZGF0ZXI8VFtLXT5cbn07XG5cbi8vIGV4cG9ydCB0eXBlIFVwZGF0ZXI8VD4gPSBhbnlcblxuZXhwb3J0IGZ1bmN0aW9uIHVwZGF0ZTxUPihzb3VyY2U6IFQsIHVwZGF0ZXI6IFVwZGF0ZXI8VD4pOiBUIHtcbiAgICBpZiAodXBkYXRlciBpbnN0YW5jZW9mIEZ1bmN0aW9uKSB7XG4gICAgICAgIHJldHVybiB1cGRhdGVyKHNvdXJjZSk7XG4gICAgfVxuXG4gICAgLy8gbm90IGEgZnVuY3Rpb24sIG5vdCBhIG5vbi1hcnJheSBvYmplY3RcbiAgICBpZiAodXBkYXRlciBpbnN0YW5jZW9mIEFycmF5IHx8ICEodXBkYXRlciBpbnN0YW5jZW9mIE9iamVjdCkpIHtcbiAgICAgICAgcmV0dXJuIDxUPnVwZGF0ZXI7XG4gICAgfVxuXG4gICAgaWYgKHVwZGF0ZXIgaW5zdGFuY2VvZiBPYmplY3QpIHtcbiAgICAgICAgbGV0IHJlc3VsdDogUGFydGlhbDxUPjtcbiAgICAgICAgaWYgKHNvdXJjZSBpbnN0YW5jZW9mIE9iamVjdCkge1xuICAgICAgICAgICAgcmVzdWx0ID0gey4uLnNvdXJjZX07XG4gICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgICByZXN1bHQgPSB7fTtcbiAgICAgICAgfVxuICAgICAgICBcbiAgICAgICAgZm9yIChsZXQgW24sIHZdIG9mIE9iamVjdC5lbnRyaWVzKHVwZGF0ZXIpKSB7XG4gICAgICAgICAgICBpZiAodiA9PT0gdW5kZWZpbmVkKSB7XG4gICAgICAgICAgICAgICAgZGVsZXRlIHJlc3VsdFtuXTtcbiAgICAgICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgICAgICAgcmVzdWx0W25dID0gdXBkYXRlKHJlc3VsdFtuXSwgdik7XG4gICAgICAgICAgICB9XG4gICAgICAgIH1cblxuICAgICAgICByZXR1cm4gPFQ+cmVzdWx0O1xuICAgIH1cblxuICAgIHRocm93IEVycm9yKCdTaG91bGQgbmV2ZXIgZ2V0IGhlcmUnKTtcbn1cblxuLy8gdHlwZSBBbnlVcGRhdGVyID0geyBbSzogc3RyaW5nXTogQW55VXBkYXRlciB8ICgoeDogYW55KSA9PiBhbnkpIH07XG5cbi8vIGV4cG9ydCBmdW5jdGlvbiB1cGRhdGVfYW55KHNvdXJjZTogYW55LCB1cGRhdGVyOiBVcGRhdGVyPGFueT4pOiBhbnkge1xuLy8gICAgIGlmICh1cGRhdGVyLmNvbnN0cnVjdG9yID09PSBPYmplY3QpIHtcbi8vICAgICAgICAgbGV0IHJlc3VsdDtcbi8vICAgICAgICAgaWYgKHNvdXJjZS5jb25zdHJ1Y3RvciA9PT0gT2JqZWN0KSB7XG4vLyAgICAgICAgICAgICByZXN1bHQgPSB7Li4uc291cmNlfTtcbi8vICAgICAgICAgfSBlbHNlIHtcbi8vICAgICAgICAgICAgIHJlc3VsdCA9IHt9O1xuLy8gICAgICAgICB9XG4gICAgICAgIFxuLy8gICAgICAgICBmb3IgKGxldCBbbiwgdl0gb2YgT2JqZWN0LmVudHJpZXModXBkYXRlcikpIHtcbi8vICAgICAgICAgICAgIGlmICh2ID09PSB1bmRlZmluZWQpIHtcbi8vICAgICAgICAgICAgICAgICBkZWxldGUgcmVzdWx0W25dO1xuLy8gICAgICAgICAgICAgfSBlbHNlIHtcbi8vICAgICAgICAgICAgICAgICByZXN1bHRbbl0gPSB1cGRhdGVfYW55KHJlc3VsdFtuXSwgdiBhcyBhbnkpO1xuLy8gICAgICAgICAgICAgfVxuLy8gICAgICAgICB9XG5cbi8vICAgICAgICAgcmV0dXJuIHJlc3VsdDtcbi8vICAgICB9IGVsc2UgaWYgKHVwZGF0ZXIuY29uc3RydWN0b3IgPT09IEZ1bmN0aW9uKXtcbi8vICAgICAgICAgbGV0IHVwZGF0ZXI6ICgoeDogYW55KSA9PiBhbnkpO1xuLy8gICAgICAgICByZXR1cm4gdXBkYXRlcihzb3VyY2UpO1xuLy8gICAgIH0gZWxzZSB7XG4vLyAgICAgICAgIC8vanVzdCBcInJlcGxhY2luZ1wiIHNvdXJjZSB3aXRoIHVwZGF0ZXJcbi8vICAgICAgICAgbGV0IHVwZGF0ZXI6IGFueTtcbi8vICAgICAgICAgcmV0dXJuIHVwZGF0ZXI7XG4vLyAgICAgfVxuLy8gfVxuLy8gZXhwb3J0IGZ1bmN0aW9uIHVwZGF0ZTxUPihzb3VyY2U6IFQsIHVwZGF0ZXI6IFVwZGF0ZXI8VD4pOiBUIHtcbi8vICAgICByZXR1cm4gdXBkYXRlX2FueShzb3VyY2UsIHVwZGF0ZXIpO1xuLy8gfVxuXG5leHBvcnQgZnVuY3Rpb24gYXJyYXlzX2Z1Y2tfZXF1YWw8VD4oYXIxOiBUW10sIGFyMjogVFtdKSB7XG4gICAgaWYgKGFyMS5sZW5ndGggIT09IGFyMi5sZW5ndGgpIHtcbiAgICAgICAgcmV0dXJuIGZhbHNlO1xuICAgIH1cblxuICAgIGZvciAobGV0IGkgPSAwOyBpIDwgYXIxLmxlbmd0aDsgaSsrKSB7XG4gICAgICAgIGlmIChhcjFbaV0udG9TdHJpbmcoKSAhPT0gYXIyW2ldLnRvU3RyaW5nKCkpIHtcbiAgICAgICAgICAgIHJldHVybiBmYWxzZTtcbiAgICAgICAgfVxuICAgIH1cbiAgICByZXR1cm4gdHJ1ZTtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIGFycmF5X2Z1Y2tfY29udGFpbnM8VD4oYXI6IFRbXSwgZWx0OiBUKXtcbiAgICByZXR1cm4gYXIuc29tZSgoeCkgPT4geC50b1N0cmluZygpID09PSBlbHQudG9TdHJpbmcoKSlcbn1cblxuZXhwb3J0IHR5cGUgUG9pbnQyID0gW251bWJlciwgbnVtYmVyXTtcblxuZXhwb3J0IGZ1bmN0aW9uIG1ha2VfbWF0cml4MihkYXRhX29iajogbnVtYmVyW11bXSkge1xuICAgIGxldCBkaW1feSA9IGRhdGFfb2JqLmxlbmd0aDtcbiAgICBsZXQgZGltX3ggPSBkYXRhX29ialswXS5sZW5ndGg7XG5cbiAgICBsZXQgZGF0YSA9IG5ldyBJbnQxNkFycmF5KGRhdGFfb2JqLnJlZHVjZSgoeCwgeSkgPT4geC5jb25jYXQoeSkpKTtcbiAgICAvLyBUT0RPIGNvbXBsYWluIGlmIHRoZSB0b3RhbCBsZW5ndGggaXMgd3JvbmdcbiAgICByZXR1cm4gbmV3IE1hdHJpeDIoZGF0YSwgZGltX3gsIGRpbV95KTtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIHplcm9zKGRpbV94OiBudW1iZXIsIGRpbV95OiBudW1iZXIpIHtcbiAgICByZXR1cm4gbmV3IE1hdHJpeDIobmV3IEludDE2QXJyYXkoZGltX3ggKiBkaW1feSksIGRpbV94LCBkaW1feSk7XG59XG5cbmV4cG9ydCBjbGFzcyBNYXRyaXgyIHtcbiAgICByZWFkb25seSBkaW1feDogbnVtYmVyO1xuICAgIHJlYWRvbmx5IGRpbV95OiBudW1iZXI7XG4gICAgcmVhZG9ubHkgZGF0YTogSW50MTZBcnJheTtcbiAgICBcbiAgICBjb25zdHJ1Y3RvciAoZGF0YTogSW50MTZBcnJheSwgZGltX3g6IG51bWJlciwgZGltX3k6IG51bWJlcikge1xuICAgICAgICB0aGlzLmRhdGEgPSBkYXRhO1xuICAgICAgICB0aGlzLmRpbV94ID0gZGltX3g7XG4gICAgICAgIHRoaXMuZGltX3kgPSBkaW1feTtcbiAgICB9XG5cbiAgICBnZXQoeDogbnVtYmVyLCB5OiBudW1iZXIpOiBudW1iZXIge1xuICAgICAgICByZXR1cm4gdGhpcy5kYXRhW3kgKiB0aGlzLmRpbV94ICsgeF07XG4gICAgfVxuXG4gICAgc2V0KHg6IG51bWJlciwgeTogbnVtYmVyLCB2YWx1ZTogbnVtYmVyKSB7XG4gICAgICAgIHRoaXMuZGF0YVt5ICogdGhpcy5kaW1feCArIHhdID0gdmFsdWU7XG4gICAgfVxuXG4gICAgcm90YXRlKGRlZ3JlZXM6IG51bWJlcik6IE1hdHJpeDIge1xuICAgICAgICAvL3ZhbGlkYXRlIGlucHV0IGJldHRlclxuXG4gICAgICAgIGlmIChkZWdyZWVzID09IDM2MCB8fCBkZWdyZWVzID09IDApIHtcbiAgICAgICAgICAgIHJldHVybiB0aGlzO1xuICAgICAgICB9XG5cbiAgICAgICAgY29uc3Qgbl9yb3RhdGlvbnMgPSBkZWdyZWVzIC8gOTA7XG4gICAgICAgIGxldCBtOiBNYXRyaXgyID0gdGhpcztcbiAgICAgICAgY29uc3QgZGltX3ggPSB0aGlzLmRpbV94O1xuICAgICAgICBjb25zdCBkaW1feSA9IHRoaXMuZGltX3k7XG4gICAgICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbl9yb3RhdGlvbnM7IGkrKyl7XG4gICAgICAgICAgICBsZXQgbmV3X2RhdGEgPSBuZXcgSW50MTZBcnJheShkaW1feCAqIGRpbV95KTtcbiAgICAgICAgICAgIGxldCBuZXdfbWF0MiA9IG5ldyBNYXRyaXgyKG5ld19kYXRhLCBkaW1feSwgZGltX3gpO1xuICAgICAgICAgICAgZm9yIChsZXQgeSA9IDA7IHkgPCBkaW1feTsgeSsrKXtcbiAgICAgICAgICAgICAgICBmb3IgKGxldCB4ID0gMDsgeCA8IGRpbV94OyB4Kyspe1xuICAgICAgICAgICAgICAgICAgICBuZXdfbWF0Mi5zZXQoZGltX3kgLSAxIC0geSwgeCwgbS5nZXQoeCwgeSkpO1xuICAgICAgICAgICAgICAgIH1cbiAgICAgICAgICAgIH1cbiAgICAgICAgICAgIG0gPSBuZXdfbWF0MjtcbiAgICAgICAgfVxuICAgICAgICByZXR1cm4gbVxuICAgIH1cblxuICAgIGNvbnRhaW5zKHZhbHVlOiBudW1iZXIpOiBib29sZWFue1xuICAgICAgICByZXR1cm4gdGhpcy5kYXRhLmluZGV4T2YodmFsdWUpICE9PSAtMTtcbiAgICB9XG5cbiAgICBjb3B5KCk6IE1hdHJpeDIge1xuICAgICAgICByZXR1cm4gbmV3IE1hdHJpeDIodGhpcy5kYXRhLnNsaWNlKCksIHRoaXMuZGltX3gsIHRoaXMuZGltX3kpO1xuICAgIH1cbn1cblxuXG5leHBvcnQgdHlwZSBDb3VudGVyPFQ+ID0gTWFwPFQsIG51bWJlcj47XG5cbmV4cG9ydCBmdW5jdGlvbiBjb3VudGVyX2FkZDxUPihjb3VudGVyOiBDb3VudGVyPFQ+LCBrZXk6IFQsIGluYzogbnVtYmVyKXtcbiAgICBsZXQgY3VyX3ZhbCA9IDA7XG4gICAgaWYgKGNvdW50ZXIuaGFzKGtleSkpe1xuICAgICAgICBjdXJfdmFsID0gY291bnRlci5nZXQoa2V5KTtcbiAgICB9XG4gICAgcmV0dXJuIGNvdW50ZXIuc2V0KGtleSwgY3VyX3ZhbCArIGluYyk7XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBjb3VudGVyX2dldDxUPihjb3VudGVyOiBDb3VudGVyPFQ+LCBrZXk6IFQpe1xuICAgIGxldCBjdXJfdmFsID0gMDtcbiAgICBpZiAoY291bnRlci5oYXMoa2V5KSl7XG4gICAgICAgIGN1cl92YWwgPSBjb3VudGVyLmdldChrZXkpO1xuICAgIH1cbiAgICByZXR1cm4gY3VyX3ZhbDtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIGNvdW50ZXJfdXBkYXRlPFQ+KGNvdW50ZXIxOiBDb3VudGVyPFQ+LCBjb3VudGVyMjogQ291bnRlcjxUPil7XG4gICAgY291bnRlcjIuZm9yRWFjaChmdW5jdGlvbiAodiwgayl7XG4gICAgICAgIGNvdW50ZXJfYWRkKGNvdW50ZXIxLCBrLCB2KTtcbiAgICB9KTtcblxuICAgIHJldHVybiBjb3VudGVyMTtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIGNvdW50ZXJfb3JkZXI8VD4oY291bnRlcjogQ291bnRlcjxUPiwgaW5jbHVkZV96ZXJvPWZhbHNlKXtcbiAgICBsZXQgcmVzdWx0ID0gQXJyYXkuZnJvbShjb3VudGVyLmVudHJpZXMoKSkuc29ydCgoYSwgYikgPT4gYVsxXSAtIGJbMV0pO1xuICAgIGlmICghaW5jbHVkZV96ZXJvKSB7XG4gICAgICAgIHJlc3VsdCA9IHJlc3VsdC5maWx0ZXIoKFt0LCBpXSkgPT4gaSA+IDApO1xuICAgIH1cbiAgICByZXR1cm4gcmVzdWx0Lm1hcCgoW3QsIGldKSA9PiB0KTtcbn1cblxuLy8gZXhwb3J0IHR5cGUgRGlzYWJsYWJsZTxUPiA9IFQgfCBEV3JhcHBlZDxUPjtcbi8vIGV4cG9ydCB0eXBlIERXcmFwcGVkPFQ+ID0ge3ZhbHVlOiBULCBkaXNhYmxhYmxlOiB0cnVlLCBlbmFibGVkOiBib29sZWFufVxuXG4vLyBleHBvcnQgZnVuY3Rpb24gaXNfZHdyYXBwZWQ8VD4oeDogRGlzYWJsYWJsZTxUPik6IHggaXMgRFdyYXBwZWQ8VD57XG4vLyAgICAgcmV0dXJuICg8RFdyYXBwZWQ8VD4+eCkuZGlzYWJsYWJsZSAhPT0gdW5kZWZpbmVkO1xuLy8gfVxuXG4vLyBleHBvcnQgZnVuY3Rpb24gc2V0X2VuYWJsZWQ8VD4oeDogRGlzYWJsYWJsZTxUPiwgZW5hYmxlZDogYm9vbGVhbj10cnVlKTogRGlzYWJsYWJsZTxUPntcbi8vICAgICBpZiAoaXNfZHdyYXBwZWQoeCkpIHtcbi8vICAgICAgICAgaWYgKHguZW5hYmxlZCAhPT0gZW5hYmxlZCkge1xuLy8gICAgICAgICAgICAgeC5lbmFibGVkID0gZW5hYmxlZDsgLy9jb3VsZCBkbyBjaGVjayBoZXJlIGZvciBlbmFibGVkIGJlaW5nIHNldCBwcm9wZXJseSBhbHJlYWR5XG4vLyAgICAgICAgIH1cbi8vICAgICAgICAgcmV0dXJuIHg7XG4vLyAgICAgfSBlbHNlIHtcbi8vICAgICAgICAgbGV0IHJlc3VsdDogRFdyYXBwZWQ8VD4gPSB7dmFsdWU6IHgsIGRpc2FibGFibGU6IHRydWUsIGVuYWJsZWR9O1xuICAgICAgICBcbi8vICAgICAgICAgcmV0dXJuIHJlc3VsdDtcbi8vICAgICB9XG4vLyB9XG5cbi8vIGV4cG9ydCBmdW5jdGlvbiB1bndyYXA8VD4oeDogRGlzYWJsYWJsZTxUPik6IFQge1xuLy8gICAgIGlmIChpc19kd3JhcHBlZCh4KSkge1xuLy8gICAgICAgICByZXR1cm4geC52YWx1ZTtcbi8vICAgICB9IGVsc2Uge1xuLy8gICAgICAgICByZXR1cm4geDtcbi8vICAgICB9XG4vLyB9XG5cbi8vIGV4cG9ydCBmdW5jdGlvbiB3aXRoX2Rpc2FibGFibGU8VDEsIFQyPih4OiBEaXNhYmxhYmxlPFQxPiwgZjogKHQxOiBUMSkgPT4gRGlzYWJsYWJsZTxUMj4pOiBEaXNhYmxhYmxlPFQyPiB7XG4vLyAgICAgcmV0dXJuIHNldF9lbmFibGVkKHVud3JhcChmKHVud3JhcCh4KSkpLCBpc19lbmFibGVkKHgpKTtcbi8vIH1cblxuLy8gZXhwb3J0IGZ1bmN0aW9uIGlzX2VuYWJsZWQ8VD4oeDogRGlzYWJsYWJsZTxUPik6IGJvb2xlYW4ge1xuLy8gICAgIGlmIChpc19kd3JhcHBlZCh4KSl7XG4vLyAgICAgICAgIHJldHVybiB4LmVuYWJsZWQ7XG4vLyAgICAgfSBlbHNlIHtcbi8vICAgICAgICAgcmV0dXJuIHRydWU7XG4vLyAgICAgfVxuLy8gfVxuXG5leHBvcnQgdHlwZSBBbm5vdGF0YWJsZTxULCBBVD4gPSBUIHwgQW5ub3RhdGVkPFQsIEFUPjtcbmV4cG9ydCB0eXBlIEFubm90YXRlZDxULCBBVD4gPSB7dmFsdWU6IFQsIGFubm90YXRlZDogdHJ1ZSwgYW5ub3RhdGlvbjogUGFydGlhbDxBVD59O1xuXG4vL2V4cG9ydCB0eXBlIF9NZXJnZUFubm90YXRpb25zPFQsIEExIGV4dGVuZHMgQW5ub3RhdGFibGU8VCwgQVQxPiwgIEFUMSwgQVQyPiA9IEFubm90YXRhYmxlPFQsIEFUMSAmIEFUMj5cbi8vZXhwb3J0IHR5cGUgTWVyZ2VBbm5vdGF0aW9uczxULCA+ID0gXG5cbmV4cG9ydCBmdW5jdGlvbiBpc19hbm5vdGF0ZWQ8VCwgQVQ+KHg6IEFubm90YXRhYmxlPFQsIEFUPik6IHggaXMgQW5ub3RhdGVkPFQsIEFUPntcbiAgICBpZiAoeCA9PT0gdW5kZWZpbmVkKSB7XG4gICAgICAgIHJldHVybiBmYWxzZTtcbiAgICB9XG4gICAgcmV0dXJuICg8QW5ub3RhdGVkPFQsIEFUPj54KS5hbm5vdGF0ZWQgIT09IHVuZGVmaW5lZDtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIGFubm90YXRlPFQsIEFUPih4OiBBbm5vdGF0YWJsZTxULCBBVD4sIGFubm90YXRpb24/OiBQYXJ0aWFsPEFUPik6IEFubm90YXRlZDxULCBBVD57XG4gICAgaWYgKGFubm90YXRpb24gPT09IHVuZGVmaW5lZCkge1xuICAgICAgICBhbm5vdGF0aW9uID0ge307XG4gICAgfVxuICAgIGlmIChpc19hbm5vdGF0ZWQoeCkpIHtcbiAgICAgICAgT2JqZWN0LmFzc2lnbih4LmFubm90YXRpb24sIGFubm90YXRpb24pO1xuICAgICAgICByZXR1cm4geDtcbiAgICB9IGVsc2Uge1xuICAgICAgICBsZXQgcmVzdWx0OiBBbm5vdGF0ZWQ8VCwgQVQ+ID0ge3ZhbHVlOiB4LCBhbm5vdGF0ZWQ6IHRydWUsIGFubm90YXRpb259O1xuICAgICAgICBcbiAgICAgICAgcmV0dXJuIHJlc3VsdDtcbiAgICB9XG59XG5cbmV4cG9ydCBmdW5jdGlvbiB1bndyYXA8VCwgQVQ+KHg6IEFubm90YXRhYmxlPFQsIEFUPik6IFQge1xuICAgIGlmIChpc19hbm5vdGF0ZWQoeCkpIHtcbiAgICAgICAgcmV0dXJuIHgudmFsdWU7XG4gICAgfSBlbHNlIHtcbiAgICAgICAgcmV0dXJuIHg7XG4gICAgfVxufVxuXG5leHBvcnQgZnVuY3Rpb24gd2l0aF9hbm5vdGF0YWJsZTxUMSwgVDIsIFRBPihmOiAodDE6IFQxKSA9PiBUMiwgZGVmYXVsdF92YWx1ZT86IFRBKTogKHg6IEFubm90YXRhYmxlPFQxLCBUQT4pID0+IEFubm90YXRhYmxlPFQyLCBUQT4ge1xuICAgIHJldHVybiAoeDogQW5ub3RhdGFibGU8VDEsIFRBPikgPT4gYW5ub3RhdGUodW53cmFwKGYodW53cmFwKHgpKSksIGdldF9hbm5vdGF0aW9uKHgsIGRlZmF1bHRfdmFsdWUpKTtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIGdldF9hbm5vdGF0aW9uPFQsIFRBPih4OiBBbm5vdGF0YWJsZTxULCBUQT4sIGRlZmF1bHRfdmFsdWU/OiBUQSk6IFBhcnRpYWw8VEE+IHtcbiAgICBpZiAoaXNfYW5ub3RhdGVkKHgpKXtcbiAgICAgICAgaWYgKGRlZmF1bHRfdmFsdWUgIT09IHVuZGVmaW5lZCkge1xuICAgICAgICAgICAgcmV0dXJuIHsuLi48YW55PmRlZmF1bHRfdmFsdWUsIC4uLjxhbnk+eC5hbm5vdGF0aW9ufTtcbiAgICAgICAgfSBlbHNlIHtcbiAgICAgICAgICAgIHJldHVybiB4LmFubm90YXRpb247XG4gICAgICAgIH1cbiAgICAgICAgXG4gICAgfSBlbHNlIHtcbiAgICAgICAgcmV0dXJuIGRlZmF1bHRfdmFsdWU7XG4gICAgfVxufVxuXG5leHBvcnQgdHlwZSBBRGlzYWJsYWJsZSA9IHtlbmFibGVkOiBib29sZWFufTtcbmV4cG9ydCB0eXBlIERpc2FibGFibGU8VD4gPSBBbm5vdGF0YWJsZTxULCBBRGlzYWJsYWJsZT47XG5cbmV4cG9ydCBmdW5jdGlvbiBzZXRfZW5hYmxlZDxUPih4OiBEaXNhYmxhYmxlPFQ+LCBlbmFibGVkOiBib29sZWFuPXRydWUpe1xuICAgIHJldHVybiBhbm5vdGF0ZSh4LCB7ZW5hYmxlZH0pO1xufVxuXG5leHBvcnQgZnVuY3Rpb24gd2l0aF9kaXNhYmxhYmxlPFQxLCBUMj4oZjogKHQxOiBUMSkgPT4gVDIpOiAoeDogRGlzYWJsYWJsZTxUMT4pID0+IERpc2FibGFibGU8VDI+IHtcbiAgICByZXR1cm4gd2l0aF9hbm5vdGF0YWJsZShmLCB7ZW5hYmxlZDogdHJ1ZX0pO1xufVxuXG5leHBvcnQgZnVuY3Rpb24gaXNfZW5hYmxlZDxUPih4OiBEaXNhYmxhYmxlPFQ+KTogYm9vbGVhbiB7XG4gICAgbGV0IHJlc3VsdCA9IGdldF9hbm5vdGF0aW9uKHgpO1xuICAgIGlmIChyZXN1bHQgPT09IHVuZGVmaW5lZCkge1xuICAgICAgICByZXR1cm4gdHJ1ZTtcbiAgICB9XG5cbiAgICByZXR1cm4gcmVzdWx0LmVuYWJsZWQ7XG59XG5cblxuZXhwb3J0IHR5cGUgTnVtYmVyZWQ8VD4gPSBBbm5vdGF0YWJsZTxULCBudW1iZXI+XG5cblxuXG4vLyBFRElUOiBhY3R1YWxseSwgdGhlIGJlbG93IGlzIG1hZGUgaXJyZWxldmFudCBieSBcImFzIGNvbnN0XCIgaW4gMy40LlxuLy8gSG9seSBkYW5nIHRoaXMgaXMgY29vbDpcbi8vIGh0dHBzOi8vc3RhY2tvdmVyZmxvdy5jb20vcXVlc3Rpb25zLzQ2NDQ1MTE1L2Rlcml2ZS1hLXR5cGUtYS1mcm9tLWEtbGlzdC1vZi1zdHJpbmdzLWFcbi8vXG4vLyBQb2ludCBoZXJlIGlzIHRvIGRlZmluZSB0aGUgbGlzdCBvZiBPYnNlcnZlck1vbWVudElEcyBhbmQgUGVyY2VwdGlvbklEc1xuLy8gYXMgYSBjb25zdGFudCwgYW5kIGdldCBzdHJpbmcgbGl0ZXJhbCB0eXBlY2hlY2tpbmcgZWxzZXdoZXJlIGluIHRoZSBjb2RlLlxuZXhwb3J0IGZ1bmN0aW9uIGluZmVyX2xpdGVyYWxfYXJyYXk8VCBleHRlbmRzIHN0cmluZz4oLi4uYXJyOiBUW10pOiBUW10ge1xuICByZXR1cm4gYXJyO1xufVxuXG5leHBvcnQgZnVuY3Rpb24gYXJyYXlfbGFzdDxUPihhcnI6IFRbXSk6IFQge1xuICAgIHJldHVybiBhcnJbYXJyLmxlbmd0aCAtIDFdO1xufVxuXG5cbiJdLCJzb3VyY2VSb290IjoiIn0=\n//# sourceURL=webpack-internal:///./src/typescript/datatypes.ts\n");
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/bird_world.ts":
+/*!**************************************************!*\
+  !*** ./src/typescript/demo_worlds/bird_world.ts ***!
+  \**************************************************/
+/*! exports provided: new_bird_world */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"new_bird_world\", function() { return new_bird_world; });\n/* harmony import */ var _datatypes__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../datatypes */ \"./src/typescript/datatypes.ts\");\n/* harmony import */ var _world__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../world */ \"./src/typescript/world.ts\");\nfunction _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; var ownKeys = Object.keys(source); if (typeof Object.getOwnPropertySymbols === 'function') { ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) { return Object.getOwnPropertyDescriptor(source, sym).enumerable; })); } ownKeys.forEach(function (key) { _defineProperty(target, key, source[key]); }); } return target; }\n\nfunction _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }\n\n\n\n\nvar initial_world = _objectSpread({}, Object(_world__WEBPACK_IMPORTED_MODULE_1__[\"get_initial_world\"])(), {\n  is_in_heaven: false,\n  message: 'You are currently down.'\n});\n\nvar handle_command = function handle_command(parser, world) {\n  parser.consume('*go');\n  var is_locked = {\n    'up': world.is_in_heaven,\n    'down': !world.is_in_heaven\n  };\n  var dir = parser.split(['up', 'down'].map(function (dir) {\n    return function () {\n      return parser.consume([{\n        kind: 'ConsumeSpec',\n        token: dir,\n        token_type: {\n          kind: 'Option'\n        },\n        typeahead_type: is_locked[dir] ? {\n          kind: 'Locked'\n        } : {\n          kind: 'Available'\n        }\n      }], dir);\n    };\n  }));\n  parser.submit();\n  return Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"update\"])(world, {\n    message: \"You are currently \".concat(dir, \".\"),\n    is_in_heaven: function is_in_heaven(_) {\n      return !_;\n    }\n  });\n};\n\nvar interpret_history = function interpret_history(old_world, new_world) {\n  if (old_world.is_in_heaven) {\n    return [{\n      kind: 'Add',\n      label: 'happy'\n    }];\n  }\n};\n\nfunction new_bird_world() {\n  return new _world__WEBPACK_IMPORTED_MODULE_1__[\"WorldDriver\"]({\n    initial_world: initial_world,\n    handle_command: handle_command,\n    interpret_history: interpret_history\n  });\n}//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvdHlwZXNjcmlwdC9kZW1vX3dvcmxkcy9iaXJkX3dvcmxkLnRzP2QxODYiXSwibmFtZXMiOlsiaW5pdGlhbF93b3JsZCIsImdldF9pbml0aWFsX3dvcmxkIiwiaXNfaW5faGVhdmVuIiwibWVzc2FnZSIsImhhbmRsZV9jb21tYW5kIiwicGFyc2VyIiwid29ybGQiLCJjb25zdW1lIiwiaXNfbG9ja2VkIiwiZGlyIiwic3BsaXQiLCJtYXAiLCJraW5kIiwidG9rZW4iLCJ0b2tlbl90eXBlIiwidHlwZWFoZWFkX3R5cGUiLCJzdWJtaXQiLCJ1cGRhdGUiLCJfIiwiaW50ZXJwcmV0X2hpc3RvcnkiLCJvbGRfd29ybGQiLCJuZXdfd29ybGQiLCJsYWJlbCIsIm5ld19iaXJkX3dvcmxkIiwiV29ybGREcml2ZXIiXSwibWFwcGluZ3MiOiI7Ozs7Ozs7O0FBQUE7QUFDQTs7QUFRQSxJQUFJQSxhQUF3QixxQkFDckJDLGdFQUFpQixFQURJO0FBRXhCQyxjQUFZLEVBQUUsS0FGVTtBQUd4QkMsU0FBTyxFQUFFO0FBSGUsRUFBNUI7O0FBTUEsSUFBSUMsY0FBeUMsR0FBRyxTQUE1Q0EsY0FBNEMsQ0FBQ0MsTUFBRCxFQUFTQyxLQUFULEVBQW1CO0FBQy9ERCxRQUFNLENBQUNFLE9BQVAsQ0FBZSxLQUFmO0FBRUEsTUFBSUMsU0FBUyxHQUFHO0FBQUUsVUFBTUYsS0FBSyxDQUFDSixZQUFkO0FBQTRCLFlBQVEsQ0FBQ0ksS0FBSyxDQUFDSjtBQUEzQyxHQUFoQjtBQUVBLE1BQUlPLEdBQUcsR0FBR0osTUFBTSxDQUFDSyxLQUFQLENBQ0wsQ0FBQyxJQUFELEVBQU8sTUFBUCxDQUFELENBQTBCQyxHQUExQixDQUE4QixVQUFBRixHQUFHO0FBQUEsV0FDN0I7QUFBQSxhQUFNSixNQUFNLENBQUNFLE9BQVAsQ0FBZSxDQUFDO0FBQ2xCSyxZQUFJLEVBQUUsYUFEWTtBQUVsQkMsYUFBSyxFQUFFSixHQUZXO0FBR2xCSyxrQkFBVSxFQUFFO0FBQUNGLGNBQUksRUFBRTtBQUFQLFNBSE07QUFJbEJHLHNCQUFjLEVBQUVQLFNBQVMsQ0FBQ0MsR0FBRCxDQUFULEdBQWlCO0FBQUNHLGNBQUksRUFBRTtBQUFQLFNBQWpCLEdBQW9DO0FBQUNBLGNBQUksRUFBRTtBQUFQO0FBSmxDLE9BQUQsQ0FBZixFQUtGSCxHQUxFLENBQU47QUFBQSxLQUQ2QjtBQUFBLEdBQWpDLENBRE0sQ0FBVjtBQVdBSixRQUFNLENBQUNXLE1BQVA7QUFFQSxTQUFPQyx5REFBTSxDQUFDWCxLQUFELEVBQVE7QUFDakJILFdBQU8sOEJBQXVCTSxHQUF2QixNQURVO0FBRWpCUCxnQkFBWSxFQUFFLHNCQUFBZ0IsQ0FBQztBQUFBLGFBQUksQ0FBQ0EsQ0FBTDtBQUFBO0FBRkUsR0FBUixDQUFiO0FBSUgsQ0F0QkQ7O0FBd0JBLElBQUlDLGlCQUFnRCxHQUFHLFNBQW5EQSxpQkFBbUQsQ0FBQ0MsU0FBRCxFQUFZQyxTQUFaLEVBQTBCO0FBQzdFLE1BQUlELFNBQVMsQ0FBQ2xCLFlBQWQsRUFBNEI7QUFDeEIsV0FBTyxDQUFDO0FBQUVVLFVBQUksRUFBRSxLQUFSO0FBQWVVLFdBQUssRUFBRTtBQUF0QixLQUFELENBQVA7QUFDSDtBQUNKLENBSkQ7O0FBTU8sU0FBU0MsY0FBVCxHQUEwQjtBQUM3QixTQUFPLElBQUlDLGtEQUFKLENBQWdCO0FBQUN4QixpQkFBYSxFQUFiQSxhQUFEO0FBQWdCSSxrQkFBYyxFQUFkQSxjQUFoQjtBQUFnQ2UscUJBQWlCLEVBQWpCQTtBQUFoQyxHQUFoQixDQUFQO0FBQ0giLCJmaWxlIjoiLi9zcmMvdHlwZXNjcmlwdC9kZW1vX3dvcmxkcy9iaXJkX3dvcmxkLnRzLmpzIiwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgdXBkYXRlIH0gZnJvbSAnLi4vZGF0YXR5cGVzJztcbmltcG9ydCB7IENvbW1hbmRIYW5kbGVyLCBnZXRfaW5pdGlhbF93b3JsZCwgSGlzdG9yeUludGVycHJldGVyLCBXb3JsZCwgV29ybGREcml2ZXIgfSBmcm9tICcuLi93b3JsZCc7XG5cblxuXG5pbnRlcmZhY2UgQmlyZFdvcmxkIGV4dGVuZHMgV29ybGQge1xuICAgIHJlYWRvbmx5IGlzX2luX2hlYXZlbjogYm9vbGVhblxufVxuXG5sZXQgaW5pdGlhbF93b3JsZDogQmlyZFdvcmxkID0ge1xuICAgIC4uLmdldF9pbml0aWFsX3dvcmxkPEJpcmRXb3JsZD4oKSxcbiAgICBpc19pbl9oZWF2ZW46IGZhbHNlLFxuICAgIG1lc3NhZ2U6ICdZb3UgYXJlIGN1cnJlbnRseSBkb3duLicsXG59O1xuXG5sZXQgaGFuZGxlX2NvbW1hbmQ6IENvbW1hbmRIYW5kbGVyPEJpcmRXb3JsZD4gPSAocGFyc2VyLCB3b3JsZCkgPT4ge1xuICAgIHBhcnNlci5jb25zdW1lKCcqZ28nKTtcblxuICAgIGxldCBpc19sb2NrZWQgPSB7ICd1cCc6IHdvcmxkLmlzX2luX2hlYXZlbiwgJ2Rvd24nOiAhd29ybGQuaXNfaW5faGVhdmVuIH07XG5cbiAgICBsZXQgZGlyID0gcGFyc2VyLnNwbGl0KFxuICAgICAgICAoWyd1cCcsICdkb3duJ10gYXMgY29uc3QpLm1hcChkaXIgPT5cbiAgICAgICAgICAgICgpID0+IHBhcnNlci5jb25zdW1lKFt7XG4gICAgICAgICAgICAgICAga2luZDogJ0NvbnN1bWVTcGVjJyxcbiAgICAgICAgICAgICAgICB0b2tlbjogZGlyLFxuICAgICAgICAgICAgICAgIHRva2VuX3R5cGU6IHtraW5kOiAnT3B0aW9uJ30sXG4gICAgICAgICAgICAgICAgdHlwZWFoZWFkX3R5cGU6IGlzX2xvY2tlZFtkaXJdID8ge2tpbmQ6ICdMb2NrZWQnfSA6IHtraW5kOiAnQXZhaWxhYmxlJ31cbiAgICAgICAgICAgIH1dLCBkaXIpXG4gICAgICAgIClcbiAgICApO1xuXG4gICAgcGFyc2VyLnN1Ym1pdCgpO1xuICAgIFxuICAgIHJldHVybiB1cGRhdGUod29ybGQsIHtcbiAgICAgICAgbWVzc2FnZTogYFlvdSBhcmUgY3VycmVudGx5ICR7ZGlyfS5gLFxuICAgICAgICBpc19pbl9oZWF2ZW46IF8gPT4gIV9cbiAgICB9KTtcbn1cblxubGV0IGludGVycHJldF9oaXN0b3J5OiBIaXN0b3J5SW50ZXJwcmV0ZXI8QmlyZFdvcmxkPiA9IChvbGRfd29ybGQsIG5ld193b3JsZCkgPT4ge1xuICAgIGlmIChvbGRfd29ybGQuaXNfaW5faGVhdmVuKSB7XG4gICAgICAgIHJldHVybiBbeyBraW5kOiAnQWRkJywgbGFiZWw6ICdoYXBweScgfV07XG4gICAgfVxufVxuXG5leHBvcnQgZnVuY3Rpb24gbmV3X2JpcmRfd29ybGQoKSB7XG4gICAgcmV0dXJuIG5ldyBXb3JsZERyaXZlcih7aW5pdGlhbF93b3JsZCwgaGFuZGxlX2NvbW1hbmQsIGludGVycHJldF9oaXN0b3J5fSk7XG59Il0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///./src/typescript/demo_worlds/bird_world.ts\n");
+
+/***/ }),
+
+/***/ "./src/typescript/main.tsx":
+/*!*********************************!*\
+  !*** ./src/typescript/main.tsx ***!
+  \*********************************/
+/*! no exports provided */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ \"./node_modules/react/index.js\");\n/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var react_dom__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-dom */ \"./node_modules/react-dom/index.js\");\n/* harmony import */ var react_dom__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react_dom__WEBPACK_IMPORTED_MODULE_1__);\n/* harmony import */ var _parser2__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./parser2 */ \"./src/typescript/parser2.ts\");\n/* harmony import */ var _components_Terminal3__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../components/Terminal3 */ \"./src/components/Terminal3.tsx\");\n/* harmony import */ var _demo_worlds_bird_world__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./demo_worlds/bird_world */ \"./src/typescript/demo_worlds/bird_world.ts\");\n\n\n\n\n\nconsole.time('world_build');\nvar driver = Object(_demo_worlds_bird_world__WEBPACK_IMPORTED_MODULE_4__[\"new_bird_world\"])();\n\nfor (var i = 0; i < 10; i++) {\n  driver.apply_command(Object(_parser2__WEBPACK_IMPORTED_MODULE_2__[\"raw\"])('go up'));\n  driver.apply_command(Object(_parser2__WEBPACK_IMPORTED_MODULE_2__[\"raw\"])('go down'));\n}\n\nconsole.timeEnd('world_build');\nconsole.time('render');\nreact_dom__WEBPACK_IMPORTED_MODULE_1__[\"render\"](react__WEBPACK_IMPORTED_MODULE_0__[\"createElement\"](_components_Terminal3__WEBPACK_IMPORTED_MODULE_3__[\"History\"], {\n  world: driver.current_world\n}), document.getElementById('terminal'));\nconsole.timeEnd('render'); // import {Terminal} from \"../components/Terminal\";\n// import {WorldDriver} from \"../typescript/commands\";\n// import {VenienceWorld, VenienceWorldState} from '../typescript/venience/venience_world';\n// let start: VenienceWorldState = {};\n// // start.experiences = ['grass, asking 2'];\n// //start.experiences = ['alcove, entering the forest']; \n// // start.experiences = ['woods, ending interpretation'];\n// // start.experiences = ['bed, sitting up 2'];\n// // start.experiences = ['woods, crossing the boundary 2'];\n// // start.experiences = ['woods, clearing'];\n// // start.has_regarded = {'tangle, 3': true};\n// // start.has_understood = {'tangle, 3': true};\n// let world_driver = new WorldDriver(new VenienceWorld(start))\n// ReactDom.render(<Terminal world_driver={world_driver} />, document.getElementById('terminal'));//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvdHlwZXNjcmlwdC9tYWluLnRzeD83M2YzIl0sIm5hbWVzIjpbImNvbnNvbGUiLCJ0aW1lIiwiZHJpdmVyIiwibmV3X2JpcmRfd29ybGQiLCJpIiwiYXBwbHlfY29tbWFuZCIsInJhdyIsInRpbWVFbmQiLCJSZWFjdERvbSIsImN1cnJlbnRfd29ybGQiLCJkb2N1bWVudCIsImdldEVsZW1lbnRCeUlkIl0sIm1hcHBpbmdzIjoiQUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFDQTtBQUdBO0FBR0E7QUFFQTtBQUVBQSxPQUFPLENBQUNDLElBQVIsQ0FBYSxhQUFiO0FBQ0EsSUFBSUMsTUFBTSxHQUFHQyw4RUFBYyxFQUEzQjs7QUFFQSxLQUFLLElBQUlDLENBQUMsR0FBRyxDQUFiLEVBQWdCQSxDQUFDLEdBQUcsRUFBcEIsRUFBd0JBLENBQUMsRUFBekIsRUFBNkI7QUFDekJGLFFBQU0sQ0FBQ0csYUFBUCxDQUFxQkMsb0RBQUcsQ0FBQyxPQUFELENBQXhCO0FBQ0FKLFFBQU0sQ0FBQ0csYUFBUCxDQUFxQkMsb0RBQUcsQ0FBQyxTQUFELENBQXhCO0FBQ0g7O0FBQ0ROLE9BQU8sQ0FBQ08sT0FBUixDQUFnQixhQUFoQjtBQUdBUCxPQUFPLENBQUNDLElBQVIsQ0FBYSxRQUFiO0FBQ0FPLGdEQUFBLENBQWdCLG9EQUFDLDZEQUFEO0FBQVMsT0FBSyxFQUFFTixNQUFNLENBQUNPO0FBQXZCLEVBQWhCLEVBQTBEQyxRQUFRLENBQUNDLGNBQVQsQ0FBd0IsVUFBeEIsQ0FBMUQ7QUFDQVgsT0FBTyxDQUFDTyxPQUFSLENBQWdCLFFBQWhCLEUsQ0FFQTtBQUVBO0FBRUE7QUFFQTtBQUVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFFQTtBQUVBIiwiZmlsZSI6Ii4vc3JjL3R5cGVzY3JpcHQvbWFpbi50c3guanMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgKiBhcyBSZWFjdCBmcm9tIFwicmVhY3RcIjtcbmltcG9ydCAqIGFzIFJlYWN0RG9tIGZyb20gXCJyZWFjdC1kb21cIjtcblxuaW1wb3J0IHsgV29ybGQsIFdvcmxkRHJpdmVyIH0gZnJvbSAnLi93b3JsZCc7XG5pbXBvcnQgeyByYXcgfSBmcm9tICcuL3BhcnNlcjInO1xuXG5cbmltcG9ydCB7IEhpc3RvcnkgfSBmcm9tICcuLi9jb21wb25lbnRzL1Rlcm1pbmFsMyc7XG5cbmltcG9ydCB7IG5ld19iaXJkX3dvcmxkIH0gZnJvbSAnLi9kZW1vX3dvcmxkcy9iaXJkX3dvcmxkJztcblxuY29uc29sZS50aW1lKCd3b3JsZF9idWlsZCcpO1xubGV0IGRyaXZlciA9IG5ld19iaXJkX3dvcmxkKCk7XG5cbmZvciAobGV0IGkgPSAwOyBpIDwgMTA7IGkrKykge1xuICAgIGRyaXZlci5hcHBseV9jb21tYW5kKHJhdygnZ28gdXAnKSk7XG4gICAgZHJpdmVyLmFwcGx5X2NvbW1hbmQocmF3KCdnbyBkb3duJykpO1xufVxuY29uc29sZS50aW1lRW5kKCd3b3JsZF9idWlsZCcpO1xuXG5cbmNvbnNvbGUudGltZSgncmVuZGVyJyk7XG5SZWFjdERvbS5yZW5kZXIoPEhpc3Rvcnkgd29ybGQ9e2RyaXZlci5jdXJyZW50X3dvcmxkfSAvPiwgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3Rlcm1pbmFsJykpO1xuY29uc29sZS50aW1lRW5kKCdyZW5kZXInKTtcblxuLy8gaW1wb3J0IHtUZXJtaW5hbH0gZnJvbSBcIi4uL2NvbXBvbmVudHMvVGVybWluYWxcIjtcblxuLy8gaW1wb3J0IHtXb3JsZERyaXZlcn0gZnJvbSBcIi4uL3R5cGVzY3JpcHQvY29tbWFuZHNcIjtcblxuLy8gaW1wb3J0IHtWZW5pZW5jZVdvcmxkLCBWZW5pZW5jZVdvcmxkU3RhdGV9IGZyb20gJy4uL3R5cGVzY3JpcHQvdmVuaWVuY2UvdmVuaWVuY2Vfd29ybGQnO1xuXG4vLyBsZXQgc3RhcnQ6IFZlbmllbmNlV29ybGRTdGF0ZSA9IHt9O1xuXG4vLyAvLyBzdGFydC5leHBlcmllbmNlcyA9IFsnZ3Jhc3MsIGFza2luZyAyJ107XG4vLyAvL3N0YXJ0LmV4cGVyaWVuY2VzID0gWydhbGNvdmUsIGVudGVyaW5nIHRoZSBmb3Jlc3QnXTsgXG4vLyAvLyBzdGFydC5leHBlcmllbmNlcyA9IFsnd29vZHMsIGVuZGluZyBpbnRlcnByZXRhdGlvbiddO1xuLy8gLy8gc3RhcnQuZXhwZXJpZW5jZXMgPSBbJ2JlZCwgc2l0dGluZyB1cCAyJ107XG4vLyAvLyBzdGFydC5leHBlcmllbmNlcyA9IFsnd29vZHMsIGNyb3NzaW5nIHRoZSBib3VuZGFyeSAyJ107XG4vLyAvLyBzdGFydC5leHBlcmllbmNlcyA9IFsnd29vZHMsIGNsZWFyaW5nJ107XG4vLyAvLyBzdGFydC5oYXNfcmVnYXJkZWQgPSB7J3RhbmdsZSwgMyc6IHRydWV9O1xuLy8gLy8gc3RhcnQuaGFzX3VuZGVyc3Rvb2QgPSB7J3RhbmdsZSwgMyc6IHRydWV9O1xuXG4vLyBsZXQgd29ybGRfZHJpdmVyID0gbmV3IFdvcmxkRHJpdmVyKG5ldyBWZW5pZW5jZVdvcmxkKHN0YXJ0KSlcblxuLy8gUmVhY3REb20ucmVuZGVyKDxUZXJtaW5hbCB3b3JsZF9kcml2ZXI9e3dvcmxkX2RyaXZlcn0gLz4sIGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCd0ZXJtaW5hbCcpKTtcbiJdLCJzb3VyY2VSb290IjoiIn0=\n//# sourceURL=webpack-internal:///./src/typescript/main.tsx\n");
+
+/***/ }),
+
+/***/ "./src/typescript/parser2.ts":
+/*!***********************************!*\
+  !*** ./src/typescript/parser2.ts ***!
+  \***********************************/
+/*! exports provided: ParseError, SUBMIT_TOKEN, NEVER_TOKEN, is_match, is_partial, is_error, is_parse_result_valid, compute_view, compute_typeahead, Parser, raw */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"ParseError\", function() { return ParseError; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"SUBMIT_TOKEN\", function() { return SUBMIT_TOKEN; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"NEVER_TOKEN\", function() { return NEVER_TOKEN; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"is_match\", function() { return is_match; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"is_partial\", function() { return is_partial; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"is_error\", function() { return is_error; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"is_parse_result_valid\", function() { return is_parse_result_valid; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"compute_view\", function() { return compute_view; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"compute_typeahead\", function() { return compute_typeahead; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"Parser\", function() { return Parser; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"raw\", function() { return raw; });\n/* harmony import */ var _datatypes__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./datatypes */ \"./src/typescript/datatypes.ts\");\n/* harmony import */ var _text_tools__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./text_tools */ \"./src/typescript/text_tools.ts\");\nfunction _typeof(obj) { if (typeof Symbol === \"function\" && typeof Symbol.iterator === \"symbol\") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === \"function\" && obj.constructor === Symbol && obj !== Symbol.prototype ? \"symbol\" : typeof obj; }; } return _typeof(obj); }\n\nfunction _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }\n\nfunction _nonIterableRest() { throw new TypeError(\"Invalid attempt to destructure non-iterable instance\"); }\n\nfunction _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i[\"return\"] != null) _i[\"return\"](); } finally { if (_d) throw _e; } } return _arr; }\n\nfunction _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }\n\nfunction _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if (\"value\" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }\n\nfunction _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }\n\nfunction _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }\n\nfunction _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }\n\nfunction _nonIterableSpread() { throw new TypeError(\"Invalid attempt to spread non-iterable instance\"); }\n\nfunction _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === \"[object Arguments]\") return Array.from(iter); }\n\nfunction _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }\n\nfunction _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === \"object\" || typeof call === \"function\")) { return call; } return _assertThisInitialized(self); }\n\nfunction _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError(\"this hasn't been initialised - super() hasn't been called\"); } return self; }\n\nfunction _inherits(subClass, superClass) { if (typeof superClass !== \"function\" && superClass !== null) { throw new TypeError(\"Super expression must either be null or a function\"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }\n\nfunction _wrapNativeSuper(Class) { var _cache = typeof Map === \"function\" ? new Map() : undefined; _wrapNativeSuper = function _wrapNativeSuper(Class) { if (Class === null || !_isNativeFunction(Class)) return Class; if (typeof Class !== \"function\") { throw new TypeError(\"Super expression must either be null or a function\"); } if (typeof _cache !== \"undefined\") { if (_cache.has(Class)) return _cache.get(Class); _cache.set(Class, Wrapper); } function Wrapper() { return _construct(Class, arguments, _getPrototypeOf(this).constructor); } Wrapper.prototype = Object.create(Class.prototype, { constructor: { value: Wrapper, enumerable: false, writable: true, configurable: true } }); return _setPrototypeOf(Wrapper, Class); }; return _wrapNativeSuper(Class); }\n\nfunction isNativeReflectConstruct() { if (typeof Reflect === \"undefined\" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === \"function\") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }\n\nfunction _construct(Parent, args, Class) { if (isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }\n\nfunction _isNativeFunction(fn) { return Function.toString.call(fn).indexOf(\"[native code]\") !== -1; }\n\nfunction _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }\n\nfunction _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }\n\nfunction _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError(\"Cannot call a class as a function\"); } }\n\n/*\n    a parser thread takes a parser and uses it to consume some of a token stream,\n    and returns some result\n\n    a thread can *split* the current parser state into N branches,\n    each of which consume their own things separately and return their own results\n    the thread which initiated the split is also responsible for combining the various results\n    before returning control to the thread.\n        the most common scenario is that only one of N branches is still valid\n    \n    internally, the parser receives instructions from the parser thread and consumes\n    pieces of the input token stream. it builds up a list of token match objects,\n    where each token in the stream consumed so far gets a status of \"matched\", \"partial\", \"error\"\n\n    by combining these token labellings from all the different parser threads that ran,\n    we determine:\n        - whether the currently-input string is valid and can be executed\n        - what colors to highlight the various input words with\n        - what to display beneath the input prompt as typeahead options\n\n\n\n\n*/\n\n\n\nvar NoMatch = function NoMatch() {\n  _classCallCheck(this, NoMatch);\n};\n\n;\n\nvar ParseRestart = function ParseRestart(n_splits) {\n  _classCallCheck(this, ParseRestart);\n\n  this.n_splits = n_splits;\n};\n\n;\nvar ParseError =\n/*#__PURE__*/\nfunction (_Error) {\n  _inherits(ParseError, _Error);\n\n  function ParseError() {\n    _classCallCheck(this, ParseError);\n\n    return _possibleConstructorReturn(this, _getPrototypeOf(ParseError).apply(this, arguments));\n  }\n\n  return ParseError;\n}(_wrapNativeSuper(Error));\n;\nvar SUBMIT_TOKEN = Symbol('SUBMIT');\nvar NEVER_TOKEN = Symbol('NEVER');\nfunction is_match(m) {\n  return m.type.kind === 'Match';\n}\nfunction is_partial(m) {\n  return m.type.kind === 'PartialMatch';\n}\nfunction is_error(m) {\n  return m.type.kind === 'ErrorMatch';\n}\nfunction is_parse_result_valid(result) {\n  return result.length === 0 || is_match(Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"array_last\"])(result));\n} // for each of the input tokens, how should they be displayed/highighted?\n\nfunction compute_view(parse_results, input_stream) {\n  // let parse_results: TokenMatch[][] = parsing.parses;\n  var match_status;\n  var submission = false;\n  var row;\n\n  if ((row = parse_results.find(function (row) {\n    return Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"array_last\"])(row).type.kind === 'Match';\n  })) !== undefined) {\n    match_status = 'Match'; // TODO: throw a runtime exc here if we have a Match at the end but it's not SUBMIT_TOKEN ?\n    // Would imply a commmand thread that doesn't end in submit.\n\n    submission = Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"array_last\"])(row).token === SUBMIT_TOKEN;\n\n    if (!submission) {\n      throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');\n    }\n  } else if ((row = parse_results.find(function (row) {\n    return is_partial(Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"array_last\"])(row));\n  })) !== undefined) {\n    match_status = 'PartialMatch';\n  } else {\n    row = input_stream.map(function (tok) {\n      return {\n        kind: 'TokenMatch',\n        token: tok,\n        type: {\n          kind: 'ErrorMatch',\n          token: null\n        }\n      };\n    });\n    match_status = 'ErrorMatch';\n  }\n\n  var typeahead_grid = compute_typeahead(parse_results, input_stream);\n  var submittable = typeahead_grid.some(function (row) {\n    return Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"array_last\"])(row).token === SUBMIT_TOKEN;\n  });\n  return {\n    kind: 'ParsingView',\n    matches: row,\n    submittable: submittable,\n    submission: submission,\n    match_status: match_status,\n    typeahead_grid: typeahead_grid\n  };\n}\n/*\nTypeahead\n    For each non-valid row (ignoring errors, partial only)\n    If the row is at least the length of the input stream\n    Typeahead is the Partial TokenMatches suffix (always at the end)\n*/\n\nfunction compute_typeahead(parse_results, input_stream) {\n  // let parse_results: TokenMatch[][] = parsing.parses;\n  // let input_stream: Token[] = parsing.tokens;\n  var rows_with_typeahead = parse_results.filter(function (pr) {\n    return !is_error(Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"array_last\"])(pr)) && pr.slice(input_stream.length - 1).some(is_partial);\n  });\n  return rows_with_typeahead.map(function (pr) {\n    var start_idx = pr.findIndex(is_partial);\n    var result = Array(start_idx).fill(null);\n    var elts = pr.slice(start_idx);\n    result.push.apply(result, _toConsumableArray(elts.map(function (tm) {\n      return tm.type;\n    })));\n    return result;\n  }); // TODO: add dedupe step here\n}\n/*\n    Helper function for parser methods that take an optional callback or return value on success\n    The pattern is to use function overloading to get the types right, and call this\n    function to get the behavior right.\n\n    TODO: Can we get what we want using promises?\n*/\n\nfunction call_or_return(parser, result) {\n  if (result instanceof Function) {\n    return result(parser);\n  }\n\n  return result;\n}\n\nvar Parser =\n/*#__PURE__*/\nfunction () {\n  function Parser(input_stream, splits_to_take) {\n    _classCallCheck(this, Parser);\n\n    _defineProperty(this, \"input_stream\", void 0);\n\n    _defineProperty(this, \"pos\", 0);\n\n    _defineProperty(this, \"parse_result\", []);\n\n    _defineProperty(this, \"_split_iter\", void 0);\n\n    this.input_stream = input_stream;\n    this._split_iter = splits_to_take[Symbol.iterator]();\n  }\n\n  _createClass(Parser, [{\n    key: \"consume\",\n    value: function consume(spec, result) {\n      if (typeof spec === 'string') {\n        this._consume_dsl(spec);\n      } else {\n        this._consume(spec);\n      }\n\n      return call_or_return(this, result);\n    }\n  }, {\n    key: \"_consume_dsl\",\n    value: function _consume_dsl(dsl) {\n      var _this = this;\n\n      var toks = Object(_text_tools__WEBPACK_IMPORTED_MODULE_1__[\"tokenize\"])(dsl)[0];\n      var _iteratorNormalCompletion = true;\n      var _didIteratorError = false;\n      var _iteratorError = undefined;\n\n      try {\n        var _loop = function _loop() {\n          var t = _step.value;\n          var token_type = {\n            kind: 'Filler'\n          };\n          var typeahead_type = {\n            kind: 'Available'\n          };\n          ;\n\n          if (t.startsWith('~')) {\n            typeahead_type = {\n              kind: 'Locked'\n            };\n            t = t.slice(1);\n          }\n\n          if (t.startsWith('*')) {\n            token_type = {\n              kind: 'Keyword'\n            };\n            t = t.slice(1);\n          } else if (t.startsWith('&')) {\n            token_type = {\n              kind: 'Option'\n            };\n            t = t.slice(1);\n          }\n\n          _this._consume(t.split('_').map(function (t) {\n            return {\n              kind: 'ConsumeSpec',\n              token: t,\n              token_type: token_type,\n              typeahead_type: typeahead_type\n            };\n          }));\n        };\n\n        for (var _iterator = toks[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {\n          _loop();\n        }\n      } catch (err) {\n        _didIteratorError = true;\n        _iteratorError = err;\n      } finally {\n        try {\n          if (!_iteratorNormalCompletion && _iterator[\"return\"] != null) {\n            _iterator[\"return\"]();\n          }\n        } finally {\n          if (_didIteratorError) {\n            throw _iteratorError;\n          }\n        }\n      }\n    }\n    /*\n        This will throw a parse exception if the desired tokens can't be consumed.\n        It is expected that every ParserThread is wrapped in an exception handler for\n        this case.\n    */\n\n  }, {\n    key: \"_consume\",\n    value: function _consume(tokens) {\n      var _this2 = this,\n          _this$parse_result3;\n\n      if (!is_parse_result_valid(this.parse_result)) {\n        throw new ParseError('Tried to consume() on a done parser.');\n      }\n\n      var partial = false;\n      var error = false;\n      var i = 0; // check if exact match\n\n      for (i = 0; i < tokens.length; i++) {\n        var _spec = tokens[i];\n        var spec_value = _spec.token;\n\n        if (spec_value === NEVER_TOKEN) {\n          error = true;\n          break;\n        }\n\n        if (this.pos + i >= this.input_stream.length) {\n          partial = true;\n          break;\n        }\n\n        var input = this.input_stream[this.pos + i];\n\n        if (spec_value === input) {\n          if (_spec.typeahead_type.kind === 'Locked') {\n            // TODO: special case for typeahead = Locked\n            error = true;\n            break;\n          }\n\n          continue;\n        }\n\n        if (spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {\n          // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())\n          error = true;\n          break;\n        }\n\n        if (Object(_text_tools__WEBPACK_IMPORTED_MODULE_1__[\"starts_with\"])(spec_value, input)) {\n          if (this.pos + i < this.input_stream.length - 1) {\n            error = true;\n          } else {\n            partial = true;\n          }\n\n          break;\n        }\n\n        error = true;\n        break;\n      }\n\n      if (partial) {\n        var _this$parse_result;\n\n        // push all tokens as partials\n        (_this$parse_result = this.parse_result).push.apply(_this$parse_result, _toConsumableArray(tokens.map(function (t, j) {\n          return {\n            kind: 'TokenMatch',\n            token: _this2.input_stream[_this2.pos + j] || '',\n            type: {\n              kind: 'PartialMatch',\n              token: t.token === NEVER_TOKEN ? '' : t.token,\n              type: t.typeahead_type\n            }\n          };\n        }))); // increment pos\n\n\n        this.pos = this.input_stream.length;\n        throw new NoMatch();\n      }\n\n      if (error) {\n        var _this$parse_result2;\n\n        // push all tokens as errors\n        (_this$parse_result2 = this.parse_result).push.apply(_this$parse_result2, _toConsumableArray(tokens.map(function (t, j) {\n          return {\n            kind: 'TokenMatch',\n            token: _this2.input_stream[_this2.pos + j] || '',\n            type: {\n              kind: 'ErrorMatch',\n              token: t.token === NEVER_TOKEN ? '' : t.token\n            }\n          };\n        }))); // increment pos\n\n\n        this.pos = this.input_stream.length;\n        throw new NoMatch();\n      } // push all tokens as valid\n\n\n      (_this$parse_result3 = this.parse_result).push.apply(_this$parse_result3, _toConsumableArray(tokens.map(function (t, j) {\n        return {\n          kind: 'TokenMatch',\n          token: _this2.input_stream[_this2.pos + j],\n          type: {\n            kind: 'Match',\n            type: t.token_type\n          }\n        };\n      }))); // increment pos\n\n\n      this.pos += tokens.length;\n    }\n  }, {\n    key: \"eliminate\",\n    value: function eliminate() {\n      /*\n          It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.\n      */\n      return this._consume([{\n        kind: 'ConsumeSpec',\n        token: NEVER_TOKEN,\n        token_type: {\n          kind: 'Filler'\n        },\n        typeahead_type: {\n          kind: 'Available'\n        }\n      }]);\n    }\n  }, {\n    key: \"submit\",\n    value: function submit(result) {\n      this._consume([{\n        kind: 'ConsumeSpec',\n        token: SUBMIT_TOKEN,\n        token_type: {\n          kind: 'Filler'\n        },\n        typeahead_type: {\n          kind: 'Available'\n        }\n      }]);\n\n      return call_or_return(this, result);\n    }\n    /*\n        TODO: support a callback for split() which takes both the result value, and the parser.\n    */\n\n  }, {\n    key: \"split\",\n    value: function split(subthreads, callback) {\n      var _this$_split_iter$nex = this._split_iter.next(),\n          split_value = _this$_split_iter$nex.value,\n          done = _this$_split_iter$nex.done;\n\n      if (done) {\n        throw new ParseRestart(subthreads.length);\n      }\n\n      var st = subthreads[split_value];\n      var result = st(this);\n\n      if (callback === undefined) {\n        return result;\n      }\n\n      return callback(result, this);\n    }\n  }], [{\n    key: \"run_thread\",\n    value: function run_thread(raw, t) {\n      var _tokenize = Object(_text_tools__WEBPACK_IMPORTED_MODULE_1__[\"tokenize\"])(raw.text),\n          _tokenize2 = _slicedToArray(_tokenize, 2),\n          tokens = _tokenize2[0],\n          whitespace = _tokenize2[1];\n\n      if (raw.submit) {\n        tokens.push(SUBMIT_TOKEN);\n      }\n\n      var frontier = [[]];\n      var results = [];\n      var parse_results = [];\n\n      while (frontier.length > 0) {\n        var path = frontier.pop();\n        var splits_to_take = void 0;\n\n        if (path.length === 0) {\n          splits_to_take = path;\n        } else {\n          var n = Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"array_last\"])(path).next();\n\n          if (n.done) {\n            continue;\n          } else {\n            frontier.push(path);\n          }\n\n          splits_to_take = [].concat(_toConsumableArray(path.slice(0, -1)), [n.value]);\n        }\n\n        var _p = new Parser(tokens, splits_to_take);\n\n        var _result = void 0;\n\n        try {\n          _result = t(_p);\n        } catch (e) {\n          if (e instanceof NoMatch) {\n            _result = e;\n          } else if (e instanceof ParseRestart) {\n            var new_splits = [];\n\n            for (var i = 0; i < e.n_splits; i++) {\n              new_splits.push(i);\n            } // TODO: decide whether to unshift() or push() here. Affects typeahead display order.\n\n\n            frontier.unshift([].concat(_toConsumableArray(splits_to_take), [new_splits[Symbol.iterator]()])); // frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);\n\n            continue;\n          } else {\n            throw e;\n          }\n        }\n\n        results.push(_result);\n        parse_results.push(_p.parse_result);\n      }\n\n      var view = compute_view(parse_results, tokens);\n      var parsing = {\n        kind: 'Parsing',\n        view: view,\n        parses: parse_results,\n        tokens: tokens,\n        whitespace: whitespace,\n        raw: raw\n      };\n      var valid_results = results.filter(function (r) {\n        return !(r instanceof NoMatch);\n      });\n\n      if (valid_results.length === 0) {\n        return {\n          kind: 'NotParsed',\n          parsing: parsing\n        };\n      } else if (valid_results.length > 1) {\n        throw new ParseError(\"Ambiguous parse: \".concat(valid_results.length, \" valid results found.\"));\n      } else {\n        return {\n          kind: 'Parsed',\n          result: valid_results[0],\n          parsing: parsing\n        };\n      }\n    }\n  }]);\n\n  return Parser;\n}();\nfunction raw(text) {\n  var submit = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;\n  return {\n    kind: 'RawInput',\n    text: text,\n    submit: submit\n  };\n} // Question: should the parser input be mandatory?\n// Doesn't seem to complain when i leave out the first arg, even with this type//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvdHlwZXNjcmlwdC9wYXJzZXIyLnRzPzFlMDUiXSwibmFtZXMiOlsiTm9NYXRjaCIsIlBhcnNlUmVzdGFydCIsIm5fc3BsaXRzIiwiUGFyc2VFcnJvciIsIkVycm9yIiwiU1VCTUlUX1RPS0VOIiwiU3ltYm9sIiwiTkVWRVJfVE9LRU4iLCJpc19tYXRjaCIsIm0iLCJ0eXBlIiwia2luZCIsImlzX3BhcnRpYWwiLCJpc19lcnJvciIsImlzX3BhcnNlX3Jlc3VsdF92YWxpZCIsInJlc3VsdCIsImxlbmd0aCIsImFycmF5X2xhc3QiLCJjb21wdXRlX3ZpZXciLCJwYXJzZV9yZXN1bHRzIiwiaW5wdXRfc3RyZWFtIiwibWF0Y2hfc3RhdHVzIiwic3VibWlzc2lvbiIsInJvdyIsImZpbmQiLCJ1bmRlZmluZWQiLCJ0b2tlbiIsIm1hcCIsInRvayIsInR5cGVhaGVhZF9ncmlkIiwiY29tcHV0ZV90eXBlYWhlYWQiLCJzdWJtaXR0YWJsZSIsInNvbWUiLCJtYXRjaGVzIiwicm93c193aXRoX3R5cGVhaGVhZCIsImZpbHRlciIsInByIiwic2xpY2UiLCJzdGFydF9pZHgiLCJmaW5kSW5kZXgiLCJBcnJheSIsImZpbGwiLCJlbHRzIiwicHVzaCIsInRtIiwiY2FsbF9vcl9yZXR1cm4iLCJwYXJzZXIiLCJGdW5jdGlvbiIsIlBhcnNlciIsInNwbGl0c190b190YWtlIiwiX3NwbGl0X2l0ZXIiLCJpdGVyYXRvciIsInNwZWMiLCJfY29uc3VtZV9kc2wiLCJfY29uc3VtZSIsImRzbCIsInRva3MiLCJ0b2tlbml6ZSIsInQiLCJ0b2tlbl90eXBlIiwidHlwZWFoZWFkX3R5cGUiLCJzdGFydHNXaXRoIiwic3BsaXQiLCJ0b2tlbnMiLCJwYXJzZV9yZXN1bHQiLCJwYXJ0aWFsIiwiZXJyb3IiLCJpIiwic3BlY192YWx1ZSIsInBvcyIsImlucHV0Iiwic3RhcnRzX3dpdGgiLCJqIiwic3VidGhyZWFkcyIsImNhbGxiYWNrIiwibmV4dCIsInNwbGl0X3ZhbHVlIiwidmFsdWUiLCJkb25lIiwic3QiLCJyYXciLCJ0ZXh0Iiwid2hpdGVzcGFjZSIsInN1Ym1pdCIsImZyb250aWVyIiwicmVzdWx0cyIsInBhdGgiLCJwb3AiLCJuIiwicCIsImUiLCJuZXdfc3BsaXRzIiwidW5zaGlmdCIsInZpZXciLCJwYXJzaW5nIiwicGFyc2VzIiwidmFsaWRfcmVzdWx0cyIsInIiXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQTs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBeUJBO0FBQ0E7O0lBRU1BLE87Ozs7QUFBVTs7SUFDVkMsWSxHQUNGLHNCQUFtQkMsUUFBbkIsRUFBcUM7QUFBQTs7QUFBQTtBQUFFLEM7O0FBQzFDO0FBQ00sSUFBTUMsVUFBYjtBQUFBO0FBQUE7QUFBQTs7QUFBQTtBQUFBOztBQUFBO0FBQUE7O0FBQUE7QUFBQSxtQkFBZ0NDLEtBQWhDO0FBQXdDO0FBRWpDLElBQU1DLFlBQVksR0FBR0MsTUFBTSxDQUFDLFFBQUQsQ0FBM0I7QUFHQSxJQUFNQyxXQUFXLEdBQUdELE1BQU0sQ0FBQyxPQUFELENBQTFCO0FBZ0NBLFNBQVNFLFFBQVQsQ0FBa0JDLENBQWxCLEVBQWtFO0FBQ3JFLFNBQU9BLENBQUMsQ0FBQ0MsSUFBRixDQUFPQyxJQUFQLEtBQWdCLE9BQXZCO0FBQ0g7QUFFTSxTQUFTQyxVQUFULENBQW9CSCxDQUFwQixFQUEyRTtBQUM5RSxTQUFPQSxDQUFDLENBQUNDLElBQUYsQ0FBT0MsSUFBUCxLQUFnQixjQUF2QjtBQUNIO0FBRU0sU0FBU0UsUUFBVCxDQUFrQkosQ0FBbEIsRUFBdUU7QUFDMUUsU0FBT0EsQ0FBQyxDQUFDQyxJQUFGLENBQU9DLElBQVAsS0FBZ0IsWUFBdkI7QUFDSDtBQWdFTSxTQUFTRyxxQkFBVCxDQUErQkMsTUFBL0IsRUFBcUQ7QUFDeEQsU0FBT0EsTUFBTSxDQUFDQyxNQUFQLEtBQWtCLENBQWxCLElBQXVCUixRQUFRLENB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V0FESDtBQUVIbUYsaUJBQU8sRUFBUEE7QUFGRyxTQUFQO0FBSUgsT0FMRCxNQUtPLElBQUlFLGFBQWEsQ0FBQ2hGLE1BQWQsR0FBdUIsQ0FBM0IsRUFBOEI7QUFDakMsY0FBTSxJQUFJYixVQUFKLDRCQUFtQzZGLGFBQWEsQ0FBQ2hGLE1BQWpELDJCQUFOO0FBQ0gsT0FGTSxNQUVBO0FBQ0gsZUFBTztBQUNITCxjQUFJLEVBQUUsUUFESDtBQUVISSxnQkFBTSxFQUFFaUYsYUFBYSxDQUFDLENBQUQsQ0FGbEI7QUFHSEYsaUJBQU8sRUFBUEE7QUFIRyxTQUFQO0FBTUg7QUFDSjtBQTVSTDs7QUFBQTtBQUFBO0FBcVNPLFNBQVNkLEdBQVQsQ0FBYUMsSUFBYixFQUE2RDtBQUFBLE1BQWxDRSxNQUFrQyx1RUFBaEIsSUFBZ0I7QUFDaEUsU0FBTztBQUFFeEUsUUFBSSxFQUFFLFVBQVI7QUFBb0JzRSxRQUFJLEVBQUpBLElBQXBCO0FBQTBCRSxVQUFNLEVBQU5BO0FBQTFCLEdBQVA7QUFDSCxDLENBRUQ7QUFDQSIsImZpbGUiOiIuL3NyYy90eXBlc2NyaXB0L3BhcnNlcjIudHMuanMiLCJzb3VyY2VzQ29udGVudCI6WyIvKlxuICAgIGEgcGFyc2VyIHRocmVhZCB0YWtlcyBhIHBhcnNlciBhbmQgdXNlcyBpdCB0byBjb25zdW1lIHNvbWUgb2YgYSB0b2tlbiBzdHJlYW0sXG4gICAgYW5kIHJldHVybnMgc29tZSByZXN1bHRcblxuICAgIGEgdGhyZWFkIGNhbiAqc3BsaXQqIHRoZSBjdXJyZW50IHBhcnNlciBzdGF0ZSBpbnRvIE4gYnJhbmNoZXMsXG4gICAgZWFjaCBvZiB3aGljaCBjb25zdW1lIHRoZWlyIG93biB0aGluZ3Mgc2VwYXJhdGVseSBhbmQgcmV0dXJuIHRoZWlyIG93biByZXN1bHRzXG4gICAgdGhlIHRocmVhZCB3aGljaCBpbml0aWF0ZWQgdGhlIHNwbGl0IGlzIGFsc28gcmVzcG9uc2libGUgZm9yIGNvbWJpbmluZyB0aGUgdmFyaW91cyByZXN1bHRzXG4gICAgYmVmb3JlIHJldHVybmluZyBjb250cm9sIHRvIHRoZSB0aHJlYWQuXG4gICAgICAgIHRoZSBtb3N0IGNvbW1vbiBzY2VuYXJpbyBpcyB0aGF0IG9ubHkgb25lIG9mIE4gYnJhbmNoZXMgaXMgc3RpbGwgdmFsaWRcbiAgICBcbiAgICBpbnRlcm5hbGx5LCB0aGUgcGFyc2VyIHJlY2VpdmVzIGluc3RydWN0aW9ucyBmcm9tIHRoZSBwYXJzZXIgdGhyZWFkIGFuZCBjb25zdW1lc1xuICAgIHBpZWNlcyBvZiB0aGUgaW5wdXQgdG9rZW4gc3RyZWFtLiBpdCBidWlsZHMgdXAgYSBsaXN0IG9mIHRva2VuIG1hdGNoIG9iamVjdHMsXG4gICAgd2hlcmUgZWFjaCB0b2tlbiBpbiB0aGUgc3RyZWFtIGNvbnN1bWVkIHNvIGZhciBnZXRzIGEgc3RhdHVzIG9mIFwibWF0Y2hlZFwiLCBcInBhcnRpYWxcIiwgXCJlcnJvclwiXG5cbiAgICBieSBjb21iaW5pbmcgdGhlc2UgdG9rZW4gbGFiZWxsaW5ncyBmcm9tIGFsbCB0aGUgZGlmZmVyZW50IHBhcnNlciB0aHJlYWRzIHRoYXQgcmFuLFxuICAgIHdlIGRldGVybWluZTpcbiAgICAgICAgLSB3aGV0aGVyIHRoZSBjdXJyZW50bHktaW5wdXQgc3RyaW5nIGlzIHZhbGlkIGFuZCBjYW4gYmUgZXhlY3V0ZWRcbiAgICAgICAgLSB3aGF0IGNvbG9ycyB0byBoaWdobGlnaHQgdGhlIHZhcmlvdXMgaW5wdXQgd29yZHMgd2l0aFxuICAgICAgICAtIHdoYXQgdG8gZGlzcGxheSBiZW5lYXRoIHRoZSBpbnB1dCBwcm9tcHQgYXMgdHlwZWFoZWFkIG9wdGlvbnNcblxuXG5cblxuKi9cblxuaW1wb3J0IHsgYXJyYXlfbGFzdCB9IGZyb20gJy4vZGF0YXR5cGVzJ1xuaW1wb3J0IHsgc3RhcnRzX3dpdGgsIHRva2VuaXplIH0gZnJvbSAnLi90ZXh0X3Rvb2xzJ1xuXG5jbGFzcyBOb01hdGNoIHt9O1xuY2xhc3MgUGFyc2VSZXN0YXJ0IHtcbiAgICBjb25zdHJ1Y3RvcihwdWJsaWMgbl9zcGxpdHM6IG51bWJlcikge31cbn07XG5leHBvcnQgY2xhc3MgUGFyc2VFcnJvciBleHRlbmRzIEVycm9yIHt9O1xuXG5leHBvcnQgY29uc3QgU1VCTUlUX1RPS0VOID0gU3ltYm9sKCdTVUJNSVQnKTtcbmV4cG9ydCB0eXBlIFRva2VuID0gc3RyaW5nIHwgdHlwZW9mIFNVQk1JVF9UT0tFTjtcblxuZXhwb3J0IGNvbnN0IE5FVkVSX1RPS0VOID0gU3ltYm9sKCdORVZFUicpO1xuZXhwb3J0IHR5cGUgVGFpbnRlZFRva2VuID0gVG9rZW4gfCB0eXBlb2YgTkVWRVJfVE9LRU47XG5cbmV4cG9ydCB0eXBlIFRva2VuVHlwZSA9IFxuICAgIHsga2luZDogJ0ZpbGxlcicgfSB8XG4gICAgeyBraW5kOiAnT3B0aW9uJyB9IHxcbiAgICB7IGtpbmQ6ICdLZXl3b3JkJyB9O1xuXG5leHBvcnQgdHlwZSBUeXBlYWhlYWRUeXBlID1cbiAgICB7IGtpbmQ6ICdBdmFpbGFibGUnIH0gfFxuICAgIHsga2luZDogJ1VzZWQnIH0gfFxuICAgIHsga2luZDogJ0xvY2tlZCcgfTsgLy8gVE9ETzogTmVlZCB0byBhY3R1YWxseSBtYWtlIHRoaXMgaW52YWxpZCB3aGVuIHBhcnNlZC5cblxuZXhwb3J0IGludGVyZmFjZSBDb25zdW1lU3BlYyB7XG4gICAga2luZDogJ0NvbnN1bWVTcGVjJztcbiAgICB0b2tlbjogVGFpbnRlZFRva2VuO1xuICAgIHRva2VuX3R5cGU6IFRva2VuVHlwZTtcbiAgICB0eXBlYWhlYWRfdHlwZTogVHlwZWFoZWFkVHlwZTtcbn1cblxuXG5leHBvcnQgdHlwZSBNYXRjaFN0YXR1cyA9ICdNYXRjaCcgfCAnUGFydGlhbE1hdGNoJyB8ICdFcnJvck1hdGNoJztcblxuZXhwb3J0IHR5cGUgTWF0Y2ggPSB7IGtpbmQ6ICdNYXRjaCcsIHR5cGU6IFRva2VuVHlwZSB9O1xuZXhwb3J0IHR5cGUgUGFydGlhbE1hdGNoID0geyBraW5kOiAnUGFydGlhbE1hdGNoJywgdG9rZW46IFRva2VuLCB0eXBlOiBUeXBlYWhlYWRUeXBlIH07XG5leHBvcnQgdHlwZSBFcnJvck1hdGNoID0geyBraW5kOiAnRXJyb3JNYXRjaCcsIHRva2VuOiBUb2tlbiB9O1xuXG5leHBvcnQgdHlwZSBNYXRjaFR5cGUgPSBcbiAgICBNYXRjaCB8XG4gICAgUGFydGlhbE1hdGNoIHxcbiAgICBFcnJvck1hdGNoO1xuXG5leHBvcnQgZnVuY3Rpb24gaXNfbWF0Y2gobTogVG9rZW5NYXRjaCk6IG0gaXMgVG9rZW5NYXRjaCAmIHt0eXBlOiBNYXRjaH0ge1xuICAgIHJldHVybiBtLnR5cGUua2luZCA9PT0gJ01hdGNoJ1xufVxuXG5leHBvcnQgZnVuY3Rpb24gaXNfcGFydGlhbChtOiBUb2tlbk1hdGNoKTogbSBpcyBUb2tlbk1hdGNoICYge3R5cGU6IFBhcnRpYWxNYXRjaH0ge1xuICAgIHJldHVybiBtLnR5cGUua2luZCA9PT0gJ1BhcnRpYWxNYXRjaCdcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIGlzX2Vycm9yKG06IFRva2VuTWF0Y2gpOiBtIGlzIFRva2VuTWF0Y2ggJiB7dHlwZTogRXJyb3JNYXRjaH0ge1xuICAgIHJldHVybiBtLnR5cGUua2luZCA9PT0gJ0Vycm9yTWF0Y2gnXG59XG5cbmV4cG9ydCB0eXBlIFRva2VuTWF0Y2ggPSB7IGtpbmQ6ICdUb2tlbk1hdGNoJywgdG9rZW46IFRva2VuLCB0eXBlOiBNYXRjaFR5cGUgfTtcblxuLypcblxuICAgIEZpbGxlciwgT3B0aW9uLCBFcnJvclxuXG4gICAgUmVhZHksIE5vdCBSZWFkeSAodG8gZXhlY3V0ZSlcblxuKi9cbmV4cG9ydCB0eXBlIFBhcnNpbmdWaWV3ID0ge1xuICAgIGtpbmQ6ICdQYXJzaW5nVmlldycsXG4gICAgXG4gICAgLy8gSG93IHRvIGRpc3BsYXkgZWFjaCB0b2tlbiBpbiB0aGUgaW5wdXRcbiAgICBtYXRjaGVzOiBUb2tlbk1hdGNoW10sXG4gICAgXG4gICAgLy8gSWYgc3VibWl0dGFibGUsIGRpc3BsYXkgYSBjYXJyaWFnZSByZXR1cm4gdHlwZWFoZWFkLCBhbmQgYnJpZ2h0ZW4gdGV4dFxuICAgIC8qXG4gICAgICAgIFR3byBwb3NzaWJsZSBzY2hlbWVzOlxuICAgICAgICAxLiBJdCBpcyBwb3NzaWJsZSB0byBwYXNzIGlucHV0cyB0byBQYXJzZXIucnVuX3RocmVhZCB0aGF0IGRvbid0IGVuZCBpbiBhIHN1Ym1pdCB0b2tlbi5cbiAgICAgICAgSW4gdGhpcyBjYXNlLCB0aGUgVUkgd291bGQgaW5zZXJ0IHRoZSBzdWJtaXQgdG9rZW4gb24gZW50ZXIgcHJlc3MsIGFuZCB0aGUgY29tbWl0PSBvcHRpb24gd291bGRcbiAgICAgICAgZ28gYXdheSBvbiBXb3JsZERyaXZlci5hcHBseV9jb21tYW5kLlxuXG4gICAgICAgIDIuIEEgc3VibWl0IHRva2VuIGlzIGFsd2F5cyBhZGRlZCB0byB0aGUgaW5wdXQgc3RyZWFtIGluIFBhcnNlci5ydW5fdGhyZWFkLlxuICAgICAgICBUaGVuLCB0aGUgY29uY2VwdCBvZiBcInN1Ym1pdGFiaWxpdHlcIiBkb2VzIG5vdCBtYXR0ZXIgZGlyZWN0bHkgdG8gdGhlIFBhcnNlciwgaXQgaXMgYSB3b3JsZFxuICAgICAgICBjb25jZXB0LlxuXG4gICAgICAgIFdlIGFyZSBnb2luZyB3aXRoIDEuIDIgRG9lc24ndCBhY3R1YWxseSB3b3JrIGJlY2F1c2UgaXQgYnJlYWtzIGF1dG9jb21wbGV0ZS5cbiAgICAqL1xuICAgIHN1Ym1pdHRhYmxlOiBib29sZWFuLFxuXG4gICAgc3VibWlzc2lvbjogYm9vbGVhbixcbiAgICBcbiAgICAvLyBXaGV0aGVyIHRoZSB3aG9sZSBjb21tYW5kIGlzIE1hdGNoLCBQYXJ0aWFsLCBFcnJvci4gVXNlZCB0byBoaWdobGlnaHQgYW5kIGNvbG9yLlxuICAgIG1hdGNoX3N0YXR1czogTWF0Y2hTdGF0dXMsXG5cbiAgICAvLyBVc2VkIHRvIGRpc3BsYXkgdHlwZWFoZWFkIGR1cmluZyB0eXBpbmdcbiAgICAvLyBUT0RPOiBtYWtlIGRlY2lzaW9ucyBhYm91dCBob3cgdG8gaW5kaWNhdGUgYSB0eXBlYWhlYWQgcm93IGlzIGxvY2tlZFxuICAgIC8vICAgIEN1cnJlbnRseSBpdCdzIGEgYml0IHVnbHkgYXMgZWFjaCB0b2tlbiBpbiB0aGUgcm93IGNvdWxkIGJlIGxvY2tlZCBvbiBub3RcbiAgICAvLyAgICBBbHNvIGEgdmlldyBvZiB0aGUgdHlwZWFoZWFkIHdpdGggY29ycmVjdCB3aGl0ZXNwYWNlIGluc2VydGVkXG4gICAgdHlwZWFoZWFkX2dyaWQ6IFBhcnRpYWxNYXRjaFtdW11cbn07XG5cbi8qXG4gICAgVE9ETzpcbiAgICBTaG91bGQgd2UgaW5jbHVkZSB0aGUgaW5wdXQgZGlzcGxheSBhbmQgdHlwZWFoZWFkIHJlc3VsdHMgaW4gdGhlIFBhcnNpbmc/XG4gICAgU2hvdWxkIHdlIGFkZCBhIHRvcC1sZXZlbCBhdHRyaWJ1dGUgc2F5aW5nIHdoZXRoZXIgdGhlIHdob2xlIHRoaW5nIGlzIFZhbGlkLCBQYXJ0aWFsIG9yIEVycm9yP1xuICAgICAgICBUaGlzIHdvdWxkIGd1YXJhbnRlZWQgY2F1c2UgZHVwbGljYXRpb24gb2YgZGF0YS5cbiovXG5leHBvcnQgdHlwZSBQYXJzaW5nID0ge1xuICAgIGtpbmQ6ICdQYXJzaW5nJyxcbiAgICB2aWV3OiBQYXJzaW5nVmlldyxcbiAgICBwYXJzZXM6IFRva2VuTWF0Y2hbXVtdLFxuICAgIHRva2VuczogVG9rZW5bXSxcbiAgICB3aGl0ZXNwYWNlOiBzdHJpbmdbXSxcbiAgICByYXc6IFJhd0lucHV0XG59XG5cbmV4cG9ydCB0eXBlIFBhcnNlZDxUPiA9IHsga2luZDogJ1BhcnNlZCcsIHJlc3VsdDogVCwgcGFyc2luZzogUGFyc2luZyB9O1xuZXhwb3J0IHR5cGUgTm90UGFyc2VkID0geyBraW5kOiAnTm90UGFyc2VkJywgcGFyc2luZzogUGFyc2luZyB9O1xuXG5leHBvcnQgdHlwZSBQYXJzZVJlc3VsdDxUPiA9IFBhcnNlZDxUPiB8IE5vdFBhcnNlZDtcblxuZXhwb3J0IGZ1bmN0aW9uIGlzX3BhcnNlX3Jlc3VsdF92YWxpZChyZXN1bHQ6IFRva2VuTWF0Y2hbXSkge1xuICAgIHJldHVybiByZXN1bHQubGVuZ3RoID09PSAwIHx8IGlzX21hdGNoKGFycmF5X2xhc3QocmVzdWx0KSk7XG59XG5cbi8vIGZvciBlYWNoIG9mIHRoZSBpbnB1dCB0b2tlbnMsIGhvdyBzaG91bGQgdGhleSBiZSBkaXNwbGF5ZWQvaGlnaGlnaHRlZD9cbmV4cG9ydCBmdW5jdGlvbiBjb21wdXRlX3ZpZXcocGFyc2VfcmVzdWx0czogVG9rZW5NYXRjaFtdW10sIGlucHV0X3N0cmVhbTogVG9rZW5bXSk6IFBhcnNpbmdWaWV3IHtcbiAgICAvLyBsZXQgcGFyc2VfcmVzdWx0czogVG9rZW5NYXRjaFtdW10gPSBwYXJzaW5nLnBhcnNlcztcbiAgICAvLyBsZXQgaW5wdXRfc3RyZWFtOiBUb2tlbltdID0gcGFyc2luZy50b2tlbnM7XG5cbiAgICBsZXQgbWF0Y2hfc3RhdHVzOiBNYXRjaFN0YXR1cztcbiAgICBsZXQgc3VibWlzc2lvbiA9IGZhbHNlO1xuICAgIGxldCByb3c6IFRva2VuTWF0Y2hbXTtcblxuICAgIGlmICgocm93ID0gcGFyc2VfcmVzdWx0cy5maW5kKHJvdyA9PiBhcnJheV9sYXN0KHJvdykudHlwZS5raW5kID09PSAnTWF0Y2gnKSkgIT09IHVuZGVmaW5lZCkge1xuICAgICAgICBtYXRjaF9zdGF0dXMgPSAnTWF0Y2gnO1xuICAgICAgICAvLyBUT0RPOiB0aHJvdyBhIHJ1bnRpbWUgZXhjIGhlcmUgaWYgd2UgaGF2ZSBhIE1hdGNoIGF0IHRoZSBlbmQgYnV0IGl0J3Mgbm90IFNVQk1JVF9UT0tFTiA/XG4gICAgICAgIC8vIFdvdWxkIGltcGx5IGEgY29tbW1hbmQgdGhyZWFkIHRoYXQgZG9lc24ndCBlbmQgaW4gc3VibWl0LlxuICAgICAgICBzdWJtaXNzaW9uID0gYXJyYXlfbGFzdChyb3cpLnRva2VuID09PSBTVUJNSVRfVE9LRU47XG5cbiAgICAgICAgaWYgKCFzdWJtaXNzaW9uKSB7XG4gICAgICAgICAgICB0aHJvdyBuZXcgUGFyc2VFcnJvcignTWF0Y2hpbmcgcGFyc2UgZGlkIG5vdCBlbmQgaW4gU1VCTUlUX1RPS0VOJyk7XG4gICAgICAgIH1cbiAgICB9IGVsc2UgaWYgKChyb3cgPSBwYXJzZV9yZXN1bHRzLmZpbmQocm93ID0+IGlzX3BhcnRpYWwoYXJyYXlfbGFzdChyb3cpKSkpICE9PSB1bmRlZmluZWQpIHtcbiAgICAgICAgbWF0Y2hfc3RhdHVzID0gJ1BhcnRpYWxNYXRjaCc7XG4gICAgfSBlbHNlIHtcbiAgICAgICAgcm93ID0gaW5wdXRfc3RyZWFtLm1hcCh0b2sgPT4gKHtcbiAgICAgICAgICAgIGtpbmQ6ICdUb2tlbk1hdGNoJyxcbiAgICAgICAgICAgIHRva2VuOiB0b2ssXG4gICAgICAgICAgICB0eXBlOiB7XG4gICAgICAgICAgICAgICAga2luZDogJ0Vycm9yTWF0Y2gnLFxuICAgICAgICAgICAgICAgIHRva2VuOiBudWxsXG4gICAgICAgICAgICB9XG4gICAgICAgIH0pKTtcbiAgICAgICAgbWF0Y2hfc3RhdHVzID0gJ0Vycm9yTWF0Y2gnO1xuICAgIH1cblxuICAgIGxldCB0eXBlYWhlYWRfZ3JpZCA9IGNvbXB1dGVfdHlwZWFoZWFkKHBhcnNlX3Jlc3VsdHMsIGlucHV0X3N0cmVhbSk7XG4gICAgbGV0IHN1Ym1pdHRhYmxlID0gdHlwZWFoZWFkX2dyaWQuc29tZShyb3cgPT4gYXJyYXlfbGFzdChyb3cpLnRva2VuID09PSBTVUJNSVRfVE9LRU4pXG5cbiAgICByZXR1cm4ge1xuICAgICAgICBraW5kOiAnUGFyc2luZ1ZpZXcnLFxuICAgICAgICBtYXRjaGVzOiByb3csXG4gICAgICAgIHN1Ym1pdHRhYmxlLFxuICAgICAgICBzdWJtaXNzaW9uLFxuICAgICAgICBtYXRjaF9zdGF0dXMsXG4gICAgICAgIHR5cGVhaGVhZF9ncmlkXG4gICAgfTtcbn1cblxuLypcblR5cGVhaGVhZFxuICAgIEZvciBlYWNoIG5vbi12YWxpZCByb3cgKGlnbm9yaW5nIGVycm9ycywgcGFydGlhbCBvbmx5KVxuICAgIElmIHRoZSByb3cgaXMgYXQgbGVhc3QgdGhlIGxlbmd0aCBvZiB0aGUgaW5wdXQgc3RyZWFtXG4gICAgVHlwZWFoZWFkIGlzIHRoZSBQYXJ0aWFsIFRva2VuTWF0Y2hlcyBzdWZmaXggKGFsd2F5cyBhdCB0aGUgZW5kKVxuKi9cbmV4cG9ydCBmdW5jdGlvbiBjb21wdXRlX3R5cGVhaGVhZChwYXJzZV9yZXN1bHRzOiBUb2tlbk1hdGNoW11bXSwgaW5wdXRfc3RyZWFtOiBUb2tlbltdKTogUGFydGlhbE1hdGNoW11bXSB7XG4gICAgLy8gbGV0IHBhcnNlX3Jlc3VsdHM6IFRva2VuTWF0Y2hbXVtdID0gcGFyc2luZy5wYXJzZXM7XG4gICAgLy8gbGV0IGlucHV0X3N0cmVhbTogVG9rZW5bXSA9IHBhcnNpbmcudG9rZW5zO1xuICAgIGxldCByb3dzX3dpdGhfdHlwZWFoZWFkID0gcGFyc2VfcmVzdWx0cy5maWx0ZXIocHIgPT4gXG4gICAgICAgICEoaXNfZXJyb3IoYXJyYXlfbGFzdChwcikpKVxuICAgICAgICAmJiBwci5zbGljZShpbnB1dF9zdHJlYW0ubGVuZ3RoIC0gMSkuc29tZShpc19wYXJ0aWFsKVxuICAgICk7XG5cbiAgICByZXR1cm4gcm93c193aXRoX3R5cGVhaGVhZC5tYXAocHIgPT4ge1xuICAgICAgICBsZXQgc3RhcnRfaWR4ID0gcHIuZmluZEluZGV4KGlzX3BhcnRpYWwpO1xuICAgICAgICBsZXQgcmVzdWx0OiBQYXJ0aWFsTWF0Y2hbXSA9IEFycmF5KHN0YXJ0X2lkeCkuZmlsbChudWxsKTtcbiAgICAgICAgbGV0IGVsdHMgPSA8eyB0eXBlOiBQYXJ0aWFsTWF0Y2ggfVtdPnByLnNsaWNlKHN0YXJ0X2lkeCk7XG4gICAgICAgIHJlc3VsdC5wdXNoKC4uLmVsdHMubWFwKHRtID0+IHRtLnR5cGUpKTtcbiAgICAgICAgcmV0dXJuIHJlc3VsdDtcbiAgICB9KTtcblxuICAgIC8vIFRPRE86IGFkZCBkZWR1cGUgc3RlcCBoZXJlXG59XG5cblxuLypcbiAgICBIZWxwZXIgZnVuY3Rpb24gZm9yIHBhcnNlciBtZXRob2RzIHRoYXQgdGFrZSBhbiBvcHRpb25hbCBjYWxsYmFjayBvciByZXR1cm4gdmFsdWUgb24gc3VjY2Vzc1xuICAgIFRoZSBwYXR0ZXJuIGlzIHRvIHVzZSBmdW5jdGlvbiBvdmVybG9hZGluZyB0byBnZXQgdGhlIHR5cGVzIHJpZ2h0LCBhbmQgY2FsbCB0aGlzXG4gICAgZnVuY3Rpb24gdG8gZ2V0IHRoZSBiZWhhdmlvciByaWdodC5cblxuICAgIFRPRE86IENhbiB3ZSBnZXQgd2hhdCB3ZSB3YW50IHVzaW5nIHByb21pc2VzP1xuKi9cbmZ1bmN0aW9uIGNhbGxfb3JfcmV0dXJuKHBhcnNlcjogUGFyc2VyLCByZXN1bHQ/OiBhbnkpOiBhbnkge1xuICAgIGlmIChyZXN1bHQgaW5zdGFuY2VvZiBGdW5jdGlvbikge1xuICAgICAgICByZXR1cm4gcmVzdWx0KHBhcnNlcik7XG4gICAgfVxuICAgIHJldHVybiByZXN1bHQ7XG59XG5cblxuZXhwb3J0IGNsYXNzIFBhcnNlciB7XG4gICAgY29uc3RydWN0b3IoaW5wdXRfc3RyZWFtOiBUb2tlbltdLCBzcGxpdHNfdG9fdGFrZTogbnVtYmVyW10pIHtcbiAgICAgICAgdGhpcy5pbnB1dF9zdHJlYW0gPSBpbnB1dF9zdHJlYW07XG4gICAgICAgIFxuICAgICAgICB0aGlzLl9zcGxpdF9pdGVyID0gc3BsaXRzX3RvX3Rha2VbU3ltYm9sLml0ZXJhdG9yXSgpO1xuICAgIH1cblxuICAgIGlucHV0X3N0cmVhbTogVG9rZW5bXTtcbiAgICBwb3M6IG51bWJlciA9IDA7XG5cbiAgICBwYXJzZV9yZXN1bHQ6IFRva2VuTWF0Y2hbXSA9IFtdO1xuICAgIFxuICAgIF9zcGxpdF9pdGVyOiBJdGVyYXRvcjxudW1iZXI+O1xuXG5cbiAgICBjb25zdW1lKHNwZWM6IHN0cmluZyB8IENvbnN1bWVTcGVjW10pOiB2b2lkO1xuICAgIGNvbnN1bWU8VD4oc3BlYzogc3RyaW5nIHwgQ29uc3VtZVNwZWNbXSwgY2FsbGJhY2s6IFBhcnNlclRocmVhZDxUPik6IFQ7XG4gICAgY29uc3VtZTxUPihzcGVjOiBzdHJpbmcgfCBDb25zdW1lU3BlY1tdLCByZXN1bHQ6IFQpOiBUO1xuICAgIGNvbnN1bWUoc3BlYzogc3RyaW5nIHwgQ29uc3VtZVNwZWNbXSwgcmVzdWx0PzogYW55KTogYW55IHtcbiAgICAgICAgaWYgKHR5cGVvZiBzcGVjID09PSAnc3RyaW5nJykge1xuICAgICAgICAgICAgdGhpcy5fY29uc3VtZV9kc2woc3BlYyk7XG4gICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgICB0aGlzLl9jb25zdW1lKHNwZWMpO1xuICAgICAgICB9XG4gICAgICAgIHJldHVybiBjYWxsX29yX3JldHVybih0aGlzLCByZXN1bHQpO1xuICAgIH1cblxuICAgIF9jb25zdW1lX2RzbChkc2w6IHN0cmluZyk6IHZvaWQge1xuICAgICAgICBsZXQgdG9rcyA9IHRva2VuaXplKGRzbClbMF07XG5cbiAgICAgICAgZm9yIChsZXQgdCBvZiB0b2tzKSB7XG4gICAgICAgICAgICBsZXQgdG9rZW5fdHlwZTogVG9rZW5UeXBlID0geyBraW5kOiAnRmlsbGVyJyB9O1xuICAgICAgICAgICAgbGV0IHR5cGVhaGVhZF90eXBlOiBUeXBlYWhlYWRUeXBlICA9IHsga2luZDogJ0F2YWlsYWJsZScgfTs7XG5cbiAgICAgICAgICAgIGlmICh0LnN0YXJ0c1dpdGgoJ34nKSkge1xuICAgICAgICAgICAgICAgIHR5cGVhaGVhZF90eXBlID0geyBraW5kOiAnTG9ja2VkJyB9O1xuICAgICAgICAgICAgICAgIHQgPSB0LnNsaWNlKDEpO1xuICAgICAgICAgICAgfVxuXG4gICAgICAgICAgICBpZiAodC5zdGFydHNXaXRoKCcqJykpIHtcbiAgICAgICAgICAgICAgICB0b2tlbl90eXBlID0geyBraW5kOiAnS2V5d29yZCcgfTtcbiAgICAgICAgICAgICAgICB0ID0gdC5zbGljZSgxKTtcbiAgICAgICAgICAgIH0gZWxzZSBpZiAodC5zdGFydHNXaXRoKCcmJykpIHtcbiAgICAgICAgICAgICAgICB0b2tlbl90eXBlID0geyBraW5kOiAnT3B0aW9uJyB9O1xuICAgICAgICAgICAgICAgIHQgPSB0LnNsaWNlKDEpO1xuICAgICAgICAgICAgfVxuXG4gICAgICAgICAgICB0aGlzLl9jb25zdW1lKHQuc3BsaXQoJ18nKS5tYXAodCA9PiAoe1xuICAgICAgICAgICAgICAgIGtpbmQ6ICdDb25zdW1lU3BlYycsXG4gICAgICAgICAgICAgICAgdG9rZW46IHQsXG4gICAgICAgICAgICAgICAgdG9rZW5fdHlwZSxcbiAgICAgICAgICAgICAgICB0eXBlYWhlYWRfdHlwZVxuICAgICAgICAgICAgfSkpKTtcbiAgICAgICAgfVxuICAgIH1cblxuICAgIC8qXG4gICAgICAgIFRoaXMgd2lsbCB0aHJvdyBhIHBhcnNlIGV4Y2VwdGlvbiBpZiB0aGUgZGVzaXJlZCB0b2tlbnMgY2FuJ3QgYmUgY29uc3VtZWQuXG4gICAgICAgIEl0IGlzIGV4cGVjdGVkIHRoYXQgZXZlcnkgUGFyc2VyVGhyZWFkIGlzIHdyYXBwZWQgaW4gYW4gZXhjZXB0aW9uIGhhbmRsZXIgZm9yXG4gICAgICAgIHRoaXMgY2FzZS5cbiAgICAqL1xuICAgIF9jb25zdW1lKHRva2VuczogQ29uc3VtZVNwZWNbXSkge1xuICAgICAgICBpZiAoIWlzX3BhcnNlX3Jlc3VsdF92YWxpZCh0aGlzLnBhcnNlX3Jlc3VsdCkpIHtcbiAgICAgICAgICAgIHRocm93IG5ldyBQYXJzZUVycm9yKCdUcmllZCB0byBjb25zdW1lKCkgb24gYSBkb25lIHBhcnNlci4nKTtcbiAgICAgICAgfVxuXG4gICAgICAgIGxldCBwYXJ0aWFsID0gZmFsc2U7XG4gICAgICAgIGxldCBlcnJvciA9IGZhbHNlO1xuICAgICAgICBsZXQgaSA9IDBcbiAgICAgICAgLy8gY2hlY2sgaWYgZXhhY3QgbWF0Y2hcbiAgICAgICAgZm9yIChpID0gMDsgaSA8IHRva2Vucy5sZW5ndGg7IGkrKykge1xuICAgICAgICAgICAgbGV0IHNwZWMgPSB0b2tlbnNbaV07XG4gICAgICAgICAgICBsZXQgc3BlY192YWx1ZSA9IHNwZWMudG9rZW47XG5cbiAgICAgICAgICAgIGlmIChzcGVjX3ZhbHVlID09PSBORVZFUl9UT0tFTikge1xuICAgICAgICAgICAgICAgIGVycm9yID0gdHJ1ZTtcbiAgICAgICAgICAgICAgICBicmVhaztcbiAgICAgICAgICAgIH1cblxuICAgICAgICAgICAgaWYgKHRoaXMucG9zICsgaSA+PSB0aGlzLmlucHV0X3N0cmVhbS5sZW5ndGgpIHtcbiAgICAgICAgICAgICAgICBwYXJ0aWFsID0gdHJ1ZTtcbiAgICAgICAgICAgICAgICBicmVhaztcbiAgICAgICAgICAgIH1cbiAgICAgICAgICAgIGxldCBpbnB1dCA9IHRoaXMuaW5wdXRfc3RyZWFtW3RoaXMucG9zICsgaV07XG4gICAgICAgICAgICBpZiAoc3BlY192YWx1ZSA9PT0gaW5wdXQpIHtcbiAgICAgICAgICAgICAgICBpZiAoc3BlYy50eXBlYWhlYWRfdHlwZS5raW5kID09PSAnTG9ja2VkJykge1xuICAgICAgICAgICAgICAgICAgICAvLyBUT0RPOiBzcGVjaWFsIGNhc2UgZm9yIHR5cGVhaGVhZCA9IExvY2tlZFxuICAgICAgICAgICAgICAgICAgICBlcnJvciA9IHRydWU7XG4gICAgICAgICAgICAgICAgICAgIGJyZWFrO1xuICAgICAgICAgICAgICAgIH1cbiAgICAgICAgICAgICAgICBjb250aW51ZTtcbiAgICAgICAgICAgIH1cblxuICAgICAgICAgICAgaWYgKHNwZWNfdmFsdWUgPT09IFNVQk1JVF9UT0tFTiB8fCBpbnB1dCA9PT0gU1VCTUlUX1RPS0VOKSB7XG4gICAgICAgICAgICAgICAgLy8gZWxpbWluYXRlIGNhc2Ugd2hlcmUgZWl0aGVyIHRva2VuIGlzIFNVQk1JVF9UT0tFTiAoY2FuJ3QgcGFzcyBpbnRvIHN0YXJ0c193aXRoKCkpXG4gICAgICAgICAgICAgICAgZXJyb3IgPSB0cnVlO1xuICAgICAgICAgICAgICAgIGJyZWFrO1xuICAgICAgICAgICAgfVxuICAgICAgICAgICAgaWYgKHN0YXJ0c193aXRoKDxzdHJpbmc+c3BlY192YWx1ZSwgPHN0cmluZz5pbnB1dCkpIHtcbiAgICAgICAgICAgICAgICBpZiAodGhpcy5wb3MgKyBpIDwgdGhpcy5pbnB1dF9zdHJlYW0ubGVuZ3RoIC0gMSkge1xuICAgICAgICAgICAgICAgICAgICBlcnJvciA9IHRydWU7XG4gICAgICAgICAgICAgICAgfSBlbHNlIHtcbiAgICAgICAgICAgICAgICAgICAgcGFydGlhbCA9IHRydWU7XG4gICAgICAgICAgICAgICAgfVxuICAgICAgICAgICAgICAgIGJyZWFrO1xuICAgICAgICAgICAgfVxuXG4gICAgICAgICAgICBlcnJvciA9IHRydWU7XG4gICAgICAgICAgICBicmVhaztcbiAgICAgICAgfVxuXG4gICAgICAgIGlmIChwYXJ0aWFsKSB7XG4gICAgICAgICAgICAvLyBwdXNoIGFsbCB0b2tlbnMgYXMgcGFydGlhbHNcbiAgICAgICAgICAgIHRoaXMucGFyc2VfcmVzdWx0LnB1c2goLi4udG9rZW5zLm1hcCgodCwgaikgPT4gXG4gICAgICAgICAgICAgICAgKHtcbiAgICAgICAgICAgICAgICAgICAga2luZDogJ1Rva2VuTWF0Y2gnLFxuICAgICAgICAgICAgICAgICAgICB0b2tlbjogdGhpcy5pbnB1dF9zdHJlYW1bdGhpcy5wb3MgKyBqXSB8fCAnJyxcbiAgICAgICAgICAgICAgICAgICAgdHlwZToge1xuICAgICAgICAgICAgICAgICAgICAgICAga2luZDogJ1BhcnRpYWxNYXRjaCcsXG4gICAgICAgICAgICAgICAgICAgICAgICB0b2tlbjogdC50b2tlbiA9PT0gTkVWRVJfVE9LRU4gPyAnJyA6IHQudG9rZW4sXG4gICAgICAgICAgICAgICAgICAgICAgICB0eXBlOiB0LnR5cGVhaGVhZF90eXBlXG4gICAgICAgICAgICAgICAgICAgIH1cbiAgICAgICAgICAgICAgICB9IGFzIGNvbnN0KSkpO1xuICAgICAgICAgICAgLy8gaW5jcmVtZW50IHBvc1xuICAgICAgICAgICAgdGhpcy5wb3MgPSB0aGlzLmlucHV0X3N0cmVhbS5sZW5ndGg7XG4gICAgICAgICAgICB0aHJvdyBuZXcgTm9NYXRjaCgpO1xuICAgICAgICB9XG5cbiAgICAgICAgaWYgKGVycm9yKSB7XG4gICAgICAgICAgICAvLyBwdXNoIGFsbCB0b2tlbnMgYXMgZXJyb3JzXG4gICAgICAgICAgICB0aGlzLnBhcnNlX3Jlc3VsdC5wdXNoKC4uLnRva2Vucy5tYXAoKHQsIGopID0+XG4gICAgICAgICAgICAgICAgKHtcbiAgICAgICAgICAgICAgICAgICAga2luZDogJ1Rva2VuTWF0Y2gnLFxuICAgICAgICAgICAgICAgICAgICB0b2tlbjogdGhpcy5pbnB1dF9zdHJlYW1bdGhpcy5wb3MgKyBqXSB8fCAnJyxcbiAgICAgICAgICAgICAgICAgICAgdHlwZToge1xuICAgICAgICAgICAgICAgICAgICAgICAga2luZDogJ0Vycm9yTWF0Y2gnLFxuICAgICAgICAgICAgICAgICAgICAgICAgdG9rZW46IHQudG9rZW4gPT09IE5FVkVSX1RPS0VOID8gJycgOiB0LnRva2VuXG4gICAgICAgICAgICAgICAgICAgIH1cbiAgICAgICAgICAgICAgICB9IGFzIGNvbnN0KSkpO1xuICAgICAgICAgICAgLy8gaW5jcmVtZW50IHBvc1xuICAgICAgICAgICAgdGhpcy5wb3MgPSB0aGlzLmlucHV0X3N0cmVhbS5sZW5ndGg7XG4gICAgICAgICAgICB0aHJvdyBuZXcgTm9NYXRjaCgpO1xuICAgICAgICB9XG5cbiAgICAgICAgLy8gcHVzaCBhbGwgdG9rZW5zIGFzIHZhbGlkXG4gICAgICAgIHRoaXMucGFyc2VfcmVzdWx0LnB1c2goLi4udG9rZW5zLm1hcCgodCwgaikgPT5cbiAgICAgICAgICAgICh7XG4gICAgICAgICAgICAgICAga2luZDogJ1Rva2VuTWF0Y2gnLFxuICAgICAgICAgICAgICAgIHRva2VuOiB0aGlzLmlucHV0X3N0cmVhbVt0aGlzLnBvcyArIGpdLFxuICAgICAgICAgICAgICAgIHR5cGU6IHsga2luZDogJ01hdGNoJywgdHlwZTogdC50b2tlbl90eXBlIH1cbiAgICAgICAgICAgIH0gYXMgY29uc3QpKSk7XG4gICAgICAgIC8vIGluY3JlbWVudCBwb3NcbiAgICAgICAgdGhpcy5wb3MgKz0gdG9rZW5zLmxlbmd0aDtcblxuICAgIH1cblxuICAgIGVsaW1pbmF0ZSgpOiBuZXZlciB7XG4gICAgICAgIC8qXG4gICAgICAgICAgICBJdCBpcyBpbXBvcnRhbnQgdGhhdCB3ZSBub3QganVzdCB0aHJvdyBOb01hdGNoLCBhbmQgaW5zdGVhZCBhY3R1bGx5IGF0dGVtcHQgdG8gY29uc3VtZSBhIG5ldmVyIHRva2VuLlxuICAgICAgICAqL1xuICAgICAgICByZXR1cm4gPG5ldmVyPnRoaXMuX2NvbnN1bWUoW3tcbiAgICAgICAgICAgIGtpbmQ6ICdDb25zdW1lU3BlYycsXG4gICAgICAgICAgICB0b2tlbjogTkVWRVJfVE9LRU4sXG4gICAgICAgICAgICB0b2tlbl90eXBlOiB7IGtpbmQ6ICdGaWxsZXInIH0sXG4gICAgICAgICAgICB0eXBlYWhlYWRfdHlwZTogeyBraW5kOiAnQXZhaWxhYmxlJyB9XG4gICAgICAgIH1dKTtcbiAgICB9XG5cbiAgICBzdWJtaXQoKTogdm9pZDtcbiAgICBzdWJtaXQ8VD4oY2FsbGJhY2s6IFBhcnNlclRocmVhZDxUPik6IFQ7XG4gICAgc3VibWl0PFQ+KHJlc3VsdDogVCk6IFQ7XG4gICAgc3VibWl0PFQ+KHJlc3VsdD86IGFueSkge1xuICAgICAgICB0aGlzLl9jb25zdW1lKFt7XG4gICAgICAgICAgICBraW5kOiAnQ29uc3VtZVNwZWMnLFxuICAgICAgICAgICAgdG9rZW46IFNVQk1JVF9UT0tFTixcbiAgICAgICAgICAgIHRva2VuX3R5cGU6IHsga2luZDogJ0ZpbGxlcicgfSxcbiAgICAgICAgICAgIHR5cGVhaGVhZF90eXBlOiB7IGtpbmQ6ICdBdmFpbGFibGUnIH1cbiAgICAgICAgfV0pO1xuXG4gICAgICAgIHJldHVybiBjYWxsX29yX3JldHVybih0aGlzLCByZXN1bHQpO1xuICAgIH1cblxuICAgIC8qXG4gICAgICAgIFRPRE86IHN1cHBvcnQgYSBjYWxsYmFjayBmb3Igc3BsaXQoKSB3aGljaCB0YWtlcyBib3RoIHRoZSByZXN1bHQgdmFsdWUsIGFuZCB0aGUgcGFyc2VyLlxuICAgICovXG4gICAgc3BsaXQ8VD4oc3VidGhyZWFkczogUGFyc2VyVGhyZWFkPFQ+W10pOiBUO1xuICAgIHNwbGl0PFQsIFI+KHN1YnRocmVhZHM6IFBhcnNlclRocmVhZDxUPltdLCBjYWxsYmFjazogKHJlc3VsdDogVCwgcGFyc2VyPzogUGFyc2VyKSA9PiBSKTogUjtcbiAgICBzcGxpdChzdWJ0aHJlYWRzOiBQYXJzZXJUaHJlYWQ8YW55PltdLCBjYWxsYmFjaz86IGFueSk6IGFueSB7XG4gICAgICAgIGxldCB7dmFsdWU6IHNwbGl0X3ZhbHVlLCBkb25lfSA9IHRoaXMuX3NwbGl0X2l0ZXIubmV4dCgpO1xuICAgICAgICBpZiAoZG9uZSkge1xuICAgICAgICAgICAgdGhyb3cgbmV3IFBhcnNlUmVzdGFydChzdWJ0aHJlYWRzLmxlbmd0aCk7XG4gICAgICAgIH1cbiAgICAgICAgXG4gICAgICAgIGxldCBzdCA9IHN1YnRocmVhZHNbc3BsaXRfdmFsdWVdO1xuICAgICAgICBsZXQgcmVzdWx0ID0gc3QodGhpcyk7XG5cbiAgICAgICAgaWYgKGNhbGxiYWNrID09PSB1bmRlZmluZWQpIHtcbiAgICAgICAgICAgIHJldHVybiByZXN1bHQ7XG4gICAgICAgIH1cblxuICAgICAgICByZXR1cm4gY2FsbGJhY2socmVzdWx0LCB0aGlzKTtcbiAgICB9XG5cbiAgICBzdGF0aWMgcnVuX3RocmVhZDxUPihyYXc6IFJhd0lucHV0LCB0OiBQYXJzZXJUaHJlYWQ8VD4pOiBQYXJzZVJlc3VsdDxUPiB7XG4gICAgICAgIFxuICAgICAgICBsZXQgW3Rva2Vucywgd2hpdGVzcGFjZV06IFtUb2tlbltdLCBzdHJpbmdbXV0gPSB0b2tlbml6ZShyYXcudGV4dCk7XG4gICAgICAgIFxuICAgICAgICBpZiAocmF3LnN1Ym1pdCkge1xuICAgICAgICAgICAgdG9rZW5zLnB1c2goU1VCTUlUX1RPS0VOKTtcbiAgICAgICAgfVxuXG4gICAgICAgIHR5cGUgUGF0aCA9IChudW1iZXIgfCBJdGVyYXRvcjxudW1iZXI+KVtdO1xuICAgICAgICBsZXQgZnJvbnRpZXI6IFBhdGhbXSA9IFtbXV07XG4gICAgICAgIGxldCByZXN1bHRzOiAoVCB8IE5vTWF0Y2gpW10gPSBbXTtcbiAgICAgICAgbGV0IHBhcnNlX3Jlc3VsdHM6IFRva2VuTWF0Y2hbXVtdID0gW107XG5cbiAgICAgICAgd2hpbGUgKGZyb250aWVyLmxlbmd0aCA+IDApIHtcbiAgICAgICAgICAgIGxldCBwYXRoID0gPFBhdGg+ZnJvbnRpZXIucG9wKCk7XG4gICAgICAgICAgICBsZXQgc3BsaXRzX3RvX3Rha2U7XG4gICAgICAgICAgICBpZiAocGF0aC5sZW5ndGggPT09IDApIHtcbiAgICAgICAgICAgICAgICBzcGxpdHNfdG9fdGFrZSA9IHBhdGg7XG4gICAgICAgICAgICB9IGVsc2Uge1xuICAgICAgICAgICAgICAgIGxldCBuID0gKGFycmF5X2xhc3QocGF0aCkgYXMgSXRlcmF0b3I8bnVtYmVyPikubmV4dCgpO1xuICAgICAgICAgICAgICAgIGlmIChuLmRvbmUpIHtcbiAgICAgICAgICAgICAgICAgICAgY29udGludWU7XG4gICAgICAgICAgICAgICAgfSBlbHNlIHtcbiAgICAgICAgICAgICAgICAgICAgZnJvbnRpZXIucHVzaChwYXRoKTtcbiAgICAgICAgICAgICAgICB9XG4gICAgICAgICAgICAgICAgc3BsaXRzX3RvX3Rha2UgPSBbLi4ucGF0aC5zbGljZSgwLCAtMSksIG4udmFsdWVdO1xuICAgICAgICAgICAgfVxuXG4gICAgICAgICAgICBsZXQgcCA9IG5ldyBQYXJzZXIodG9rZW5zLCBzcGxpdHNfdG9fdGFrZSk7XG5cbiAgICAgICAgICAgIGxldCByZXN1bHQ6IFQgfCBOb01hdGNoO1xuICAgICAgICAgICAgdHJ5IHtcbiAgICAgICAgICAgICAgICByZXN1bHQgPSB0KHApO1xuICAgICAgICAgICAgfSBjYXRjaCAoZSkge1xuICAgICAgICAgICAgICAgIGlmIChlIGluc3RhbmNlb2YgTm9NYXRjaCkge1xuICAgICAgICAgICAgICAgICAgICByZXN1bHQgPSBlO1xuICAgICAgICAgICAgICAgIH0gZWxzZSBpZiAoZSBpbnN0YW5jZW9mIFBhcnNlUmVzdGFydCkge1xuICAgICAgICAgICAgICAgICAgICBsZXQgbmV3X3NwbGl0czogbnVtYmVyW10gPSBbXTtcbiAgICAgICAgICAgICAgICAgICAgZm9yIChsZXQgaSA9IDA7IGkgPCBlLm5fc3BsaXRzOyBpKyspIHtcbiAgICAgICAgICAgICAgICAgICAgICAgIG5ld19zcGxpdHMucHVzaChpKTtcbiAgICAgICAgICAgICAgICAgICAgfSBcbiAgICAgICAgICAgICAgICAgICAgLy8gVE9ETzogZGVjaWRlIHdoZXRoZXIgdG8gdW5zaGlmdCgpIG9yIHB1c2goKSBoZXJlLiBBZmZlY3RzIHR5cGVhaGVhZCBkaXNwbGF5IG9yZGVyLlxuICAgICAgICAgICAgICAgICAgICBmcm9udGllci51bnNoaWZ0KFsuLi5zcGxpdHNfdG9fdGFrZSwgbmV3X3NwbGl0c1tTeW1ib2wuaXRlcmF0b3JdKCldKTtcbiAgICAgICAgICAgICAgICAgICAgLy8gZnJvbnRpZXIucHVzaChbLi4uc3BsaXRzX3RvX3Rha2UsIG5ld19zcGxpdHNbU3ltYm9sLml0ZXJhdG9yXSgpXSk7XG4gICAgICAgICAgICAgICAgICAgIGNvbnRpbnVlO1xuICAgICAgICAgICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgICAgICAgICAgIHRocm93IGU7XG4gICAgICAgICAgICAgICAgfVxuICAgICAgICAgICAgfVxuXG4gICAgICAgICAgICByZXN1bHRzLnB1c2gocmVzdWx0KTtcbiAgICAgICAgICAgIHBhcnNlX3Jlc3VsdHMucHVzaChwLnBhcnNlX3Jlc3VsdCk7XG4gICAgICAgIH1cblxuICAgICAgICBsZXQgdmlldyA9IGNvbXB1dGVfdmlldyhwYXJzZV9yZXN1bHRzLCB0b2tlbnMpO1xuXG4gICAgICAgIGxldCBwYXJzaW5nOiBQYXJzaW5nID0ge1xuICAgICAgICAgICAga2luZDogJ1BhcnNpbmcnLFxuICAgICAgICAgICAgdmlldyxcbiAgICAgICAgICAgIHBhcnNlczogcGFyc2VfcmVzdWx0cyxcbiAgICAgICAgICAgIHRva2VucyxcbiAgICAgICAgICAgIHdoaXRlc3BhY2UsXG4gICAgICAgICAgICByYXdcbiAgICAgICAgfTtcblxuICAgICAgICBsZXQgdmFsaWRfcmVzdWx0cyA9IDxUW10+cmVzdWx0cy5maWx0ZXIociA9PiAhKHIgaW5zdGFuY2VvZiBOb01hdGNoKSk7XG4gICAgICAgIGlmICh2YWxpZF9yZXN1bHRzLmxlbmd0aCA9PT0gMCkge1xuICAgICAgICAgICAgcmV0dXJuIHtcbiAgICAgICAgICAgICAgICBraW5kOiAnTm90UGFyc2VkJyxcbiAgICAgICAgICAgICAgICBwYXJzaW5nXG4gICAgICAgICAgICB9XG4gICAgICAgIH0gZWxzZSBpZiAodmFsaWRfcmVzdWx0cy5sZW5ndGggPiAxKSB7XG4gICAgICAgICAgICB0aHJvdyBuZXcgUGFyc2VFcnJvcihgQW1iaWd1b3VzIHBhcnNlOiAke3ZhbGlkX3Jlc3VsdHMubGVuZ3RofSB2YWxpZCByZXN1bHRzIGZvdW5kLmApO1xuICAgICAgICB9IGVsc2Uge1xuICAgICAgICAgICAgcmV0dXJuIHtcbiAgICAgICAgICAgICAgICBraW5kOiAnUGFyc2VkJyxcbiAgICAgICAgICAgICAgICByZXN1bHQ6IHZhbGlkX3Jlc3VsdHNbMF0sXG4gICAgICAgICAgICAgICAgcGFyc2luZ1xuICAgICAgICAgICAgfVxuICAgICAgICAgICAgXG4gICAgICAgIH1cbiAgICB9XG59XG5cbmV4cG9ydCB0eXBlIFJhd0lucHV0ID0ge1xuICAgIGtpbmQ6ICdSYXdJbnB1dCcsXG4gICAgdGV4dDogc3RyaW5nLFxuICAgIHN1Ym1pdDogYm9vbGVhblxufTtcblxuZXhwb3J0IGZ1bmN0aW9uIHJhdyh0ZXh0OiBzdHJpbmcsIHN1Ym1pdDogYm9vbGVhbiA9IHRydWUpOiBSYXdJbnB1dCB7XG4gICAgcmV0dXJuIHsga2luZDogJ1Jhd0lucHV0JywgdGV4dCwgc3VibWl0IH07XG59XG5cbi8vIFF1ZXN0aW9uOiBzaG91bGQgdGhlIHBhcnNlciBpbnB1dCBiZSBtYW5kYXRvcnk/XG4vLyBEb2Vzbid0IHNlZW0gdG8gY29tcGxhaW4gd2hlbiBpIGxlYXZlIG91dCB0aGUgZmlyc3QgYXJnLCBldmVuIHdpdGggdGhpcyB0eXBlXG5leHBvcnQgdHlwZSBQYXJzZXJUaHJlYWQ8VD4gPSAocDogUGFyc2VyKSA9PiBUO1xuZXhwb3J0IHR5cGUgUGFyc2VyVGhyZWFkczxUPiA9ICBQYXJzZXJUaHJlYWQ8VD5bXTtcbiJdLCJzb3VyY2VSb290IjoiIn0=\n//# sourceURL=webpack-internal:///./src/typescript/parser2.ts\n");
+
+/***/ }),
+
+/***/ "./src/typescript/text_tools.ts":
+/*!**************************************!*\
+  !*** ./src/typescript/text_tools.ts ***!
+  \**************************************/
+/*! exports provided: uncapitalize, capitalize, starts_with, tokens_equal, tokenize, split_tokens, untokenize, get_indenting_whitespace, ends_with_whitespace, normalize_whitespace, last, random_choice, dedent, wrap_in_div */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"uncapitalize\", function() { return uncapitalize; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"capitalize\", function() { return capitalize; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"starts_with\", function() { return starts_with; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"tokens_equal\", function() { return tokens_equal; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"tokenize\", function() { return tokenize; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"split_tokens\", function() { return split_tokens; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"untokenize\", function() { return untokenize; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"get_indenting_whitespace\", function() { return get_indenting_whitespace; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"ends_with_whitespace\", function() { return ends_with_whitespace; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"normalize_whitespace\", function() { return normalize_whitespace; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"last\", function() { return last; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"random_choice\", function() { return random_choice; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"dedent\", function() { return dedent; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"wrap_in_div\", function() { return wrap_in_div; });\nfunction uncapitalize(msg) {\n  return msg[0].toLowerCase() + msg.slice(1);\n}\nfunction capitalize(msg) {\n  return msg[0].toUpperCase() + msg.slice(1);\n}\nfunction starts_with(str, searchString, position) {\n  position = position || 0;\n  return str.substr(position, searchString.length) === searchString;\n}\nfunction tokens_equal(tks1, tks2) {\n  if (tks1.length !== tks2.length) {\n    return false;\n  }\n\n  for (var i = 0; i < tks1.length; i++) {\n    if (tks1[i] !== tks2[i]) {\n      return false;\n    }\n  }\n\n  return true;\n}\nfunction tokenize(s) {\n  var word_pat = /[\\S]+/g;\n  var space_pat = /[^\\S]+/g;\n  var tokens = s.split(space_pat);\n  var gaps = s.split(word_pat);\n\n  if (tokens.length > 0) {\n    if (tokens[0] === '') {\n      tokens.splice(0, 1);\n    }\n\n    if (tokens[tokens.length - 1] === '' && gaps[gaps.length - 1] === '') {\n      tokens.splice(tokens.length - 1, 1);\n    }\n  }\n\n  return [tokens, gaps];\n}\nfunction split_tokens(s) {\n  var space_pat = /[^\\S]+/g;\n  var tokens = s.split(space_pat);\n\n  if (tokens.length > 0) {\n    if (tokens[0] === '') {\n      tokens.splice(0, 1);\n    }\n\n    if (tokens[tokens.length - 1] === '') {\n      tokens.splice(tokens.length - 1, 1);\n    }\n  }\n\n  return tokens;\n}\n\nfunction tokenize_tests() {\n  console.log('tokenize tests');\n  console.log(tokenize(' l'));\n}\n\nfunction untokenize(tokens, gaps) {\n  if (gaps === undefined) {\n    return tokens.join(' ');\n  }\n\n  var result = '';\n  var i = 0;\n\n  for (i = 0; i < gaps.length; i++) {\n    result += gaps[i];\n\n    if (i < tokens.length) {\n      result += tokens[i];\n    }\n  }\n\n  return result;\n}\nfunction get_indenting_whitespace(s) {\n  var space_pat = /^[^\\S]+/;\n  var result = space_pat.exec(s);\n\n  if (result === null) {\n    return '';\n  }\n\n  return result[0];\n}\nfunction ends_with_whitespace(s) {\n  var last_space_pat = /\\s$/;\n  return last_space_pat.exec(s) !== null;\n}\nfunction normalize_whitespace(s) {\n  return s.trim().replace(/\\s+/g, ' ');\n}\nfunction last(x) {\n  return x[x.length - 1];\n}\nfunction random_choice(choices) {\n  var index = Math.floor(Math.random() * choices.length);\n  return choices[index];\n}\nfunction dedent(strs) {\n  // do interpolation\n  var result = strs[0];\n\n  for (var i = 0; i < (arguments.length <= 1 ? 0 : arguments.length - 1); i++) {\n    result += (i + 1 < 1 || arguments.length <= i + 1 ? undefined : arguments[i + 1]) + strs[i + 1];\n  } //find the first newline with whitespace after it\n\n\n  var pat = /\\n +/;\n  var m = pat.exec(result);\n\n  if (m === null) {\n    return result;\n  }\n\n  var replace_pat = new RegExp(m[0], 'g');\n  var result2 = result.replace(replace_pat, '\\n');\n  return result2;\n}\nfunction wrap_in_div(message) {\n  var elt = document.createElement('div');\n  elt.innerHTML = message;\n  return elt;\n}//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvdHlwZXNjcmlwdC90ZXh0X3Rvb2xzLnRzPzZmY2EiXSwibmFtZXMiOlsidW5jYXBpdGFsaXplIiwibXNnIiwidG9Mb3dlckNhc2UiLCJzbGljZSIsImNhcGl0YWxpemUiLCJ0b1VwcGVyQ2FzZSIsInN0YXJ0c193aXRoIiwic3RyIiwic2VhcmNoU3RyaW5nIiwicG9zaXRpb24iLCJzdWJzdHIiLCJsZW5ndGgiLCJ0b2tlbnNfZXF1YWwiLCJ0a3MxIiwidGtzMiIsImkiLCJ0b2tlbml6ZSIsInMiLCJ3b3JkX3BhdCIsInNwYWNlX3BhdCIsInRva2VucyIsInNwbGl0IiwiZ2FwcyIsInNwbGljZSIsInNwbGl0X3Rva2VucyIsInRva2VuaXplX3Rlc3RzIiwiY29uc29sZSIsImxvZyIsInVudG9rZW5pemUiLCJ1bmRlZmluZWQiLCJqb2luIiwicmVzdWx0IiwiZ2V0X2luZGVudGluZ193aGl0ZXNwYWNlIiwiZXhlYyIsImVuZHNfd2l0aF93aGl0ZXNwYWNlIiwibGFzdF9zcGFjZV9wYXQiLCJub3JtYWxpemVfd2hpdGVzcGFjZSIsInRyaW0iLCJyZXBsYWNlIiwibGFzdCIsIngiLCJyYW5kb21fY2hvaWNlIiwiY2hvaWNlcyIsImluZGV4IiwiTWF0aCIsImZsb29yIiwicmFuZG9tIiwiZGVkZW50Iiwic3RycyIsInBhdCIsIm0iLCJyZXBsYWNlX3BhdCIsIlJlZ0V4cCIsInJlc3VsdDIiLCJ3cmFwX2luX2RpdiIsIm1lc3NhZ2UiLCJlbHQiLCJkb2N1bWVudCIsImNyZWF0ZUVsZW1lbnQiLCJpbm5lckhUTUwiXSwibWFwcGluZ3MiOiJBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFPLFNBQVNBLFlBQVQsQ0FBc0JDLEdBQXRCLEVBQW1DO0FBQ3RDLFNBQU9BLEdBQUcsQ0FBQyxDQUFELENBQUgsQ0FBT0MsV0FBUCxLQUF1QkQsR0FBRyxD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S0FBdkIsQ0FBVjtBQUNBRixLQUFHLENBQUNHLFNBQUosR0FBZ0JKLE9BQWhCO0FBQ0EsU0FBT0MsR0FBUDtBQUNIIiwiZmlsZSI6Ii4vc3JjL3R5cGVzY3JpcHQvdGV4dF90b29scy50cy5qcyIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBmdW5jdGlvbiB1bmNhcGl0YWxpemUobXNnOiBzdHJpbmcpIHtcbiAgICByZXR1cm4gbXNnWzBdLnRvTG93ZXJDYXNlKCkgKyBtc2cuc2xpY2UoMSk7XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBjYXBpdGFsaXplKG1zZzogc3RyaW5nKSB7XG4gICAgcmV0dXJuIG1zZ1swXS50b1VwcGVyQ2FzZSgpICsgbXNnLnNsaWNlKDEpO1xufVxuXG5cbmV4cG9ydCBmdW5jdGlvbiBzdGFydHNfd2l0aChzdHI6IHN0cmluZywgc2VhcmNoU3RyaW5nOiBzdHJpbmcsIHBvc2l0aW9uPzogbnVtYmVyKXtcbiAgICBwb3NpdGlvbiA9IHBvc2l0aW9uIHx8IDA7XG4gICAgcmV0dXJuIHN0ci5zdWJzdHIocG9zaXRpb24sIHNlYXJjaFN0cmluZy5sZW5ndGgpID09PSBzZWFyY2hTdHJpbmc7XG59XG5cbmV4cG9ydCBmdW5jdGlvbiB0b2tlbnNfZXF1YWwodGtzMTogc3RyaW5nW10sIHRrczI6IHN0cmluZ1tdKSB7XG4gICAgaWYgKHRrczEubGVuZ3RoICE9PSB0a3MyLmxlbmd0aCkge1xuICAgICAgICByZXR1cm4gZmFsc2U7XG4gICAgfVxuXG4gICAgZm9yIChsZXQgaSA9IDA7IGkgPCB0a3MxLmxlbmd0aDsgaSsrKSB7XG4gICAgICAgIGlmICh0a3MxW2ldICE9PSB0a3MyW2ldKSB7XG4gICAgICAgICAgICByZXR1cm4gZmFsc2U7XG4gICAgICAgIH1cbiAgICB9XG5cbiAgICByZXR1cm4gdHJ1ZTtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIHRva2VuaXplKHM6IHN0cmluZyk6IFtzdHJpbmdbXSwgc3RyaW5nW11dIHtcbiAgICBsZXQgd29yZF9wYXQgPSAvW1xcU10rL2c7XG4gICAgbGV0IHNwYWNlX3BhdCA9IC9bXlxcU10rL2c7XG5cbiAgICBsZXQgdG9rZW5zID0gcy5zcGxpdChzcGFjZV9wYXQpO1xuICAgIGxldCBnYXBzID0gcy5zcGxpdCh3b3JkX3BhdCk7XG5cbiAgICBpZiAodG9rZW5zLmxlbmd0aCA+IDApe1xuICAgICAgICBpZiAodG9rZW5zWzBdID09PSAnJykge1xuICAgICAgICAgICAgdG9rZW5zLnNwbGljZSgwLCAxKTtcbiAgICAgICAgfVxuICAgICAgICBpZiAodG9rZW5zW3Rva2Vucy5sZW5ndGggLSAxXSA9PT0gJycgJiYgZ2Fwc1tnYXBzLmxlbmd0aCAtIDFdID09PSAnJykge1xuICAgICAgICAgICAgdG9rZW5zLnNwbGljZSh0b2tlbnMubGVuZ3RoIC0gMSwgMSk7XG4gICAgICAgIH1cbiAgICB9XG5cbiAgICByZXR1cm4gW3Rva2VucywgZ2Fwc107XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBzcGxpdF90b2tlbnMoczogc3RyaW5nKTogc3RyaW5nW10ge1xuICAgIGxldCBzcGFjZV9wYXQgPSAvW15cXFNdKy9nO1xuICAgIGxldCB0b2tlbnMgPSBzLnNwbGl0KHNwYWNlX3BhdCk7XG4gICAgaWYgKHRva2Vucy5sZW5ndGggPiAwKXtcbiAgICAgICAgaWYgKHRva2Vuc1swXSA9PT0gJycpIHtcbiAgICAgICAgICAgIHRva2Vucy5zcGxpY2UoMCwgMSk7XG4gICAgICAgIH1cbiAgICAgICAgaWYgKHRva2Vuc1t0b2tlbnMubGVuZ3RoIC0gMV0gPT09ICcnKSB7XG4gICAgICAgICAgICB0b2tlbnMuc3BsaWNlKHRva2Vucy5sZW5ndGggLSAxLCAxKTtcbiAgICAgICAgfVxuICAgIH1cbiAgICByZXR1cm4gdG9rZW5zO1xufVxuXG5mdW5jdGlvbiB0b2tlbml6ZV90ZXN0cygpIHtcbiAgICBjb25zb2xlLmxvZygndG9rZW5pemUgdGVzdHMnKTtcbiAgICBjb25zb2xlLmxvZyh0b2tlbml6ZSgnIGwnKSk7XG59XG5cbmV4cG9ydCBmdW5jdGlvbiB1bnRva2VuaXplKHRva2Vuczogc3RyaW5nW10sIGdhcHM/OiBzdHJpbmdbXSl7XG4gICAgaWYgKGdhcHMgPT09IHVuZGVmaW5lZCkge1xuICAgICAgICByZXR1cm4gdG9rZW5zLmpvaW4oJyAnKTtcbiAgICB9XG4gICAgXG4gICAgbGV0IHJlc3VsdDogc3RyaW5nID0gJyc7XG4gICAgbGV0IGkgPSAwO1xuICAgIGZvciAoaSA9IDA7IGkgPCBnYXBzLmxlbmd0aDsgaSsrKXtcbiAgICAgICAgcmVzdWx0ICs9IGdhcHNbaV07XG4gICAgICAgIGlmIChpIDwgdG9rZW5zLmxlbmd0aCkge1xuICAgICAgICAgICAgcmVzdWx0ICs9IHRva2Vuc1tpXTtcbiAgICAgICAgfVxuICAgIH1cblxuICAgIHJldHVybiByZXN1bHQ7XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBnZXRfaW5kZW50aW5nX3doaXRlc3BhY2Uoczogc3RyaW5nKSB7XG4gICAgbGV0IHNwYWNlX3BhdCA9IC9eW15cXFNdKy87XG4gICAgbGV0IHJlc3VsdCA9IHNwYWNlX3BhdC5leGVjKHMpO1xuICAgIGlmIChyZXN1bHQgPT09IG51bGwpe1xuICAgICAgICByZXR1cm4gJyc7XG4gICAgfVxuICAgIHJldHVybiByZXN1bHRbMF07XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBlbmRzX3dpdGhfd2hpdGVzcGFjZShzOiBzdHJpbmcpIHtcbiAgICBsZXQgbGFzdF9zcGFjZV9wYXQgPSAvXFxzJC87XG4gICAgcmV0dXJuIGxhc3Rfc3BhY2VfcGF0LmV4ZWMocykgIT09IG51bGw7XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBub3JtYWxpemVfd2hpdGVzcGFjZShzOiBzdHJpbmcpIHtcbiAgICByZXR1cm4gcy50cmltKCkucmVwbGFjZSgvXFxzKy9nLCAnICcpO1xufVxuXG5leHBvcnQgZnVuY3Rpb24gbGFzdCh4OiBhbnlbXSB8IHN0cmluZyl7XG4gICAgcmV0dXJuIHhbeC5sZW5ndGggLSAxXTtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIHJhbmRvbV9jaG9pY2UoY2hvaWNlczogYW55W10pIHtcbiAgdmFyIGluZGV4ID0gTWF0aC5mbG9vcihNYXRoLnJhbmRvbSgpICogY2hvaWNlcy5sZW5ndGgpO1xuICByZXR1cm4gY2hvaWNlc1tpbmRleF07XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBkZWRlbnQoc3RyczogVGVtcGxhdGVTdHJpbmdzQXJyYXksIC4uLmFyZ3MpIHtcbiAgICAvLyBkbyBpbnRlcnBvbGF0aW9uXG4gICAgbGV0IHJlc3VsdDogc3RyaW5nID0gc3Ryc1swXTtcbiAgICBmb3IgKGxldCBpID0gMDsgaSA8IGFyZ3MubGVuZ3RoOyBpKyspIHtcbiAgICAgICAgcmVzdWx0ICs9IGFyZ3NbaV0gKyBzdHJzW2kgKyAxXTtcbiAgICB9XG5cbiAgICAvL2ZpbmQgdGhlIGZpcnN0IG5ld2xpbmUgd2l0aCB3aGl0ZXNwYWNlIGFmdGVyIGl0XG4gICAgbGV0IHBhdCA9IC9cXG4gKy87XG4gICAgbGV0IG0gPSBwYXQuZXhlYyhyZXN1bHQpO1xuXG4gICAgaWYgKG0gPT09IG51bGwpIHtcbiAgICAgICAgcmV0dXJuIHJlc3VsdFxuICAgIH1cblxuICAgIGxldCByZXBsYWNlX3BhdCA9IG5ldyBSZWdFeHAobVswXSwgJ2cnKTtcbiAgICBsZXQgcmVzdWx0MiA9IHJlc3VsdC5yZXBsYWNlKHJlcGxhY2VfcGF0LCAnXFxuJyk7XG4gICAgXG4gICByZXR1cm4gcmVzdWx0Mjtcbn1cblxuZXhwb3J0IGZ1bmN0aW9uIHdyYXBfaW5fZGl2KG1lc3NhZ2U6IHN0cmluZyk6IEhUTUxFbGVtZW50IHtcbiAgICBsZXQgZWx0ID0gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgnZGl2Jyk7XG4gICAgZWx0LmlubmVySFRNTCA9IG1lc3NhZ2U7XG4gICAgcmV0dXJuIGVsdDtcbn0gIl0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///./src/typescript/text_tools.ts\n");
+
+/***/ }),
+
+/***/ "./src/typescript/world.ts":
+/*!*********************************!*\
+  !*** ./src/typescript/world.ts ***!
+  \*********************************/
+/*! exports provided: object_level, get_initial_world, apply_command, WorldDriver */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"object_level\", function() { return object_level; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"get_initial_world\", function() { return get_initial_world; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"apply_command\", function() { return _apply_command; });\n/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, \"WorldDriver\", function() { return WorldDriver; });\n/* harmony import */ var _datatypes__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./datatypes */ \"./src/typescript/datatypes.ts\");\n/* harmony import */ var _parser2__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./parser2 */ \"./src/typescript/parser2.ts\");\n/* harmony import */ var assert__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! assert */ \"./node_modules/assert/assert.js\");\n/* harmony import */ var assert__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(assert__WEBPACK_IMPORTED_MODULE_2__);\nfunction _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError(\"Cannot call a class as a function\"); } }\n\nfunction _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if (\"value\" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }\n\nfunction _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }\n\nfunction _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }\n\nfunction _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }\n\nfunction _nonIterableSpread() { throw new TypeError(\"Invalid attempt to spread non-iterable instance\"); }\n\nfunction _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === \"[object Arguments]\") return Array.from(iter); }\n\nfunction _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }\n\n/*\n\n    This module provides the highest level abstractions about game state and history.\n    TODO: rename from commands to world?\n\n    It defines what comprises the game state, including\n        user input\n        parse results\n        current world state\n        current world message\n        past world states/messages\n        history interpretation tags\n\n    Notable concerns:\n        All game state has to be serializable (for save/load)\n            Meaning, functions/closures either can't be part of the state, or we need to define a serialization protocol for them\n        Infinite undo (so all previous states must be saved at all time)\n\n\n\n*/\n\n\n // TODO: We probably want a data structure for this\n// Question is how DOM-like will it wind up being and should we just use the DOM\n\nfunction apply_interpretation_op(interp, op) {\n  if (op.kind === 'Add') {\n    if (interp.indexOf(op.label) === -1) {\n      return [].concat(_toConsumableArray(interp), [op.label]);\n    }\n  }\n\n  if (op.kind === 'Remove') {\n    var idx = interp.indexOf(op.label);\n\n    if (idx !== -1) {\n      var new_interp = _toConsumableArray(interp);\n\n      new_interp.splice(idx, 1);\n      return new_interp;\n    }\n  }\n\n  return interp;\n}\n\nfunction apply_interpretation_ops(interp, ops) {\n  return ops.reduce(apply_interpretation_op, interp);\n}\n\nfunction object_level(w) {\n  var updater = {\n    parsing: undefined,\n    previous: undefined,\n    index: undefined,\n    interpretations: undefined\n  };\n  return Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"update\"])(w, updater);\n}\nvar INITIAL_WORLD = {\n  message: undefined,\n  parsing: undefined,\n  previous: null,\n  index: 0,\n  interpretations: {}\n}; // Helper to return INITIAL_WORLD constant as any kind of W type.\n\nfunction get_initial_world() {\n  return INITIAL_WORLD;\n}\n\nfunction _apply_command(spec, world, command) {\n  // First handle the command\n  var result = _parser2__WEBPACK_IMPORTED_MODULE_1__[\"Parser\"].run_thread(command, function (p) {\n    return spec.handle_command(p, world);\n  });\n\n  if (result.kind === 'NotParsed') {\n    return {\n      kind: 'CommandResult',\n      parsing: result.parsing,\n      world: null\n    };\n  }\n\n  var next_state = result.result;\n  next_state = Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"update\"])(next_state, {\n    previous: function previous(_) {\n      return world;\n    },\n    parsing: function parsing(_) {\n      return result.parsing;\n    },\n    index: function index(_) {\n      return _ + 1;\n    }\n  }); // Next apply history interp            \n\n  var hist_state = next_state;\n\n  while (hist_state !== null) {\n    var ops = spec.interpret_history(hist_state, next_state);\n\n    if (ops !== undefined) {\n      var old_interp = next_state.interpretations[hist_state.index] || [];\n      var new_interp = apply_interpretation_ops(old_interp, ops);\n\n      if (old_interp !== new_interp) {\n        if (new_interp.length === 0) {\n          new_interp = undefined;\n        }\n\n        next_state = Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"update\"])(next_state, {\n          interpretations: _defineProperty({}, hist_state.index, new_interp)\n        });\n      }\n    }\n\n    hist_state = hist_state.previous;\n  }\n\n  return {\n    kind: 'CommandResult',\n    parsing: result.parsing,\n    world: next_state\n  };\n}\n\n\nvar WorldDriver =\n/*#__PURE__*/\nfunction () {\n  function WorldDriver(spec) {\n    _classCallCheck(this, WorldDriver);\n\n    this.spec = spec;\n\n    _defineProperty(this, \"current_world\", void 0);\n\n    _defineProperty(this, \"current_parsing\", void 0);\n\n    _defineProperty(this, \"possible_world\", void 0);\n\n    this.current_world = this.spec.initial_world;\n    this.apply_command(Object(_parser2__WEBPACK_IMPORTED_MODULE_1__[\"raw\"])('', false));\n  }\n\n  _createClass(WorldDriver, [{\n    key: \"apply_command\",\n    value: function apply_command(cmd) {\n      var result = _apply_command(this.spec, this.current_world, cmd);\n\n      this.current_parsing = result.parsing;\n      this.possible_world = null;\n\n      if (result.parsing.view.submission) {\n        assert__WEBPACK_IMPORTED_MODULE_2__[\"ok\"](result.world !== null);\n        this.current_world = result.world;\n        this.apply_command(Object(_parser2__WEBPACK_IMPORTED_MODULE_1__[\"raw\"])('', false));\n      } else if (result.parsing.view.submittable) {\n        // See what would happen if they submitted this command.\n        // This is used for UI effects when an entered, but not submitted, command\n        // would cause interpretations to change\n        var r = _apply_command(this.spec, this.current_world, Object(_datatypes__WEBPACK_IMPORTED_MODULE_0__[\"update\"])(cmd, {\n          submit: true\n        })); // TODO add null check runtime error\n\n\n        assert__WEBPACK_IMPORTED_MODULE_2__[\"ok\"](r.world !== null);\n        this.possible_world = r.world;\n      }\n    }\n  }]);\n\n  return WorldDriver;\n}();\n/*\nTODO:\n    World Validator, tests out a world by fully traversing its command space\n        - Find any states that produced invalid commands\n            Raised an error given an input\n            Did not accept a submit token at the end\n\n\n*///# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIndlYnBhY2s6Ly8vLi9zcmMvdHlwZXNjcmlwdC93b3JsZC50cz9jZGZiIl0sIm5hbWVzIjpbImFwcGx5X2ludGVycHJldGF0aW9uX29wIiwiaW50ZXJwIiwib3AiLCJraW5kIiwiaW5kZXhPZiIsImxhYmVsIiwiaWR4IiwibmV3X2ludGVycCIsInNwbGljZSIsImFwcGx5X2ludGVycHJldGF0aW9uX29wcyIsIm9wcyIsInJlZHVjZSIsIm9iamVjdF9sZXZlbCIsInciLCJ1cGRhdGVyIiwicGFyc2luZyIsInVuZGVmaW5lZCIsInByZXZpb3VzIiwiaW5kZXgiLCJpbnRlcnByZXRhdGlvbnMiLCJ1cGRhdGUiLCJJTklUSUFMX1dPUkxEIiwibWVzc2FnZSIsImdldF9pbml0aWFsX3dvcmxkIiwiYXBwbHlfY29tbWFuZCIsInNwZWMiLCJ3b3JsZCIsImNvbW1hbmQiLCJyZXN1bHQiLCJQYXJzZXIiLCJydW5fdGhyZWFkIiwicCIsImhhbmRsZV9jb21tYW5kIiwibmV4dF9zdGF0ZSIsIl8iLCJoaXN0X3N0YXRlIiwiaW50ZXJwcmV0X2hpc3RvcnkiLCJvbGRfaW50ZXJwIiwibGVuZ3RoIiwiV29ybGREcml2ZXIiLCJjdXJyZW50X3dvcmxkIiwiaW5pdGlhbF93b3JsZCIsInJhdyIsImNtZCIsImN1cnJlbnRfcGFyc2luZyIsInBvc3NpYmxlX3dvcmxkIiwidmlldyIsInN1Ym1pc3Npb24iLCJhc3NlcnQiLCJzdWJtaXR0YWJsZSIsInIiLCJzdWJtaXQiXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQTs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBc0JBO0FBTUE7Q0FVQTtBQUNBOztBQVVBLFNBQVNBLHVCQUFULENBQWlDQyxNQUFqQyxFQUF5RUMsRUFBekUsRUFBK0g7QUFDM0gsTUFBSUEsRUFBRSxDQUFDQyxJQUFILEtBQVksS0FBaEIsRUFBc0I7QUFDbEIsUUFBSUYsTUFBTSxDQUFDRyxPQUFQLENBQWVGLEVBQUUsQ0FBQ0csS0FBbEIs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LGFBQUtjLGFBQUwsR0FBcUJaLE1BQU0sQ0FBQ0YsS0FBNUI7QUFDQSxhQUFLRixhQUFMLENBQW1Ca0Isb0RBQUcsQ0FBQyxFQUFELEVBQUssS0FBTCxDQUF0QjtBQUNILE9BTEQsTUFLTyxJQUFJZCxNQUFNLENBQUNiLE9BQVAsQ0FBZStCLElBQWYsQ0FBb0JHLFdBQXhCLEVBQW9DO0FBQ3ZDO0FBQ0E7QUFDQTtBQUNBLFlBQUlDLENBQUMsR0FBRzFCLGNBQWEsQ0FBQyxLQUFLQyxJQUFOLEVBQVksS0FBS2UsYUFBakIsRUFBZ0NwQix5REFBTSxDQUFDdUIsR0FBRCxFQUFNO0FBQUVRLGdCQUFNLEVBQUU7QUFBVixTQUFOLENBQXRDLENBQXJCLENBSnVDLENBTXZDOzs7QUFDQUgsaURBQUEsQ0FBVUUsQ0FBQyxDQUFDeEIsS0FBRixLQUFZLElBQXRCO0FBQ0EsYUFBS21CLGNBQUwsR0FBc0JLLENBQUMsQ0FBQ3hCLEtBQXhCO0FBQ0g7QUFDSjtBQWxDTDs7QUFBQTtBQUFBO0FBcUNBIiwiZmlsZSI6Ii4vc3JjL3R5cGVzY3JpcHQvd29ybGQudHMuanMiLCJzb3VyY2VzQ29udGVudCI6WyIvKlxuXG4gICAgVGhpcyBtb2R1bGUgcHJvdmlkZXMgdGhlIGhpZ2hlc3QgbGV2ZWwgYWJzdHJhY3Rpb25zIGFib3V0IGdhbWUgc3RhdGUgYW5kIGhpc3RvcnkuXG4gICAgVE9ETzogcmVuYW1lIGZyb20gY29tbWFuZHMgdG8gd29ybGQ/XG5cbiAgICBJdCBkZWZpbmVzIHdoYXQgY29tcHJpc2VzIHRoZSBnYW1lIHN0YXRlLCBpbmNsdWRpbmdcbiAgICAgICAgdXNlciBpbnB1dFxuICAgICAgICBwYXJzZSByZXN1bHRzXG4gICAgICAgIGN1cnJlbnQgd29ybGQgc3RhdGVcbiAgICAgICAgY3VycmVudCB3b3JsZCBtZXNzYWdlXG4gICAgICAgIHBhc3Qgd29ybGQgc3RhdGVzL21lc3NhZ2VzXG4gICAgICAgIGhpc3RvcnkgaW50ZXJwcmV0YXRpb24gdGFnc1xuXG4gICAgTm90YWJsZSBjb25jZXJuczpcbiAgICAgICAgQWxsIGdhbWUgc3RhdGUgaGFzIHRvIGJlIHNlcmlhbGl6YWJsZSAoZm9yIHNhdmUvbG9hZClcbiAgICAgICAgICAgIE1lYW5pbmcsIGZ1bmN0aW9ucy9jbG9zdXJlcyBlaXRoZXIgY2FuJ3QgYmUgcGFydCBvZiB0aGUgc3RhdGUsIG9yIHdlIG5lZWQgdG8gZGVmaW5lIGEgc2VyaWFsaXphdGlvbiBwcm90b2NvbCBmb3IgdGhlbVxuICAgICAgICBJbmZpbml0ZSB1bmRvIChzbyBhbGwgcHJldmlvdXMgc3RhdGVzIG11c3QgYmUgc2F2ZWQgYXQgYWxsIHRpbWUpXG5cblxuXG4qL1xuXG5pbXBvcnQge1xuICAgIGFycmF5X2xhc3QsXG4gICAgdXBkYXRlLFxuICAgIFVwZGF0ZXJcbn0gZnJvbSAnLi9kYXRhdHlwZXMnO1xuXG5pbXBvcnQge1xuICAgIHJhdyxcbiAgICBSYXdJbnB1dCxcbiAgICBQYXJzZXIsXG4gICAgUGFyc2VSZXN1bHQsXG4gICAgUGFyc2luZ1xufSBmcm9tICcuL3BhcnNlcjInO1xuXG5pbXBvcnQgKiBhcyBhc3NlcnQgZnJvbSAnYXNzZXJ0JztcblxuLy8gVE9ETzogV2UgcHJvYmFibHkgd2FudCBhIGRhdGEgc3RydWN0dXJlIGZvciB0aGlzXG4vLyBRdWVzdGlvbiBpcyBob3cgRE9NLWxpa2Ugd2lsbCBpdCB3aW5kIHVwIGJlaW5nIGFuZCBzaG91bGQgd2UganVzdCB1c2UgdGhlIERPTVxudHlwZSBNZXNzYWdlID0gc3RyaW5nO1xuXG50eXBlIEludGVycHJldGF0aW9uTGFiZWwgPSBzdHJpbmc7XG50eXBlIEludGVycHJldGF0aW9uT3AgPVxuICAgIHsga2luZDogJ0FkZCcsIGxhYmVsOiBJbnRlcnByZXRhdGlvbkxhYmVsIH0gfFxuICAgIHsga2luZDogJ1JlbW92ZScsIGxhYmVsOiBJbnRlcnByZXRhdGlvbkxhYmVsIH07XG5leHBvcnQgdHlwZSBJbnRlcnByZXRhdGlvbnMgPSB7IHJlYWRvbmx5IFtrOiBudW1iZXJdOiByZWFkb25seSBJbnRlcnByZXRhdGlvbkxhYmVsW10gfTtcblxuXG5mdW5jdGlvbiBhcHBseV9pbnRlcnByZXRhdGlvbl9vcChpbnRlcnA6IHJlYWRvbmx5IEludGVycHJldGF0aW9uTGFiZWxbXSwgb3A6IEludGVycHJldGF0aW9uT3ApOiByZWFkb25seSBJbnRlcnByZXRhdGlvbkxhYmVsW10ge1xuICAgIGlmIChvcC5raW5kID09PSAnQWRkJyl7XG4gICAgICAgIGlmIChpbnRlcnAuaW5kZXhPZihvcC5sYWJlbCkgPT09IC0xKSB7XG4gICAgICAgICAgICByZXR1cm4gWy4uLmludGVycCwgb3AubGFiZWxdO1xuICAgICAgICB9XG4gICAgfVxuICAgIGlmIChvcC5raW5kID09PSAnUmVtb3ZlJyl7XG4gICAgICAgIGxldCBpZHggPSBpbnRlcnAuaW5kZXhPZihvcC5sYWJlbCk7XG4gICAgICAgIGlmIChpZHggIT09IC0xKSB7XG4gICAgICAgICAgICBsZXQgbmV3X2ludGVycCA9IFsuLi5pbnRlcnBdO1xuICAgICAgICAgICAgbmV3X2ludGVycC5zcGxpY2UoaWR4LCAxKTtcbiAgICAgICAgICAgIHJldHVybiBuZXdfaW50ZXJwXG4gICAgICAgIH1cbiAgICB9XG5cbiAgICByZXR1cm4gaW50ZXJwO1xufVxuXG5mdW5jdGlvbiBhcHBseV9pbnRlcnByZXRhdGlvbl9vcHMoaW50ZXJwOiByZWFkb25seSBJbnRlcnByZXRhdGlvbkxhYmVsW10sIG9wczogSW50ZXJwcmV0YXRpb25PcFtdKTogcmVhZG9ubHkgSW50ZXJwcmV0YXRpb25MYWJlbFtdIHtcbiAgICByZXR1cm4gb3BzLnJlZHVjZShhcHBseV9pbnRlcnByZXRhdGlvbl9vcCwgaW50ZXJwKTtcbn1cblxuZXhwb3J0IGludGVyZmFjZSBXb3JsZCB7XG4gICAgcmVhZG9ubHkgbWVzc2FnZTogTWVzc2FnZSB8IHVuZGVmaW5lZCxcbiAgICByZWFkb25seSBwYXJzaW5nOiBQYXJzaW5nIHwgdW5kZWZpbmVkLFxuICAgIHJlYWRvbmx5IHByZXZpb3VzOiB0aGlzIHwgbnVsbCxcbiAgICByZWFkb25seSBpbmRleDogbnVtYmVyLFxuICAgIHJlYWRvbmx5IGludGVycHJldGF0aW9uczogSW50ZXJwcmV0YXRpb25zXG59XG5cbi8vIFRPRE86IG5lZWQgYSBtb3JlIGNvbmNpc2UgYW5kIGN1dGUgdGVybSB0aGFuIFwib2JqZWN0IGxldmVsXCJcbmV4cG9ydCB0eXBlIE9iamVjdExldmVsPFcgZXh0ZW5kcyBXb3JsZD4gPVxuICAgICAgICBQaWNrPFcsIEV4Y2x1ZGU8a2V5b2YgVywgJ3BhcnNpbmcnIHwgJ3ByZXZpb3VzJyB8ICdpbmRleCcgfCAnaW50ZXJwcmV0YXRpb25zJz4+O1xuXG5leHBvcnQgZnVuY3Rpb24gb2JqZWN0X2xldmVsPFcgZXh0ZW5kcyBXb3JsZD4odzogVyk6IE9iamVjdExldmVsPFc+IHtcbiAgICBjb25zdCB1cGRhdGVyOiBVcGRhdGVyPFdvcmxkPiA9IHsgcGFyc2luZzogdW5kZWZpbmVkLCBwcmV2aW91czogdW5kZWZpbmVkLCBpbmRleDogdW5kZWZpbmVkLCBpbnRlcnByZXRhdGlvbnM6IHVuZGVmaW5lZCB9O1xuXG4gICAgcmV0dXJuIDxPYmplY3RMZXZlbDxXPj4gdXBkYXRlKHcsIHVwZGF0ZXIpXG59XG5cbmV4cG9ydCB0eXBlIENvbW1hbmRIYW5kbGVyPFcgZXh0ZW5kcyBXb3JsZD4gPSAocGFyc2VyOiBQYXJzZXIsIHdvcmxkOiBPYmplY3RMZXZlbDxXPikgPT4gT2JqZWN0TGV2ZWw8Vz47XG5leHBvcnQgdHlwZSBIaXN0b3J5SW50ZXJwcmV0ZXI8VyBleHRlbmRzIFdvcmxkPiA9IChvbGRfd29ybGQ6IE9iamVjdExldmVsPFc+LCBuZXdfd29ybGQ6IE9iamVjdExldmVsPFc+KSA9PiBJbnRlcnByZXRhdGlvbk9wW10gfCB1bmRlZmluZWQ7XG5cbmNvbnN0IElOSVRJQUxfV09STEQ6IFdvcmxkID0ge1xuICAgIG1lc3NhZ2U6IHVuZGVmaW5lZCxcbiAgICBwYXJzaW5nOiB1bmRlZmluZWQsXG4gICAgcHJldmlvdXM6IG51bGwsXG4gICAgaW5kZXg6IDAsXG4gICAgaW50ZXJwcmV0YXRpb25zOiB7fVxufTtcblxuLy8gSGVscGVyIHRvIHJldHVybiBJTklUSUFMX1dPUkxEIGNvbnN0YW50IGFzIGFueSBraW5kIG9mIFcgdHlwZS5cbmV4cG9ydCBmdW5jdGlvbiBnZXRfaW5pdGlhbF93b3JsZDxXIGV4dGVuZHMgV29ybGQ+KCk6IFBpY2s8Vywga2V5b2YgV29ybGQ+IHtcbiAgICByZXR1cm4gSU5JVElBTF9XT1JMRDtcbn1cblxuZXhwb3J0IHR5cGUgV29ybGRTcGVjPFcgZXh0ZW5kcyBXb3JsZD4gPSB7XG4gICAgcmVhZG9ubHkgaW5pdGlhbF93b3JsZDogVyxcblxuICAgIC8vIFNob3VsZCByZXR1cm4gYSBuZXcgd29ybGQgd2l0aCB3b3JsZCBzZXQgdG8gdGhlIG5ldyB3b3JsZCdzIHByZXZcbiAgICByZWFkb25seSBoYW5kbGVfY29tbWFuZDogQ29tbWFuZEhhbmRsZXI8Vz4sXG4gICAgXG4gICAgLy8gR2l2ZW4gYW4gaGlzdG9yaWNhbGx5IHByZXZpb3VzIHdvcmxkIGFuZCB0aGUgY3VycmVudCAobmV3KSB3b3JsZCxcbiAgICAvLyByZXR1cm4gYW55IGhpc3RvcnkgaW50ZXJwcmV0YXRpb24gb3BzIHRvIGJlIGFwcGxpZWQgdG8gdGhlIHByZXZpb3VzIHdvcmxkXG4gICAgcmVhZG9ubHkgaW50ZXJwcmV0X2hpc3Rvcnk6IEhpc3RvcnlJbnRlcnByZXRlcjxXPlxufVxuXG5leHBvcnQgdHlwZSBDb21tYW5kUmVzdWx0PFcgZXh0ZW5kcyBXb3JsZD4gPVxuICAgIHsga2luZDogJ0NvbW1hbmRSZXN1bHQnLCBwYXJzaW5nOiBQYXJzaW5nLCB3b3JsZDogVyB8IG51bGwgfTtcblxuZXhwb3J0IGZ1bmN0aW9uIGFwcGx5X2NvbW1hbmQ8VyBleHRlbmRzIFdvcmxkPihzcGVjOiBXb3JsZFNwZWM8Vz4sIHdvcmxkOiBXLCBjb21tYW5kOiBSYXdJbnB1dCk6IENvbW1hbmRSZXN1bHQ8Vz4ge1xuICAgIC8vIEZpcnN0IGhhbmRsZSB0aGUgY29tbWFuZFxuICAgIGxldCByZXN1bHQgPSBQYXJzZXIucnVuX3RocmVhZChjb21tYW5kLCBwID0+IHNwZWMuaGFuZGxlX2NvbW1hbmQocCwgd29ybGQpIGFzIFcpO1xuXG4gICAgaWYgKHJlc3VsdC5raW5kID09PSAnTm90UGFyc2VkJykge1xuICAgICAgICByZXR1cm4ge1xuICAgICAgICAgICAga2luZDogJ0NvbW1hbmRSZXN1bHQnLFxuICAgICAgICAgICAgcGFyc2luZzogcmVzdWx0LnBhcnNpbmcsXG4gICAgICAgICAgICB3b3JsZDogbnVsbFxuICAgICAgICB9O1xuICAgIH1cblxuICAgIGxldCBuZXh0X3N0YXRlOiBXID0gcmVzdWx0LnJlc3VsdDtcbiAgICBuZXh0X3N0YXRlID0gPFc+dXBkYXRlKG5leHRfc3RhdGUgYXMgV29ybGQsIHtcbiAgICAgICAgcHJldmlvdXM6IF8gPT4gd29ybGQsXG4gICAgICAgIHBhcnNpbmc6IF8gPT4gcmVzdWx0LnBhcnNpbmcsXG4gICAgICAgIGluZGV4OiBfID0+IF8gKyAxXG4gICAgfSk7XG5cbiAgICAvLyBOZXh0IGFwcGx5IGhpc3RvcnkgaW50ZXJwICAgICAgICAgICAgXG4gICAgbGV0IGhpc3Rfc3RhdGU6IFcgfCBudWxsID0gbmV4dF9zdGF0ZTtcbiAgICB3aGlsZSAoaGlzdF9zdGF0ZSAhPT0gbnVsbCkge1xuICAgICAgICBsZXQgb3BzID0gc3BlYy5pbnRlcnByZXRfaGlzdG9yeShoaXN0X3N0YXRlLCBuZXh0X3N0YXRlKTtcbiAgICAgICAgaWYgKG9wcyAhPT0gdW5kZWZpbmVkKSB7XG4gICAgICAgICAgICBsZXQgb2xkX2ludGVycCA9IG5leHRfc3RhdGUuaW50ZXJwcmV0YXRpb25zW2hpc3Rfc3RhdGUuaW5kZXhdIHx8IFtdO1xuICAgICAgICAgICAgbGV0IG5ld19pbnRlcnA6IHJlYWRvbmx5IEludGVycHJldGF0aW9uTGFiZWxbXSB8IHVuZGVmaW5lZCA9IGFwcGx5X2ludGVycHJldGF0aW9uX29wcyhvbGRfaW50ZXJwLCBvcHMpO1xuICAgICAgICAgICAgaWYgKG9sZF9pbnRlcnAgIT09IG5ld19pbnRlcnApIHtcbiAgICAgICAgICAgICAgICBpZiAobmV3X2ludGVycC5sZW5ndGggPT09IDApIHtcbiAgICAgICAgICAgICAgICAgICAgbmV3X2ludGVycCA9IHVuZGVmaW5lZDtcbiAgICAgICAgICAgICAgICB9XG4gICAgICAgICAgICAgICAgbmV4dF9zdGF0ZSA9IDxXPnVwZGF0ZShuZXh0X3N0YXRlIGFzIFdvcmxkLCB7XG4gICAgICAgICAgICAgICAgICAgIGludGVycHJldGF0aW9uczogeyBbaGlzdF9zdGF0ZS5pbmRleF06IG5ld19pbnRlcnAgfVxuICAgICAgICAgICAgICAgIH0pO1xuICAgICAgICAgICAgfVxuICAgICAgICB9XG4gICAgICAgIGhpc3Rfc3RhdGUgPSBoaXN0X3N0YXRlLnByZXZpb3VzO1xuICAgIH1cblxuICAgIHJldHVybiB7XG4gICAgICAgIGtpbmQ6ICdDb21tYW5kUmVzdWx0JyxcbiAgICAgICAgcGFyc2luZzogcmVzdWx0LnBhcnNpbmcsXG4gICAgICAgIHdvcmxkOiBuZXh0X3N0YXRlXG4gICAgfTtcbn1cblxuZXhwb3J0IGNsYXNzIFdvcmxkRHJpdmVyPFcgZXh0ZW5kcyBXb3JsZD4ge1xuICAgIGN1cnJlbnRfd29ybGQ6IFc7XG4gICAgY3VycmVudF9wYXJzaW5nOiBQYXJzaW5nO1xuXG4gICAgcG9zc2libGVfd29ybGQ6IFcgfCBudWxsO1xuXG5cbiAgICBjb25zdHJ1Y3RvcihcbiAgICAgICAgcmVhZG9ubHkgc3BlYzogV29ybGRTcGVjPFc+XG4gICAgKSB7IFxuICAgICAgICB0aGlzLmN1cnJlbnRfd29ybGQgPSB0aGlzLnNwZWMuaW5pdGlhbF93b3JsZDtcbiAgICAgICAgdGhpcy5hcHBseV9jb21tYW5kKHJhdygnJywgZmFsc2UpKTtcbiAgICB9XG5cbiAgICBhcHBseV9jb21tYW5kKGNtZDogUmF3SW5wdXQpIHtcbiAgICAgICAgbGV0IHJlc3VsdCA9IGFwcGx5X2NvbW1hbmQodGhpcy5zcGVjLCB0aGlzLmN1cnJlbnRfd29ybGQsIGNtZCk7XG4gICAgICAgIHRoaXMuY3VycmVudF9wYXJzaW5nID0gcmVzdWx0LnBhcnNpbmc7XG4gICAgICAgIHRoaXMucG9zc2libGVfd29ybGQgPSBudWxsO1xuXG4gICAgICAgIGlmIChyZXN1bHQucGFyc2luZy52aWV3LnN1Ym1pc3Npb24pIHtcbiAgICAgICAgICAgIGFzc2VydC5vayhyZXN1bHQud29ybGQgIT09IG51bGwpO1xuXG4gICAgICAgICAgICB0aGlzLmN1cnJlbnRfd29ybGQgPSByZXN1bHQud29ybGQ7XG4gICAgICAgICAgICB0aGlzLmFwcGx5X2NvbW1hbmQocmF3KCcnLCBmYWxzZSkpO1xuICAgICAgICB9IGVsc2UgaWYgKHJlc3VsdC5wYXJzaW5nLnZpZXcuc3VibWl0dGFibGUpe1xuICAgICAgICAgICAgLy8gU2VlIHdoYXQgd291bGQgaGFwcGVuIGlmIHRoZXkgc3VibWl0dGVkIHRoaXMgY29tbWFuZC5cbiAgICAgICAgICAgIC8vIFRoaXMgaXMgdXNlZCBmb3IgVUkgZWZmZWN0cyB3aGVuIGFuIGVudGVyZWQsIGJ1dCBub3Qgc3VibWl0dGVkLCBjb21tYW5kXG4gICAgICAgICAgICAvLyB3b3VsZCBjYXVzZSBpbnRlcnByZXRhdGlvbnMgdG8gY2hhbmdlXG4gICAgICAgICAgICBsZXQgciA9IGFwcGx5X2NvbW1hbmQodGhpcy5zcGVjLCB0aGlzLmN1cnJlbnRfd29ybGQsIHVwZGF0ZShjbWQsIHsgc3VibWl0OiB0cnVlIH0pKTtcblxuICAgICAgICAgICAgLy8gVE9ETyBhZGQgbnVsbCBjaGVjayBydW50aW1lIGVycm9yXG4gICAgICAgICAgICBhc3NlcnQub2soci53b3JsZCAhPT0gbnVsbCk7XG4gICAgICAgICAgICB0aGlzLnBvc3NpYmxlX3dvcmxkID0gci53b3JsZDtcbiAgICAgICAgfVxuICAgIH1cbn1cblxuLypcblRPRE86XG4gICAgV29ybGQgVmFsaWRhdG9yLCB0ZXN0cyBvdXQgYSB3b3JsZCBieSBmdWxseSB0cmF2ZXJzaW5nIGl0cyBjb21tYW5kIHNwYWNlXG4gICAgICAgIC0gRmluZCBhbnkgc3RhdGVzIHRoYXQgcHJvZHVjZWQgaW52YWxpZCBjb21tYW5kc1xuICAgICAgICAgICAgUmFpc2VkIGFuIGVycm9yIGdpdmVuIGFuIGlucHV0XG4gICAgICAgICAgICBEaWQgbm90IGFjY2VwdCBhIHN1Ym1pdCB0b2tlbiBhdCB0aGUgZW5kXG5cblxuKi8iXSwic291cmNlUm9vdCI6IiJ9\n//# sourceURL=webpack-internal:///./src/typescript/world.ts\n");
 
 /***/ })
-/******/ ]);
-//# sourceMappingURL=bundle.js.map
+
+/******/ });

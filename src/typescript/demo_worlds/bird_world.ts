@@ -1,7 +1,6 @@
 import { update } from '../datatypes';
-import { World, WorldDriver, CommandHandler, HistoryInterpreter, get_initial_world } from '../world';
+import { CommandHandler, get_initial_world, HistoryInterpreter, World, WorldDriver } from '../world';
 
-import { Parser, consume, make_consumer, raw } from '../parser2';
 
 
 interface BirdWorld extends World {
@@ -15,16 +14,17 @@ let initial_world: BirdWorld = {
 };
 
 let handle_command: CommandHandler<BirdWorld> = (parser, world) => {
-    parser.consume([{ token: 'go', token_type: {kind: 'Keyword'}}]);
+    parser.consume('*go');
 
     let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
 
     let dir = parser.split(
-        ['up', 'down'].map(dir =>
+        (['up', 'down'] as const).map(dir =>
             () => parser.consume([{
+                kind: 'ConsumeSpec',
                 token: dir,
                 token_type: {kind: 'Option'},
-                typeahead_type: (is_locked[dir] ? {kind: 'Locked'} : {kind: 'Available'})
+                typeahead_type: is_locked[dir] ? {kind: 'Locked'} : {kind: 'Available'}
             }], dir)
         )
     );

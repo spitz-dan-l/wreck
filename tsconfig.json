@@ -3,9 +3,11 @@
         "outDir": "./build/",
         "sourceMap": true,
         "noImplicitAny": false,
+        "moduleResolution": "node",
+        "esModuleInterop": true,
         "module": "commonjs",
         "target": "es2017",
-        "lib": ["es2017", "dom"],
+        "lib": ["esnext", "dom"],
         "jsx": "react",
         "incremental": true,
         // "strictNullChecks": true
@@ -17,5 +19,11 @@
         // "./src/components/*",
         "./src/components/Terminal3.tsx",
         "./src/components/Text2.tsx"
-    ]
+    ],
+
+    // "exclude": [
+        // "node_modules",
+        // "dist",
+        // "build"
+    // ]
 }

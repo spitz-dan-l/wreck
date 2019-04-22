@@ -23,48 +23,27 @@ DONE 2. Add interpretation restyling to the static viewer
 
 */
 
-export const History: React.FunctionComponent<{world: World}> = ({world}) => (
-  <div className="history">
-    <HistoryElt world={world} interpretations={world.interpretations} />
-  </div>
-)
+export const History: React.FunctionComponent<{world: World}> = ({world}) => {
+  let worlds = [];
 
-const HistoryElt: React.FunctionComponent<{world: World, interpretations: Interpretations}> = ({world, interpretations}) => {
-  let i = interpretations[world.index];
-  let className = i !== undefined ? i.join(' ') : '';
-  return <>
-    {world.previous !== null ? <HistoryElt world={world.previous} interpretations={interpretations} /> : '' }
-    <div key={world.index} className={className}>
-      { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
-      <OutputText message={world.message} />
-    </div>
-  </>;
+  // unroll all the historical worlds
+  let w = world;
+  while (w !== null) {
+    worlds.unshift(w);
+    w = w.previous;
+  }
+
+  return <div className="history">
+    { worlds.map(w => <HistoryElt key={w.index} world={w} interpretation_labels={world.interpretations[w.index]} />) }
+  </div>
 };
 
-    
-// (
-//   <div className="terminal" tabIndex={-1} onKeyDown={this.handleKeys} ref={cc => this.contentContainer = cc}>
-//     { /*<Preface on_start_game={() => this.prompt.focus()} /> */}
-//     <History
-//       timeout={700}
-//       onAnimationFinish={this.scrollToPrompt}
-//       history={this.state.world_driver.history}
-//       possible_history={this.state.world_driver.possible_history}
-//       ref={h => this.history = h}
-//       />
-//     <Prompt
-//       onSubmit={this.handleSubmit}
-//       onChange={this.handlePromptChange}
-//       ref={p => this.prompt = p}>
-//       <ParsedText2 parsing={this.currentParsing()}>
-//         <TypeaheadList
-//           typeahead={this.currentTypeahead()}
-//           indentation={this.currentIndentation()}
-//           onTypeaheadSelection={this.handleTypeaheadSelection}
-//           ref={t => this.typeahead_list = t}
-//         />
-//       </ParsedText2>
-//     </Prompt>
-//   </div>
-// );
- 
+const HistoryElt: React.FunctionComponent<{world: World, interpretation_labels: Interpretations[number]}> = ({world, interpretation_labels}) => {
+  let i = interpretation_labels;
+  let className = i !== undefined ? i.join(' ') : '';
+  return <div className={className}>
+    { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
+    <OutputText message={world.message} />
+  </div>;
+};
+

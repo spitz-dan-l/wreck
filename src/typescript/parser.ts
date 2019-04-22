@@ -14,9 +14,9 @@ import {
     set_enabled,
     with_disablable,
     array_fuck_contains,
-    StringValidator,
-    ValidatedString,
-    ValidString
+    // StringValidator,
+    // ValidatedString,
+    // ValidString
 } from './datatypes';
 
 
@@ -334,8 +334,8 @@ export function combine<R>(parser: CommandParser, consumers: ((parser: CommandPa
 }
 
 // Validator for the mini-language applying to transitions for syntax highlighting
-export class PhraseDSLValidator extends StringValidator {
-    is_valid(s: ValidatedString<this>): s is ValidString<this> {
+export class PhraseDSLValidator {
+    static is_valid(s: string): boolean {
         let toks = tokenize(s)[0];
         if (toks.slice(1).some(t => 
             t.startsWith('~') || t.startsWith('*') || t.startsWith('&'))) {
@@ -345,7 +345,7 @@ export class PhraseDSLValidator extends StringValidator {
     }
 }
 
-export function consume_declarative_dsl(parser: CommandParser, options: ValidatedString<PhraseDSLValidator>[][]) {
+export function consume_declarative_dsl(parser: CommandParser, options: string[][]) {
     // assumption: no option is a prefix of any other option
     let consumers = [];
 
