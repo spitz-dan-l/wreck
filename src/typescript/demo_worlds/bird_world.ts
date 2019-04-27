@@ -12,6 +12,7 @@ let initial_world: BirdWorld = {
     ...get_initial_world<BirdWorld>(),
     is_in_heaven: false,
     message: 'You are currently down.',
+    interpretations: { 0: ['happy'] }
 };
 
 export function new_bird_world() {
