@@ -82,9 +82,10 @@ export type ObjectLevel<W extends World> =
         Pick<W, Exclude<keyof W, 'parsing' | 'previous' | 'index' | 'interpretations'>>;
 
 export function object_level<W extends World>(w: W): ObjectLevel<W> {
-    const updater: Updater<World> = { parsing: undefined, previous: undefined, index: undefined, interpretations: undefined };
+    // const updater: Updater<World> = { parsing: undefined, previous: undefined, index: undefined, interpretations: undefined };
 
-    return <ObjectLevel<W>> update(w, updater)
+    // return update<World>(w, updater)
+    return <ObjectLevel<W>> <unknown> update<World>(w, { parsing: undefined, previous: undefined, index: undefined, interpretations: undefined });
 }
 
 export type CommandHandler<W extends World> = (parser: Parser, world: ObjectLevel<W>) => ObjectLevel<W>;
@@ -114,18 +115,34 @@ export type WorldSpec<W extends World> = {
     readonly interpret_history: HistoryInterpreter<W>
 }
 
-export type CommandResult<W extends World> =
-    { kind: 'CommandResult', parsing: Parsing, world: W | null };
+// TODO: Need a cute name for "World and also stuff that is not part of the world, its history or interpretations about it, that God uses to keep things going"
+// This type contains a bit more information than a World.
+// It didn't make sense to add extra parsing and possible world attributes to world,
+// Since they can change every keystroke while the world only changes on the scale of
+// valid command submissions.
+// IMO World is a good level of abstraction currently.
+export type CommandResult<W extends World> = {
+    kind: 'CommandResult',
+    parsing: Parsing,
+    world: W | null,
+    possible_world: W | null
+};
 
 export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W> {
     // First handle the command
     let result = Parser.run_thread(command, p => spec.handle_command(p, world) as W);
 
     if (result.kind === 'NotParsed') {
+        let possible_world: W | null = null;
+        // TODO: Do a bunch more validation here to make sure we're good
+        if (result.parsing.view.submittable) {
+            possible_world = apply_command(spec, world, update(command, { submit: true })).world;
+        }
         return {
             kind: 'CommandResult',
             parsing: result.parsing,
-            world: null
+            world: world,
+            possible_world
         };
     }
 
@@ -155,49 +172,26 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
         hist_state = hist_state.previous;
     }
 
+    let next_parsing = apply_command(spec, next_state, raw('', false)).parsing;
     return {
         kind: 'CommandResult',
-        parsing: result.parsing,
-        world: next_state
+        parsing: next_parsing,
+        world: next_state,
+        possible_world: null
     };
 }
 
-export class WorldDriver<W extends World> {
-    current_world: W;
-    current_parsing: Parsing;
-
-    possible_world: W | null;
-
-
-    constructor(
-        readonly spec: WorldSpec<W>
-    ) { 
-        this.current_world = this.spec.initial_world;
-        this.apply_command(raw('', false));
+export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>] {
+    function update(world: W, command: RawInput) {
+        return apply_command(spec, world, command);
     }
 
-    apply_command(cmd: RawInput) {
-        let result = apply_command(this.spec, this.current_world, cmd);
-        this.current_parsing = result.parsing;
-        this.possible_world = null;
+    let initial_result = update(spec.initial_world, raw('', false));
 
-        if (result.parsing.view.submission) {
-            assert.ok(result.world !== null);
+    return [initial_result, update];
 
-            this.current_world = result.world;
-            this.apply_command(raw('', false));
-        } else if (result.parsing.view.submittable){
-            // See what would happen if they submitted this command.
-            // This is used for UI effects when an entered, but not submitted, command
-            // would cause interpretations to change
-            let r = apply_command(this.spec, this.current_world, update(cmd, { submit: true }));
-
-            // TODO add null check runtime error
-            assert.ok(r.world !== null);
-            this.possible_world = r.world;
-        }
-    }
 }
+
 
 /*
 TODO:

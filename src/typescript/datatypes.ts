@@ -152,97 +152,7 @@ export function chain_update(target: Object, source: Object, replace_keys: strin
     return updated;
 }
 
-// https://github.com/Microsoft/TypeScript/issues/13923
-/*
-    Two versions of update.
-
-    First one, always returns the same type as the input.
-        In this case, there on constraints we can assume for the Updater type.
-    Second one, no such guarantee.
-*/
-
-type Primitive = undefined | null | boolean | string | number;
-
-export type Updater<T> =  
-    (T extends Function ? never :  
-        T extends Primitive ? PrimitiveUpdater<T> :
-            T extends Array<infer U> ? PrimitiveUpdater<T> :
-                T extends object ? ObjectUpdater<T> :
-                    unknown) |
-    ((x: T) => T);
-
-type PrimitiveUpdater<T> = T;
-
-type ObjectUpdater<T> = {
-    [K in keyof T]?: Updater<T[K]>
-};
-
-// export type Updater<T> = any
-
-export function update<T>(source: T, updater: Updater<T>): T {
-    if (updater instanceof Function) {
-        return updater(source);
-    }
-
-    // not a function, not a non-array object
-    if (updater instanceof Array || !(updater instanceof Object)) {
-        return <T>updater;
-    }
-
-    if (updater instanceof Object) {
-        let result: Partial<T>;
-        if (source instanceof Object) {
-            result = {...source};
-        } else {
-            result = {};
-        }
-        
-        for (let [n, v] of Object.entries(updater)) {
-            if (v === undefined) {
-                delete result[n];
-            } else {
-                result[n] = update(result[n], v);
-            }
-        }
-
-        return <T>result;
-    }
-
-    throw Error('Should never get here');
-}
-
-// type AnyUpdater = { [K: string]: AnyUpdater | ((x: any) => any) };
-
-// export function update_any(source: any, updater: Updater<any>): any {
-//     if (updater.constructor === Object) {
-//         let result;
-//         if (source.constructor === Object) {
-//             result = {...source};
-//         } else {
-//             result = {};
-//         }
-        
-//         for (let [n, v] of Object.entries(updater)) {
-//             if (v === undefined) {
-//                 delete result[n];
-//             } else {
-//                 result[n] = update_any(result[n], v as any);
-//             }
-//         }
-
-//         return result;
-//     } else if (updater.constructor === Function){
-//         let updater: ((x: any) => any);
-//         return updater(source);
-//     } else {
-//         //just "replacing" source with updater
-//         let updater: any;
-//         return updater;
-//     }
-// }
-// export function update<T>(source: T, updater: Updater<T>): T {
-//     return update_any(source, updater);
-// }
+export {Updater, update} from './update';
 
 export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
     if (ar1.length !== ar2.length) {
@@ -363,46 +273,6 @@ export function counter_order<T>(counter: Counter<T>, include_zero=false){
     return result.map(([t, i]) => t);
 }
 
-// export type Disablable<T> = T | DWrapped<T>;
-// export type DWrapped<T> = {value: T, disablable: true, enabled: boolean}
-
-// export function is_dwrapped<T>(x: Disablable<T>): x is DWrapped<T>{
-//     return (<DWrapped<T>>x).disablable !== undefined;
-// }
-
-// export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true): Disablable<T>{
-//     if (is_dwrapped(x)) {
-//         if (x.enabled !== enabled) {
-//             x.enabled = enabled; //could do check here for enabled being set properly already
-//         }
-//         return x;
-//     } else {
-//         let result: DWrapped<T> = {value: x, disablable: true, enabled};
-        
-//         return result;
-//     }
-// }
-
-// export function unwrap<T>(x: Disablable<T>): T {
-//     if (is_dwrapped(x)) {
-//         return x.value;
-//     } else {
-//         return x;
-//     }
-// }
-
-// export function with_disablable<T1, T2>(x: Disablable<T1>, f: (t1: T1) => Disablable<T2>): Disablable<T2> {
-//     return set_enabled(unwrap(f(unwrap(x))), is_enabled(x));
-// }
-
-// export function is_enabled<T>(x: Disablable<T>): boolean {
-//     if (is_dwrapped(x)){
-//         return x.enabled;
-//     } else {
-//         return true;
-//     }
-// }
-
 export type Annotatable<T, AT> = T | Annotated<T, AT>;
 export type Annotated<T, AT> = {value: T, annotated: true, annotation: Partial<AT>};
 
@@ -494,4 +364,47 @@ export function array_last<T>(arr: T[]): T {
     return arr[arr.length - 1];
 }
 
+// export interface Chain<A, B> {
+//     chain?<C>(f: (b: B) => C): Chain<A, C>
+//     (a: A): B
+// }
+
+// export function chain<B>(f: () => B): Chain<unknown, B>;
+// export function chain<A, B>(f: (a: A) => B): Chain<A, B>;
+// export function chain<A, B>(f: (a: A) => B): Chain<A, B> {
+//     let f2: Chain<A, B> = (a: A) => f(a);
+//     f2.chain = <C>(f2: (b: B) => C): Chain<A, C> => chain((a: A) => f2(f(a)));
+    
+//     return f2
+// }
+
+export interface Chain<F extends (...args: any) => any> {
+    chain<C>(f: (b: ReturnType<F>) => C): Chain<(...args: Parameters<F>) => C>
+    (...args: Parameters<F>): ReturnType<F>
+}
+
+// export function chain<B>(f: () => B): Chain<unknown, B>;
+// export function chain<A, B>(f: (a: A) => B): Chain<A, B>;
+export function chain<F extends (...args: any) => any>(f: F): Chain<F> {
+    let f2: Chain<F> = <Chain<F>> ((...args: Parameters<F>) => f(...<any>args));
+    f2.chain = <C>(f2: (b: ReturnType<F>) => C): Chain<(...args: Parameters<F>) => C> => chain((...args: Parameters<F>) => f2(f(...<any>args)));
+    
+    return f2
+}
+
+export function begin<T>(): Chain<(t: T) => T>;
+export function begin<T>(t: T): Chain<() => T>; 
+export function begin<T>(t?: T): any {
+    if (t === undefined) {
+        return chain(t => t);
+    } else {
+        return chain(() => t);
+    }
+}
+
+// This is really dumb
+import _deep_equal from 'deep-equal';
+export let deep_equal = _deep_equal
+
+export {lens} from 'lens.ts';
 

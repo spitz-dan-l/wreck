@@ -4,10 +4,11 @@ import {
     SUBMIT_TOKEN,
     TokenMatch,
     Parsed,
+    ParserThread,
     raw
 } from '../typescript/parser2';
 
-import { array_last } from '../typescript/datatypes';
+import { array_last, chain } from '../typescript/datatypes';
 
 import 'mocha';
 
@@ -52,14 +53,8 @@ describe('parser', () => {
         let ta = result.parsing.view.typeahead_grid;
         console.log(ta);
         if (ta.length > 0) {
-            console.log(array_last(ta[0]).type);
+            console.log(array_last(ta[0].option));
         }
-        /*
-            TODO: (Way Later) Write a tester that runs through every possible input for a given main_thread,
-            to find runtime error states
-                - ambiguous parses
-                - any other exceptions thrown
-        */
     });
 
     it('should do the dsl thing', () => {
@@ -97,25 +92,42 @@ describe('parser', () => {
             ['fluke', 'coincidence']
         ];
 
-        let result = Parser.run_thread(raw('it was all a fluke'), (p) => p.consume('it was all a', () => {
-            let meaning = p.split(things.map(([noun, meaning]) => () => p.consume(noun, meaning)));
+        let result = Parser.run_thread(raw('it was all a fluke'), (p) =>
+            p.consume('it was all a', () => {
+                let meaning = p.split(things.map(([noun, meaning]) => () => p.consume(noun, meaning)));
 
-            // We want to retroactively eliminate the "fish" sense of the word "fluke".
-            if (meaning === 'fish') {
-                p.eliminate();
+                // We want to retroactively eliminate the "fish" sense of the word "fluke".
+                if (meaning === 'fish') {
+                    p.eliminate();
 
-                // (In practice, we might be better served filtering it out of the things passed
-                //  to p.split() above, but the point is, if we haven't factored our parser fragments
-                //  in that way, we don't have to refactor the whole thing.)
-            }
-            p.submit();
-            return meaning;
-        }));
+                    // (In practice, we might be better served filtering it out of the things passed
+                    //  to p.split() above, but the point is, if we haven't factored our parser fragments
+                    //  in that way, we don't have to refactor the whole thing.)
+                }
+                p.submit();
+                return meaning;
+            }));
 
         assert.equal(result.kind, 'Parsed');
 
         assert.equal((result as Parsed<string>).result, 'coincidence');
     });
+
+    // The following is sufficient evidence to me that the current parser interface is
+    // optimal versus "monadic chain", despite requiring deep nesting of callbacks.
+    // You can flatten it out by writing imperatively, whereas using chain() does not
+    // really help that much, adding way more noise.
+
+    // it('2should string split() calls', () => {
+    //     let main_thread: ParserThread<string> = chain((p: Parser) => p.split([
+    //         chain(() => p.consume('daniel')).chain(() => 'daniel'),
+    //         chain(() => p.consume('jason')).chain(() => 'jason'),
+    //     ])).chain(who => p.submit(`it was ${who} all along`));
+
+    //     let {result} = <Parsed<string>>Parser.run_thread(raw('jason'), main_thread);
+
+    //     assert.equal(result, 'it was jason all along');
+    // });
 });
 
 

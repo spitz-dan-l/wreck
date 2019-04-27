@@ -1,20 +1,32 @@
 TODOs
 
 Priority
-- Why webpack sourcemap no work
+
+Read up on factoring reducers, switch
+
+- Flesh out Bird World a bit and start thinking about OMs, Puffers, etc again.
 - UI back up to parity
     DONE 1. Make a static world/history viewer app
       - no interactivity, just displays previous commands and the resulting messages
       - shows parser highlighting
     DONE 2. Add interpretation restyling to the static viewer
-    3. Add input prompt
+    DONE 3. Add input prompt
       - Highlights tokens as the user types
       - Submission of command triggers rerender, new history element
-    4. Support view update due to new interpreatation
-    5. Typeahead added to prompt
+    DONE 4. Support view update due to new interpreatation
+    DONE 5. Typeahead added to prompt
       - Autoocomplete options display with correct indentation
       - Select typeahead option with keybooard, mouse
-    6. Support "locked" typeahead options
+    DONE 6. Support "locked" typeahead options
+    7. animations
+        - new command submission
+        - new interps
+        - new possible interps
+        - Should be cleaned up
+            - Consider whether interp labels should optionally have animation functions associated with them
+                - for transitioning between interp states
+                - for ambient animation while a state is active
+                - would likely be cleaner than BookGuy, which tries to please everyone
 - reachability test
     - Given a world, walk every possible text input via typeahead options
         - Verify that, for every option, it results in a submittable command

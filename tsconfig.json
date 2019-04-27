@@ -10,6 +10,7 @@
         "lib": ["esnext", "dom"],
         "jsx": "react",
         "incremental": true,
+        "allowSyntheticDefaultImports": true,
         // "strictNullChecks": true
     },
     "include": [

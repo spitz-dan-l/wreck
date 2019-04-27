@@ -18,6 +18,10 @@
     margin-bottom: 1em;
 }
 
+.history>div.happy {
+    background-color: midnightblue;
+}
+
 .history.interpretation-block {
     outline: solid 1px ivory;
     outline-offset: 0.4em;

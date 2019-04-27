@@ -23,7 +23,7 @@
 
 */
 
-import { array_last } from './datatypes'
+import { array_last, deep_equal } from './datatypes'
 import { starts_with, tokenize } from './text_tools'
 
 class NoMatch {};
@@ -81,6 +81,12 @@ export function is_error(m: TokenMatch): m is TokenMatch & {type: ErrorMatch} {
 
 export type TokenMatch = { kind: 'TokenMatch', token: Token, type: MatchType };
 
+export type TypeaheadOption = {
+    kind: 'TypeaheadOption',
+    type: TypeaheadType,
+    option: (PartialMatch | null)[] // null left-padded to match length of token match
+};
+
 /*
 
     Filler, Option, Error
@@ -118,7 +124,7 @@ export type ParsingView = {
     // TODO: make decisions about how to indicate a typeahead row is locked
     //    Currently it's a bit ugly as each token in the row could be locked on not
     //    Also a view of the typeahead with correct whitespace inserted
-    typeahead_grid: PartialMatch[][]
+    typeahead_grid: TypeaheadOption[]
 };
 
 /*
@@ -164,6 +170,8 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
             throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
         }
     } else if ((row = parse_results.find(row => is_partial(array_last(row)))) !== undefined) {
+        // chop off the partial bits that haven't been started yet
+        row = row.slice(0, input_stream.length);
         match_status = 'PartialMatch';
     } else {
         row = input_stream.map(tok => ({
@@ -178,7 +186,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
     }
 
     let typeahead_grid = compute_typeahead(parse_results, input_stream);
-    let submittable = typeahead_grid.some(row => array_last(row).token === SUBMIT_TOKEN)
+    let submittable = typeahead_grid.some(row => array_last(row.option).token === SUBMIT_TOKEN)
 
     return {
         kind: 'ParsingView',
@@ -196,7 +204,7 @@ Typeahead
     If the row is at least the length of the input stream
     Typeahead is the Partial TokenMatches suffix (always at the end)
 */
-export function compute_typeahead(parse_results: TokenMatch[][], input_stream: Token[]): PartialMatch[][] {
+export function compute_typeahead(parse_results: TokenMatch[][], input_stream: Token[]): TypeaheadOption[] {
     // let parse_results: TokenMatch[][] = parsing.parses;
     // let input_stream: Token[] = parsing.tokens;
     let rows_with_typeahead = parse_results.filter(pr => 
@@ -204,13 +212,28 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
         && pr.slice(input_stream.length - 1).some(is_partial)
     );
 
-    return rows_with_typeahead.map(pr => {
+    let unique_options: PartialMatch[][] = [];
+
+    function options_equal(x: PartialMatch[], y: PartialMatch[]): boolean {
+        return x.length === y.length && x.every((m, i) => deep_equal(m, y[i]))
+    }
+
+    rows_with_typeahead.forEach(pr => {
         let start_idx = pr.findIndex(is_partial);
-        let result: PartialMatch[] = Array(start_idx).fill(null);
+        let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
         let elts = <{ type: PartialMatch }[]>pr.slice(start_idx);
-        result.push(...elts.map(tm => tm.type));
-        return result;
+        option.push(...elts.map(tm => tm.type));
+
+        if (!unique_options.some((u_opt) => options_equal(u_opt, option))) {
+            unique_options.push(option);
+        }
     });
+
+    return unique_options.map(option => ({
+        kind: 'TypeaheadOption',
+        type: array_last(option).type,
+        option
+    }));
 
     // TODO: add dedupe step here
 }

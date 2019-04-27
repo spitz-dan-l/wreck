@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import {Preface} from './Preface';
+// import {Preface} from './Preface';
 import {Prompt} from './Prompt';
 import {ParsedText} from './Text';
 import {TypeaheadList} from './TypeaheadList';
@@ -13,8 +13,6 @@ import {World, WorldDriver} from "../typescript/commands";
 import {MatchValidity} from '../typescript/parser';
 
 import {is_enabled} from '../typescript/datatypes';
-
-import * as ReactTransitionGroup from 'react-transition-group';
 
 export class Terminal<T> extends React.Component<any, {world_driver: WorldDriver<T>}> {
   contentContainer: any;

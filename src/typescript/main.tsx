@@ -1,26 +1,28 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
 
-import { World, WorldDriver } from './world';
+import { World } from './world';
 import { raw } from './parser2';
 
 
-import { History } from '../components/Terminal3';
+import { App, History } from '../components/Terminal3';
 
 import { new_bird_world } from './demo_worlds/bird_world';
 
 console.time('world_build');
-let driver = new_bird_world();
+let [result, updater] = new_bird_world();
 
-for (let i = 0; i < 10; i++) {
-    driver.apply_command(raw('go up'));
-    driver.apply_command(raw('go down'));
-}
+// for (let i = 0; i < 3; i++) {
+//     result = updater(result.world, raw('go up stairs'));
+//     result = updater(result.world, raw('go down stairs'));
+// }
 console.timeEnd('world_build');
 
 
 console.time('render');
-ReactDom.render(<History world={driver.current_world} />, document.getElementById('terminal'));
+
+ReactDom.render(<App typeahead_index={0} command_result={result} updater={updater} />, document.getElementById('terminal'));
+// ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');
 
 // import {Terminal} from "../components/Terminal";

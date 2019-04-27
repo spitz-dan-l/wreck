@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import {TokenMatch, is_match, is_partial, is_error, Parsing} from '../typescript/parser2';
+import {Token, TokenMatch, is_match, is_partial, is_error, Parsing} from '../typescript/parser2';
 
 export const Carat = () => <span>>&nbsp;</span>;
 
@@ -44,6 +44,12 @@ export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
     }
   }
 
+  function convert_token(s: Token) {
+     if (typeof s === 'string') {
+      return s;
+    }
+    return '';
+  }
   return (
     <div className="parsed-text">
       <Carat />
@@ -52,7 +58,7 @@ export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
           view.matches.map((elt, i) => (
             <div key={i.toString()} style={{color: get_display_color(elt)}}>
               <span>
-                { parsing.whitespace[i] + ((typeof elt.token === 'string') ? elt.token : '') }
+                { parsing.whitespace[i] + convert_token(elt.token) }
               </span>
               { ( i === 0 ) ? children : '' }
             </div>
