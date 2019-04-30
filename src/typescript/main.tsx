@@ -7,7 +7,7 @@ import { raw } from './parser2';
 
 import { App, History } from '../components/Terminal3';
 
-import { new_bird_world } from './demo_worlds/bird_world';
+import { new_bird_world } from './demo_worlds/puffer_bird_world';
 
 console.time('world_build');
 let [result, updater] = new_bird_world();

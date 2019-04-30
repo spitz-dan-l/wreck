@@ -1,6 +1,5 @@
 import { update } from '../datatypes';
-import { CommandHandler, get_initial_world, HistoryInterpreter, World, apply_command, world_driver } from '../world';
-import { raw } from '../parser2';
+import { CommandHandler, get_initial_world, HistoryInterpreter, World, world_driver } from '../world';
 import { random_choice } from '../text_tools';
 
 
@@ -16,7 +15,11 @@ let initial_world: BirdWorld = {
 };
 
 export function new_bird_world() {
-    return world_driver({ initial_world, handle_command, interpret_history });
+    return world_driver({
+        initial_world,
+        handle_command,
+        interpret_history
+    });
 }
 
 let interpret_history: HistoryInterpreter<BirdWorld> = (old_world, new_world) => {
@@ -27,13 +30,17 @@ let interpret_history: HistoryInterpreter<BirdWorld> = (old_world, new_world) =>
     }
 }
 
-let handle_command: CommandHandler<BirdWorld> = (parser, world) =>
-    parser.split([
-        () => go_cmd(parser, world),
-        () => mispronounce_cmd(parser, world)
-    ]);
+let handle_command: CommandHandler<BirdWorld> = (world, parser) => {
+    let cmds = [
+        go_cmd,
+        mispronounce_cmd,
+        be_cmd
+    ];
 
-let go_cmd: CommandHandler<BirdWorld> = (parser, world) => {
+    return parser.split(cmds.map(cmd => () => cmd(world, parser)))
+}
+
+let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     parser.consume('*go');
 
     let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
@@ -52,7 +59,7 @@ let go_cmd: CommandHandler<BirdWorld> = (parser, world) => {
     });
 }
 
-let mispronounce_cmd: CommandHandler<BirdWorld> = (parser, world) => {
+let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     if (!world.is_in_heaven) {
         parser.eliminate();
     }
@@ -71,4 +78,43 @@ let mispronounce_cmd: CommandHandler<BirdWorld> = (parser, world) => {
     let message = `"${random_choice(utterance_options)}," you say.`;
 
     return update(world, { message });
+}
+
+let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
+    parser.consume('*be');
+
+    let roles: string[] = [
+        'the One Who Gazes Ahead',
+        'the One Who Gazes Back',
+        'the One Who Gazes Up',
+        'the One Who Gazes Down',
+        'the One Whose Palms Are Open',
+        'the One Whose Palms Are Closed',
+        'the One Who Is Strong',
+        'the One Who Is Weak',
+        'the One Who Seduces',
+        'the One Who Is Seduced'
+    ];
+
+    let qualities: string[] = [
+        'outwardly curious',
+        'introspective',
+        'transcendent',
+        'sorrowful',
+        'receptive',
+        'adversarial',
+        'confident',
+        'impressionable',
+        'predatory',
+        'vulnerable'
+    ];
+
+    let quality = parser.split(
+        roles.map((r, i) =>
+            () => parser.consume(`&${r.replace(/ /g, '_')}`, qualities[i]))
+    );
+
+    parser.submit();
+
+    return update(world, { message: `You feel ${quality}.` });
 }

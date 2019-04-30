@@ -364,19 +364,15 @@ export function array_last<T>(arr: T[]): T {
     return arr[arr.length - 1];
 }
 
-// export interface Chain<A, B> {
-//     chain?<C>(f: (b: B) => C): Chain<A, C>
-//     (a: A): B
-// }
+export function tuple<T extends any[] & {0: any}>(t: T): T { return t }
 
-// export function chain<B>(f: () => B): Chain<unknown, B>;
-// export function chain<A, B>(f: (a: A) => B): Chain<A, B>;
-// export function chain<A, B>(f: (a: A) => B): Chain<A, B> {
-//     let f2: Chain<A, B> = (a: A) => f(a);
-//     f2.chain = <C>(f2: (b: B) => C): Chain<A, C> => chain((a: A) => f2(f(a)));
-    
-//     return f2
-// }
+export type FirstArg<F> = F extends (arg0: infer P, ...args: any) => any ? P : never;
+export type RestArgs<F> = F extends (arg0: any, ...args: infer P) => any ? P : never;
+export function curry
+    <F extends (arg0: any, ...args: any) => any>
+    (f: F, arg0: FirstArg<F>): (...args: RestArgs<F>) => ReturnType<F> {
+        return (...args: RestArgs<F>) => f(arg0, ...<any[]>args);
+}
 
 export interface Chain<F extends (...args: any) => any> {
     chain<C>(f: (b: ReturnType<F>) => C): Chain<(...args: Parameters<F>) => C>
