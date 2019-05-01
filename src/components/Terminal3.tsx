@@ -310,7 +310,7 @@ const HistoryElt: React.FunctionComponent<{world: World, interpretation_labels: 
   let className = i !== undefined ? i.join(' ') : '';
   return <div className={className}>
     { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
-    <OutputText message={world.message} />
+    <OutputText rendering={world.rendering} />
   </div>;
 };
 

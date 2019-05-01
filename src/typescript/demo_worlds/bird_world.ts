@@ -1,5 +1,5 @@
 import { update } from '../datatypes';
-import { CommandHandler, get_initial_world, HistoryInterpreter, World, world_driver } from '../world';
+import { CommandHandler, get_initial_world, HistoryInterpreter, World, world_driver, make_world_spec } from '../world';
 import { random_choice } from '../text_tools';
 
 
@@ -10,16 +10,16 @@ interface BirdWorld extends World {
 let initial_world: BirdWorld = {
     ...get_initial_world<BirdWorld>(),
     is_in_heaven: false,
-    message: 'You are currently down.',
+    rendering: 'You are currently down.',
     interpretations: { 0: ['happy'] }
 };
 
 export function new_bird_world() {
-    return world_driver({
+    return world_driver(make_world_spec({
         initial_world,
         handle_command,
         interpret_history
-    });
+    }));
 }
 
 let interpret_history: HistoryInterpreter<BirdWorld> = (old_world, new_world) => {
@@ -54,7 +54,9 @@ let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     parser.submit();
 
     return update(world, {
-        message: `You are currently ${dir}.`,
+        message: {
+            consequence: _ => [..._, `You are currently ${dir}.`]
+        },
         is_in_heaven: _ => !_
     });
 }
@@ -77,7 +79,11 @@ let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 
     let message = `"${random_choice(utterance_options)}," you say.`;
 
-    return update(world, { message });
+    return update(world, { 
+        message: {
+            action: _ => [..._, message]
+        }
+    });
 }
 
 let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
@@ -116,5 +122,9 @@ let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 
     parser.submit();
 
-    return update(world, { message: `You feel ${quality}.` });
+    return update(world, {
+        message: {
+            consequence: _ => [..._, `You feel ${quality}.`] 
+        }
+    });
 }

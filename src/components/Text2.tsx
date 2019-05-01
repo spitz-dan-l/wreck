@@ -70,9 +70,9 @@ export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
 }
 
 export const OutputText = (props) => {
-  const {message} = props;
+  const {rendering} = props;
 
   return (
-    <div className="output-text" dangerouslySetInnerHTML={{__html: message}} />
+    <div className="output-text" dangerouslySetInnerHTML={{__html: rendering}} />
   );
 }

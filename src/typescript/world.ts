@@ -20,12 +20,42 @@
 
 */
 
-import { update } from './datatypes';
+import { update, Omit } from './datatypes';
 import { Parser, Parsing, raw, RawInput } from './parser2';
 
 // TODO: We probably want a data structure for this
 // Question is how DOM-like will it wind up being and should we just use the DOM
-type Message = string;
+
+/*
+    Message is comprised of (any of)
+
+    - Immediate narrative description of action
+    - Immediate narrative description of consequence
+    - Idle descriptions of world state
+    - Prompts for player action
+
+    One issue with the above is that it could threaten "poetic flow",
+    by regimenting out the form of the output messages too much.
+        I think this has to be an experiment that gets done though.
+        Poetic flow also threatens systematicity of world.
+        We need to find a way for them to coexist.
+
+    Another issue with the above: it presuposes that the player took an action
+        What about "inventory"? Which of the above four facets does the list of your stuff
+        go in?
+        Answer: "Idle descriptions of world state"? Haha I dunno
+
+*/
+
+type Message = {
+    kind: 'Message',
+    action: string[],
+    consequence: string[],
+    description: string[],
+    prompt: string[]
+};
+
+// type Message = string;
 
 type InterpretationLabel = string;
 type InterpretationOp =
@@ -57,7 +87,8 @@ function apply_interpretation_ops(interp: readonly InterpretationLabel[], ops: I
 }
 
 export interface World {
-    readonly message: Message | undefined,
+    readonly message: Message,
+    readonly rendering: string | undefined,
     readonly parsing: Parsing | undefined,
     readonly previous: this | null,
     readonly index: number,
@@ -65,22 +96,30 @@ export interface World {
 }
 
 // TODO: need a more concise and cute term than "object level"
-export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations' | 'message';
+export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations' | 'rendering';
 
 export type ObjectLevelKeys<W extends World> =
     Exclude<keyof W, MetaLevelKeys>;
 
-export type ObjectLevel<W extends World> =
-    Pick<W, ObjectLevelKeys<W>>;
+export type ObjectLevel<W extends World> = Omit<W, MetaLevelKeys>;
 
 export type WorldUpdater<W extends World> = (world: ObjectLevel<W>) => ObjectLevel<W>;
 export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Parser) => ObjectLevel<W>;
 
-export type MessageGenerator<W extends World> = (world: ObjectLevel<W>) => Message;
 export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[] | undefined;
+export type Renderer = (message: Message) => string;
+
+const INITIAL_MESSAGE: Message = {
+    kind: 'Message',
+    action: [],
+    consequence: [],
+    description: [],
+    prompt: []
+};
 
 const INITIAL_WORLD: World = {
-    message: undefined,
+    message: INITIAL_MESSAGE,
+    rendering: undefined,
     parsing: undefined,
     previous: null,
     index: 0,
@@ -96,20 +135,37 @@ export type WorldSpec<W extends World> = {
     readonly initial_world: W,
 
     // prepare the world for the command
-    readonly pre: WorldUpdater<W>,
+    readonly pre?: WorldUpdater<W>,
 
     // Should return a new world with world set to the new world's prev
     readonly handle_command: CommandHandler<W>,
 
     // update the world after handling the command
-    readonly post: WorldUpdater<W>,
+    readonly post?: WorldUpdater<W>,
     
     // Given an historically previous world and the current (new) world,
     // return any history interpretation ops to be applied to the previous world
-    readonly interpret_history: HistoryInterpreter<W>,
+    readonly interpret_history?: HistoryInterpreter<W>,
 
-    // Return a string given the current world
-    readonly generate_message: MessageGenerator<W>
+    // Return a string given the current message
+    readonly render: Renderer
+}
+
+export function make_world_spec<W extends World>(spec: {
+    initial_world: W,
+    pre?: WorldUpdater<W>,
+    handle_command: CommandHandler<W>,
+    post?: WorldUpdater<W>,
+    interpret_history?: HistoryInterpreter<W>,
+    render?: Renderer
+}): WorldSpec<W> {
+    if (spec.render === undefined) {
+        spec = {
+            ...spec,
+            render: standard_render
+        }
+    }
+    return <WorldSpec<W>>spec;
 }
 
 // TODO: Need a cute name for "World and also stuff that is not part of the world, its history or interpretations about it, that God uses to keep things going"
@@ -126,7 +182,18 @@ export type CommandResult<W extends World> = {
 };
 
 export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W> {
-    let next_state = <W> spec.pre(world)
+    let next_state: W = world;
+
+    next_state = <W>update(next_state as World, {
+        previous: _ => world,
+        index: _ => _ + 1,
+        rendering: undefined,
+        message: INITIAL_MESSAGE
+    });
+
+    if (spec.pre !== undefined) {
+        next_state = <W> spec.pre(next_state);
+    }
 
     // First handle the command
     let result = Parser.run_thread(command, p => spec.handle_command(next_state, p) as W);
@@ -145,40 +212,41 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
         };
     }
 
-    next_state = result.result;
-    next_state = <W>update(next_state as World, {
-        previous: _ => world,
+    next_state = <W>update(result.result as World, {
         parsing: _ => result.parsing,
-        index: _ => _ + 1,
     });
-
+    
     // TODO: Mild evidence indicating post should run after message and interpretation steps,
     //     not before.
     //     But I have this intuition that we want something to run after the command was
     //     handled but before any output gets generated
-    next_state = <W>spec.post(next_state);
+    if (spec.post !== undefined) {
+        next_state = <W>spec.post(next_state);
+    }
 
     next_state = <W>update(next_state as World, {
-        message: spec.generate_message(next_state)
+        rendering: spec.render(next_state.message)
     });
 
     // Next apply history interp            
-    let hist_state: W | null = next_state;
-    while (hist_state !== null) {
-        let ops = spec.interpret_history(hist_state, next_state);
-        if (ops !== undefined) {
-            let old_interp = next_state.interpretations[hist_state.index] || [];
-            let new_interp: readonly InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
-            if (old_interp !== new_interp) {
-                if (new_interp.length === 0) {
-                    new_interp = undefined;
+    if (spec.interpret_history !== undefined) {
+        let hist_state: W | null = next_state;
+        while (hist_state !== null) {
+            let ops = spec.interpret_history(hist_state, next_state);
+            if (ops !== undefined) {
+                let old_interp = next_state.interpretations[hist_state.index] || [];
+                let new_interp: readonly InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
+                if (old_interp !== new_interp) {
+                    if (new_interp.length === 0) {
+                        new_interp = undefined;
+                    }
+                    next_state = <W>update(next_state as World, {
+                        interpretations: { [hist_state.index]: new_interp }
+                    });
                 }
-                next_state = <W>update(next_state as World, {
-                    interpretations: { [hist_state.index]: new_interp }
-                });
             }
+            hist_state = hist_state.previous;
         }
-        hist_state = hist_state.previous;
     }
 
     let next_parsing = apply_command(spec, next_state, raw('', false)).parsing;
@@ -201,7 +269,13 @@ export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResul
 
 }
 
-
+export function standard_render(message: Message): string {
+    return (['action', 'consequence', 'description', 'prompt'] as const)
+        .map(f => message[f])
+        .filter(x => x.length > 0)
+        .map(x => x.join(' '))
+        .join('<br/><br/>');
+}
 /*
 TODO:
     World Validator, tests out a world by fully traversing its command space

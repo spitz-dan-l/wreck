@@ -1,4 +1,4 @@
-import { tuple, update } from '../datatypes';
+import { tuple, update, appender } from '../datatypes';
 import { get_initial_puffer_world, make_puffer_world_spec, Puffer, PufferWorld } from '../puffer';
 import { random_choice } from '../text_tools';
 import { world_driver } from '../world';
@@ -11,7 +11,7 @@ interface Location {
 let LocPuffer: Puffer<Location> = {
     activate: world => true,
 
-    pre: world => update(world, {moving: false}),
+    pre: world => update(world, { moving: false }),
 
     handle_command: (world, parser) => {
         parser.consume('*go');
@@ -26,9 +26,15 @@ let LocPuffer: Puffer<Location> = {
 
         parser.submit();
 
+        let new_pos = !world.is_in_heaven;
+        let loc = new_pos ? 'in Heaven' : 'standing around on the ground';
+        
         return update(world, {
-            moving: true,
-            is_in_heaven: _ => !_
+            message: {
+                consequence: appender(`You are currently ${loc}.`)
+            },
+            is_in_heaven: new_pos,
+            moving: true
         });
     },
 
@@ -38,26 +44,17 @@ let LocPuffer: Puffer<Location> = {
         } else {
             return [{ kind: 'Remove', label: 'happy' }];
         }
-    },
-
-    generate_message: (world) => {
-        if (world.moving) {
-            let loc = world.is_in_heaven ? 'in Heaven' : 'standing around on the ground';
-            return `You are currently ${loc}.`
-        }
     }
 }
 
 interface Zarathustra {
     is_in_heaven: boolean;
     has_seen_zarathustra: boolean;
-    mispronunciation: string | undefined;
+    moving: boolean; // listens to LocPuffer, to determine when to describe zarathustra
 }
 
 let ZarathustraPuffer: Puffer<Zarathustra> = {
     activate: world => world.is_in_heaven,
-
-    pre: world => update(world, { mispronunciation: undefined }),
 
     handle_command: (world, parser) => {
         parser.consume("*mispronounce zarathustra's name");
@@ -71,18 +68,23 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
             'Zerthes Threstine'
         ]
         let mispronunciation = random_choice(utterance_options);
-        return update(world, { mispronunciation });
-    },
-
-    generate_message: (world) => {
-        if (world.mispronunciation !== undefined) {
-            return `"${world.mispronunciation}," you say.`
-        }
+        return update(world, {
+            message: {
+                action: appender(`"${mispronunciation}," you say.`)
+            }
+        });
     },
 
     post: world => {
-        if (!world.has_seen_zarathustra) {
+        if (world.moving) {
             return update(world, {
+                message: {
+                    description: appender(
+                        !world.has_seen_zarathustra ?
+                        "There's a bird up here. His name is Zarathustra. He is ugly." :
+                        'Zarathustra is here.'
+                    )
+                },
                 has_seen_zarathustra: true
             });
         }
@@ -91,14 +93,11 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
 }
 
 interface Roles {
-    is_in_heaven: boolean,
-    role_id: number | undefined
+    is_in_heaven: boolean
 }
 
 let BePuffer: Puffer<Roles> = {
     activate: world => !world.is_in_heaven,
-
-    pre: world => update(world, { role_id: undefined }),
 
     handle_command: (world, parser) => {
         parser.consume('*be');
@@ -123,11 +122,6 @@ let BePuffer: Puffer<Roles> = {
 
         parser.submit();
 
-        return update(world, { role_id: choice });
-    },
-
-
-    generate_message: (world) => {
         let qualities: string[] = [
             'outwardly curious',
             'introspective',
@@ -140,10 +134,13 @@ let BePuffer: Puffer<Roles> = {
             'predatory',
             'vulnerable'
         ];
-        if (world.role_id !== undefined) {
-            return `You feel ${qualities[world.role_id]}.`;
-        }
-    }
+
+        return update(world, {
+            message: {
+                consequence: appender(`You feel ${qualities[choice]}.`)
+            }
+        });
+    },
 }
 
 interface BirdWorld extends PufferWorld,
@@ -162,14 +159,12 @@ const initial_bird_world: BirdWorld = {
     
     // location
     is_in_heaven: false,
-    moving: true,
+    moving: false,
     
     // zarathustra
     has_seen_zarathustra: false,
-    mispronunciation: undefined,
 
     // roles
-    role_id: undefined
 };
 
 const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);
@@ -178,22 +173,3 @@ export function new_bird_world() {
     return world_driver(bird_world_spec);
 }
 
-/*
-Thoughts from this
-
-- Puffers seem good
-- Adding stuff to messages feels weird/lame
-    - Don't want to go too hard on abstraction building for it
-    - Something like:
-        - an ordered map of names -> paragraph generators
-        - a given generator has a given set of params
-        - puffers can update the params for particular paragraphs
-        - at the very end all the paragraphs get generated
-
-
-
-
-
-
-
-*/

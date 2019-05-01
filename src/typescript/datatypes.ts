@@ -360,11 +360,19 @@ export function infer_literal_array<T extends string>(...arr: T[]): T[] {
   return arr;
 }
 
+export function appender<T>(...elts: T[]){
+    return (arr: T[]) => [...arr, ...elts];
+}
+
 export function array_last<T>(arr: T[]): T {
     return arr[arr.length - 1];
 }
 
 export function tuple<T extends any[] & {0: any}>(t: T): T { return t }
+
+export type Omit<T, K extends keyof any> = {
+    [P in Exclude<keyof T, K>]: T[P]
+};
 
 export type FirstArg<F> = F extends (arg0: infer P, ...args: any) => any ? P : never;
 export type RestArgs<F> = F extends (arg0: any, ...args: infer P) => any ? P : never;
@@ -403,4 +411,5 @@ import _deep_equal from 'deep-equal';
 export let deep_equal = _deep_equal
 
 export {lens} from 'lens.ts';
+
 

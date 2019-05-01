@@ -1,12 +1,13 @@
 import { Parser, RawInput } from './parser2';
-import { CommandHandler, CommandResult, HistoryInterpreter, MetaLevelKeys, MessageGenerator, ObjectLevel, World, WorldSpec, get_initial_world } from './world';
-import { update} from './datatypes';
+import { CommandHandler, make_world_spec, CommandResult, HistoryInterpreter, MetaLevelKeys, Renderer, ObjectLevel, World, WorldSpec, get_initial_world } from './world';
+import { update, Omit } from './datatypes';
 
-export type PufferActivator<W> = (world: W) => number | boolean;
-export type PufferCommandHandler<W> = (world: W, parser: Parser) => W;
-export type PufferUpdater<W> = (world: W) => W;
+export type PufferAndWorld<W> = W & PufferLevel<PufferWorld>;
+
+export type PufferActivator<W> = (world: PufferAndWorld<W>) => number | boolean;
+export type PufferCommandHandler<W> = (world: PufferAndWorld<W>, parser: Parser) => PufferAndWorld<W>;
+export type PufferUpdater<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
 export type PufferHistoryInterpreter<W> = HistoryInterpreter<W & World>;
-export type PufferMessageGenerator<W> = MessageGenerator<W & World>;
 
 export type Puffer<W={}> = {
     readonly activate: PufferActivator<W>,
@@ -14,7 +15,6 @@ export type Puffer<W={}> = {
     readonly handle_command?: PufferCommandHandler<W>,
     readonly post?: PufferUpdater<W>,
     readonly interpret_history?: PufferHistoryInterpreter<W>,
-    readonly generate_message?: PufferMessageGenerator<W>
 }
 
 export interface PufferWorld extends World {
@@ -28,7 +28,7 @@ export function get_initial_puffer_world<W extends PufferWorld>(): Pick<W, keyof
     };
 }
 
-type PufferLevel<W extends PufferWorld> = Pick<W, Exclude<keyof W, MetaLevelKeys | 'active_puffer_indices'>>;
+type PufferLevel<W extends PufferWorld> = Omit<W, MetaLevelKeys | 'active_puffer_indices'>;
 type PufferForWorld<W extends PufferWorld> = Puffer<Partial<PufferLevel<W>>>;
 
 type CompatPuffer<W0 extends PufferWorld, P> = P & (P extends Puffer<infer W1> ?
@@ -48,35 +48,38 @@ type ValidPufferIndex<W extends PufferWorld, Index extends readonly PufferForWor
         'Invalid puffer index' :
         unknown);
 
-export type PufferWorldSpec<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]> =
-    WorldSpec<W> &
-    { readonly puffer_index: ValidPufferIndex<W, Index> };
+// export type PufferWorldSpec<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]> =
+//     WorldSpec<W> &
+//     { readonly puffer_index: ValidPufferIndex<W, Index> };
 
 export function make_puffer_world_spec<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]>
-    (initial_world: W, puffer_index: ValidPufferIndex<W, Index>)
-    : PufferWorldSpec<W, Index> {
+    (initial_world: W, puffer_index: ValidPufferIndex<W, Index>, render?: Renderer)
+    : WorldSpec<W> {
+    // : PufferWorldSpec<W, Index> {
+    function activate_puffers(world: ObjectLevel<W>): number[] {
+        return puffer_index
+            .reduce((lst, p, i) => {
+                let res = p.activate(world as PufferLevel<W>);
+                if (res === false) {
+                    return lst;
+                } else if (res === true) {
+                    return [...lst, [i, 1]]
+                } else {
+                    return [...lst, [i, res]];
+                }
+            }, [])
+            .sort(([pa, a], [pb, b]) => b - a)
+            .map(x => x[0]);
+    }
 
     function lookup_active_puffers(indices: number[]) {
         return indices.map(i => puffer_index[i])
     }
 
     function pre(world: ObjectLevel<W>): ObjectLevel<W> {
-        let active_puffer_indices =
-            puffer_index
-                .reduce((lst, p, i) => {
-                    let res = p.activate(world as PufferLevel<W>);
-                    if (res === false) {
-                        return lst;
-                    } else if (res === true) {
-                        return [...lst, [i, 1]]
-                    } else {
-                        return [...lst, [i, res]];
-                    }
-                }, [])
-                .sort(([pa, a], [pb, b]) => b - a)
-                .map(x => x[0]);
+        let active_puffer_indices = activate_puffers(world);
 
-        world = <W>update(world as ObjectLevel<PufferWorld>, { active_puffer_indices })
+        world = <W>update(world as ObjectLevel<PufferWorld>, { active_puffer_indices });
 
         let puffers = lookup_active_puffers(active_puffer_indices);
         return <ObjectLevel<W>> puffers.reduce((w, p) => p.pre === undefined ? w : p.pre(w as PufferLevel<W>), world);
@@ -94,7 +97,11 @@ export function make_puffer_world_spec<W extends PufferWorld, Index extends read
     }
 
     function post(world: ObjectLevel<W>): ObjectLevel<W> {
-        let active_puffers = lookup_active_puffers(world.active_puffer_indices);
+        let active_puffer_indices = activate_puffers(world);
+
+        world = <W>update(world as ObjectLevel<PufferWorld>, { active_puffer_indices });
+        
+        let active_puffers = lookup_active_puffers(active_puffer_indices);
         
         return <ObjectLevel<W>> active_puffers.reduce((w, p) => p.post === undefined ? w : p.post(w as PufferLevel<W>), world);
     }
@@ -107,22 +114,13 @@ export function make_puffer_world_spec<W extends PufferWorld, Index extends read
             .flatMap(puffer => puffer.interpret_history(new_world, old_world));
     }
 
-    function generate_message(world: W) {
-        // TODO: This part is gonna be hard to do right
-        let active_puffers = lookup_active_puffers(world.active_puffer_indices);
-        return active_puffers
-            .map(puffer => puffer.generate_message(world))
-            .filter(m => m !== undefined)
-            .join('<br/><br/>');
-    }
-
-    return {
+    return make_world_spec({
         initial_world,
-        puffer_index,
+        // puffer_index,
         pre,
         handle_command,
         post,
         interpret_history,
-        generate_message
-    }
+        render
+    })
 }

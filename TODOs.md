@@ -38,8 +38,9 @@ Read up on factoring reducers, switch
 
     - OMs
         - migrate to the new parser API
-        - port declarative DSL
         - port make_look_consumer()
+
+- rename datatypes to utils
 
 
 
