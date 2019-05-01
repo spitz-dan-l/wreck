@@ -47,12 +47,14 @@ import { Parser, Parsing, raw, RawInput } from './parser2';
 
 */
 
+type Fragment = string | ((i: InterpretationLabel[]) => string);
+
 type Message = {
     kind: 'Message',
-    action: string[],
-    consequence: string[],
-    description: string[],
-    prompt: string[]
+    action: Fragment[],
+    consequence: Fragment[],
+    description: Fragment[],
+    prompt: Fragment[]
 };
 
 // type Message = string;
@@ -88,7 +90,7 @@ function apply_interpretation_ops(interp: readonly InterpretationLabel[], ops: I
 
 export interface World {
     readonly message: Message,
-    readonly rendering: string | undefined,
+    // readonly rendering: string | undefined,
     readonly parsing: Parsing | undefined,
     readonly previous: this | null,
     readonly index: number,
@@ -107,9 +109,9 @@ export type WorldUpdater<W extends World> = (world: ObjectLevel<W>) => ObjectLev
 export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Parser) => ObjectLevel<W>;
 
 export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[] | undefined;
-export type Renderer = (message: Message) => string;
+export type Renderer = (message: Message, labels?: readonly InterpretationLabel[]) => string;
 
-const INITIAL_MESSAGE: Message = {
+export const INITIAL_MESSAGE: Message = {
     kind: 'Message',
     action: [],
     consequence: [],
@@ -119,7 +121,7 @@ const INITIAL_MESSAGE: Message = {
 
 const INITIAL_WORLD: World = {
     message: INITIAL_MESSAGE,
-    rendering: undefined,
+    // rendering: undefined,
     parsing: undefined,
     previous: null,
     index: 0,
@@ -187,7 +189,7 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
     next_state = <W>update(next_state as World, {
         previous: _ => world,
         index: _ => _ + 1,
-        rendering: undefined,
+        // rendering: undefined,
         message: INITIAL_MESSAGE
     });
 
@@ -224,15 +226,15 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
         next_state = <W>spec.post(next_state);
     }
 
-    next_state = <W>update(next_state as World, {
-        rendering: spec.render(next_state.message)
-    });
+    // next_state = <W>update(next_state as World, {
+    //     rendering: spec.render(next_state.message)
+    // });
 
     // Next apply history interp            
     if (spec.interpret_history !== undefined) {
         let hist_state: W | null = next_state;
         while (hist_state !== null) {
-            let ops = spec.interpret_history(hist_state, next_state);
+            let ops = spec.interpret_history(next_state, hist_state);
             if (ops !== undefined) {
                 let old_interp = next_state.interpretations[hist_state.index] || [];
                 let new_interp: readonly InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
@@ -258,22 +260,22 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
     };
 }
 
-export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>] {
+export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>, Renderer] {
     function update(world: W, command: RawInput) {
         return apply_command(spec, world, command);
     }
 
     let initial_result = update(spec.initial_world, raw('', false));
 
-    return [initial_result, update];
+    return [initial_result, update, spec.render];
 
 }
 
-export function standard_render(message: Message): string {
+export function standard_render(message: Message, labels: InterpretationLabel[] = []): string {
     return (['action', 'consequence', 'description', 'prompt'] as const)
         .map(f => message[f])
         .filter(x => x.length > 0)
-        .map(x => x.join(' '))
+        .map(x => x.map(f => typeof f === 'function' ? f(labels) : f).join(' '))
         .join('<br/><br/>');
 }
 /*

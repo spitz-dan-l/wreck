@@ -14,15 +14,15 @@ import { new_bird_world } from '../typescript/demo_worlds/bird_world';
 describe('world', () => {
     it('thingy', () => {
         
-        let [result, updater] = new_bird_world();
+        let [result, updater, render] = new_bird_world();
 
-        assert.equal(result.world.rendering, 'You are currently down.');
+        assert.equal(render(result.world.message), 'You are currently down.');
         // This world is a flip flop.
         result = updater(result.world, raw('go down stairs')); // this will be invalid
         result = updater(result.world, raw('go up stairs')); // this will be valid
         result = updater(result.world, raw('go up stairs')); // this will be invalid
 
-        assert.equal(result.world.rendering, 'You are currently up.');
+        assert.equal(render(result.world.message), 'You are currently up.');
         assert.equal(result.world.index, 1);
     });
 });

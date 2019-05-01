@@ -1,4 +1,4 @@
-import { tuple, update, appender } from '../datatypes';
+import { appender, tuple, update } from '../datatypes';
 import { get_initial_puffer_world, make_puffer_world_spec, Puffer, PufferWorld } from '../puffer';
 import { random_choice } from '../text_tools';
 import { world_driver } from '../world';
@@ -8,7 +8,7 @@ interface Location {
     moving: boolean;
 }
 
-let LocPuffer: Puffer<Location> = {
+let LocationPuffer: Puffer<Location> = {
     activate: world => true,
 
     pre: world => update(world, { moving: false }),
@@ -50,7 +50,7 @@ let LocPuffer: Puffer<Location> = {
 interface Zarathustra {
     is_in_heaven: boolean;
     has_seen_zarathustra: boolean;
-    moving: boolean; // listens to LocPuffer, to determine when to describe zarathustra
+    moving: boolean; // listens to LocationPuffer, to determine when to describe zarathustra
 }
 
 let ZarathustraPuffer: Puffer<Zarathustra> = {
@@ -79,10 +79,24 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
         if (world.moving) {
             return update(world, {
                 message: {
-                    description: appender(
-                        !world.has_seen_zarathustra ?
-                        "There's a bird up here. His name is Zarathustra. He is ugly." :
-                        'Zarathustra is here.'
+                    description: appender((labels) => {
+                        let result: string;
+                        if (!world.has_seen_zarathustra) {
+                            result = "There's a bird up here. His name is Zarathustra."
+                            if (labels.includes('vulnerable')) {
+                                result += ' He is sexy.';
+                            } else {
+                                result += ' He is ugly.';
+                            }
+                        } else {
+                            result = 'Zarathustra is here.';
+                            if (labels.includes('vulnerable')) {
+                                result += ' (What a sexy bird.)';
+                            }
+                        }
+                        return result;
+                    }
+                        
                     )
                 },
                 has_seen_zarathustra: true
@@ -92,28 +106,48 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
     }
 }
 
+
+const roles = tuple([
+    'the One Who Gazes Ahead',
+    'the One Who Gazes Back',
+    'the One Who Gazes Up',
+    'the One Who Gazes Down',
+    'the One Whose Palms Are Open',
+    'the One Whose Palms Are Closed',
+    'the One Who Is Strong',
+    'the One Who Is Weak',
+    'the One Who Seduces',
+    'the One Who Is Seduced'
+]);
+
+const qualities = tuple([
+    'outwardly curious',
+    'introspective',
+    'transcendent',
+    'sorrowful',
+    'receptive',
+    'adversarial',
+    'confident',
+    'impressionable',
+    'predatory',
+    'vulnerable'
+]);
+type Qualities = typeof qualities;
+
 interface Roles {
     is_in_heaven: boolean
+    role: Qualities[number];
 }
 
-let BePuffer: Puffer<Roles> = {
-    activate: world => !world.is_in_heaven,
+let RolePuffer: Puffer<Roles> = {
+    activate: world => true,
 
     handle_command: (world, parser) => {
-        parser.consume('*be');
+        if (world.is_in_heaven) {
+            parser.eliminate();
+        }
 
-        let roles: string[] = [
-            'the One Who Gazes Ahead',
-            'the One Who Gazes Back',
-            'the One Who Gazes Up',
-            'the One Who Gazes Down',
-            'the One Whose Palms Are Open',
-            'the One Whose Palms Are Closed',
-            'the One Who Is Strong',
-            'the One Who Is Weak',
-            'the One Who Seduces',
-            'the One Who Is Seduced'
-        ];
+        parser.consume('*be');
 
         let choice = parser.split(
             roles.map((r, i) =>
@@ -122,36 +156,34 @@ let BePuffer: Puffer<Roles> = {
 
         parser.submit();
 
-        let qualities: string[] = [
-            'outwardly curious',
-            'introspective',
-            'transcendent',
-            'sorrowful',
-            'receptive',
-            'adversarial',
-            'confident',
-            'impressionable',
-            'predatory',
-            'vulnerable'
-        ];
-
         return update(world, {
+            role: qualities[choice],
             message: {
                 consequence: appender(`You feel ${qualities[choice]}.`)
             }
         });
     },
+    interpret_history: (new_world, old_world) => {
+        if (new_world.role === 'vulnerable') {
+            return [{ kind: 'Add', label: 'vulnerable' }];
+        } else {
+            return [{ kind: 'Remove', label: 'vulnerable' }];
+        }
+    }
+
 }
 
-interface BirdWorld extends PufferWorld,
-    Location,
-    Zarathustra,
-    Roles {};
+interface BirdWorld extends PufferWorld
+    , Location
+    , Zarathustra
+    , Roles
+    {};
 
+// Would use "as const" instead of tuple() but @babel/preset-typescript 7.3.3 has bugs parsing that construct
 const BirdWorldPuffers = tuple([
-    LocPuffer,
+    LocationPuffer,
     ZarathustraPuffer,
-    BePuffer
+    RolePuffer
 ]);
 
 const initial_bird_world: BirdWorld = {
@@ -165,6 +197,7 @@ const initial_bird_world: BirdWorld = {
     has_seen_zarathustra: false,
 
     // roles
+    role: undefined,
 };
 
 const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);

@@ -1,6 +1,6 @@
-import { Parser, RawInput } from './parser2';
-import { CommandHandler, make_world_spec, CommandResult, HistoryInterpreter, MetaLevelKeys, Renderer, ObjectLevel, World, WorldSpec, get_initial_world } from './world';
-import { update, Omit } from './datatypes';
+import { Omit, update } from './datatypes';
+import { Parser } from './parser2';
+import { get_initial_world, HistoryInterpreter, make_world_spec, MetaLevelKeys, ObjectLevel, Renderer, World, WorldSpec } from './world';
 
 export type PufferAndWorld<W> = W & PufferLevel<PufferWorld>;
 
@@ -43,19 +43,9 @@ type PufferIndex<W extends PufferWorld, Index extends readonly PufferForWorld<W>
     [K in keyof Index]: Index[K] & CompatPuffer<W, Index[K]>
 };
 
-type ValidPufferIndex<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]> = PufferIndex<W, Index> &
-    (Extract<Index, PufferIndex<W, Index>> extends never ?
-        'Invalid puffer index' :
-        unknown);
-
-// export type PufferWorldSpec<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]> =
-//     WorldSpec<W> &
-//     { readonly puffer_index: ValidPufferIndex<W, Index> };
-
 export function make_puffer_world_spec<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]>
-    (initial_world: W, puffer_index: ValidPufferIndex<W, Index>, render?: Renderer)
+    (initial_world: W, puffer_index: PufferIndex<W, Index>, render?: Renderer)
     : WorldSpec<W> {
-    // : PufferWorldSpec<W, Index> {
     function activate_puffers(world: ObjectLevel<W>): number[] {
         return puffer_index
             .reduce((lst, p, i) => {
@@ -116,7 +106,6 @@ export function make_puffer_world_spec<W extends PufferWorld, Index extends read
 
     return make_world_spec({
         initial_world,
-        // puffer_index,
         pre,
         handle_command,
         post,

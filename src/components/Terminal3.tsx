@@ -1,17 +1,18 @@
 import * as React from 'react';
-
-
-import {ParsedText, OutputText} from './Text2';
-import { update, array_last } from '../typescript/datatypes';
-import { Token, RawInput, Parsing, SUBMIT_TOKEN } from '../typescript/parser2';
-import { apply_command, CommandResult, World, WorldSpec, Interpretations } from "../typescript/world";
+import { array_last, update } from '../typescript/datatypes';
 import { keys } from '../typescript/keyboard_tools';
+import { Parsing, RawInput, SUBMIT_TOKEN, Token } from '../typescript/parser2';
+import { CommandResult, Interpretations, Renderer, World } from "../typescript/world";
+import { OutputText, ParsedText } from './Text2';
+
+
 
 
 type AppState<W extends World=World> = {
   command_result: CommandResult<W>,
   typeahead_index: number,
-  updater: (world: W, command: RawInput) => CommandResult<W>;
+  updater: (world: W, command: RawInput) => CommandResult<W>,
+  renderer: Renderer
 }
 
 type AppAction =
@@ -161,7 +162,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
   return <AppDispatch.Provider value={dispatch}>
     <div>
-      <History world={current_world} />
+      <History world={current_world} renderer={initial_state.renderer} />
       <Prompt parsing={current_parsing} />
       <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} />
     </div>
@@ -290,7 +291,7 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
   </ul>
 }
 
-export const History: React.FunctionComponent<{world: World}> = ({world}) => {
+export const History: React.FunctionComponent<{world: World, renderer: Renderer}> = ({world, renderer}) => {
   let worlds = [];
 
   // unroll all the historical worlds
@@ -301,16 +302,16 @@ export const History: React.FunctionComponent<{world: World}> = ({world}) => {
   }
 
   return <div className="history">
-    { worlds.map(w => <HistoryElt key={w.index} world={w} interpretation_labels={world.interpretations[w.index]} />) }
+    { worlds.map(w => <HistoryElt key={w.index} world={w} interpretation_labels={world.interpretations[w.index]} renderer={renderer} />) }
   </div>
 };
 
-const HistoryElt: React.FunctionComponent<{world: World, interpretation_labels: Interpretations[number]}> = ({world, interpretation_labels}) => {
+const HistoryElt: React.FunctionComponent<{world: World, interpretation_labels: Interpretations[number], renderer: Renderer}> = ({world, interpretation_labels, renderer}) => {
   let i = interpretation_labels;
   let className = i !== undefined ? i.join(' ') : '';
   return <div className={className}>
     { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
-    <OutputText rendering={world.rendering} />
+    <OutputText rendering={renderer(world.message, i)} />
   </div>;
 };
 

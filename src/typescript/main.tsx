@@ -10,7 +10,7 @@ import { App, History } from '../components/Terminal3';
 import { new_bird_world } from './demo_worlds/puffer_bird_world';
 
 console.time('world_build');
-let [result, updater] = new_bird_world();
+let [result, updater, renderer] = new_bird_world();
 
 // for (let i = 0; i < 3; i++) {
 //     result = updater(result.world, raw('go up stairs'));
@@ -21,7 +21,7 @@ console.timeEnd('world_build');
 
 console.time('render');
 
-ReactDom.render(<App typeahead_index={0} command_result={result} updater={updater} />, document.getElementById('terminal'));
+ReactDom.render(<App typeahead_index={0} command_result={result} updater={updater} renderer={renderer} />, document.getElementById('terminal'));
 // ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');
 

@@ -23,8 +23,8 @@
 
 */
 
-import { array_last, deep_equal } from './datatypes'
-import { starts_with, tokenize } from './text_tools'
+import { array_last, deep_equal } from './datatypes';
+import { starts_with, tokenize } from './text_tools';
 
 class NoMatch {};
 class ParseRestart {
@@ -291,6 +291,9 @@ export class Parser {
             if (t.startsWith('~')) {
                 typeahead_type = { kind: 'Locked' };
                 t = t.slice(1);
+            } else if (t.startsWith('+')) {
+                typeahead_type = { kind: 'Available' };
+                t = t.slice(1);
             }
 
             if (t.startsWith('*')) {
@@ -298,6 +301,9 @@ export class Parser {
                 t = t.slice(1);
             } else if (t.startsWith('&')) {
                 token_type = { kind: 'Option' };
+                t = t.slice(1);
+            } else if (t.startsWith('=')) {
+                token_type = { kind: 'Filler' };
                 t = t.slice(1);
             }
 

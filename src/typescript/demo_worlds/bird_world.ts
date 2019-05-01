@@ -1,6 +1,6 @@
 import { update } from '../datatypes';
-import { CommandHandler, get_initial_world, HistoryInterpreter, World, world_driver, make_world_spec } from '../world';
 import { random_choice } from '../text_tools';
+import { CommandHandler, get_initial_world, INITIAL_MESSAGE, HistoryInterpreter, make_world_spec, World, world_driver } from '../world';
 
 
 interface BirdWorld extends World {
@@ -10,7 +10,13 @@ interface BirdWorld extends World {
 let initial_world: BirdWorld = {
     ...get_initial_world<BirdWorld>(),
     is_in_heaven: false,
-    rendering: 'You are currently down.',
+    message: {
+        kind: 'Message',
+        action: [],
+        consequence: ['You are currently down.'],
+        description: [],
+        prompt: []
+    },
     interpretations: { 0: ['happy'] }
 };
 
