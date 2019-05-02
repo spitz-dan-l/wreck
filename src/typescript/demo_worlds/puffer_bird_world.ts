@@ -1,4 +1,4 @@
-import { appender, tuple, update } from '../datatypes';
+import { appender, tuple, update, infer_literal_array } from '../datatypes';
 import { get_initial_puffer_world, make_puffer_world_spec, Puffer, PufferWorld } from '../puffer';
 import { random_choice } from '../text_tools';
 import { world_driver } from '../world';
@@ -79,24 +79,14 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
         if (world.moving) {
             return update(world, {
                 message: {
-                    description: appender((labels) => {
-                        let result: string;
-                        if (!world.has_seen_zarathustra) {
-                            result = "There's a bird up here. His name is Zarathustra."
-                            if (labels.includes('vulnerable')) {
-                                result += ' He is sexy.';
-                            } else {
-                                result += ' He is ugly.';
-                            }
-                        } else {
-                            result = 'Zarathustra is here.';
-                            if (labels.includes('vulnerable')) {
-                                result += ' (What a sexy bird.)';
-                            }
-                        }
-                        return result;
-                    }
-                        
+                    description: appender(
+                        !world.has_seen_zarathustra ?
+                        `There's a bird up here. His name is Zarathustra.
+                         {{#vulnerable}}He is sexy.{{/vulnerable}}
+                         {{^vulnerable}}He is ugly.{{/vulnerable}}` :
+                 
+                        `Zarathustra is here.
+                         {{#vulnerable}}(What a sexy bird.){{/vulnerable}}`
                     )
                 },
                 has_seen_zarathustra: true
@@ -106,8 +96,7 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
     }
 }
 
-
-const roles = tuple([
+const roles = tuple(
     'the One Who Gazes Ahead',
     'the One Who Gazes Back',
     'the One Who Gazes Up',
@@ -118,9 +107,9 @@ const roles = tuple([
     'the One Who Is Weak',
     'the One Who Seduces',
     'the One Who Is Seduced'
-]);
+);
 
-const qualities = tuple([
+const qualities = tuple(
     'outwardly curious',
     'introspective',
     'transcendent',
@@ -131,7 +120,7 @@ const qualities = tuple([
     'impressionable',
     'predatory',
     'vulnerable'
-]);
+);
 type Qualities = typeof qualities;
 
 interface Roles {
@@ -180,11 +169,11 @@ interface BirdWorld extends PufferWorld
     {};
 
 // Would use "as const" instead of tuple() but @babel/preset-typescript 7.3.3 has bugs parsing that construct
-const BirdWorldPuffers = tuple([
+const BirdWorldPuffers = tuple(
     LocationPuffer,
     ZarathustraPuffer,
     RolePuffer
-]);
+);
 
 const initial_bird_world: BirdWorld = {
     ...get_initial_puffer_world<BirdWorld>(),

@@ -22,6 +22,8 @@
 
 import { update, Omit } from './datatypes';
 import { Parser, Parsing, raw, RawInput } from './parser2';
+import { render } from 'mustache';
+// import { compile } from 'handlebars';
 
 // TODO: We probably want a data structure for this
 // Question is how DOM-like will it wind up being and should we just use the DOM
@@ -47,7 +49,9 @@ import { Parser, Parsing, raw, RawInput } from './parser2';
 
 */
 
-type Fragment = string | ((i: InterpretationLabel[]) => string);
+// A Fragment is any string. If it is a Mustache template, it will have the current
+// interpretation tags used to render it for display.
+type Fragment = string;
 
 type Message = {
     kind: 'Message',
@@ -226,10 +230,6 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
         next_state = <W>spec.post(next_state);
     }
 
-    // next_state = <W>update(next_state as World, {
-    //     rendering: spec.render(next_state.message)
-    // });
-
     // Next apply history interp            
     if (spec.interpret_history !== undefined) {
         let hist_state: W | null = next_state;
@@ -275,7 +275,9 @@ export function standard_render(message: Message, labels: InterpretationLabel[] 
     return (['action', 'consequence', 'description', 'prompt'] as const)
         .map(f => message[f])
         .filter(x => x.length > 0)
-        .map(x => x.map(f => typeof f === 'function' ? f(labels) : f).join(' '))
+        .map(x => x.map(f => render(f,
+            labels.reduce((obj, lab) => ({...obj, [lab]: true}), {})
+        )).join(' '))
         .join('<br/><br/>');
 }
 /*
