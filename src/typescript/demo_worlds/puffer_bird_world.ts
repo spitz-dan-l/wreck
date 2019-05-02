@@ -1,4 +1,4 @@
-import { appender, tuple, update, infer_literal_array } from '../datatypes';
+import { appender, appender_uniq, tuple, update } from '../datatypes';
 import { get_initial_puffer_world, make_puffer_world_spec, Puffer, PufferWorld } from '../puffer';
 import { random_choice } from '../text_tools';
 import { world_driver } from '../world';
@@ -11,7 +11,10 @@ interface Location {
 let LocationPuffer: Puffer<Location> = {
     activate: world => true,
 
-    pre: world => update(world, { moving: false }),
+    pre: world => update(world, {
+        moving: false,
+        interpretation_receptors: appender_uniq('happy')
+    }),
 
     handle_command: (world, parser) => {
         parser.consume('*go');
@@ -84,7 +87,6 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
                         `There's a bird up here. His name is Zarathustra.
                          {{#vulnerable}}He is sexy.{{/vulnerable}}
                          {{^vulnerable}}He is ugly.{{/vulnerable}}` :
-                 
                         `Zarathustra is here.
                          {{#vulnerable}}(What a sexy bird.){{/vulnerable}}`
                     )
@@ -126,6 +128,7 @@ type Qualities = typeof qualities;
 interface Roles {
     is_in_heaven: boolean
     role: Qualities[number];
+    // readonly index: number;
 }
 
 let RolePuffer: Puffer<Roles> = {
@@ -186,7 +189,7 @@ const initial_bird_world: BirdWorld = {
     has_seen_zarathustra: false,
 
     // roles
-    role: undefined,
+    role: undefined
 };
 
 const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);

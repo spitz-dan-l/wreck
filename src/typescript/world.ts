@@ -20,9 +20,9 @@
 
 */
 
-import { update, Omit } from './datatypes';
+import { update, Omit , appender_uniq} from './datatypes';
 import { Parser, Parsing, raw, RawInput } from './parser2';
-import { render } from 'mustache';
+import * as Mustache from 'mustache';
 // import { compile } from 'handlebars';
 
 // TODO: We probably want a data structure for this
@@ -64,9 +64,9 @@ type Message = {
 // type Message = string;
 
 type InterpretationLabel = string;
-type InterpretationOp =
-    { kind: 'Add', label: InterpretationLabel } |
-    { kind: 'Remove', label: InterpretationLabel };
+type AddOp = { kind: 'Add', label: InterpretationLabel };
+type RemoveOp = { kind: 'Remove', label: InterpretationLabel };
+type InterpretationOp = AddOp | RemoveOp;
 export type Interpretations = { readonly [k: number]: readonly InterpretationLabel[] };
 
 
@@ -94,11 +94,11 @@ function apply_interpretation_ops(interp: readonly InterpretationLabel[], ops: I
 
 export interface World {
     readonly message: Message,
-    // readonly rendering: string | undefined,
     readonly parsing: Parsing | undefined,
     readonly previous: this | null,
     readonly index: number,
-    readonly interpretations: Interpretations
+    readonly interpretations: Interpretations,
+    readonly interpretation_receptors: InterpretationLabel[]
 }
 
 // TODO: need a more concise and cute term than "object level"
@@ -129,7 +129,8 @@ const INITIAL_WORLD: World = {
     parsing: undefined,
     previous: null,
     index: 0,
-    interpretations: {}
+    interpretations: {},
+    interpretation_receptors: []
 };
 
 // Helper to return INITIAL_WORLD constant as any kind of W type.
@@ -193,7 +194,7 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
     next_state = <W>update(next_state as World, {
         previous: _ => world,
         index: _ => _ + 1,
-        // rendering: undefined,
+        interpretation_receptors: [],
         message: INITIAL_MESSAGE
     });
 
@@ -230,6 +231,32 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
         next_state = <W>spec.post(next_state);
     }
 
+    // find interp labels inside any message fragments
+    function infer_labels(f: Fragment): InterpretationLabel[] {
+        let extract_labels = (tokens: any[]): InterpretationLabel[] =>
+            tokens.flatMap(token => {
+                switch (token[0]) {
+                    case '#':
+                    case '^':
+                        return [token[1], ...extract_labels(token[4])];
+                    default:
+                        return [];
+                }
+            });
+        
+        let parsed = Mustache.parse(f);
+
+        return extract_labels(parsed);
+    }
+
+    let inferred_interpretation_receptors: InterpretationLabel[] =
+        (['action', 'consequence', 'description', 'prompt'] as const)
+            .flatMap(prop => next_state.message[prop].flatMap(infer_labels));
+    
+    next_state = <W>update(next_state as World, {
+        interpretation_receptors: appender_uniq(...inferred_interpretation_receptors)
+    });
+
     // Next apply history interp            
     if (spec.interpret_history !== undefined) {
         let hist_state: W | null = next_state;
@@ -237,6 +264,8 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
             let ops = spec.interpret_history(next_state, hist_state);
             if (ops !== undefined) {
                 let old_interp = next_state.interpretations[hist_state.index] || [];
+                let old_receptors = hist_state.interpretation_receptors;
+                ops = ops.filter(op => old_receptors.includes(op.label));
                 let new_interp: readonly InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
                 if (old_interp !== new_interp) {
                     if (new_interp.length === 0) {
@@ -275,7 +304,7 @@ export function standard_render(message: Message, labels: InterpretationLabel[] 
     return (['action', 'consequence', 'description', 'prompt'] as const)
         .map(f => message[f])
         .filter(x => x.length > 0)
-        .map(x => x.map(f => render(f,
+        .map(x => x.map(f => Mustache.render(f,
             labels.reduce((obj, lab) => ({...obj, [lab]: true}), {})
         )).join(' '))
         .join('<br/><br/>');

@@ -1,3 +1,15 @@
+/*
+    A puffer is a type of pattern described in Conway's Game of Life.
+    http://www.conwaylife.com/wiki/Puffer
+
+    It is an object that moves itself through the Life grid, and leaves behind debris where it has been.
+
+    Here, a Puffer is a bundle of world behaviors that run within the game world,
+    reading and updating game state, and leaving behind the "debris" of those updates.
+    Sometimes that "debris" is just incidental bits of state, sometimes it is
+    read or otherwise used by other Puffers sharing the world.
+*/
+
 import { Omit, update } from './datatypes';
 import { Parser } from './parser2';
 import { get_initial_world, HistoryInterpreter, make_world_spec, MetaLevelKeys, ObjectLevel, Renderer, World, WorldSpec } from './world';
@@ -37,8 +49,6 @@ type CompatPuffer<W0 extends PufferWorld, P> = P & (P extends Puffer<infer W1> ?
         unknown :
     'P is not a puffer');
 
-// TODO: Probably we don't need PufferIndex and ValidPufferIndex to be separate things
-//    The more general "invalid puffer index" error does not appear to ever bubble up.
 type PufferIndex<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]> = {
     [K in keyof Index]: Index[K] & CompatPuffer<W, Index[K]>
 };
@@ -93,7 +103,13 @@ export function make_puffer_world_spec<W extends PufferWorld, Index extends read
         
         let active_puffers = lookup_active_puffers(active_puffer_indices);
         
-        return <ObjectLevel<W>> active_puffers.reduce((w, p) => p.post === undefined ? w : p.post(w as PufferLevel<W>), world);
+        return <ObjectLevel<W>> active_puffers
+            .reduce(
+                (w, p) => p.post === undefined ?
+                    w :
+                    p.post(w as PufferLevel<W>),
+                world
+            );
     }
 
     function interpret_history(new_world: W, old_world: W) {

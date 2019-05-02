@@ -24,7 +24,7 @@ through a deeply-nested object
 Issues:
 - Awkward to update embedded functions. You are forced to always supply an updater function for them.
   (Otherwise, it would be ambiguous at runtime whether you had supplied a replacement or an updater function.)
-- Does not deal with Maps or Sets in a useful way (ignores their keys, looks at their object properties)
+- Does not deal with Maps in a useful way (ignores their keys, looks at their object properties)
   (because I don't use them because they don't support compound keys)
 - The type signature of update() uses two type parameters, when only one really ought to be necessary.
 - Behavior for "unique symbol" types is finnicky
@@ -38,7 +38,7 @@ export type Updater<T> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
     [T] extends [NotFunction<T>] ?
-            (T extends Primitive | any[] ? T :
+            (T extends Primitive | any[] | Set<any> ? T :
                 T extends object ? ObjectUpdater<T> :
                     never) |
             ((x: T) => T) :
@@ -63,7 +63,7 @@ export function update<S, U extends S=S>(source: S, updater: Updater<U>): S {
     // if updater is a non-traversible value
     // check for all types we don't intend to recursively traverse.
     // this means all (non-function) primitives, and arrays
-    if ( !(updater instanceof Object) || updater instanceof Array ) {
+    if ( !(updater instanceof Object) || updater instanceof Array || updater instanceof Set ) {
         return <S>updater;
     }
 

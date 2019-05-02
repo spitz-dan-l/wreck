@@ -302,16 +302,37 @@ export const History: React.FunctionComponent<{world: World, renderer: Renderer}
   }
 
   return <div className="history">
-    { worlds.map(w => <HistoryElt key={w.index} world={w} interpretation_labels={world.interpretations[w.index]} renderer={renderer} />) }
+    { worlds.map(w => {
+      let labels = world.interpretations[w.index];
+      return <HistoryElt
+               key={w.index}
+               world={w}
+               interpretation_labels={labels}
+               rendering={renderer(w.message, labels)}
+             />;
+    }) }
   </div>
 };
 
-const HistoryElt: React.FunctionComponent<{world: World, interpretation_labels: Interpretations[number], renderer: Renderer}> = ({world, interpretation_labels, renderer}) => {
-  let i = interpretation_labels;
-  let className = i !== undefined ? i.join(' ') : '';
-  return <div className={className}>
-    { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
-    <OutputText rendering={renderer(world.message, i)} />
-  </div>;
-};
+type HistoryEltProps = {
+  world: World,
+  interpretation_labels: Interpretations[number],
+  rendering: string
+}
+const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
+  ({world, interpretation_labels, rendering}) => {
+    React.useEffect(() => {
+      console.log('re-rendered world '+world.index);
+    });
+    let i = interpretation_labels;
+    let className = i !== undefined ? i.join(' ') : '';
+    return <div className={className}>
+      { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
+      <OutputText rendering={rendering} />
+    </div>;
+  },
+  // (old_props, new_props) =>
+  //   old_props.world === new_props.world &&
+  //   old_props.rendering === new_props.rendering
+);
 

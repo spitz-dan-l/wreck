@@ -1,10 +1,10 @@
-import 'babel-polyfill'; // TODO put this somewhere that makes more sense
-
-import 'mocha'
 import * as assert from 'assert';
-
+import 'babel-polyfill'; // TODO put this somewhere that makes more sense
+import 'mocha';
 import { begin, chain, deep_equal, lens } from '../typescript/datatypes';
 import { update, Updater } from '../typescript/update';
+
+
 
 describe('update', () => {
     it('typechecks', () => {
@@ -88,6 +88,8 @@ describe('update', () => {
         let new_b = [2,3,4];
         
         let obj2 = update(obj, {
+            // you have to assert tuples, attempted to make inference work and
+            // couldn't find a way to do so without breaking function inference 
             a: _ => [3, _[1]] as [number, number],
             b: new_b
         })
@@ -99,28 +101,27 @@ describe('update', () => {
         let objL = lens<typeof obj>();
 
         let updater = begin<typeof obj>()
-            .chain(objL.a.set(0))
-            .chain(objL.b.c.set(_ => [..._, 4]));
+            .z(objL.a.set(0))
+            .z(objL.b.c.set(_ => [..._, 4]))
 
         let updated = updater(obj);
 
         let expected = { a: 0, b: { c: [2, 3, 4], d: 5, e: 6 } };
         assert.deepEqual(updated, expected);
 
-
         let updater2 = begin<typeof obj>()
-            .chain(objL.a.set(0))
-            .chain(function (o) {
+            .z(objL.a.set(0))
+            .z(function (o) {
                 let bL = objL.b;
                 return begin(o)
-                    .chain(bL.c.set(_ => [..._, 4]))
-                    .chain(bL.e.set(7))()
+                    .z(bL.c.set(_ => [..._, 4]))
+                    .z(bL.e.set(7))()
             });
 
         let updated2 = updater2(obj);
 
         let expected2 = { a: 0, b: { c: [2, 3, 4], d: 5, e: 7 } };
-        
+
         assert.deepEqual(updated2, expected2);
     });
 });
@@ -130,13 +131,17 @@ describe('chain', () => {
         let f1 = (a: string) => a + 'horse';
         let f2 = (a: string) => a + 'goat';
 
-        let r1 = chain(f1).chain(f2).chain(f1).chain(f2)('dan');
+        let r1 = chain(f1).z(f2).z(f1).z(f2)('dan');
         assert.equal(r1, 'danhorsegoathorsegoat');
 
         let f3 = () => 'horse';
 
-        let r2 = chain(f3).chain((x) => x + 'bleeb')()
+        let r2 = chain(f3).z(x => x + 'bleeb')
+            ()
         assert.equal(r2, 'horsebleeb');
+
+
+
     });
 });
 
