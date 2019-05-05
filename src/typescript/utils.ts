@@ -117,41 +117,6 @@ export class FuckSet<T> extends FuckDict<T, undefined> {
     }
 }
 
-
-export function chain_object<T extends object>(src: T) {
-    return new Proxy<T>(src, {
-        get: function (target, key) {
-            if (target[key] === undefined) {
-                target[key] = {};
-            }
-            let v = target[key];
-            if (typeof v === 'object' && !(v instanceof Array)) {
-                return chain_object(v);
-            } else {
-                return v;    
-            }  
-        }    
-    });
-} 
-
-export function chain_update(target: Object, source: Object, replace_keys: string[]=[], inplace=false) {
-    let updated: Object;
-    if (inplace) {
-        updated = target || {};
-    } else {
-        updated = {...target};
-    }
-
-    for (let [n, v] of Object.entries(source)) {
-        if (!replace_keys.includes(n) && typeof v === 'object' && !(v instanceof Array)) {
-            updated[n] = chain_update(updated[n], v, replace_keys, inplace);
-        } else {
-            updated[n] = v;
-        }
-    }
-    return updated;
-}
-
 export {Updater, update} from './update';
 
 export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
@@ -273,83 +238,6 @@ export function counter_order<T>(counter: Counter<T>, include_zero=false){
     return result.map(([t, i]) => t);
 }
 
-export type Annotatable<T, AT> = T | Annotated<T, AT>;
-export type Annotated<T, AT> = {value: T, annotated: true, annotation: Partial<AT>};
-
-//export type _MergeAnnotations<T, A1 extends Annotatable<T, AT1>,  AT1, AT2> = Annotatable<T, AT1 & AT2>
-//export type MergeAnnotations<T, > = 
-
-export function is_annotated<T, AT>(x: Annotatable<T, AT>): x is Annotated<T, AT>{
-    if (x === undefined) {
-        return false;
-    }
-    return (<Annotated<T, AT>>x).annotated !== undefined;
-}
-
-export function annotate<T, AT>(x: Annotatable<T, AT>, annotation?: Partial<AT>): Annotated<T, AT>{
-    if (annotation === undefined) {
-        annotation = {};
-    }
-    if (is_annotated(x)) {
-        Object.assign(x.annotation, annotation);
-        return x;
-    } else {
-        let result: Annotated<T, AT> = {value: x, annotated: true, annotation};
-        
-        return result;
-    }
-}
-
-export function unwrap<T, AT>(x: Annotatable<T, AT>): T {
-    if (is_annotated(x)) {
-        return x.value;
-    } else {
-        return x;
-    }
-}
-
-export function with_annotatable<T1, T2, TA>(f: (t1: T1) => T2, default_value?: TA): (x: Annotatable<T1, TA>) => Annotatable<T2, TA> {
-    return (x: Annotatable<T1, TA>) => annotate(unwrap(f(unwrap(x))), get_annotation(x, default_value));
-}
-
-export function get_annotation<T, TA>(x: Annotatable<T, TA>, default_value?: TA): Partial<TA> {
-    if (is_annotated(x)){
-        if (default_value !== undefined) {
-            return {...<any>default_value, ...<any>x.annotation};
-        } else {
-            return x.annotation;
-        }
-        
-    } else {
-        return default_value;
-    }
-}
-
-export type ADisablable = {enabled: boolean};
-export type Disablable<T> = Annotatable<T, ADisablable>;
-
-export function set_enabled<T>(x: Disablable<T>, enabled: boolean=true){
-    return annotate(x, {enabled});
-}
-
-export function with_disablable<T1, T2>(f: (t1: T1) => T2): (x: Disablable<T1>) => Disablable<T2> {
-    return with_annotatable(f, {enabled: true});
-}
-
-export function is_enabled<T>(x: Disablable<T>): boolean {
-    let result = get_annotation(x);
-    if (result === undefined) {
-        return true;
-    }
-
-    return result.enabled;
-}
-
-
-export type Numbered<T> = Annotatable<T, number>
-
-
-
 // EDIT: actually, the below is made irrelevant by "as const" in 3.4.
 // Holy dang this is cool:
 // https://stackoverflow.com/questions/46445115/derive-a-type-a-from-a-list-of-strings-a
@@ -449,3 +337,21 @@ export let deep_equal = _deep_equal
 export {lens} from 'lens.ts';
 
 
+
+export const statics =
+    <T extends new (...args: Array<unknown>) => void>
+    (): ((c: T) => void) =>
+        (_ctor: T): void => {};
+
+// type MyButt = {}
+
+// interface MyStaticType {
+//   new (urn: string): MyButt;
+//   isMember: boolean;
+// }
+
+// @statics<MyStaticType>()
+// class MyClassWithStaticMembers {
+//   static isMember: string;
+//   // ...
+// }

@@ -10,16 +10,16 @@
     read or otherwise used by other Puffers sharing the world.
 */
 
-import { Omit, update } from './datatypes';
-import { Parser } from './parser2';
-import { get_initial_world, HistoryInterpreter, make_world_spec, MetaLevelKeys, ObjectLevel, Renderer, World, WorldSpec } from './world';
+import { Omit, update } from './utils';
+import { Parser } from './parser';
+import { get_initial_world, InterpretationOp, HistoryInterpreter, make_world_spec, MetaLevelKeys, ObjectLevel, Renderer, World, WorldSpec } from './world';
 
 export type PufferAndWorld<W> = W & PufferLevel<PufferWorld>;
 
 export type PufferActivator<W> = (world: PufferAndWorld<W>) => number | boolean;
 export type PufferCommandHandler<W> = (world: PufferAndWorld<W>, parser: Parser) => PufferAndWorld<W>;
 export type PufferUpdater<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
-export type PufferHistoryInterpreter<W> = HistoryInterpreter<W & World>;
+export type PufferHistoryInterpreter<W> = (new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) => InterpretationOp[] | undefined;
 
 export type Puffer<W={}> = {
     readonly activate: PufferActivator<W>,
@@ -52,6 +52,51 @@ type CompatPuffer<W0 extends PufferWorld, P> = P & (P extends Puffer<infer W1> ?
 type PufferIndex<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]> = {
     [K in keyof Index]: Index[K] & CompatPuffer<W, Index[K]>
 };
+
+
+export type PufferFragment<W> = Partial<Omit<Puffer<W>, 'activate'>>;
+
+export function knit_puffer<W>(activate: PufferActivator<W>, puffer_fragments: PufferFragment<W>[]): Puffer<W> {
+    function pre(world: PufferAndWorld<W>): PufferAndWorld<W> {
+        return puffer_fragments.reduce(
+            (w, p) => p.pre === undefined ?
+                w :
+                p.pre(w),
+            world
+        );
+    }
+
+    function handle_command(world: PufferAndWorld<W>, parser: Parser): PufferAndWorld<W> {
+        return parser.split(
+            puffer_fragments
+                .filter(pf => pf.handle_command !== undefined)
+                .map(pf => () => pf.handle_command(world, parser))
+        );
+    }
+
+    function post(world: PufferAndWorld<W>): PufferAndWorld<W> {
+        return puffer_fragments.reduce(
+            (w, p) => p.pre === undefined ?
+                w :
+                p.pre(w),
+            world
+        );
+    }
+
+    function interpret_history(new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) {
+        return puffer_fragments
+            .filter(puffer => puffer.interpret_history !== undefined)
+            .flatMap(puffer => puffer.interpret_history(new_world, old_world));
+    }
+
+    return {
+        activate,
+        pre,
+        handle_command,
+        post,
+        interpret_history
+    }
+}
 
 export function make_puffer_world_spec<W extends PufferWorld, Index extends readonly PufferForWorld<W>[]>
     (initial_world: W, puffer_index: PufferIndex<W, Index>, render?: Renderer)
@@ -127,5 +172,5 @@ export function make_puffer_world_spec<W extends PufferWorld, Index extends read
         post,
         interpret_history,
         render
-    })
+    });
 }

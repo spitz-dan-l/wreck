@@ -1,13 +1,8 @@
 import * as React from "react";
 import * as ReactDom from "react-dom";
-
-import { World } from './world';
-import { raw } from './parser2';
-
-
-import { App, History } from '../components/Terminal3';
-
+import { App } from '../components/Terminal';
 import { new_bird_world } from './demo_worlds/puffer_bird_world';
+
 
 console.time('world_build');
 let [result, updater, renderer] = new_bird_world();

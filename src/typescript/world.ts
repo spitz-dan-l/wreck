@@ -20,10 +20,9 @@
 
 */
 
-import { update, Omit , appender_uniq} from './datatypes';
-import { Parser, Parsing, raw, RawInput } from './parser2';
+import { update, Omit , appender_uniq} from './utils';
+import { Parser, Parsing, raw, RawInput } from './parser';
 import * as Mustache from 'mustache';
-// import { compile } from 'handlebars';
 
 // TODO: We probably want a data structure for this
 // Question is how DOM-like will it wind up being and should we just use the DOM
@@ -51,7 +50,7 @@ import * as Mustache from 'mustache';
 
 // A Fragment is any string. If it is a Mustache template, it will have the current
 // interpretation tags used to render it for display.
-type Fragment = string;
+export type Fragment = string;
 
 type Message = {
     kind: 'Message',
@@ -66,7 +65,7 @@ type Message = {
 type InterpretationLabel = string;
 type AddOp = { kind: 'Add', label: InterpretationLabel };
 type RemoveOp = { kind: 'Remove', label: InterpretationLabel };
-type InterpretationOp = AddOp | RemoveOp;
+export type InterpretationOp = AddOp | RemoveOp;
 export type Interpretations = { readonly [k: number]: readonly InterpretationLabel[] };
 
 

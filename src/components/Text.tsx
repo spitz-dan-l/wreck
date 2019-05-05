@@ -1,66 +1,66 @@
 import * as React from 'react';
 
-import {DisplayEltType, MatchValidity} from '../typescript/parser';
+import {Token, TokenMatch, is_match, is_partial, is_error, Parsing} from '../typescript/parser';
 
-export const Carat = () => (
-  <span>
-    >&nbsp;
-  </span>
-);
+export const Carat = () => <span>>&nbsp;</span>;
 
-function get_display_color(det: DisplayEltType) {
-  switch (det) {
-    case DisplayEltType.keyword:
-      return 'aqua';
-    case DisplayEltType.option:
-      return 'orange';
-    case DisplayEltType.filler:
-      return 'ivory';
-    case DisplayEltType.partial:
-      return 'silver';
-    case DisplayEltType.error:
-      return 'red';
+function get_display_color(tm: TokenMatch) {
+  if (is_match(tm)) {
+    switch (tm.type.type.kind) {
+      case 'Keyword':
+        return 'aqua';
+      case 'Option':
+        return 'orange';
+      case 'Filler':
+        return 'ivory';
+    }
+  }
+  if (is_partial(tm)) {
+    return 'silver';
+  }
+
+  if (is_error(tm)) {
+    return 'red';
   }
 }
 
-export const ParsedText = (props) => {
-  let {parser, typeaheadIndex, children} = props;
+export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
+  let parsing: Parsing = props.parsing;
+  let children = props.children;
 
   let style: any = {
-    //display: 'inline-block',
     whiteSpace: 'pre-wrap',
     position: 'relative'
   }
-  let validity = parser.validity;
-  if (validity === MatchValidity.valid) {
+  
+  let view = parsing.view;
+
+  if (view.submittable || view.submission) {
     style.fontWeight = '900';
-    //style.fontStyle = 'italic'
   } else {
     style.fontWeight = '100';
-    if (validity === MatchValidity.invalid) {
+    if (view.match_status === 'ErrorMatch') {
       style.opacity = '0.6';
     }
   }
 
-  const elt_style: any = {
-    //display: 'inline-block'
+  function convert_token(s: Token) {
+     if (typeof s === 'string') {
+      return s;
+    }
+    return '';
   }
-
-  const span_style: any = {
-    //display: 'inline-block'
-  }
-
   return (
-    <div className="parsed-text" style={{/*display: 'inline-block'*/}}>
+    <div className="parsed-text">
       <Carat />
       <div style={style}>
-        {(parser === undefined) ? '' : 
-          parser.match.map((elt, i) => (
-            <div key={i.toString()} style={{...elt_style, ...{color: get_display_color(elt.display)}}}>
-              <span style={span_style}>
-                {elt.match + ( i === parser.match.length - 1  ? parser.tail_padding : '' ) }
+        {
+          view.matches.map((elt, i) => (
+            <div key={i.toString()} style={{color: get_display_color(elt)}}>
+              <span>
+                { parsing.whitespace[i] + convert_token(elt.token) }
               </span>
-              { ( i === typeaheadIndex ) ? children : '' }
+              { ( i === 0 ) ? children : '' }
             </div>
           ))
         }
@@ -70,9 +70,9 @@ export const ParsedText = (props) => {
 }
 
 export const OutputText = (props) => {
-  const {message_html} = props;
+  const {rendering} = props;
 
   return (
-    <div className="output-text" dangerouslySetInnerHTML={{__html: message_html}} />
+    <div className="output-text" dangerouslySetInnerHTML={{__html: rendering}} />
   );
 }

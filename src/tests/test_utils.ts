@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
-import { begin, chain, deep_equal, lens } from '../typescript/datatypes';
+import { begin, chain, deep_equal, lens , tuple } from '../typescript/utils';
 import { update, Updater } from '../typescript/update';
 
 
@@ -90,7 +90,7 @@ describe('update', () => {
         let obj2 = update(obj, {
             // you have to assert tuples, attempted to make inference work and
             // couldn't find a way to do so without breaking function inference 
-            a: _ => [3, _[1]] as [number, number],
+            a: _ => tuple(3, _[1]), //as [number, number],
             b: new_b
         })
     });

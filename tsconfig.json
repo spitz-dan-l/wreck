@@ -11,6 +11,7 @@
         "jsx": "react",
         "incremental": true,
         "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true,
         // "strictNullChecks": true
     },
     "include": [

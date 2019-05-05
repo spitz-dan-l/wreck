@@ -1,383 +1,564 @@
-import {starts_with, tokenize, untokenize, normalize_whitespace, split_tokens} from './text_tools';
+/*
+    a parser thread takes a parser and uses it to consume some of a token stream,
+    and returns some result
 
-import {
-    Annotatable,
-    Annotated,
-    annotate,
-    is_annotated,
-    with_annotatable,
-    get_annotation,
-    ADisablable,
-    Disablable,
-    unwrap,
-    is_enabled,
-    set_enabled,
-    with_disablable,
-    array_fuck_contains,
-    // StringValidator,
-    // ValidatedString,
-    // ValidString
-} from './datatypes';
+    a thread can *split* the current parser state into N branches,
+    each of which consume their own things separately and return their own results
+    the thread which initiated the split is also responsible for combining the various results
+    before returning control to the thread.
+        the most common scenario is that only one of N branches is still valid
+    
+    internally, the parser receives instructions from the parser thread and consumes
+    pieces of the input token stream. it builds up a list of token match objects,
+    where each token in the stream consumed so far gets a status of "matched", "partial", "error"
+
+    by combining these token labellings from all the different parser threads that ran,
+    we determine:
+        - whether the currently-input string is valid and can be executed
+        - what colors to highlight the various input words with
+        - what to display beneath the input prompt as typeahead options
 
 
-export type Token = string;
 
-export enum DisplayEltType {
-    keyword = 0,
-    option = 1,
-    filler = 2,
-    partial = 3,
-    error = 4
+
+*/
+
+import { array_last, deep_equal } from './utils';
+import { starts_with, tokenize } from './text_tools';
+
+class NoMatch {};
+
+class ParseRestart {
+    constructor(public n_splits: number) {}
+};
+export class ParseError extends Error {};
+
+export const SUBMIT_TOKEN = Symbol('SUBMIT');
+export type Token = string | typeof SUBMIT_TOKEN;
+
+export const NEVER_TOKEN = Symbol('NEVER');
+export type TaintedToken = Token | typeof NEVER_TOKEN;
+
+export type TokenType = 
+    { kind: 'Filler' } |
+    { kind: 'Option' } |
+    { kind: 'Keyword' };
+
+export type TypeaheadType =
+    { kind: 'Available' } |
+    { kind: 'Used' } |
+    { kind: 'Locked' }; // TODO: Need to actually make this invalid when parsed.
+
+export interface ConsumeSpec {
+    kind: 'ConsumeSpec';
+    token: TaintedToken;
+    token_type: TokenType;
+    typeahead_type: TypeaheadType;
 }
 
-export type ADisplayable = {display: DisplayEltType};
-export type Displayable<T> = Annotatable<T, ADisplayable>;
-export function set_display<T>(x: Displayable<T>, display: DisplayEltType){
-    return annotate(x, {display});
-}
-export type AMatch = (ADisplayable & ADisablable);
 
-export interface DisplayElt {
-    display: DisplayEltType, // the intended display style for this element
-    match: string, // the string that the parser matched for this element
-    typeahead?: Disablable<string>[], // array of typeahead options
-    name?: string, // internal name of this match (probably not useful for rendering purposes)
-}
+export type MatchStatus = 'Match' | 'PartialMatch' | 'ErrorMatch';
 
-export enum MatchValidity {
-    valid = 0,
-    partial = 1,
-    invalid = 2
+export type Match = { kind: 'Match', type: TokenType };
+export type PartialMatch = { kind: 'PartialMatch', token: Token, type: TypeaheadType };
+export type ErrorMatch = { kind: 'ErrorMatch', token: Token };
+
+export type MatchType = 
+    Match |
+    PartialMatch |
+    ErrorMatch;
+
+export function is_match(m: TokenMatch): m is TokenMatch & {type: Match} {
+    return m.type.kind === 'Match'
 }
 
-export class CommandParser {
-    command: string;
-    tokens: Token[];
-    token_gaps: string[];
-    position: number = 0;
-    validity: MatchValidity = MatchValidity.valid;
-    match: DisplayElt[] = [];
-    tail_padding: string = '';
+export function is_partial(m: TokenMatch): m is TokenMatch & {type: PartialMatch} {
+    return m.type.kind === 'PartialMatch'
+}
 
-    constructor(command: string) {
-        this.command = command;
-        [this.tokens, this.token_gaps] = tokenize(command);
+export function is_error(m: TokenMatch): m is TokenMatch & {type: ErrorMatch} {
+    return m.type.kind === 'ErrorMatch'
+}
+
+export type TokenMatch = { kind: 'TokenMatch', token: Token, type: MatchType };
+
+export type TypeaheadOption = {
+    kind: 'TypeaheadOption',
+    type: TypeaheadType,
+    option: (PartialMatch | null)[] // null left-padded to match length of token match
+};
+
+/*
+
+    Filler, Option, Error
+
+    Ready, Not Ready (to execute)
+
+*/
+export type ParsingView = {
+    kind: 'ParsingView',
+    
+    // How to display each token in the input
+    matches: TokenMatch[],
+    
+    // If submittable, display a carriage return typeahead, and brighten text
+    /*
+        Two possible schemes:
+        1. It is possible to pass inputs to Parser.run_thread that don't end in a submit token.
+        In this case, the UI would insert the submit token on enter press, and the commit= option would
+        go away on WorldDriver.apply_command.
+
+        2. A submit token is always added to the input stream in Parser.run_thread.
+        Then, the concept of "submitability" does not matter directly to the Parser, it is a world
+        concept.
+
+        We are going with 1. 2 Doesn't actually work because it breaks autocomplete.
+    */
+    submittable: boolean,
+
+    submission: boolean,
+    
+    // Whether the whole command is Match, Partial, Error. Used to highlight and color.
+    match_status: MatchStatus,
+
+    // Used to display typeahead during typing
+    // TODO: make decisions about how to indicate a typeahead row is locked
+    //    Currently it's a bit ugly as each token in the row could be locked on not
+    //    Also a view of the typeahead with correct whitespace inserted
+    typeahead_grid: TypeaheadOption[]
+};
+
+/*
+    TODO:
+    Should we include the input display and typeahead results in the Parsing?
+    Should we add a top-level attribute saying whether the whole thing is Valid, Partial or Error?
+        This would guaranteed cause duplication of data.
+*/
+export type Parsing = {
+    kind: 'Parsing',
+    view: ParsingView,
+    parses: TokenMatch[][],
+    tokens: Token[],
+    whitespace: string[],
+    raw: RawInput
+}
+
+export type Parsed<T> = { kind: 'Parsed', result: T, parsing: Parsing };
+export type NotParsed = { kind: 'NotParsed', parsing: Parsing };
+
+export type ParseResult<T> = Parsed<T> | NotParsed;
+
+export function is_parse_result_valid(result: TokenMatch[]) {
+    return result.length === 0 || is_match(array_last(result));
+}
+
+// for each of the input tokens, how should they be displayed/highighted?
+export function compute_view(parse_results: TokenMatch[][], input_stream: Token[]): ParsingView {
+    // let parse_results: TokenMatch[][] = parsing.parses;
+    // let input_stream: Token[] = parsing.tokens;
+
+    let match_status: MatchStatus;
+    let submission = false;
+    let row: TokenMatch[];
+
+    if ((row = parse_results.find(row => array_last(row).type.kind === 'Match')) !== undefined) {
+        match_status = 'Match';
+        // TODO: throw a runtime exc here if we have a Match at the end but it's not SUBMIT_TOKEN ?
+        // Would imply a commmand thread that doesn't end in submit.
+        submission = array_last(row).token === SUBMIT_TOKEN;
+
+        if (!submission) {
+            throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
+        }
+    } else if ((row = parse_results.find(row => is_partial(array_last(row)))) !== undefined) {
+        // chop off the partial bits that haven't been started yet
+        row = row.slice(0, input_stream.length);
+        match_status = 'PartialMatch';
+    } else {
+        row = input_stream.map(tok => ({
+            kind: 'TokenMatch',
+            token: tok,
+            type: {
+                kind: 'ErrorMatch',
+                token: null
+            }
+        }));
+        match_status = 'ErrorMatch';
     }
 
-    consume_exact(spec_tokens: Token[], display: DisplayEltType=DisplayEltType.keyword, name?: string): boolean {
-        if (spec_tokens.length === 0) {
-            throw new Error("Can't consume an empty spec.");
-        }
-        
-        let match_tokens: Token[] = [];
-        let match_gaps: string[] = [];
-        let pos_offset = 0;
-        for (let spec_tok of spec_tokens) {
-            if (this.position + pos_offset === this.tokens.length) {
-                this.validity = MatchValidity.partial;
-                break; //partial validity
-            }
-            let next_tok = this.tokens[this.position + pos_offset];
-            let next_gap = this.token_gaps[this.position + pos_offset];
+    let typeahead_grid = compute_typeahead(parse_results, input_stream);
+    let submittable = typeahead_grid.some(row => array_last(row.option).token === SUBMIT_TOKEN)
 
-            if (spec_tok.toLowerCase() === next_tok.toLowerCase()) {
-                match_tokens.push(next_tok);
-                match_gaps.push(next_gap);
-                pos_offset++;
+    return {
+        kind: 'ParsingView',
+        matches: row,
+        submittable,
+        submission,
+        match_status,
+        typeahead_grid
+    };
+}
+
+/*
+Typeahead
+    For each non-valid row (ignoring errors, partial only)
+    If the row is at least the length of the input stream
+    Typeahead is the Partial TokenMatches suffix (always at the end)
+*/
+export function compute_typeahead(parse_results: TokenMatch[][], input_stream: Token[]): TypeaheadOption[] {
+    // let parse_results: TokenMatch[][] = parsing.parses;
+    // let input_stream: Token[] = parsing.tokens;
+    let rows_with_typeahead = parse_results.filter(pr => 
+        !(is_error(array_last(pr)))
+        && pr.slice(input_stream.length - 1).some(is_partial)
+    );
+
+    let unique_options: PartialMatch[][] = [];
+
+    function options_equal(x: PartialMatch[], y: PartialMatch[]): boolean {
+        return x.length === y.length && x.every((m, i) => deep_equal(m, y[i]))
+    }
+
+    rows_with_typeahead.forEach(pr => {
+        let start_idx = pr.findIndex(is_partial);
+        let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
+        let elts = <{ type: PartialMatch }[]>pr.slice(start_idx);
+        option.push(...elts.map(tm => tm.type));
+
+        if (!unique_options.some((u_opt) => options_equal(u_opt, option))) {
+            unique_options.push(option);
+        }
+    });
+
+    return unique_options.map(option => ({
+        kind: 'TypeaheadOption',
+        type: array_last(option).type,
+        option
+    }));
+
+    // TODO: add dedupe step here
+}
+
+
+/*
+    Helper function for parser methods that take an optional callback or return value on success
+    The pattern is to use function overloading to get the types right, and call this
+    function to get the behavior right.
+
+    TODO: Can we get what we want using promises?
+*/
+function call_or_return(parser: Parser, result?: any): any {
+    if (result instanceof Function) {
+        return result(parser);
+    }
+    return result;
+}
+
+
+export class Parser {
+    constructor(input_stream: Token[], splits_to_take: number[]) {
+        this.input_stream = input_stream;
+        
+        this._split_iter = splits_to_take[Symbol.iterator]();
+    }
+
+    input_stream: Token[];
+    pos: number = 0;
+
+    parse_result: TokenMatch[] = [];
+    
+    _split_iter: Iterator<number>;
+
+
+    consume(spec: string | ConsumeSpec[]): void;
+    consume<T>(spec: string | ConsumeSpec[], callback: ParserThread<T>): T;
+    consume<T>(spec: string | ConsumeSpec[], result: T): T;
+    consume(spec: string | ConsumeSpec[], result?: any): any {
+        if (typeof spec === 'string') {
+            this._consume_dsl(spec);
+        } else {
+            this._consume(spec);
+        }
+        return call_or_return(this, result);
+    }
+
+    _consume_dsl(dsl: string): void {
+        let toks = tokenize(dsl)[0];
+
+        for (let t of toks) {
+            let token_type: TokenType = { kind: 'Filler' };
+            let typeahead_type: TypeaheadType  = { kind: 'Available' };;
+
+            if (t.startsWith('~')) {
+                typeahead_type = { kind: 'Locked' };
+                t = t.slice(1);
+            } else if (t.startsWith('+')) {
+                typeahead_type = { kind: 'Available' };
+                t = t.slice(1);
+            }
+
+            if (t.startsWith('*')) {
+                token_type = { kind: 'Keyword' };
+                t = t.slice(1);
+            } else if (t.startsWith('&')) {
+                token_type = { kind: 'Option' };
+                t = t.slice(1);
+            } else if (t.startsWith('=')) {
+                token_type = { kind: 'Filler' };
+                t = t.slice(1);
+            }
+
+            this._consume(t.split('_').map(t => ({
+                kind: 'ConsumeSpec',
+                token: t,
+                token_type,
+                typeahead_type
+            })));
+        }
+    }
+
+    /*
+        This will throw a parse exception if the desired tokens can't be consumed.
+        It is expected that every ParserThread is wrapped in an exception handler for
+        this case.
+    */
+    _consume(tokens: ConsumeSpec[]) {
+        if (!is_parse_result_valid(this.parse_result)) {
+            throw new ParseError('Tried to consume() on a done parser.');
+        }
+
+        let partial = false;
+        let error = false;
+        let i = 0
+        // check if exact match
+        for (i = 0; i < tokens.length; i++) {
+            let spec = tokens[i];
+            let spec_value = spec.token;
+
+            if (spec_value === NEVER_TOKEN) {
+                error = true;
+                break;
+            }
+
+            if (this.pos + i >= this.input_stream.length) {
+                partial = true;
+                break;
+            }
+            let input = this.input_stream[this.pos + i];
+            if (spec_value === input) {
+                if (spec.typeahead_type.kind === 'Locked') {
+                    // TODO: special case for typeahead = Locked
+                    error = true;
+                    break;
+                }
                 continue;
             }
 
-            if (starts_with(spec_tok.toLowerCase(), next_tok.toLowerCase())) {
-                match_tokens.push(next_tok);
-                match_gaps.push(next_gap);
-                this.validity = MatchValidity.partial;
-                pos_offset++;
+            if (spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+                // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
+                error = true;
                 break;
             }
-            this.validity = MatchValidity.invalid;
-            break;   
-        }
-
-        this.position += pos_offset;
-
-
-        if (this.validity === MatchValidity.valid) {
-            this.match.push({
-                display: display,
-                match: untokenize(match_tokens, match_gaps),
-                name: name});
-            return true;
-        }
-
-        if (this.validity === MatchValidity.partial) {
-            if (this.position === this.tokens.length) {
-                this.match.push({
-                    display: DisplayEltType.partial,
-                    match: untokenize(match_tokens, match_gaps),
-                    typeahead: [untokenize(spec_tokens)],
-                    name: name});
-                return false;
-            } else {
-                this.validity = MatchValidity.invalid;
+            if (starts_with(<string>spec_value, <string>input)) {
+                if (this.pos + i < this.input_stream.length - 1) {
+                    error = true;
+                } else {
+                    partial = true;
+                }
+                break;
             }
+
+            error = true;
+            break;
         }
 
-        match_tokens.push(...this.tokens.slice(this.position));
-        match_gaps.push(...this.token_gaps.slice(this.position, this.tokens.length));
-        this.position = this.tokens.length;
-        this.match.push({
-            display: DisplayEltType.error,
-            match: untokenize(match_tokens, match_gaps),
-            name: name});
-        return false;
+        if (partial) {
+            // push all tokens as partials
+            this.parse_result.push(...tokens.map((t, j) => 
+                ({
+                    kind: 'TokenMatch',
+                    token: this.input_stream[this.pos + j] || '',
+                    type: {
+                        kind: 'PartialMatch',
+                        token: t.token === NEVER_TOKEN ? '' : t.token,
+                        type: t.typeahead_type
+                    }
+                } as const)));
+            // increment pos
+            this.pos = this.input_stream.length;
+            throw new NoMatch();
+        }
+
+        if (error) {
+            // push all tokens as errors
+            this.parse_result.push(...tokens.map((t, j) =>
+                ({
+                    kind: 'TokenMatch',
+                    token: this.input_stream[this.pos + j] || '',
+                    type: {
+                        kind: 'ErrorMatch',
+                        token: t.token === NEVER_TOKEN ? '' : t.token
+                    }
+                } as const)));
+            // increment pos
+            this.pos = this.input_stream.length;
+            throw new NoMatch();
+        }
+
+        // push all tokens as valid
+        this.parse_result.push(...tokens.map((t, j) =>
+            ({
+                kind: 'TokenMatch',
+                token: this.input_stream[this.pos + j],
+                type: { kind: 'Match', type: t.token_type }
+            } as const)));
+        // increment pos
+        this.pos += tokens.length;
+
     }
 
-    subparser() {
-        return new CommandParser(untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position)));
+    eliminate(): never {
+        /*
+            It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
+        */
+        return <never>this._consume([{
+            kind: 'ConsumeSpec',
+            token: NEVER_TOKEN,
+            token_type: { kind: 'Filler' },
+            typeahead_type: { kind: 'Available' }
+        }]);
     }
 
-    integrate(subparser: CommandParser) {
-        this.position += subparser.position;
-        this.match.push(...subparser.match);
-        this.validity = subparser.validity;
+    submit(): void;
+    submit<T>(callback: ParserThread<T>): T;
+    submit<T>(result: T): T;
+    submit<T>(result?: any) {
+        this._consume([{
+            kind: 'ConsumeSpec',
+            token: SUBMIT_TOKEN,
+            token_type: { kind: 'Filler' },
+            typeahead_type: { kind: 'Available' }
+        }]);
+
+        return call_or_return(this, result);
     }
 
-    consume_option<S extends string>(option_spec_tokens: (Annotatable<Token[], AMatch>)[], name?: string): S | false{
-        let partial_matches: Disablable<DisplayElt>[] = [];
-        let exact_match_subparser: CommandParser = null;
-        let exact_match_spec_toks: Token[] = null;
-        for (let spec_toks of option_spec_tokens) {
-            let subparser = this.subparser();
-            let annotation = get_annotation(spec_toks, {display: DisplayEltType.option, enabled: true})
-            let display = annotation.display;
-            let is_exact_match = subparser.consume_exact(unwrap(spec_toks), annotation.display, name);
-
-            if (annotation.enabled){
-                if (is_exact_match) {
-                    exact_match_subparser = subparser;
-                    exact_match_spec_toks = unwrap(spec_toks);
-                    continue;
-                }
-
-                if (subparser.validity === MatchValidity.partial){
-                    partial_matches.push(subparser.match[0]);
-                }
-            } else {
-                if (is_exact_match || subparser.validity === MatchValidity.partial){
-                    let disabled_match = set_enabled(subparser.match[0], false);
-                    partial_matches.push(disabled_match);
-                }
-            }
+    /*
+        TODO: support a callback for split() which takes both the result value, and the parser.
+    */
+    split<T>(subthreads: ParserThread<T>[]): T;
+    split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => R): R;
+    split(subthreads: ParserThread<any>[], callback?: any): any {
+        let {value: split_value, done} = this._split_iter.next();
+        if (done) {
+            throw new ParseRestart(subthreads.length);
         }
         
-        if (exact_match_subparser !== null) {
-            let typeahead = partial_matches.map(with_disablable((x) => unwrap(x.typeahead[0])));
-            // let typeahead = partial_matches.map( (de) => with_disablable(de, (x) => x.typeahead[0]));
-            this.integrate(exact_match_subparser);
-            this.match[this.match.length-1].typeahead = typeahead;
+        let st = subthreads[split_value];
+        let result = st(this);
 
-            return <S>normalize_whitespace(untokenize(exact_match_spec_toks));
+        if (callback === undefined) {
+            return result;
         }
 
-        if (partial_matches.length > 0) {
-            this.validity = MatchValidity.partial;
-            this.position = this.tokens.length - 1;
-            let typeahead = partial_matches.map(with_disablable((x) => unwrap(x.typeahead[0])));
-            this.match.push({
-                display: DisplayEltType.partial,
-                match: unwrap(partial_matches[0]).match,
-                typeahead: typeahead,
-                name: name,
-            });
-            return false;
+        return callback(result, this);
+    }
+
+    static run_thread<T>(raw: RawInput, t: ParserThread<T>): ParseResult<T> {
+        
+        let [tokens, whitespace]: [Token[], string[]] = tokenize(raw.text);
+        
+        if (raw.submit) {
+            tokens.push(SUBMIT_TOKEN);
         }
 
-        return this.invalidate();
-    }
+        type Path = (number | Iterator<number>)[];
+        let frontier: Path[] = [[]];
+        let results: (T | NoMatch)[] = [];
+        let parse_results: TokenMatch[][] = [];
 
-    invalidate(): false {
-        this.validity = MatchValidity.invalid;
-        let match_tokens = this.tokens.slice(this.position);
-        let match_token_gaps = this.token_gaps.slice(this.position, this.tokens.length);
-        this.match.push({
-            display: DisplayEltType.error,
-            match: untokenize(match_tokens, match_token_gaps),
-            name: name});
-        this.position = this.tokens.length;
-        return false;
-    }
+        while (frontier.length > 0) {
+            let path = <Path>frontier.pop();
+            let splits_to_take;
+            if (path.length === 0) {
+                splits_to_take = path;
+            } else {
+                let n = (array_last(path) as Iterator<number>).next();
+                if (n.done) {
+                    continue;
+                } else {
+                    frontier.push(path);
+                }
+                splits_to_take = [...path.slice(0, -1), n.value];
+            }
 
-    consume_filler(spec_tokens: Token[]){
-        return this.consume_exact(spec_tokens, DisplayEltType.filler);
-    }
+            let p = new Parser(tokens, splits_to_take);
 
-    is_done() {
-        if (this.position === this.tokens.length - 1 && this.tokens[this.tokens.length - 1] === ''){
-            return this.validity === MatchValidity.valid;
+            let result: T | NoMatch;
+            try {
+                result = t(p);
+            } catch (e) {
+                if (e instanceof NoMatch) {
+                    result = e;
+                } else if (e instanceof ParseRestart) {
+                    let new_splits: number[] = [];
+                    for (let i = 0; i < e.n_splits; i++) {
+                        new_splits.push(i);
+                    } 
+                    // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
+                    frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    // frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    continue;
+                } else {
+                    throw e;
+                }
+            }
+
+            results.push(result);
+            parse_results.push(p.parse_result);
         }
 
-        if (this.position !== this.tokens.length) {
-            return false;
-        }
+        let view = compute_view(parse_results, tokens);
 
-        return this.validity === MatchValidity.valid;
-    }
+        let parsing: Parsing = {
+            kind: 'Parsing',
+            view,
+            parses: parse_results,
+            tokens,
+            whitespace,
+            raw
+        };
 
-    done() {
-        if (!this.is_done() /*this.position !== this.tokens.length */) {
-            this.validity = MatchValidity.invalid;
-            this.match.push({
-                display: DisplayEltType.error,
-                match: untokenize(this.tokens.slice(this.position), this.token_gaps.slice(this.position, this.tokens.length))
-            });
-            this.position = this.tokens.length;
+        let valid_results = <T[]>results.filter(r => !(r instanceof NoMatch));
+        if (valid_results.length === 0) {
+            return {
+                kind: 'NotParsed',
+                parsing
+            }
+        } else if (valid_results.length > 1) {
+            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
         } else {
-            if (this.position === this.tokens.length - 1) {
-                this.tail_padding = this.token_gaps[this.token_gaps.length - 1];
+            return {
+                kind: 'Parsed',
+                result: valid_results[0],
+                parsing
             }
-        }
-
-        return this.validity === MatchValidity.valid;
-    }
-
-    get_match(name: string){
-        for (let m of this.match) {
-            if (m.name === name) {
-                return m;
-            }
-        }
-        return null;
-    }
-}
-
-export function stop_early<R>(gen: IterableIterator<string | boolean>): R | undefined{
-    let value: any | boolean = undefined;
-    let done: boolean = false;
-
-    while (!done) {
-        let result = gen.next(value);
-        value = result.value;
-        done = result.done;
-        if (value === false) {
-            return;
+            
         }
     }
-
-    return <R>value;
 }
 
-export let with_early_stopping = <R>(gen_func: (...args: any[]) => IterableIterator<any>): (...args: any[]) => R => {
-    let inner = (...args) => {
-        let gen = gen_func(...args);
-        return <R>stop_early(gen);
-    }
-    return <(...args: any[]) => R>inner;
+export type RawInput = {
+    kind: 'RawInput',
+    text: string,
+    submit: boolean
+};
+
+export function raw(text: string, submit: boolean = true): RawInput {
+    return { kind: 'RawInput', text, submit };
 }
 
-export function with_early_stopping2<R, T>(gen_func: (this: T, ...args: any[]) => IterableIterator<any>): (...args: any[]) => R {
-    let inner = (...args) => {
-        let gen = gen_func.call(this, ...args);
-        return <R>stop_early(gen);
-    }
-    return <(...args: any[]) => R>inner;
-}
-
-export function combine<R>(parser: CommandParser, consumers: ((parser: CommandParser) => (R | false))[]) {
-    type Thread = {
-        result: R | false,
-        subparser: CommandParser
-    }
-    let threads: Thread[] = [];
-
-    for (let c of consumers) {
-        let sp = parser.subparser();
-        threads.push({
-            result: c.call(this, sp),
-            subparser: sp,
-        });
-    }
-
-    let partial_matches: Thread[] = [];
-
-    for (let t of threads) {
-        if (t.subparser.is_done()) {
-            parser.integrate(t.subparser);
-            return t.result;
-        } else {
-            if (t.subparser.validity === MatchValidity.partial) {
-                partial_matches.push(t);
-            }
-        }
-    }
-
-    if (partial_matches.length > 0) {
-        //integrate the first one
-        parser.integrate(partial_matches[0].subparser);
-        let final_typeahead = parser.match[parser.match.length - 1].typeahead;
-        let final_t_strings = final_typeahead.map(unwrap);
-        for (let p of partial_matches.slice(1)) {
-            //extend the typeahead with the rest
-            let typeahead = p.subparser.match[p.subparser.match.length - 1].typeahead;
-            for (let t of typeahead) {
-                let t_string = unwrap(t);
-                if (!final_t_strings.includes(t_string)) {
-                    final_typeahead.push(t);
-                    final_t_strings.push(t_string);
-                }
-            }
-        }
-    } else {
-        // set to invalid
-        parser.invalidate();
-    }
-    return false;
-}
-
-// Validator for the mini-language applying to transitions for syntax highlighting
-export class PhraseDSLValidator {
-    static is_valid(s: string): boolean {
-        let toks = tokenize(s)[0];
-        if (toks.slice(1).some(t => 
-            t.startsWith('~') || t.startsWith('*') || t.startsWith('&'))) {
-            return false;
-        }
-        return true;
-    }
-}
-
-export function consume_declarative_dsl(parser: CommandParser, options: string[][]) {
-    // assumption: no option is a prefix of any other option
-    let consumers = [];
-
-    for (let option of options) {
-        let opt_consumer = with_early_stopping(function*(parser) {
-            for (let o of option) {
-                let enabled = true;
-                if (o.startsWith('~')) {
-                    enabled = false;
-                    o = o.slice(1);
-                }
-
-                let display: DisplayEltType = DisplayEltType.filler;
-                if (o.startsWith('*')) {
-                    display = DisplayEltType.keyword;
-                    o = o.slice(1);
-                } else if (o.startsWith('&')) {
-                    display = DisplayEltType.option;
-                    o = o.slice(1);
-                }
-
-                let toks = tokenize(o)[0];
-                yield parser.consume_option([annotate(toks, {enabled, display})]);
-            }
-
-            return untokenize(option);
-        });
-
-        consumers.push(opt_consumer);
-    }
-
-    let result = combine.call(this, parser, consumers);
-
-    return result;
-}
+// Question: should the parser input be mandatory?
+// Doesn't seem to complain when i leave out the first arg, even with this type
+export type ParserThread<T> = (p: Parser) => T;
+export type ParserThreads<T> =  ParserThread<T>[];

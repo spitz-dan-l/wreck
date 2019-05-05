@@ -1,4 +1,4 @@
-import { update } from '../datatypes';
+import { update } from '../utils';
 import { random_choice } from '../text_tools';
 import { CommandHandler, get_initial_world, INITIAL_MESSAGE, HistoryInterpreter, make_world_spec, World, world_driver } from '../world';
 

@@ -112,25 +112,6 @@ describe('parser', () => {
 
         assert.equal((result as Parsed<string>).result, 'coincidence');
     });
-
-    /*
-        The following is sufficient evidence to me that the current parser interface is
-        optimal versus "monadic chain", despite requiring deep nesting of callbacks.
-        You can flatten it out by writing imperatively, whereas using chain() does not
-        really help that much, adding way more noise.
-
-        it('2should string split() calls', () => {
-            let main_thread: ParserThread<string> = chain((p: Parser) => p.split([
-                chain(() => p.consume('daniel')).chain(() => 'daniel'),
-                chain(() => p.consume('jason')).chain(() => 'jason'),
-            ])).chain(who => p.submit(`it was ${who} all along`));
-
-            let {result} = <Parsed<string>>Parser.run_thread(raw('jason'), main_thread);
-
-            assert.equal(result, 'it was jason all along');
-        });
-    */
-
 });
 
 

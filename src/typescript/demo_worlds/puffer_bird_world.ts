@@ -1,4 +1,4 @@
-import { appender, appender_uniq, tuple, update } from '../datatypes';
+import { appender, appender_uniq, tuple, update } from '../utils';
 import { get_initial_puffer_world, make_puffer_world_spec, Puffer, PufferWorld } from '../puffer';
 import { random_choice } from '../text_tools';
 import { world_driver } from '../world';
@@ -169,7 +169,7 @@ interface BirdWorld extends PufferWorld
     , Location
     , Zarathustra
     , Roles
-    {};
+{};
 
 // Would use "as const" instead of tuple() but @babel/preset-typescript 7.3.3 has bugs parsing that construct
 const BirdWorldPuffers = tuple(

@@ -4,6 +4,8 @@ Priority
 
 Read up on factoring reducers, switch
 
+- Drop @babel/preset-typescript 7.3.3 because it doesn't work w "as const"
+    - Figure out how to work with the underlying plugin, @babel/plugin-transform-typescript.
 - Flesh out Bird World a bit and start thinking about OMs, Puffers, etc again.
 - UI back up to parity
     DONE 1. Make a static world/history viewer app
