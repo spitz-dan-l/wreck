@@ -28,6 +28,11 @@ import { starts_with, tokenize } from './text_tools';
 
 class NoMatch {};
 
+// Used to both fail a parse and post process the result if there is one in another split path
+class NoMatchProcess<T> extends NoMatch {
+    constructor(public processor?: (t: T) => T) { super(); }
+};
+
 class ParseRestart {
     constructor(public n_splits: number) {}
 };
@@ -476,6 +481,7 @@ export class Parser {
         let frontier: Path[] = [[]];
         let results: (T | NoMatch)[] = [];
         let parse_results: TokenMatch[][] = [];
+        // let processors: ((t: T) => T)[] = [];
 
         while (frontier.length > 0) {
             let path = <Path>frontier.pop();
@@ -493,10 +499,25 @@ export class Parser {
             }
 
             let p = new Parser(tokens, splits_to_take);
+            // function add_processor(processor: (result: T) => T): void {
+            //     processors.push(processor);
+            // }
 
+            // function eliminate(process?: (result: T) => T): never {
+            //     try {
+            //         return p.eliminate();
+            //     }
+            //     catch (e) {
+            //         if (e instanceof NoMatch) {
+            //             throw new NoMatchProcess(process);
+            //         } else {
+            //             throw e;
+            //         }
+            //     }
+            // }
             let result: T | NoMatch;
             try {
-                result = t(p);
+                result = t(p); //, add_processor);
             } catch (e) {
                 if (e instanceof NoMatch) {
                     result = e;
@@ -506,8 +527,8 @@ export class Parser {
                         new_splits.push(i);
                     } 
                     // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
-                    frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    // frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    // frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
                     continue;
                 } else {
                     throw e;
@@ -538,9 +559,11 @@ export class Parser {
         } else if (valid_results.length > 1) {
             throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
         } else {
+            // let processors: NoMatchProcess<T>[] = results.filter(r => r instanceof NoMatchProcess);
+            let result = valid_results[0] //processors.reduce((r, p) => p(r), valid_results[0]);
             return {
                 kind: 'Parsed',
-                result: valid_results[0],
+                result: result,
                 parsing
             }
             
@@ -558,7 +581,8 @@ export function raw(text: string, submit: boolean = true): RawInput {
     return { kind: 'RawInput', text, submit };
 }
 
-// Question: should the parser input be mandatory?
-// Doesn't seem to complain when i leave out the first arg, even with this type
-export type ParserThread<T> = (p: Parser) => T;
-export type ParserThreads<T> =  ParserThread<T>[];
+// export type ProcessHook<T> = ((process?: ((result: T) => T)) => void);
+
+export type ParserThread<T> = (p: Parser) => T; //, process_hook?: ProcessHook<T>) => T;
+
+

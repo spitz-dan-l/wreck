@@ -1,11 +1,16 @@
-import * as React from "react";
-import * as ReactDom from "react-dom";
+
+// import React from "react";
+import ReactDom from "react-dom";
+
+// TODO: figure out this danged poop
+var React = require('react');
+
 import { App } from '../components/Terminal';
 import { new_bird_world } from './demo_worlds/puffer_bird_world';
-
+import { new_hex_world } from './demo_worlds/hex_port'
 
 console.time('world_build');
-let [result, updater, renderer] = new_bird_world();
+let [result, updater, renderer] = new_hex_world();//new_bird_world();
 
 // for (let i = 0; i < 3; i++) {
 //     result = updater(result.world, raw('go up stairs'));
@@ -15,7 +20,6 @@ console.timeEnd('world_build');
 
 
 console.time('render');
-
 ReactDom.render(<App typeahead_index={0} command_result={result} updater={updater} renderer={renderer} />, document.getElementById('terminal'));
 // ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');

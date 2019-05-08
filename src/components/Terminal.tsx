@@ -1,4 +1,5 @@
-import * as React from 'react';
+// import * as React from 'react';
+var React = require('react');
 import { array_last, update } from '../typescript/utils';
 import { keys } from '../typescript/keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token } from '../typescript/parser';
@@ -178,25 +179,6 @@ export const Prompt: React.FunctionComponent<{parsing: Parsing}> = (props) => {
     });
   }
 
-  // // when key down is called by auto complete see if we should just submit
-  // function handleKeys(event: React.KeyboardEvent<HTMLInputElement>) {
-  //   // TODO - handle left/right presses, selecting the contents of the (invisible) input elt
-  //   if (event.keyCode === keys.enter) {
-  //     dispatch({
-  //       kind: 'RawInput',
-  //       text: event.currentTarget.value,
-  //       submit: true
-  //     });
-  //   }
-
-  //   function forceCursor() {
-  //     let elt = input_elt.current;
-  //     elt.setSelectionRange(elt.value.length, elt.value.length);
-  //   }
-
-  //   forceCursor();
-  // }
-
   return <div className="prompt">
     <input
       ref={input_elt}
@@ -219,12 +201,6 @@ const Cursor = (props) => {
     </span>
   );
 };
-
-/*
-  The typeahead grid should actually consist of
-  - each row has an overall kind - available, used, locked
-  - then within the row there's the list of partial matches
-*/
 
 export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_index: number}> = ({parsing, typeahead_index}) => {
   let dispatch = React.useContext(AppDispatch);
@@ -289,7 +265,7 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
 }
 
 export const History: React.FunctionComponent<{world: World, renderer: Renderer}> = ({world, renderer}) => {
-  let worlds = [];
+  let worlds: World[] = [];
 
   // unroll all the historical worlds
   let w = world;
@@ -305,7 +281,7 @@ export const History: React.FunctionComponent<{world: World, renderer: Renderer}
                key={w.index}
                world={w}
                interpretation_labels={labels}
-               rendering={renderer(w.message, labels)}
+               rendering={renderer(w, labels)}
              />;
     }) }
   </div>
@@ -327,9 +303,6 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
       { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
       <OutputText rendering={rendering} />
     </div>;
-  },
-  // (old_props, new_props) =>
-  //   old_props.world === new_props.world &&
-  //   old_props.rendering === new_props.rendering
+  }
 );
 

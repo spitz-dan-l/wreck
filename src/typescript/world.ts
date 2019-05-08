@@ -20,7 +20,7 @@
 
 */
 
-import { update, Omit , appender_uniq} from './utils';
+import { update, Updater, Omit , appender_uniq} from './utils';
 import { Parser, Parsing, raw, RawInput } from './parser';
 import * as Mustache from 'mustache';
 
@@ -52,7 +52,7 @@ import * as Mustache from 'mustache';
 // interpretation tags used to render it for display.
 export type Fragment = string;
 
-type Message = {
+export type Message = {
     kind: 'Message',
     action: Fragment[],
     consequence: Fragment[],
@@ -101,7 +101,7 @@ export interface World {
 }
 
 // TODO: need a more concise and cute term than "object level"
-export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations' | 'rendering';
+export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations';
 
 export type ObjectLevelKeys<W extends World> =
     Exclude<keyof W, MetaLevelKeys>;
@@ -111,8 +111,9 @@ export type ObjectLevel<W extends World> = Omit<W, MetaLevelKeys>;
 export type WorldUpdater<W extends World> = (world: ObjectLevel<W>) => ObjectLevel<W>;
 export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Parser) => ObjectLevel<W>;
 
+export type Narrator<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => ObjectLevel<W>;
 export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[] | undefined;
-export type Renderer = (message: Message, labels?: readonly InterpretationLabel[]) => string;
+export type Renderer = (world: World, labels?: readonly InterpretationLabel[]) => string;
 
 export const INITIAL_MESSAGE: Message = {
     kind: 'Message',
@@ -124,7 +125,6 @@ export const INITIAL_MESSAGE: Message = {
 
 const INITIAL_WORLD: World = {
     message: INITIAL_MESSAGE,
-    // rendering: undefined,
     parsing: undefined,
     previous: null,
     index: 0,
@@ -147,7 +147,7 @@ export type WorldSpec<W extends World> = {
     readonly handle_command: CommandHandler<W>,
 
     // update the world after handling the command
-    readonly post?: WorldUpdater<W>,
+    readonly post?: Narrator<W>,//WorldUpdater<W>,
     
     // Given an historically previous world and the current (new) world,
     // return any history interpretation ops to be applied to the previous world
@@ -161,7 +161,8 @@ export function make_world_spec<W extends World>(spec: {
     initial_world: W,
     pre?: WorldUpdater<W>,
     handle_command: CommandHandler<W>,
-    post?: WorldUpdater<W>,
+    post?: Narrator<W>,//WorldUpdater<W>,
+    // narrate?: Narrator<W>,
     interpret_history?: HistoryInterpreter<W>,
     render?: Renderer
 }): WorldSpec<W> {
@@ -202,7 +203,7 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
     }
 
     // First handle the command
-    let result = Parser.run_thread(command, p => spec.handle_command(next_state, p) as W);
+    let result = Parser.run_thread<W>(command, (p) => spec.handle_command(next_state, p) as W);
 
     if (result.kind === 'NotParsed') {
         let possible_world: W | null = null;
@@ -222,13 +223,14 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
         parsing: _ => result.parsing,
     });
     
-    // TODO: Mild evidence indicating post should run after message and interpretation steps,
-    //     not before.
-    //     But I have this intuition that we want something to run after the command was
-    //     handled but before any output gets generated
     if (spec.post !== undefined) {
-        next_state = <W>spec.post(next_state);
+        next_state = <W>spec.post(next_state, world);
     }
+
+    // if (spec.narrate !== undefined) {
+    //     let message = spec.narrate(next_state, world);
+    //     next_state = <W>update(next_state as World, { message });
+    // }
 
     // find interp labels inside any message fragments
     function infer_labels(f: Fragment): InterpretationLabel[] {
@@ -299,12 +301,23 @@ export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResul
 
 }
 
-export function standard_render(message: Message, labels: InterpretationLabel[] = []): string {
+
+export function filter_for_render(world: World) {
+    let result = {...world};
+
+    for (let k of ['parsing', 'previous', 'index', 'interpretations', 'rendering', 'message', 'interpretation_receptors']) {
+        delete result[k];
+    }
+
+    return result;
+}
+
+export function standard_render(world: World, labels: InterpretationLabel[] = []): string {
     return (['action', 'consequence', 'description', 'prompt'] as const)
-        .map(f => message[f])
+        .map(f => world.message[f])
         .filter(x => x.length > 0)
         .map(x => x.map(f => Mustache.render(f,
-            labels.reduce((obj, lab) => ({...obj, [lab]: true}), {})
+            labels.reduce((obj, lab) => ({...obj, [lab]: true}), filter_for_render(world))
         )).join(' '))
         .join('<br/><br/>');
 }

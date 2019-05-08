@@ -327,6 +327,27 @@ export function begin<T>(t?: T): Chain<any, T> {
     }
 }
 
+// Convert a tuple of types to an intersection of those types.
+// lifted from https://stackoverflow.com/questions/51603250/typescript-3-parameter-list-intersection-type/51604379
+
+type TupleTypes<T extends { [k: number]: any }> = { [P in keyof T]: T[P] }[number];
+
+// Unsure of the benefit to using "Exclude<keyof T, keyof any[]>" over "number". The former makes the type name way more verbose.
+// type BoxedTupleTypes<T extends { [k: number]: any }> =
+//   { [P in keyof T]: [T[P]] }[Exclude<keyof T, keyof any[]>]
+type BoxedTupleTypes<T extends { [k: number]: any }> =
+  { [P in keyof T]: [T[P]] }[number]
+
+// No clue why this works. Something about function types whose first parameter is a union
+// inferring as a intersection.
+type UnionToIntersection<U> =
+  (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never;
+
+type UnboxIntersection<T> = T extends { 0: infer U } ? U : never;
+
+export type IntersectTupleTypes<T extends { [k: number]: any }> = UnionToIntersection<TupleTypes<T>>;
+export type IntersectBoxedTupleTypes<T extends { [k: number]: any }> = UnboxIntersection<UnionToIntersection<BoxedTupleTypes<T>>>;
+
 
 // This is really dumb
 import _deep_equal from 'deep-equal';
@@ -335,7 +356,6 @@ export let deep_equal = _deep_equal
 
 
 export {lens} from 'lens.ts';
-
 
 
 export const statics =

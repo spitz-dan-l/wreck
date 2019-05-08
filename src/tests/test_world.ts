@@ -1,14 +1,9 @@
-import 'babel-polyfill'; // TODO put this somewhere that makes more sense
-
-import 'mocha'
 import * as assert from 'assert';
-
-import { update } from '../typescript/datatypes';
-import { World, CommandHandler, HistoryInterpreter, get_initial_world } from '../typescript/world';
-
-import { Parser, raw } from '../typescript/parser2';
-
+import 'babel-polyfill'; // TODO put this somewhere that makes more sense
+import 'mocha';
 import { new_bird_world } from '../typescript/demo_worlds/bird_world';
+import { new_bird_world as new_puffer_bird_world } from '../typescript/demo_worlds/puffer_bird_world';
+import { raw } from '../typescript/parser';
 
 
 describe('world', () => {
@@ -16,13 +11,26 @@ describe('world', () => {
         
         let [result, updater, render] = new_bird_world();
 
-        assert.equal(render(result.world.message), 'You are currently down.');
+        assert.equal(render(result.world), 'You are currently down.');
         // This world is a flip flop.
         result = updater(result.world, raw('go down stairs')); // this will be invalid
         result = updater(result.world, raw('go up stairs')); // this will be valid
         result = updater(result.world, raw('go up stairs')); // this will be invalid
 
-        assert.equal(render(result.world.message), 'You are currently up.');
+        assert.equal(render(result.world), 'You are currently up.');
         assert.equal(result.world.index, 1);
+    });
+
+    it('thingy2', () => {
+        let [result, updater, render] = new_puffer_bird_world();
+
+        // assert.equal(render(result.world.message), 'You are currently down.');
+        // This world is a flip flop.
+        result = updater(result.world, raw('go up stairs')); // this will be valid
+        // debugger;
+        result = updater(result.world, raw('go down stairs')); // this will be invalid
+        
+        assert.equal(render(result.world), 'You wave bye to Zarathustra.<br/><br/>You are currently standing around on the ground.');
+        assert.equal(result.world.index, 2);
     });
 });

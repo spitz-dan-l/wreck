@@ -18,14 +18,10 @@
         "./src/tests",
         "./src/typescript/*",
         "./src/typescript/venience/*",
-        // "./src/components/*",
-        "./src/components/Terminal3.tsx",
-        "./src/components/Text2.tsx"
+        "./src/components/*"
     ],
 
-    // "exclude": [
-        // "node_modules",
-        // "dist",
-        // "build"
-    // ]
+    "exclude": [
+        "./src/typescript/venience"
+    ]
 }

@@ -1,21 +1,14 @@
-import {
-    Parser,
-    Token,
-    SUBMIT_TOKEN,
-    TokenMatch,
-    Parsed,
-    ParserThread,
-    raw
-} from '../typescript/parser2';
-
-import { array_last, chain } from '../typescript/datatypes';
-
-import 'mocha';
-
 import * as assert from 'assert';
+import 'mocha';
+import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread } from '../typescript/parser';
+import { array_last } from '../typescript/utils';
+
+
+
 
 describe('parser', () => {
     it('should do a thing', () => {
+        
         function main_thread(p: Parser) {
             p.consume('*look');
 

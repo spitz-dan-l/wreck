@@ -1,18 +1,14 @@
 import { appender, appender_uniq, tuple, update } from '../utils';
-import { get_initial_puffer_world, make_puffer_world_spec, Puffer, PufferWorld } from '../puffer';
+import { make_puffer_world_spec, Puffer, knit_puffers } from '../puffer';
 import { random_choice } from '../text_tools';
-import { world_driver } from '../world';
+import { world_driver, World, get_initial_world, ObjectLevel } from '../world';
 
 interface Location {
     is_in_heaven: boolean;
-    moving: boolean;
 }
 
 let LocationPuffer: Puffer<Location> = {
-    activate: world => true,
-
     pre: world => update(world, {
-        moving: false,
         interpretation_receptors: appender_uniq('happy')
     }),
 
@@ -36,8 +32,7 @@ let LocationPuffer: Puffer<Location> = {
             message: {
                 consequence: appender(`You are currently ${loc}.`)
             },
-            is_in_heaven: new_pos,
-            moving: true
+            is_in_heaven: new_pos
         });
     },
 
@@ -48,18 +43,19 @@ let LocationPuffer: Puffer<Location> = {
             return [{ kind: 'Remove', label: 'happy' }];
         }
     }
-}
+};
 
 interface Zarathustra {
     is_in_heaven: boolean;
     has_seen_zarathustra: boolean;
-    moving: boolean; // listens to LocationPuffer, to determine when to describe zarathustra
 }
 
 let ZarathustraPuffer: Puffer<Zarathustra> = {
-    activate: world => world.is_in_heaven,
-
     handle_command: (world, parser) => {
+        if (!world.is_in_heaven) {
+            parser.eliminate();
+        }
+
         parser.consume("*mispronounce zarathustra's name");
         parser.submit();
 
@@ -78,12 +74,17 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
         });
     },
 
-    post: world => {
-        if (world.moving) {
-            return update(world, {
+    post: (new_world, old_world) => {
+        if (old_world.is_in_heaven && !new_world.is_in_heaven) {
+            return update(new_world, { message:
+                { action: appender('You wave bye to Zarathustra.')}
+            });
+        }
+        if (!old_world.is_in_heaven && new_world.is_in_heaven) {
+            return update(new_world, {
                 message: {
                     description: appender(
-                        !world.has_seen_zarathustra ?
+                        !new_world.has_seen_zarathustra ?
                         `There's a bird up here. His name is Zarathustra.
                          {{#vulnerable}}He is sexy.{{/vulnerable}}
                          {{^vulnerable}}He is ugly.{{/vulnerable}}` :
@@ -94,11 +95,11 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
                 has_seen_zarathustra: true
             });
         }
-        return world
-    }
-}
+        return new_world;
+    },
+};
 
-const roles = tuple(
+const roles = [
     'the One Who Gazes Ahead',
     'the One Who Gazes Back',
     'the One Who Gazes Up',
@@ -109,9 +110,9 @@ const roles = tuple(
     'the One Who Is Weak',
     'the One Who Seduces',
     'the One Who Is Seduced'
-);
+] as const;
 
-const qualities = tuple(
+const qualities = [
     'outwardly curious',
     'introspective',
     'transcendent',
@@ -122,18 +123,15 @@ const qualities = tuple(
     'impressionable',
     'predatory',
     'vulnerable'
-);
+] as const;
 type Qualities = typeof qualities;
 
 interface Roles {
     is_in_heaven: boolean
     role: Qualities[number];
-    // readonly index: number;
 }
 
 let RolePuffer: Puffer<Roles> = {
-    activate: world => true,
-
     handle_command: (world, parser) => {
         if (world.is_in_heaven) {
             parser.eliminate();
@@ -162,28 +160,27 @@ let RolePuffer: Puffer<Roles> = {
             return [{ kind: 'Remove', label: 'vulnerable' }];
         }
     }
+};
 
-}
-
-interface BirdWorld extends PufferWorld
+interface BirdWorld extends World
     , Location
     , Zarathustra
     , Roles
-{};
+{
 
-// Would use "as const" instead of tuple() but @babel/preset-typescript 7.3.3 has bugs parsing that construct
-const BirdWorldPuffers = tuple(
+};
+
+const BirdWorldPuffers= [
     LocationPuffer,
     ZarathustraPuffer,
     RolePuffer
-);
+] as const;
 
 const initial_bird_world: BirdWorld = {
-    ...get_initial_puffer_world<BirdWorld>(),
+    ...get_initial_world<BirdWorld>(),
     
     // location
     is_in_heaven: false,
-    moving: false,
     
     // zarathustra
     has_seen_zarathustra: false,
@@ -197,4 +194,26 @@ const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuff
 export function new_bird_world() {
     return world_driver(bird_world_spec);
 }
+
+/*
+
+    What is the correct means of factoring narrative text generation logic?
+
+    - There is the KISS perspective. We simply deny any abstraction above that of text generation.
+        The code becomes an expression of pushing text fragments together in the correct order.
+    - There is the DIFF perspective. Narrative text is a function of the change between the
+        previous world state and next one. State-update logic is segregated from narrative generation,
+        which really only happens *after* the full state update is done.
+    - Structural narrative perspective. We posit a structure for a narrative step:
+        - Action
+        - Consequence
+        - Description
+        - Prompt
+        This works decently well for standard text adventure style narratives but obviously
+        breaks down as you get more complicated.
+        Also, if there are multiple "facets" to the narrative world, additional structure must
+        be imposed to determine the order in which "sub-actions", "sub-consequences", etc. appear.
+
+
+*/
 
