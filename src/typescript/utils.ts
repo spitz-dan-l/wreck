@@ -274,7 +274,9 @@ export function tuple<T extends any[] & {0: any}>(...t: T): T {
 }
 
 // Mapped Type helper //
-
+// export type Omit<T, K extends keyof any, X extends keyof T = Exclude<keyof T, K>> = {
+//   [P in X]: T[X]
+// };
 export type Omit<T, K extends keyof any> = {
     [P in Exclude<keyof T, K>]: T[P]
 };

@@ -12,9 +12,9 @@
 
 import { Omit, update, Updater, IntersectTupleTypes, IntersectBoxedTupleTypes } from './utils';
 import { Parser, ParserThread } from './parser';
-import { get_initial_world, Message, CommandHandler, InterpretationOp, HistoryInterpreter, make_world_spec, MetaLevelKeys, ObjectLevel, Renderer, World, WorldSpec } from './world';
+import { get_initial_world, Message, CommandHandler, InterpretationOp, HistoryInterpreter, make_world_spec, MetaLevelKeys, ObjectLevel, ObjectLevelWorld, Renderer, World, WorldSpec } from './world';
 
-export type PufferAndWorld<W> = W & ObjectLevel<World>;
+export type PufferAndWorld<W> = W & ObjectLevelWorld;
 
 export type PufferCommandHandler<W> = (world: PufferAndWorld<W>, parser: Parser) => PufferAndWorld<W>;
 export type PufferUpdater<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
@@ -112,8 +112,9 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
             }
             if (is_handler<Puffer<any>[P]>(p[prop])) {
                 stages.add(0);
+                return;
             }
-            Object.keys(p[prop]).map(parseInt).forEach(stages.add.bind(stages));
+            Object.keys(p[prop]).map(k => parseInt(k)).forEach(s => stages.add(s));
         });
         let ordered_stages = [...stages.values()];
         ordered_stages.sort();

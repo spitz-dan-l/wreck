@@ -1,5 +1,5 @@
-// import * as React from 'react';
-var React = require('react');
+import * as React from 'react';
+// var React = require('react');
 import { array_last, update } from '../typescript/utils';
 import { keys } from '../typescript/keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token } from '../typescript/parser';

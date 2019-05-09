@@ -102,11 +102,10 @@ export interface World {
 
 // TODO: need a more concise and cute term than "object level"
 export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations';
-
-export type ObjectLevelKeys<W extends World> =
-    Exclude<keyof W, MetaLevelKeys>;
+export type ObjectLevelKeys = 'message' | 'interpretation_receptors';
 
 export type ObjectLevel<W extends World> = Omit<W, MetaLevelKeys>;
+export type ObjectLevelWorld = Pick<World, ObjectLevelKeys>;
 
 export type WorldUpdater<W extends World> = (world: ObjectLevel<W>) => ObjectLevel<W>;
 export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Parser) => ObjectLevel<W>;

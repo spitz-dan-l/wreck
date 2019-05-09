@@ -1,9 +1,9 @@
 
-// import React from "react";
+import React from "react";
 import ReactDom from "react-dom";
 
 // TODO: figure out this danged poop
-var React = require('react');
+// var React = require('react');
 
 import { App } from '../components/Terminal';
 import { new_bird_world } from './demo_worlds/puffer_bird_world';

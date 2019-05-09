@@ -1,10 +1,22 @@
-import { Parser, ParserThread } from '../parser';
-import { knit_puffers, map_puffer, PufferMapper, make_puffer_world_spec, Puffer, PufferAndWorld } from '../puffer';
-import { appender, Omit, update, Updater } from '../utils';
+import { narrative_graph_builder, NodeSpec } from '../narrative_graph';
+import { Parser } from '../parser';
+import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../puffer';
+import { split_tokens } from '../text_tools';
+import { appender, update } from '../utils';
 import { Fragment, get_initial_world, World, world_driver } from '../world';
 
 /*
-    Pattern to support: PerceptionID and ObserverMomentID enforced statically somehow
+    TODO:
+        Ability to pass either a fragment or an Updater<Message> for enter message/fragment
+        Add exit fragment
+
+        Implement make_traverser
+    
+        Move OM stuff out to new module
+
+        Write game traverser for testing
+
+        Pattern to support: PerceptionID and ObserverMomentID enforced statically somehow
 
 */
 
@@ -103,13 +115,6 @@ interface Hex {
 
 type PW = PufferAndWorld<Hex>;
 
-function transition_to(world: PW, dest: ObserverMomentID, updater?: Updater<Omit<PW, 'location'>>) {
-    return update(world, {
-        ...(updater !== undefined ? updater : []),
-        location: dest
-    });
-}
-
 function percieve(world: PW, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
@@ -117,7 +122,7 @@ function percieve(world: PW, perc: PerceptID) {
     });
 }
 
-function make_perceiver(world: PW, ...percs: PerceptID[]) {
+function make_perceiver(world: PW, percs: readonly PerceptID[]) {
     return (parser: Parser) =>
         parser.split(
             percs.map(pid => () => {
@@ -125,141 +130,24 @@ function make_perceiver(world: PW, ...percs: PerceptID[]) {
                 if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
                     parser.eliminate();
                 }
-                parser.consume(`${world.has_perceived[pid] ? '~' : ''}${pid}`);
+                parser.consume(`${world.has_perceived[pid] ? '~' : ''}${split_tokens(pid).join('_')}`);
                 parser.submit();
                 return percieve(world, pid);
             })
         );
 }
 
-type ObserverMomentSpec = {
-    id: ObserverMomentID,
-    enter_fragment?: string,
-    transitions?: { [k: string]: ObserverMomentID },
-    percepts?: readonly PerceptID[],
-    debug?: boolean
-} & Puffer<Hex>;
 
-function make_observer_moment<S extends ObserverMomentSpec>(spec: S): Puffer<Hex> {
-    let base_puffer: Puffer<Hex> = {
-        handle_command: (world, parser) => {
-            if (world.location !== spec.id) {
-                parser.eliminate();
-            }
-
-            let threads: ParserThread<PufferAndWorld<Hex>>[] = [];
-
-            if (spec.transitions !== undefined) {
-                threads.push(() => {
-                    if (spec.transitions === undefined || Object.keys(spec.transitions).length === 0) {
-                        parser.eliminate();
-                    }
-                    if (spec.debug) {
-                        // debugger;
-                    }
-                    return parser.split(
-                        Object.entries(spec.transitions).map(([toks, dest]) => () => {
-                            parser.consume(toks);
-                            parser.submit();
-                            return transition_to(world, dest);
-                        })
-                    )
-                });
-            }
-
-            if (spec.percepts !== undefined) {
-                threads.push(() => {
-                    if (spec.percepts === undefined || spec.percepts.length === 0) {
-                        parser.eliminate();
-                    }
-                    if (spec.debug) {
-                        // debugger;
-                    }
-                    return parser.split(
-                        spec.percepts.map(pid => () => {
-                            let perc = Percepts.find(p => p.id === pid);
-                            if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
-                                parser.eliminate();
-                            }
-                            parser.consume(`${world.has_perceived[pid] ? '~' : ''}${pid}`);
-                            parser.submit();
-                            return percieve(world, pid);
-                        })
-                    );
-                });
-            }
-
-            return parser.split(threads);
-        },
-        post: (world_2, world_1) => {
-            if (world_2.location === spec.id &&
-                world_1.location !== spec.id &&
-                spec.enter_fragment !== undefined) {
-                
-                if (spec.debug) {
-                    debugger;
-                }
-
-                return update(world_2, {
-                    message: { consequence: appender(spec.enter_fragment) }
-                });
-            }
-            return world_2;
-        }
-    }
-
-    let mapper: PufferMapper<Hex> = {
-        pre: (cb) => (world) => {
-            if (cb === undefined || world.location !== spec.id) {
-                return world;
-            }
-
-            if (spec.debug) {
-                debugger;
-            }
-
-            return cb(world);
-        },
-
-        handle_command: (cb, stage) => (world, parser) => {
-            if (cb === undefined || world.location !== spec.id) {
-                parser.eliminate();
-            }
-            return cb(world, parser);
-        },
-        post: (cb) => (world_2, world_1) => {
-            if (world_2.location === spec.id || world_1.location === spec.id) {
-
-                if (cb !== undefined) {
-                    if (spec.debug) {
-                        debugger;
-                    }
-                    return cb(world_2, world_1);
-                }
-            }
-            return world_2;
-        },
-
-        interpret_history: (cb) => (world_2, world_1) => {
-            if (cb === undefined || world_2.location !== spec.id) {
-                return [];
-            }
-
-            if (spec.debug) {
-                debugger;
-            }
-
-            return cb(world_2, world_1);
-        }
-    };
-
-    return knit_puffers([map_puffer(mapper, spec), base_puffer]);
-}
+let {
+    make_transitioner,
+    transition_to,
+    make_node
+} = narrative_graph_builder<Hex, ObserverMomentID>();
 
 const ObserverMomentIndex: Puffer<Hex>[] = [];
 
-function ObserverMoments(...spec: ObserverMomentSpec[]) {
-    ObserverMomentIndex.push(...spec.map(make_observer_moment));
+function ObserverMoments(...spec: NodeSpec<PW, ObserverMomentID>[]) {
+    ObserverMomentIndex.push(...spec.map(make_node));
 }
 
 ObserverMoments(
@@ -278,26 +166,31 @@ ObserverMoments(
             <br/><br/>
             Imagine you're Chitin Wastrel.
         </div>`,
-    percepts: [
-        'myself',
-        'merfolk',
-        'family',
-        'researcher',
-        'dark pool',
-        'failed experiments',
-        'experiment',
-        'broadcaster'
-    ],
-    // NOTE: the "1:"" here causes this handler's typeahead to appear *after* the options for the percepts.
-    handle_command: { 1: (world, parser) => {
-        if (!world.has_perceived['experiment']) {
-            parser.eliminate();
-        }
+    
+    handle_command: { 
+        0: (world, parser) => {
+            let percepts = [
+                'myself',
+                'merfolk',
+                'family',
+                'researcher',
+                'dark pool',
+                'failed experiments',
+                'experiment',
+                'broadcaster'
+            ];
 
-        parser.consume('operate_broadcaster');
-        parser.submit();
-        return transition_to(world, 'imagining 2');
-    } },
+            return make_perceiver(world, percepts)(parser);
+        },
+        // NOTE: the "1:"" here causes this handler's typeahead to appear *after* the options for the percepts.
+        1: (world, parser) => {
+            if (!world.has_perceived['experiment']) {
+                parser.eliminate();
+            }
+            
+            return make_transitioner(world, {'operate_broadcaster': 'imagining 2'})(parser);
+        }
+    },
 },
 {
     id: 'imagining 2',
@@ -430,42 +323,31 @@ ObserverMoments(
     id: 'outside 2',
     transitions: {
         'continue': 'outside 3'
-    },
-    post: (world2, world1) => {
-        if (world1.location === 'outside 2') {
-            return update(world2, {
-                message: {
-                    consequence: appender(`
-                        It's Officer Marley. She howls in apparent maniacal joy.
-                        <br/><br/>
-                        {{#with_daughters}}
-                        "Ah, the three Wastrels!" she cries.
-                        <br/><br/>
-                        "Two hateful girls and their poor, obsessive, withdrawn father!"
-                        {{/with_daughters}}
-                        {{^with_daughters}}
-                        "Ah, the distinguished Professor Wastrel!" she cries.
-                        <br/><br/>
-                        "Has the fool finally decided to come and see where his studies have gotten him?"
-                        {{/with_daughters}}
-                    `),
-                    description: appender(`
-                        You notice an open wound on Officer Marley's neck.
-                        <br/><br/>
-                        Trickling forth is a pitch dark fluid, nothing like Mer blood.
-                        <br/><br/>
-                        You notice a trail of the black liquid along the ground, leading from Officer Marley back to the sea,
-                        <br/><br/>
-                        and towards the Dark Pool.
-                    `)
-                }
-            });
-        }
-        return world2;
     }
 },
 {
     id: 'outside 3',
+    enter_fragment: `
+        It's Officer Marley. She howls in apparent maniacal joy.
+        <br/><br/>
+        {{#with_daughters}}
+        "Ah, the three Wastrels!" she cries.
+        <br/><br/>
+        "Two hateful girls and their poor, obsessive, withdrawn father!"
+        {{/with_daughters}}
+        {{^with_daughters}}
+        "Ah, the distinguished Professor Wastrel!" she cries.
+        <br/><br/>
+        "Has the fool finally decided to come and see where his studies have gotten him?"
+        {{/with_daughters}}
+        <br/><br/>
+        You notice an open wound on Officer Marley's neck.
+        <br/><br/>
+        Trickling forth is a pitch dark fluid, nothing like Mer blood.
+        <br/><br/>
+        You notice a trail of the black liquid along the ground, leading from Officer Marley back to the sea,
+        <br/><br/>
+        and towards the Dark Pool.`,
     handle_command: (world, parser) => {
         parser.consume('follow_the_trail');
         parser.submit();
@@ -698,7 +580,7 @@ const initial_hex_world: HexWorld = {
 
     location: 'imagining 0',
     with_daughters: false,
-    has_perceived: {}
+    has_perceived: {},
 }
 
 const hex_world_spec = make_puffer_world_spec(initial_hex_world, ObserverMomentIndex);

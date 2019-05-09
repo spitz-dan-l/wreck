@@ -12,6 +12,8 @@
         "incremental": true,
         "allowSyntheticDefaultImports": true,
         "experimentalDecorators": true,
+        "extendedDiagnostics": true,
+
         // "strictNullChecks": true
     },
     "include": [
