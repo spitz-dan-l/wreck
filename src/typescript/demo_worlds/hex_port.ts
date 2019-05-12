@@ -3,21 +3,14 @@ import { Parser } from '../parser';
 import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../puffer';
 import { split_tokens } from '../text_tools';
 import { appender, update } from '../utils';
-import { Fragment, get_initial_world, World, world_driver } from '../world';
+import { get_initial_world, World, world_driver } from '../world';
+import { MessageUpdateSpec, message_updater } from '../message';
 
 /*
     TODO:
-        Ability to pass either a fragment or an Updater<Message> for enter message/fragment
         Add exit fragment
 
-        Implement make_traverser
-    
-        Move OM stuff out to new module
-
         Write game traverser for testing
-
-        Pattern to support: PerceptionID and ObserverMomentID enforced statically somehow
-
 */
 
 type PerceptID = string;
@@ -25,25 +18,25 @@ type PerceptID = string;
 type Percept = {
     id: PerceptID,
     prereqs?: readonly PerceptID[],
-    fragment: Fragment
+    message: MessageUpdateSpec
 };
 
 const Percepts: readonly Percept[] = [
     {
         id: 'myself',
-        fragment: `
+        message: `
             Merfolk. Father. Researcher.`
     },
     {
         id: 'merfolk',
-        fragment: `
+        message: `
             Dark semi-firm scales coat your green flesh.
             <br/><br/>
             Your people are born of the sea. Vast, fluid, salty life.`
     },
     {
         id: 'family',
-        fragment: `
+        message: `
             Two brilliant daughters. Dasani and Aechtuo. Sharing their mother's spirit.
             <br/><br/>
             And always at odds with each other, always fighting each other.
@@ -52,13 +45,13 @@ const Percepts: readonly Percept[] = [
     },
     {
         id: 'researcher',
-        fragment: `
+        message: `
             You are finishing up your experiment for the day at the Dark Pool.`
     },
     {
         id: 'dark pool',
         prereqs: ['researcher'],
-        fragment: `
+        message: `
             A very strange phenomenon indeed. The Dark Pool is an underwater pool of dark- something.
             <br/><br/>
             Discovered within an underwater cave near your island home, it is a layer of thick, black fluid resting beneath the clear seawater.
@@ -68,7 +61,7 @@ const Percepts: readonly Percept[] = [
     {
         id: 'failed experiments',
         prereqs: ['researcher'],
-        fragment: `
+        message: `
             You have been trying to measure the Dark Pool's true depth.
             <br/><br/>
             All previous attempts to insert measuring devices into it have been unsuccessful.
@@ -80,7 +73,7 @@ const Percepts: readonly Percept[] = [
     {
         id: 'experiment',
         prereqs: ['researcher'],
-        fragment: `
+        message: `
             Today's experiment is different. Today you are attempting to induce the pool to <i>tell</i> you its depth.
             <br/><br/>
             By asking it the right question, and listening carefully.
@@ -90,7 +83,7 @@ const Percepts: readonly Percept[] = [
     {
         id: 'broadcaster',
         prereqs: ['experiment'],
-        fragment: `
+        message: `
             A surprisingly simple application of mind control, of your own design.
             <br/><br/>
             First, find and trap a young dolphin. Make it your mindslave.
@@ -118,7 +111,7 @@ type PW = PufferAndWorld<Hex>;
 function percieve(world: PW, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
-        message: { consequence: appender(Percepts.find(p => p.id === perc).fragment) }
+        message: message_updater(Percepts.find(p => p.id === perc).message)
     });
 }
 
@@ -160,7 +153,7 @@ ObserverMoments(
 {
     id: 'imagining 1',
     // debug: true,
-    enter_fragment: `
+    enter_message: `
         <div class="interp">
             That doesn't matter right now.
             <br/><br/>
@@ -194,7 +187,7 @@ ObserverMoments(
 },
 {
     id: 'imagining 2',
-    enter_fragment: `
+    enter_message: `
         You mentally aim your cetacean broadcaster at the center of the Dark Pool, and fire a ping.
         <br/><br/>
         You hear the dolphin's click, first through its eardrums, and then, a split second later, through yours.`,
@@ -204,7 +197,7 @@ ObserverMoments(
 },
 {
     id: 'imagining 3',
-    enter_fragment: `
+    enter_message: `
         You wait one second, three seconds, ten, twenty...
         <br/><br/>
         ...nothing.
@@ -216,7 +209,7 @@ ObserverMoments(
 },
 {
     id: 'imagining 4',
-    enter_fragment: `
+    enter_message: `
         You close your eyes and inhabit the mind of your broadcaster.
         <br/><br/>
         You hear something.
@@ -234,7 +227,7 @@ ObserverMoments(
 },
 {
     id: 'imagining 5',
-    enter_fragment: `
+    enter_message: `
         <div class="interp">
             "Oh, I'm sorry. Did I surprise you?
             <br/><br/>
@@ -254,7 +247,7 @@ ObserverMoments(
 },
 {
     id: 'home 1',
-    enter_fragment: `
+    enter_message: `
         The fear pushes you to swim faster than Poseides herself.
         <br/><br/>
         ***
@@ -271,7 +264,7 @@ ObserverMoments(
 },
 {
     id: 'home silenced',
-    enter_fragment: `
+    enter_message: `
         They are suddenly silent.
         <br/><br/>
         Their faces go blank.
@@ -285,7 +278,7 @@ ObserverMoments(
 },
 {
     id: 'home listened',
-    enter_fragment: `
+    enter_message: `
         The girls are arguing about Officer Marley.
         <br/><br/>
         Apparently she's not acting like herself.
@@ -297,7 +290,7 @@ ObserverMoments(
 },
 {
     id: 'outside 1',
-    enter_fragment: `
+    enter_message: `
         Dasani and Aechtuo begin to follow you as you wander out the door toward the laughter.`,
     handle_command: (world, parser) => {
         let they_can_come = parser.split([
@@ -307,27 +300,27 @@ ObserverMoments(
         parser.submit();
 
         return transition_to(world, 'outside 2', {
-            message: {
-                action: appender(`
-                    {{#with_daughters}}They fall into step behind you.{{/with_daughters}}
-                    {{^with_daughters}}They remain in the hut, gazing after you in silence.{{/with_daughters}}    
-                `),
-                consequence: appender(`The laughter grows more raucous as you approach.`),
-                description: appender(`You can make out a figure in the distance.`)
-            },
             with_daughters: they_can_come
         });
     }
 },
 {
     id: 'outside 2',
+    enter_message: {
+        action: [`
+            {{#with_daughters}}They fall into step behind you.{{/with_daughters}}
+            {{^with_daughters}}They remain in the hut, gazing after you in silence.{{/with_daughters}}    
+        `],
+        consequence: [`The laughter grows more raucous as you approach.`],
+        description: [`You can make out a figure in the distance.`]
+    },
     transitions: {
         'continue': 'outside 3'
     }
 },
 {
     id: 'outside 3',
-    enter_fragment: `
+    enter_message: `
         It's Officer Marley. She howls in apparent maniacal joy.
         <br/><br/>
         {{#with_daughters}}
@@ -361,7 +354,7 @@ ObserverMoments(
 },
 {
     id: 'outside 4, death',
-    enter_fragment: `
+    enter_message: `
         As you begin to wander towards the sea, Officer Marley steps in your way.
         <br/><br/>
         "Going back? To figure all this out once and for all?
@@ -376,7 +369,7 @@ ObserverMoments(
 },
 {
     id: 'outside 4',
-    enter_fragment: `
+    enter_message: `
         As you begin to wander towards the sea, Officer Marley steps in your way.
         <br/><br/>
         "Going back? To figure all this out once and for all?
@@ -393,7 +386,7 @@ ObserverMoments(
 },
 {
     id: 'outside 5',
-    enter_fragment: `
+    enter_message: `
         Your daughter and Officer Marley meet in a blur of green flesh and steel.
         <br/><br/>
         An instant later, they both lie in a heap on the ground. Dead.
@@ -407,24 +400,24 @@ ObserverMoments(
 },
 {
     id: 'outside 5, death',
-    enter_fragment: `
-    Your daughter's body is suddenly calm, the rage suddenly extinguished.
-    <br/><br/>
-    She drops her knife and turns away from Officer Marley.
-    <br/><br/>
-    She gazes at you. Her eyes appear vacant.
-    <br/><br/>
-    Officer Marley loses no time.
-    <br/><br/>
-    She swiftly beheads Dasani before your eyes.
-    <br/><br/>
-    She proceeds to execute Aechtuo and you in turn.
-    <br/><br/>
-    YOU HAVE DIED. (Refresh to try again.)`,
+    enter_message: `
+        Your daughter's body is suddenly calm, the rage suddenly extinguished.
+        <br/><br/>
+        She drops her knife and turns away from Officer Marley.
+        <br/><br/>
+        She gazes at you. Her eyes appear vacant.
+        <br/><br/>
+        Officer Marley loses no time.
+        <br/><br/>
+        She swiftly beheads Dasani before your eyes.
+        <br/><br/>
+        She proceeds to execute Aechtuo and you in turn.
+        <br/><br/>
+        YOU HAVE DIED. (Refresh to try again.)`,
 },
 {
     id: 'dark pool 1',
-    enter_fragment: `
+    enter_message: `
         You and Aechtuo swim to the cave, arriving at the Dark Pool.
         <br/><br/>
         There it lies. Impassable, impossible, all-consuming.
@@ -448,7 +441,7 @@ ObserverMoments(
 },
 {
     id: 'dark pool 2',
-    enter_fragment: `
+    enter_message: `
         As you swim towards the pool's black surface, a form emerges from its depths, shrouded in black clouds.
         <br/><br/>
         <div class="interp">
@@ -466,7 +459,7 @@ ObserverMoments(
 },
 {
     id: 'dark pool 3',
-    enter_fragment: `  
+    enter_message: `  
         It's your dolphin. Or, it was.
         <br/><br/>
         Its body is contorted into a spiral shape,
@@ -486,7 +479,7 @@ ObserverMoments(
 },
 {
     id: 'dark pool 4',
-    enter_fragment: ` 
+    enter_message: ` 
         And suddenly, you are in its mind again
         <br/><br/>
         and you are consumed by the sound of every
@@ -511,7 +504,7 @@ ObserverMoments(
 },
 {
     id: 'dark pool 5, death',
-    enter_fragment: `
+    enter_message: `
         so of course she stops
         <br/><br/>
         and the dolphin gathers her up in
@@ -530,7 +523,7 @@ ObserverMoments(
 },
 {
     id: 'dark pool 5',
-    enter_fragment: `
+    enter_message: `
         so of course she continues
         <br/><br/>
         and the sound begins to dissipate
@@ -550,7 +543,7 @@ ObserverMoments(
 },
 {
     id: 'dark pool 6',
-    enter_fragment: `
+    enter_message: `
         You drift into the thick, black liquid,
         <br/><br/>
         becoming nothing.

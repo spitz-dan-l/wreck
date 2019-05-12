@@ -20,49 +20,11 @@
 
 */
 
-import { update, Updater, Omit , appender_uniq} from './utils';
+import { infer_message_labels, Message, standard_render } from './message';
 import { Parser, Parsing, raw, RawInput } from './parser';
-import * as Mustache from 'mustache';
+import { appender_uniq, Omit, update } from './utils';
 
-// TODO: We probably want a data structure for this
-// Question is how DOM-like will it wind up being and should we just use the DOM
-
-/*
-    Message is comprised of (any of)
-
-    - Immediate narrative description of action
-    - Immediate narrative description of consequence
-    - Idle descriptions of world state
-    - Prompts for player action
-
-    One issue with the above is that it could threaten "poetic flow",
-    by regimenting out the form of the output messages too much.
-        I think this has to be an experiment that gets done though.
-        Poetic flow also threatens systematicity of world.
-        We need to find a way for them to coexist.
-
-    Another issue with the above: it presuposes that the player took an action
-        What about "inventory"? Which of the above four facets does the list of your stuff
-        go in?
-        Answer: "Idle descriptions of world state"? Haha I dunno
-
-*/
-
-// A Fragment is any string. If it is a Mustache template, it will have the current
-// interpretation tags used to render it for display.
-export type Fragment = string;
-
-export type Message = {
-    kind: 'Message',
-    action: Fragment[],
-    consequence: Fragment[],
-    description: Fragment[],
-    prompt: Fragment[]
-};
-
-// type Message = string;
-
-type InterpretationLabel = string;
+export type InterpretationLabel = string;
 type AddOp = { kind: 'Add', label: InterpretationLabel };
 type RemoveOp = { kind: 'Remove', label: InterpretationLabel };
 export type InterpretationOp = AddOp | RemoveOp;
@@ -104,6 +66,7 @@ export interface World {
 export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations';
 export type ObjectLevelKeys = 'message' | 'interpretation_receptors';
 
+
 export type ObjectLevel<W extends World> = Omit<W, MetaLevelKeys>;
 export type ObjectLevelWorld = Pick<World, ObjectLevelKeys>;
 
@@ -112,7 +75,7 @@ export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Pa
 
 export type Narrator<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => ObjectLevel<W>;
 export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[] | undefined;
-export type Renderer = (world: World, labels?: readonly InterpretationLabel[]) => string;
+export type Renderer = (world: World, labels?: readonly InterpretationLabel[], possible_labels?: readonly InterpretationLabel[]) => string;
 
 export const INITIAL_MESSAGE: Message = {
     kind: 'Message',
@@ -160,8 +123,7 @@ export function make_world_spec<W extends World>(spec: {
     initial_world: W,
     pre?: WorldUpdater<W>,
     handle_command: CommandHandler<W>,
-    post?: Narrator<W>,//WorldUpdater<W>,
-    // narrate?: Narrator<W>,
+    post?: Narrator<W>,
     interpret_history?: HistoryInterpreter<W>,
     render?: Renderer
 }): WorldSpec<W> {
@@ -187,10 +149,11 @@ export type CommandResult<W extends World> = {
     possible_world: W | null
 };
 
-export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W> {
-    let next_state: W = world;
+export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;
+export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {
+    let next_state = world;
 
-    next_state = <W>update(next_state as World, {
+    next_state = update(next_state, {
         previous: _ => world,
         index: _ => _ + 1,
         interpretation_receptors: [],
@@ -198,14 +161,14 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
     });
 
     if (spec.pre !== undefined) {
-        next_state = <W> spec.pre(next_state);
+        next_state = <World> spec.pre(next_state);
     }
 
     // First handle the command
-    let result = Parser.run_thread<W>(command, (p) => spec.handle_command(next_state, p) as W);
+    let result = Parser.run_thread(command, (p) => spec.handle_command(next_state, p));
 
     if (result.kind === 'NotParsed') {
-        let possible_world: W | null = null;
+        let possible_world: World | null = null;
         // TODO: Do a bunch more validation here to make sure we're good
         if (result.parsing.view.submittable) {
             possible_world = apply_command(spec, world, update(command, { submit: true })).world;
@@ -218,48 +181,23 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
         };
     }
 
-    next_state = <W>update(result.result as World, {
+    next_state = update(<World>result.result, {
         parsing: _ => result.parsing,
     });
     
     if (spec.post !== undefined) {
-        next_state = <W>spec.post(next_state, world);
+        next_state = <World>spec.post(next_state, world);
     }
 
-    // if (spec.narrate !== undefined) {
-    //     let message = spec.narrate(next_state, world);
-    //     next_state = <W>update(next_state as World, { message });
-    // }
+    let inferred_interpretation_receptors: InterpretationLabel[] = infer_message_labels(next_state.message);
 
-    // find interp labels inside any message fragments
-    function infer_labels(f: Fragment): InterpretationLabel[] {
-        let extract_labels = (tokens: any[]): InterpretationLabel[] =>
-            tokens.flatMap(token => {
-                switch (token[0]) {
-                    case '#':
-                    case '^':
-                        return [token[1], ...extract_labels(token[4])];
-                    default:
-                        return [];
-                }
-            });
-        
-        let parsed = Mustache.parse(f);
-
-        return extract_labels(parsed);
-    }
-
-    let inferred_interpretation_receptors: InterpretationLabel[] =
-        (['action', 'consequence', 'description', 'prompt'] as const)
-            .flatMap(prop => next_state.message[prop].flatMap(infer_labels));
-    
-    next_state = <W>update(next_state as World, {
+    next_state = update(next_state, {
         interpretation_receptors: appender_uniq(...inferred_interpretation_receptors)
     });
 
     // Next apply history interp            
     if (spec.interpret_history !== undefined) {
-        let hist_state: W | null = next_state;
+        let hist_state: World | null = next_state;
         while (hist_state !== null) {
             let ops = spec.interpret_history(next_state, hist_state);
             if (ops !== undefined) {
@@ -271,7 +209,7 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
                     if (new_interp.length === 0) {
                         new_interp = undefined;
                     }
-                    next_state = <W>update(next_state as World, {
+                    next_state = update(next_state, {
                         interpretations: { [hist_state.index]: new_interp }
                     });
                 }
@@ -300,26 +238,6 @@ export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResul
 
 }
 
-
-export function filter_for_render(world: World) {
-    let result = {...world};
-
-    for (let k of ['parsing', 'previous', 'index', 'interpretations', 'rendering', 'message', 'interpretation_receptors']) {
-        delete result[k];
-    }
-
-    return result;
-}
-
-export function standard_render(world: World, labels: InterpretationLabel[] = []): string {
-    return (['action', 'consequence', 'description', 'prompt'] as const)
-        .map(f => world.message[f])
-        .filter(x => x.length > 0)
-        .map(x => x.map(f => Mustache.render(f,
-            labels.reduce((obj, lab) => ({...obj, [lab]: true}), filter_for_render(world))
-        )).join(' '))
-        .join('<br/><br/>');
-}
 /*
 TODO:
     World Validator, tests out a world by fully traversing its command space

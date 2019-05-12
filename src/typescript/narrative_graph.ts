@@ -1,7 +1,7 @@
 import { Parser, ParserThread } from './parser';
 import { knit_puffers, map_puffer, Puffer, PufferAndWorld, PufferMapper } from './puffer';
 import { appender, Omit, update, Updater } from './utils';
-
+import { message_updater, MessageUpdateSpec } from './message';
 
 export type BaseGraphWorld<NodeID extends string=string> = {
     location: NodeID
@@ -11,7 +11,7 @@ export type Transitions<NodeID extends string=string> = Record<string, NodeID>;
 
 export type NodeSpec<W extends BaseGraphWorld<NodeID>, NodeID extends string=W['location']> = {
     id: NodeID,
-    enter_fragment?: string,
+    enter_message?: MessageUpdateSpec,
     transitions?: Transitions<NodeID>,
     debug?: boolean
 } & Puffer<W>;
@@ -19,6 +19,8 @@ export type NodeSpec<W extends BaseGraphWorld<NodeID>, NodeID extends string=W['
 export const narrative_graph_builder = <W extends BaseGraphWorld<NodeID>, NodeID extends string=W['location']>() => {
     type PW = PufferAndWorld<W>;
 
+    // Return a parser thread that consumes commands to transition the player to
+    // the nodes specified in transitions.
     function make_transitioner(world: PW, transitions: Transitions<NodeID>, debug: boolean=false) {
         return (parser: Parser) => {
             if (transitions === undefined || Object.keys(transitions).length === 0) {
@@ -45,6 +47,9 @@ export const narrative_graph_builder = <W extends BaseGraphWorld<NodeID>, NodeID
     }
 
     function make_node(spec: NodeSpec<PW, NodeID>): Puffer<PW> {
+        // The base_puffer interprets the declarative transitions
+        // and produces command handling logic for them.
+        // It also prints the enter fragment upon entering a given node
         let base_puffer: Puffer<PW> = {
             handle_command: (world, parser) => {
                 if (world.location !== spec.id) {
@@ -62,19 +67,23 @@ export const narrative_graph_builder = <W extends BaseGraphWorld<NodeID>, NodeID
             post: (world_2, world_1) => {
                 if (world_2.location === spec.id &&
                     world_1.location !== spec.id &&
-                    spec.enter_fragment !== undefined) {
+                    spec.enter_message !== undefined) {
                     
                     if (spec.debug) {
                         debugger;
                     }
                     return update(world_2, <Updater<PW>> <unknown> {
-                        message: { consequence: appender(spec.enter_fragment) }
+                        message: message_updater(spec.enter_message)
                     });
                 }
                 return world_2;
             }
         }
 
+        // The mapper gates all of the passed-in "custom" puffer handlers behind a
+        // conditional check that we are currently at the node in question.
+        // This is a little confusing for post()- it will be allowed when *either*
+        // the previous world *or* the current world is at the node in question.
         let mapper: PufferMapper<PW> = {
             pre: (cb) => (world) => {
                 if (cb === undefined || world.location !== spec.id) {
