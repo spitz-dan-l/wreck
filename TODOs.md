@@ -2,11 +2,26 @@ TODOs
 
 Priority
 
-Read up on factoring reducers, switch
+- new, right column
+    - undo button
+    - "collapse" button for some history elts
+- fix diffing logic for possible history
+- ~ means darkened, not blocked (and collapsible)
+- "consider" is a generic command on par with "look"
+- "try to" as hinting command?
+    - you can only "try to" things that you're not actually able to do yet?
+    - doing so prints exposition about why it doesn't work yet
 
-- Drop @babel/preset-typescript 7.3.3 because it doesn't work w "as const"
-    - Figure out how to work with the underlying plugin, @babel/plugin-transform-typescript.
-- Flesh out Bird World a bit and start thinking about OMs, Puffers, etc again.
+- consider adding strict null checks before going any further
+
+- completely unify interpretation labels and boolean flags on the world object..?
+    - currently they are separate,
+        - only labels become css classes
+        - labels and boolean flags affect message rendering
+        - labels represented as list of strings, not key -> boolean
+        - 
+    
+
 - UI back up to parity
     DONE 1. Make a static world/history viewer app
       - no interactivity, just displays previous commands and the resulting messages
@@ -35,15 +50,6 @@ Read up on factoring reducers, switch
         - No exceptions are thrown for any inputs
     - Extend this to auto-explore a world?
 - eslint, reachability test as lint rule
-- integrate parser2 into rest of codebase
-    - TODO: start unpacking how to do this for each part of the engine
-
-    - OMs
-        - migrate to the new parser API
-        - port make_look_consumer()
-
-- rename datatypes to utils
-
 
 
 - Do a better job stealing focus

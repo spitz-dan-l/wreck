@@ -7,10 +7,11 @@ import ReactDom from "react-dom";
 
 import { App } from '../components/Terminal';
 import { new_bird_world } from './demo_worlds/puffer_bird_world';
-import { new_hex_world } from './demo_worlds/hex_port'
+import { new_hex_world } from './demo_worlds/hex_port';
+import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
 
 console.time('world_build');
-let [result, updater, renderer] = new_hex_world();//new_bird_world();
+let [result, updater, renderer] = new_venience_world();//new_hex_world();//new_bird_world();
 
 // for (let i = 0; i < 3; i++) {
 //     result = updater(result.world, raw('go up stairs'));

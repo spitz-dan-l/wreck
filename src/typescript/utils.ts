@@ -23,7 +23,7 @@ export class FuckDict<K, V> {
         return this;
     }
 
-    get(k: K, default_value?: V): V {
+    get(k: K, default_value?: V): V | undefined {
         if (!this.has_key(k) && default_value !== undefined) {
             this.set(k, default_value);
             return default_value;
@@ -55,7 +55,7 @@ export class FuckDict<K, V> {
     entries_array(): [K, V][] {
         let result: [K, V][] = [];
         for (let [s, k] of this.keys_map.entries()) {
-            result.push([k, this.values_map.get(s)]);
+            result.push([k, <V>this.values_map.get(s)]);
         }
         return result;
     }
@@ -209,7 +209,7 @@ export type Counter<T> = Map<T, number>;
 export function counter_add<T>(counter: Counter<T>, key: T, inc: number){
     let cur_val = 0;
     if (counter.has(key)){
-        cur_val = counter.get(key);
+        cur_val = <number>counter.get(key);
     }
     return counter.set(key, cur_val + inc);
 }
@@ -217,7 +217,7 @@ export function counter_add<T>(counter: Counter<T>, key: T, inc: number){
 export function counter_get<T>(counter: Counter<T>, key: T){
     let cur_val = 0;
     if (counter.has(key)){
-        cur_val = counter.get(key);
+        cur_val = <number>counter.get(key);
     }
     return cur_val;
 }
@@ -260,6 +260,16 @@ export function appender_uniq<T>(...elts: T[]) {
 
 export function array_last<T>(arr: T[]): T {
     return arr[arr.length - 1];
+}
+
+export function set_eq(arr1: any[], arr2: any[]) {
+    if (arr1 === undefined && arr2 === undefined) {
+        return true;
+    }
+    if (typeof arr1 !== typeof arr2) {
+        return false;
+    }
+    return arr1.every(x => arr2.includes(x)) && arr2.every(x => arr1.includes(x));
 }
 
 // Helper for declaring values with tuple types.

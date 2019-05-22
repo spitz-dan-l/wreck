@@ -1,6 +1,6 @@
 import * as React from 'react';
 // var React = require('react');
-import { array_last, update } from '../typescript/utils';
+import { array_last, update, set_eq } from '../typescript/utils';
 import { keys } from '../typescript/keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token } from '../typescript/parser';
 import { CommandResult, Interpretations, Renderer, World } from "../typescript/world";
@@ -20,7 +20,8 @@ type AppAction =
   RawInput |
   { kind: 'SelectTypeahead', index: number } |
   { kind: 'SelectRelativeTypeahead', direction: 'up' | 'down' } |
-  { kind: 'Submit' };
+  { kind: 'Submit' } |
+  { kind: 'Undo' };
 
 
 // "reducer" function which returns updated state according to the
@@ -123,6 +124,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
   let current_world = state.command_result.world;
   let current_parsing = state.command_result.parsing;
+  let possible_world = state.command_result.possible_world;
 
   function handleKeyDown(event: KeyboardEvent) {
     let input_elt = document.querySelector('input');
@@ -160,7 +162,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
   return <AppDispatch.Provider value={dispatch}>
     <div>
-      <History world={current_world} renderer={initial_state.renderer} />
+      <History world={current_world} possible_world={possible_world} renderer={initial_state.renderer} />
       <Prompt parsing={current_parsing} />
       <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} />
     </div>
@@ -264,7 +266,13 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
   </ul>
 }
 
-export const History: React.FunctionComponent<{world: World, renderer: Renderer}> = ({world, renderer}) => {
+type HistoryProps = {
+  world: World,
+  possible_world: World | null,
+  renderer: Renderer
+}
+
+export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world, renderer}) => {
   let worlds: World[] = [];
 
   // unroll all the historical worlds
@@ -277,11 +285,21 @@ export const History: React.FunctionComponent<{world: World, renderer: Renderer}
   return <div className="history">
     { worlds.map(w => {
       let labels = world.interpretations[w.index];
+      let possible_labels: Interpretations[number] | undefined = undefined;
+      if (possible_world !== null) {
+        possible_labels = possible_world.interpretations[w.index];
+        if (possible_labels !== undefined) {
+          if (possible_labels.length === 0 || set_eq(labels, possible_labels)) {
+            possible_labels = undefined;
+          }
+        }
+      }
       return <HistoryElt
                key={w.index}
                world={w}
                interpretation_labels={labels}
-               rendering={renderer(w, labels)}
+               possible_labels={possible_labels}
+               rendering={renderer(w, labels, possible_labels)}
              />;
     }) }
   </div>
@@ -290,19 +308,50 @@ export const History: React.FunctionComponent<{world: World, renderer: Renderer}
 type HistoryEltProps = {
   world: World,
   interpretation_labels: Interpretations[number],
+  possible_labels?:Interpretations[number],
   rendering: string
 }
 const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
-  ({world, interpretation_labels, rendering}) => {
+  ({world, interpretation_labels, possible_labels, rendering}) => {
     React.useEffect(() => {
-      console.log('re-rendered world '+world.index);
+      console.log('rendered world '+world.index);
     });
-    let i = interpretation_labels;
-    let className = i !== undefined ? i.join(' ') : '';
+    let i = [...(interpretation_labels as string[] || [])];
+    if (possible_labels !== undefined) {
+      i.push(...possible_labels.filter(l => !i.includes(l)).map(l => 'would-add-'+l));
+    }
+    let className = i !== undefined && i.length > 0 ? i.join(' ') : '';
     return <div className={className}>
       { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
       <OutputText rendering={rendering} />
     </div>;
-  }
+  },
+  // (prev, next) => {
+  //   function set_eq(arr1, arr2) {
+  //     if (arr1 === undefined && arr2 === undefined) {
+  //       return true;
+  //     }
+  //     if (typeof arr1 !== typeof arr2) {
+  //       return false;
+  //     }
+  //     return arr1.every(x => arr2.includes(x)) && arr2.every(x => arr1.includes(x));
+  //   }
+
+  //   // let result = prev.world === next.world &&
+  //   //        set_eq(prev.interpretation_labels, next.interpretation_labels) &&
+  //   //        set_eq(prev.possible_labels, next.possible_labels) &&
+  //   //        prev.rendering === next.rendering;
+  //   let results = [
+  //     prev.world === next.world,
+  //     set_eq(prev.interpretation_labels, next.interpretation_labels),
+  //     set_eq(prev.possible_labels, next.possible_labels),
+  //     prev.rendering === next.rendering
+  //   ];
+  //   let result = results.every(_ => _);
+  //   // if (!result) {
+  //   //   debugger;
+  //   // }
+  //   return result;
+  // }
 );
 

@@ -28,10 +28,10 @@ export type InterpretationLabel = string;
 type AddOp = { kind: 'Add', label: InterpretationLabel };
 type RemoveOp = { kind: 'Remove', label: InterpretationLabel };
 export type InterpretationOp = AddOp | RemoveOp;
-export type Interpretations = { readonly [k: number]: readonly InterpretationLabel[] };
+export type Interpretations = { [k: number]: InterpretationLabel[] };
 
 
-function apply_interpretation_op(interp: readonly InterpretationLabel[], op: InterpretationOp): readonly InterpretationLabel[] {
+function apply_interpretation_op(interp: InterpretationLabel[], op: InterpretationOp): InterpretationLabel[] {
     if (op.kind === 'Add'){
         if (interp.indexOf(op.label) === -1) {
             return [...interp, op.label];
@@ -49,7 +49,7 @@ function apply_interpretation_op(interp: readonly InterpretationLabel[], op: Int
     return interp;
 }
 
-function apply_interpretation_ops(interp: readonly InterpretationLabel[], ops: InterpretationOp[]): readonly InterpretationLabel[] {
+function apply_interpretation_ops(interp: InterpretationLabel[], ops: InterpretationOp[]): InterpretationLabel[] {
     return ops.reduce(apply_interpretation_op, interp);
 }
 
@@ -75,7 +75,7 @@ export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Pa
 
 export type Narrator<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => ObjectLevel<W>;
 export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[] | undefined;
-export type Renderer = (world: World, labels?: readonly InterpretationLabel[], possible_labels?: readonly InterpretationLabel[]) => string;
+export type Renderer = (world: World, labels?: InterpretationLabel[], possible_labels?: InterpretationLabel[]) => string;
 
 export const INITIAL_MESSAGE: Message = {
     kind: 'Message',
@@ -204,7 +204,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
                 let old_interp = next_state.interpretations[hist_state.index] || [];
                 let old_receptors = hist_state.interpretation_receptors;
                 ops = ops.filter(op => old_receptors.includes(op.label));
-                let new_interp: readonly InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
+                let new_interp: InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
                 if (old_interp !== new_interp) {
                     if (new_interp.length === 0) {
                         new_interp = undefined;

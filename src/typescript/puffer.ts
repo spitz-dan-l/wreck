@@ -76,13 +76,13 @@ export function map_puffer<T>(mapper: PufferMapper<T>, puffer: Puffer<T>): Puffe
             return puffer[prop];
         }
         if (puffer[prop] === undefined || typeof puffer[prop] === 'function') {
-            return mapper[prop](puffer[prop] as any, 0);
+            return (mapper[prop] as any)(puffer[prop] as any, 0);
         } else if (puffer[prop] instanceof Array) {
             return (puffer[prop] as any[]).map(mapper[prop] as any);
         } else {
             let result = {};
-            for (let [stage, cb] of Object.entries(puffer[prop])) {
-                result[stage] = mapper[prop](cb, parseInt(stage));
+            for (let [stage, cb] of Object.entries(<any>puffer[prop])) {
+                result[stage] = (<any>mapper[prop])(cb, parseInt(stage));
             }
             return result;
         }
@@ -114,7 +114,7 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
                 stages.add(0);
                 return;
             }
-            Object.keys(p[prop]).map(k => parseInt(k)).forEach(s => stages.add(s));
+            Object.keys(p[prop] as any).map(k => parseInt(k)).forEach(s => stages.add(s));
         });
         let ordered_stages = [...stages.values()];
         ordered_stages.sort();

@@ -1,4 +1,4 @@
-import { narrative_graph_builder, NodeSpec } from '../narrative_graph';
+import { narrative_fsa_builder } from '../narrative_fsa';
 import { Parser } from '../parser';
 import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../puffer';
 import { split_tokens } from '../text_tools';
@@ -101,7 +101,7 @@ const Percepts: readonly Percept[] = [
 type ObserverMomentID = string;
 
 interface Hex {
-    location: ObserverMomentID;
+    node: ObserverMomentID;
     has_perceived: { [K in PerceptID]: boolean };
     with_daughters: boolean;
 }
@@ -135,11 +135,13 @@ let {
     make_transitioner,
     transition_to,
     make_node
-} = narrative_graph_builder<Hex, ObserverMomentID>();
+} = narrative_fsa_builder<Hex, 'node', ObserverMomentID>('node');
 
 const ObserverMomentIndex: Puffer<Hex>[] = [];
 
-function ObserverMoments(...spec: NodeSpec<PW, ObserverMomentID>[]) {
+type NodeSpec = Parameters<typeof make_node>[0]
+
+function ObserverMoments(...spec: NodeSpec[]) {
     ObserverMomentIndex.push(...spec.map(make_node));
 }
 
@@ -571,7 +573,7 @@ interface HexWorld extends World, Hex {}
 const initial_hex_world: HexWorld = {
     ...get_initial_world<HexWorld>(),
 
-    location: 'imagining 0',
+    node: 'imagining 0',
     with_daughters: false,
     has_perceived: {},
 }
