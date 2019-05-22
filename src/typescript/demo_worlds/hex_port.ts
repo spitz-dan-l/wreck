@@ -111,7 +111,7 @@ type PW = PufferAndWorld<Hex>;
 function percieve(world: PW, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
-        message: message_updater(Percepts.find(p => p.id === perc).message)
+        message: message_updater(Percepts.find(p => p.id === perc)!.message)
     });
 }
 
@@ -119,7 +119,7 @@ function make_perceiver(world: PW, percs: readonly PerceptID[]) {
     return (parser: Parser) =>
         parser.split(
             percs.map(pid => () => {
-                let perc = Percepts.find(p => p.id === pid);
+                let perc = Percepts.find(p => p.id === pid)!;
                 if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
                     parser.eliminate();
                 }

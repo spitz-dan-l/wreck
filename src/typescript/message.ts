@@ -1,6 +1,6 @@
 import * as Mustache from 'mustache';
-import { InterpretationLabel, World, Renderer } from './world';
-import { appender, update, Updater } from './utils';
+import { InterpretationLabel, LocalInterpretations, World, Renderer } from './world';
+import { appender, update, Updater, merge_objects } from './utils';
 
 /*
     Message is comprised of (any of)
@@ -58,8 +58,8 @@ export let message_updater = (spec: MessageUpdateSpec) =>
 
         let updater: Updater<Message> = {};
         for (let prop of ['action', 'consequence', 'description', 'prompt'] as const) {
-            if (spec[prop] !== undefined && spec[prop].length > 0) {
-                updater[prop] = appender(...spec[prop]);
+            if (spec[prop] !== undefined && spec[prop]!.length > 0) {
+                updater[prop] = appender(...spec[prop]!);
             }
         }
 
@@ -77,34 +77,35 @@ export function filter_for_render(world: World) {
 }
 
 export let standard_render: Renderer;
-standard_render = function(world: World, labels: InterpretationLabel[] = [], possible_labels: InterpretationLabel[] = []): string {
+standard_render = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
     return (['action', 'consequence', 'description', 'prompt'] as const)
         .map(f => world.message[f])
         .filter(x => x.length > 0)
         .map(x => x.map(f => Mustache.render(f,
-            labels.reduce((obj, lab) => ({...obj, [lab]: true}), filter_for_render(world))
+            Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val}), world.local_interpretations)
         )).join(' '))
         .join('<br/><br/>');
 }
 
 // find interp labels inside any message fragments
-export function infer_fragment_labels(f: Fragment): InterpretationLabel[] {
-    let extract_labels = (tokens: any[]): InterpretationLabel[] =>
-        tokens.flatMap(token => {
-            switch (token[0]) {
-                case '#':
-                case '^':
-                    return [token[1], ...extract_labels(token[4])];
-                default:
-                    return [];
-            }
-        });
-    
+export function infer_fragment_labels(f: Fragment): LocalInterpretations {
+    let extract_labels = (tokens: any[]): LocalInterpretations =>
+        merge_objects(
+            tokens.map((token): LocalInterpretations => {
+                switch (token[0]) {
+                    case '#':
+                    case '^':
+                        return {[token[1]]: false, ...extract_labels(token[4])};
+                    default:
+                        return {};
+                }
+            }))
     let parsed = Mustache.parse(f);
 
     return extract_labels(parsed);
 }
 
-export let infer_message_labels = (m: Message): InterpretationLabel[] =>
-    (['action', 'consequence', 'description', 'prompt'] as const)
-        .flatMap(prop => m[prop].flatMap(infer_fragment_labels));
+export let infer_message_labels = (m: Message): LocalInterpretations =>
+    merge_objects(
+        (['action', 'consequence', 'description', 'prompt'] as const)
+            .flatMap(prop => m[prop].map(infer_fragment_labels)));

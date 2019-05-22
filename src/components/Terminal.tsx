@@ -1,18 +1,15 @@
 import * as React from 'react';
-// var React = require('react');
-import { array_last, update, set_eq } from '../typescript/utils';
+import { array_last, update, deep_equal } from '../typescript/utils';
 import { keys } from '../typescript/keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token } from '../typescript/parser';
 import { CommandResult, Interpretations, Renderer, World } from "../typescript/world";
 import { OutputText, ParsedText } from './Text';
 
 
-
-
-type AppState<W extends World=World> = {
-  command_result: CommandResult<W>,
+type AppState = {
+  command_result: CommandResult<World>,
   typeahead_index: number,
-  updater: (world: W, command: RawInput) => CommandResult<W>,
+  updater: (world: World, command: RawInput) => CommandResult<World>,
   renderer: Renderer
 }
 
@@ -30,7 +27,7 @@ type AppAction =
 function app_reducer(state: AppState, action: AppAction): AppState {
   switch (action.kind) {
     case 'RawInput':
-      let new_result = state.updater(state.command_result.world, action);
+      let new_result = state.updater(state.command_result.world!, action);
       return update(state, {
         command_result: () => new_result,
         typeahead_index: new_result.parsing.view.typeahead_grid.length > 0 ? 0 : -1
@@ -46,7 +43,7 @@ function app_reducer(state: AppState, action: AppAction): AppState {
         return update(state, {
           command_result: () =>
             state.updater(
-              state.command_result.world,
+              state.command_result.world!,
               update(state.command_result.parsing.raw, {
                 submit: state.command_result.parsing.view.submittable })),
           typeahead_index: -1
@@ -73,7 +70,7 @@ function select_relative_typeahead(state: AppState, direction: 'up' | 'down') {
     }
   }
 
-  return update(state, { typeahead_index: new_index });
+  return update(state, { typeahead_index: new_index! });
   
 }
 
@@ -109,7 +106,7 @@ function submit_typeahead(state: AppState) {
     text: synthesized_text
   } as const;
 
-  let new_result = state.updater(state.command_result.world, synthesized_command);
+  let new_result = state.updater(state.command_result.world!, synthesized_command);
   return update(state, {
     command_result: () => new_result,
     typeahead_index: new_result.parsing.view.typeahead_grid.length > 0 ? 0 : -1
@@ -117,17 +114,17 @@ function submit_typeahead(state: AppState) {
 }
 
 // The global context storing the state update dispatcher
-const AppDispatch = React.createContext<React.Dispatch<AppAction>>(undefined);
+const AppDispatch = React.createContext<React.Dispatch<AppAction>>(null!);
 
 export const App: React.FunctionComponent<AppState> = (initial_state) => {
   const [state, dispatch] = React.useReducer(app_reducer, initial_state)
 
-  let current_world = state.command_result.world;
+  let current_world = state.command_result.world!;
   let current_parsing = state.command_result.parsing;
   let possible_world = state.command_result.possible_world;
 
   function handleKeyDown(event: KeyboardEvent) {
-    let input_elt = document.querySelector('input');
+    let input_elt = document.querySelector('input')!;
       
     if (!event.ctrlKey && !event.metaKey) {
       input_elt.focus();
@@ -153,7 +150,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
   React.useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
-    let bottom = document.querySelector('.typeahead');
+    let bottom = document.querySelector('.typeahead')!;
     bottom.scrollIntoView({behavior: "smooth", block: "start", inline: "end"});
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
@@ -171,7 +168,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
 export const Prompt: React.FunctionComponent<{parsing: Parsing}> = (props) => {
   const dispatch = React.useContext(AppDispatch);
-  const input_elt = React.useRef<HTMLInputElement>();
+  const input_elt = React.useRef<HTMLInputElement>() as React.MutableRefObject<HTMLInputElement>;
   
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     dispatch({
@@ -276,7 +273,7 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
   let worlds: World[] = [];
 
   // unroll all the historical worlds
-  let w = world;
+  let w: World | null = world;
   while (w !== null) {
     worlds.unshift(w);
     w = w.previous;
@@ -289,7 +286,7 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
       if (possible_world !== null) {
         possible_labels = possible_world.interpretations[w.index];
         if (possible_labels !== undefined) {
-          if (possible_labels.length === 0 || set_eq(labels, possible_labels)) {
+          if (deep_equal(labels, possible_labels)) {
             possible_labels = undefined;
           }
         }

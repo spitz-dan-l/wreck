@@ -139,7 +139,7 @@ export function narrative_fsa_builder<W extends GraphWorld<Prop, NodeID>, Prop e
                 if (cb === undefined || node_of(world) !== spec.id) {
                     parser.eliminate();
                 }
-                return cb(world, parser);
+                return cb!(world, parser);
             },
             post: (cb) => (world_2, world_1) => {
                 if (node_of(world_2) === spec.id || node_of(world_1) === spec.id) {

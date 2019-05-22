@@ -117,7 +117,7 @@ export class FuckSet<T> extends FuckDict<T, undefined> {
     }
 }
 
-export {Updater, update} from './update';
+export {Updater, update, update_any} from './update';
 
 export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
     if (ar1.length !== ar2.length) {
@@ -270,6 +270,10 @@ export function set_eq(arr1: any[], arr2: any[]) {
         return false;
     }
     return arr1.every(x => arr2.includes(x)) && arr2.every(x => arr1.includes(x));
+}
+
+export function merge_objects<T extends {}>(arr: T[]): T {
+    return arr.reduce((acc, cur) => ({...acc, ...cur}), {} as T);
 }
 
 // Helper for declaring values with tuple types.

@@ -243,7 +243,7 @@ ObserverMoments(
     <br/><br/>
     <i>Empty?</i>`,
     transitions: {
-        'try_to ~*remember': null,
+        // 'try_to ~*remember': null,
         'try_to *understand': 'desk, trying to understand 1'
     }
 },
@@ -356,7 +356,10 @@ ObserverMoments(
 ObserverMoments(
 {
     id: 'alcove, beginning interpretation',
-    pre: world => update(world, { interpretation_receptors: appender_uniq('interpretation-block', 'interpretation-active') }),
+    pre: world => update(world, { local_interpretations: {
+        'interpretation-block': false,
+        'interpretation-active': false
+    }}),
     enter_message: `
     <div class="face-of-it">
     A nervous energy buzzes within your mind.
@@ -462,7 +465,7 @@ type Percept = {
 function percieve(world: PW, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
-        message: message_updater(Percepts.find(p => p.id === perc).message)
+        message: message_updater(Percepts.find(p => p.id === perc)!.message)
     });
 }
 
@@ -473,7 +476,7 @@ function make_perceiver(world: PW, percs: PerceptSpec, prepend_look: boolean=tru
     return (parser: Parser) =>
         parser.split(
             Object.entries(percs).map(([cmd, pid]) => () => {
-                let perc = Percepts.find(p => p.id === pid);
+                let perc = Percepts.find(p => p.id === pid)!;
                 if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
                     parser.eliminate();
                 }
@@ -517,12 +520,12 @@ const initial_venience_world: VenienceWorld = {
     node: 'bed, sleeping 1',
     has_perceived: {},
     alcove_interp_step: 0,
-    interpretation_receptors: ['forgotten']
+    local_interpretations: { forgotten: false }
 };
 
 let Meta: Puffer<Venience> = {
     pre: world => update(world, {
-        interpretation_receptors: appender_uniq('forgotten')
+        local_interpretations: { forgotten: false }
     })
 };
 

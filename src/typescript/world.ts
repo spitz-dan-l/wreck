@@ -22,34 +22,34 @@
 
 import { infer_message_labels, Message, standard_render } from './message';
 import { Parser, Parsing, raw, RawInput } from './parser';
-import { appender_uniq, Omit, update } from './utils';
+import { appender_uniq, Omit, update, deep_equal } from './utils';
 
 export type InterpretationLabel = string;
 type AddOp = { kind: 'Add', label: InterpretationLabel };
 type RemoveOp = { kind: 'Remove', label: InterpretationLabel };
 export type InterpretationOp = AddOp | RemoveOp;
-export type Interpretations = { [k: number]: InterpretationLabel[] };
+export type LocalInterpretations = { [K in InterpretationLabel]: boolean }
+export type Interpretations = { [k: number]: LocalInterpretations };
 
 
-function apply_interpretation_op(interp: InterpretationLabel[], op: InterpretationOp): InterpretationLabel[] {
+function apply_interpretation_op(interp: LocalInterpretations, op: InterpretationOp): LocalInterpretations {
     if (op.kind === 'Add'){
-        if (interp.indexOf(op.label) === -1) {
-            return [...interp, op.label];
+        if (!interp[op.label]) {
+            return {...interp, [op.label]: true};
         }
     }
     if (op.kind === 'Remove'){
-        let idx = interp.indexOf(op.label);
-        if (idx !== -1) {
-            let new_interp = [...interp];
-            new_interp.splice(idx, 1);
-            return new_interp
+        if (interp[op.label]) {
+            let new_interp = {...interp};
+            delete new_interp[op.label];
+            return new_interp;
         }
     }
 
     return interp;
 }
 
-function apply_interpretation_ops(interp: InterpretationLabel[], ops: InterpretationOp[]): InterpretationLabel[] {
+function apply_interpretation_ops(interp: LocalInterpretations, ops: InterpretationOp[]): LocalInterpretations {
     return ops.reduce(apply_interpretation_op, interp);
 }
 
@@ -59,12 +59,13 @@ export interface World {
     readonly previous: this | null,
     readonly index: number,
     readonly interpretations: Interpretations,
-    readonly interpretation_receptors: InterpretationLabel[]
+    readonly local_interpretations: LocalInterpretations
+    // readonly interpretation_receptors: InterpretationLabel[]
 }
 
 // TODO: need a more concise and cute term than "object level"
 export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations';
-export type ObjectLevelKeys = 'message' | 'interpretation_receptors';
+export type ObjectLevelKeys = 'message' | 'local_interpretations';
 
 
 export type ObjectLevel<W extends World> = Omit<W, MetaLevelKeys>;
@@ -74,8 +75,8 @@ export type WorldUpdater<W extends World> = (world: ObjectLevel<W>) => ObjectLev
 export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Parser) => ObjectLevel<W>;
 
 export type Narrator<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => ObjectLevel<W>;
-export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[] | undefined;
-export type Renderer = (world: World, labels?: InterpretationLabel[], possible_labels?: InterpretationLabel[]) => string;
+export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[];
+export type Renderer = (world: World, labels?: LocalInterpretations, possible_labels?: LocalInterpretations) => string;
 
 export const INITIAL_MESSAGE: Message = {
     kind: 'Message',
@@ -91,7 +92,7 @@ const INITIAL_WORLD: World = {
     previous: null,
     index: 0,
     interpretations: {},
-    interpretation_receptors: []
+    local_interpretations: {}
 };
 
 // Helper to return INITIAL_WORLD constant as any kind of W type.
@@ -145,7 +146,7 @@ export function make_world_spec<W extends World>(spec: {
 export type CommandResult<W extends World> = {
     kind: 'CommandResult',
     parsing: Parsing,
-    world: W | null,
+    world: W,
     possible_world: W | null
 };
 
@@ -156,7 +157,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
     next_state = update(next_state, {
         previous: _ => world,
         index: _ => _ + 1,
-        interpretation_receptors: [],
+        local_interpretations: {},
         message: INITIAL_MESSAGE
     });
 
@@ -189,10 +190,13 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
         next_state = <World>spec.post(next_state, world);
     }
 
-    let inferred_interpretation_receptors: InterpretationLabel[] = infer_message_labels(next_state.message);
+    let inferred_interpretation_receptors: LocalInterpretations = infer_message_labels(next_state.message);
 
     next_state = update(next_state, {
-        interpretation_receptors: appender_uniq(...inferred_interpretation_receptors)
+        local_interpretations: _ => ({
+            ...inferred_interpretation_receptors,
+            ..._
+        })
     });
 
     // Next apply history interp            
@@ -200,19 +204,22 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
         let hist_state: World | null = next_state;
         while (hist_state !== null) {
             let ops = spec.interpret_history(next_state, hist_state);
-            if (ops !== undefined) {
-                let old_interp = next_state.interpretations[hist_state.index] || [];
-                let old_receptors = hist_state.interpretation_receptors;
-                ops = ops.filter(op => old_receptors.includes(op.label));
-                let new_interp: InterpretationLabel[] | undefined = apply_interpretation_ops(old_interp, ops);
-                if (old_interp !== new_interp) {
-                    if (new_interp.length === 0) {
-                        new_interp = undefined;
-                    }
-                    next_state = update(next_state, {
-                        interpretations: { [hist_state.index]: new_interp }
-                    });
-                }
+            let old_interp = next_state.interpretations[hist_state.index] || [];
+            let old_receptors = hist_state.local_interpretations;
+            // Important: filter out any ops applying to labels which have never been set in
+            // the local interpretations
+            // This effectively means the world must "subscribe" to future interpretations
+            // by setting them to false or true locally.
+            // Note: This irks me philosophically. In real life, we can creatively apply
+            // new interpretations to past experiences.
+            // But in this game, all possible interpretations
+            // of the world are known at the outset.
+            ops = ops.filter(op => old_receptors[op.label] === undefined);
+            let new_interp: LocalInterpretations = apply_interpretation_ops(old_interp, ops);
+            if (!deep_equal(old_interp, new_interp)) {
+                next_state = update(next_state, {
+                    interpretations: { [hist_state.index]: () => new_interp }
+                });
             }
             hist_state = hist_state.previous;
         }

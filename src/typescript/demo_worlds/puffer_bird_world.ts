@@ -9,7 +9,7 @@ interface Location {
 
 let LocationPuffer: Puffer<Location> = {
     pre: world => update(world, {
-        interpretation_receptors: appender_uniq('happy')
+        local_interpretations: { happy: false }
     }),
 
     handle_command: (world, parser) => {
@@ -128,7 +128,7 @@ type Qualities = typeof qualities;
 
 interface Roles {
     is_in_heaven: boolean
-    role: Qualities[number];
+    role: Qualities[number] | undefined;
 }
 
 let RolePuffer: Puffer<Roles> = {

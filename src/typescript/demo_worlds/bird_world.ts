@@ -17,7 +17,7 @@ let initial_world: BirdWorld = {
         description: [],
         prompt: []
     },
-    interpretations: { 0: ['happy'] }
+    interpretations: { 0: {happy: true} }
 };
 
 export function new_bird_world() {

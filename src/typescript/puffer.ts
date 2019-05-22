@@ -19,7 +19,7 @@ export type PufferAndWorld<W> = W & ObjectLevelWorld;
 export type PufferCommandHandler<W> = (world: PufferAndWorld<W>, parser: Parser) => PufferAndWorld<W>;
 export type PufferUpdater<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
 export type PufferNarrator<W> = (new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) => PufferAndWorld<W>;
-export type PufferHistoryInterpreter<W> = (new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) => InterpretationOp[] | undefined;
+export type PufferHistoryInterpreter<W> = (new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) => InterpretationOp[];
 
 
 type Stages<X> = { [stage: number]: X };
@@ -122,14 +122,17 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
     }
 
     // This winds up "sort of" typechecking. It thinks that p[prop] is always PufferNarrator
-    function iterate<P extends 'pre' | 'handle_command' | 'post' | 'interpret_history'>(prop: P, f: (cb: PufferSpec<W>[P]) => void) {
+    function iterate<P extends 'pre' | 'handle_command' | 'post' | 'interpret_history'>(prop: P, f: (cb: Required<PufferSpec<W>>[P]) => void) {
         let stages = get_stages(prop);
         for (let stage of stages) {
             for (let p of puffers) {
-                let handler = p[prop];
+                let handler = p[prop]!;
+                if (handler === undefined) {
+                    continue;
+                }
                 if (is_handler(handler) && stage === 0) {
-                    f(handler);
-                } else if (handler !== undefined && handler[stage] !== undefined) {
+                    f(handler!);
+                } else if (handler[stage] !== undefined) {
                     f(handler[stage]);
                 }
             }
@@ -163,7 +166,7 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
     function interpret_history(new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) {
         let ops: InterpretationOp[] = [];
 
-        iterate('interpret_history', cb => { ops.push(...cb(new_world, old_world)); });
+        iterate('interpret_history', cb => { ops.push(...<any>cb(new_world, old_world)); });
 
         return ops;
     }

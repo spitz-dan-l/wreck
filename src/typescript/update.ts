@@ -34,15 +34,29 @@ Issues:
 I strongly encourage you to stake your professional reputation on the behavior of this code.
 */
 
+// This version is more correct but triggers TS' 50-type-instantiation limit.
+// Currently using the alternative to avoid the limit and the issue caused (sometimes inferred updater function args are wrong)
+// seems minor.
+
+// export type Updater<T> =
+//     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
+//     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
+//     [T] extends [NotFunction<T>] ?
+//             (T extends Primitive | any[] | Set<any> ? T :
+//                 T extends object ? ObjectUpdater<T> :
+//                     never) |
+//             ((x: T) => T) :
+//         (x: T) => T;
+
 export type Updater<T> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
-    [T] extends [NotFunction<T>] ?
-            (T extends Primitive | any[] | Set<any> ? T :
-                T extends object ? ObjectUpdater<T> :
-                    never) |
-            ((x: T) => T) :
-        (x: T) => T;
+    [T] extends [(...args: any) => any] ? (x: T) => T :
+        ((T extends Primitive | any[] | Set<any> ? T :
+            T extends object ? ObjectUpdater<T> :
+                never) |
+         ((x: T) => T));
+
 
 type NotFunction<T> = T extends (...args: any) => any ? never : T;
 
@@ -90,4 +104,8 @@ export function update<S, U extends S=S>(source: S, updater: Updater<U>): S {
     }
 
     throw Error('Should never get here');
+}
+
+export function update_any<S>(source: S, updater: any): S {
+    return update(source, updater);
 }

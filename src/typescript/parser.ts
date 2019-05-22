@@ -166,7 +166,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
     let submission = false;
     let row: TokenMatch[];
 
-    if ((row = parse_results.find(row => array_last(row).type.kind === 'Match')) !== undefined) {
+    if ((row = parse_results.find(row => array_last(row).type.kind === 'Match')!) !== undefined) {
         match_status = 'Match';
         // TODO: throw a runtime exc here if we have a Match at the end but it's not SUBMIT_TOKEN ?
         // Would imply a commmand thread that doesn't end in submit.
@@ -175,7 +175,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
         if (!submission) {
             throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
         }
-    } else if ((row = parse_results.find(row => is_partial(array_last(row)))) !== undefined) {
+    } else if ((row = parse_results.find(row => is_partial(array_last(row)))!) !== undefined) {
         // chop off the partial bits that haven't been started yet
         row = row.slice(0, input_stream.length);
         match_status = 'PartialMatch';
@@ -185,14 +185,14 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
             token: tok,
             type: {
                 kind: 'ErrorMatch',
-                token: null
+                token: tok
             }
         }));
         match_status = 'ErrorMatch';
     }
 
     let typeahead_grid = compute_typeahead(parse_results, input_stream);
-    let submittable = typeahead_grid.some(row => array_last(row.option).token === SUBMIT_TOKEN)
+    let submittable = typeahead_grid.some(row => array_last(row.option)!.token === SUBMIT_TOKEN)
 
     return {
         kind: 'ParsingView',
@@ -218,9 +218,9 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
         && pr.slice(input_stream.length - 1).some(is_partial)
     );
 
-    let unique_options: PartialMatch[][] = [];
+    let unique_options: (PartialMatch | null)[][] = [];
 
-    function options_equal(x: PartialMatch[], y: PartialMatch[]): boolean {
+    function options_equal(x: (PartialMatch | null)[], y: (PartialMatch | null)[]): boolean {
         return x.length === y.length && x.every((m, i) => deep_equal(m, y[i]))
     }
 
@@ -237,7 +237,7 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
 
     return unique_options.map(option => ({
         kind: 'TypeaheadOption',
-        type: array_last(option).type,
+        type: array_last(option)!.type,
         option
     }));
 
