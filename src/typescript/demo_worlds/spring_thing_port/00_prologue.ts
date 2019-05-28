@@ -361,20 +361,20 @@ ObserverMoments(
         'interpretation-active': false
     }}),
     enter_message: `
-    <div class="face-of-it">
+    <div class="face-of-it-1">
     A nervous energy buzzes within your mind.
-    <br/><br/>
     </div>
+    <br/>
     {{#interp-alcove-1-enabled}}
     <div class="interp-alcove-1">
     Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to a sense of meaning within the world. You have a <i>compass</i>.
     <br/><br/>
     </div>
     {{/interp-alcove-1-enabled}}
-    <div class="face-of-it">
+    <div class="face-of-it-2">
     Your notes are gone.
-    <br/><br/>
     </div>
+    <br/>
     {{#interp-alcove-2-enabled}}
     <div class="interp-alcove-2">
     Your effort to organize and understand everything Katya taught you over the years. If your notes are truly gone, it is a great setback.
@@ -383,7 +383,7 @@ ObserverMoments(
     <br/><br/>
     </div>
     {{/interp-alcove-2-enabled}}
-    <div class="face-of-it">
+    <div class="face-of-it-3">
     You are alone in a grassy alcove in the forest.
     </div>
     {{#interp-alcove-3-enabled}}
@@ -517,7 +517,7 @@ interface VenienceWorld extends World, Venience {}
 
 const initial_venience_world: VenienceWorld = {
     ...get_initial_world<VenienceWorld>(),
-    node: 'bed, sleeping 1',
+    node: 'grass, asking 2', //'bed, sleeping 1',
     has_perceived: {},
     alcove_interp_step: 0,
     local_interpretations: { forgotten: false }

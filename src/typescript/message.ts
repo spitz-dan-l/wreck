@@ -1,3 +1,4 @@
+import * as React from 'react';
 import * as Mustache from 'mustache';
 import { InterpretationLabel, LocalInterpretations, World, Renderer } from './world';
 import { appender, update, Updater, merge_objects } from './utils';
@@ -66,15 +67,13 @@ export let message_updater = (spec: MessageUpdateSpec) =>
         return update(orig_message, updater);
     }
 
-export function filter_for_render(world: World) {
-    let result = {...world};
+/*
+    TODO: standard_render is actually a react component, not a function returning string
 
-    for (let k of ['parsing', 'previous', 'index', 'interpretations', 'message', 'interpretation_receptors']) {
-        delete result[k];
-    }
-
-    return result;
-}
+    - This is where we do fancy book guy stuff.
+        - Detect diffs from previous renderings using state.
+        - Use effects to animate the differences ala book guy.
+*/
 
 export let standard_render: Renderer;
 standard_render = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
@@ -82,7 +81,7 @@ standard_render = function(world: World, labels: LocalInterpretations = {}, poss
         .map(f => world.message[f])
         .filter(x => x.length > 0)
         .map(x => x.map(f => Mustache.render(f,
-            Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val}), world.local_interpretations)
+            Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val}), <LocalInterpretations>{}) //world.local_interpretations)
         )).join(' '))
         .join('<br/><br/>');
 }

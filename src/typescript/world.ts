@@ -204,8 +204,8 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
         let hist_state: World | null = next_state;
         while (hist_state !== null) {
             let ops = spec.interpret_history(next_state, hist_state);
-            let old_interp = next_state.interpretations[hist_state.index] || [];
             let old_receptors = hist_state.local_interpretations;
+            let old_interp = next_state.interpretations[hist_state.index] || old_receptors;//{};
             // Important: filter out any ops applying to labels which have never been set in
             // the local interpretations
             // This effectively means the world must "subscribe" to future interpretations
@@ -214,7 +214,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
             // new interpretations to past experiences.
             // But in this game, all possible interpretations
             // of the world are known at the outset.
-            ops = ops.filter(op => old_receptors[op.label] === undefined);
+            ops = ops.filter(op => old_receptors[op.label] !== undefined);
             let new_interp: LocalInterpretations = apply_interpretation_ops(old_interp, ops);
             if (!deep_equal(old_interp, new_interp)) {
                 next_state = update(next_state, {
