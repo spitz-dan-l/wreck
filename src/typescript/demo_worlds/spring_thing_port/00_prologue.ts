@@ -356,10 +356,6 @@ ObserverMoments(
 ObserverMoments(
 {
     id: 'alcove, beginning interpretation',
-    pre: world => update(world, { local_interpretations: {
-        'interpretation-block': false,
-        'interpretation-active': false
-    }}),
     enter_message: `
     <div class="face-of-it-1">
     A nervous energy buzzes within your mind.
@@ -433,7 +429,15 @@ ObserverMoments(
             end_consumer]);
     },
     // dest_oms: ['alcove, ending interpretation'],
-
+    post: (world_2, world_1) => {
+        if (world_2.node === 'alcove, beginning interpretation') {
+            return update(world_2, { local_interpretations: {
+                'interpretation-block': _ => _ || false,
+                'interpretation-active': _ => _ || false
+            }})
+        }
+        return world_2;
+    },
     interpret_history: (world_2, world_1) => {
         let hist_om = world_1.node;
         let result: InterpretationOp[] = [];
@@ -452,6 +456,33 @@ ObserverMoments(
         return result;
     }
 },
+{
+    id: 'alcove, ending interpretation',
+    enter_message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
+    <br /><br />
+    You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
+    <br /><br />
+    But your sense of purpose compels you. To go. To seek. To try to understand.`,
+    transitions: {
+        'enter the forest': 'alcove, entering the forest',
+    },
+    interpretations: {
+        'alcove, beginning interpretation': [{kind: 'Remove', label:'interpretation-active'}]
+    }
+},
+{
+    id: 'alcove, entering the forest',
+    enter_message: `What lies within the forest, and beyond? What will it be like, out there?`,
+    transitions: {'continue': 'title'}
+},
+{
+    id: 'title',
+    enter_message: `VENIENCE WORLD
+    <br />
+    <br />
+    An Interactive Fiction by Daniel Spitz`,
+    transitions: {'continue': 'alone in the woods'}
+}
 )
 
 type PerceptID = string;

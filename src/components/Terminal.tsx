@@ -401,37 +401,11 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
   // }
 );
 
-
-  // (prev, next) => {
-  //   function set_eq(arr1, arr2) {
-  //     if (arr1 === undefined && arr2 === undefined) {
-  //       return true;
-  //     }
-  //     if (typeof arr1 !== typeof arr2) {
-  //       return false;
-  //     }
-  //     return arr1.every(x => arr2.includes(x)) && arr2.every(x => arr1.includes(x));
-  //   }
-
-  //   // let result = prev.world === next.world &&
-  //   //        set_eq(prev.interpretation_labels, next.interpretation_labels) &&
-  //   //        set_eq(prev.possible_labels, next.possible_labels) &&
-  //   //        prev.rendering === next.rendering;
-  //   let results = [
-  //     prev.world === next.world,
-  //     set_eq(prev.interpretation_labels, next.interpretation_labels),
-  //     set_eq(prev.possible_labels, next.possible_labels),
-  //     prev.rendering === next.rendering
-  //   ];
-  //   let result = results.every(_ => _);
-  //   // if (!result) {
-  //   //   debugger;
-  //   // }
-  //   return result;
-  // }
-// );
-
 function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean, adding_classes: string[], removing_classes: string[]) {
+  if (!creating && adding_classes.length === 0 && removing_classes.length === 0) {
+    return;
+  }
+
   function walkElt(elt, f: (e: HTMLElement) => void){
     let children = elt.children;
     for (let i = 0; i < children.length; i++) {
@@ -472,7 +446,7 @@ function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean,
   // rather than the beginning of the next one.
   // I have no idea why this works/is necessary, but it does/is.
   if (comp_elt.dataset.isCollapsing == 1 as any) {
-    walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight || null);
+    walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
   }
     
   requestAnimationFrame(() => {
@@ -480,12 +454,13 @@ function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean,
     // then apply the maxHeight update now.
     // Websites technology keyboard mouse.
     if (comp_elt.dataset.isCollapsing != 1 as any) {
-      walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight || null);
+      walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
     }
     
     comp_elt.classList.add('animation-active');
 
     setTimeout(() => {
+      // debugger;
       comp_elt.classList.remove(
         'animation-new',
         'animation-start',
