@@ -12,14 +12,11 @@ Priority
     - you can only "try to" things that you're not actually able to do yet?
     - doing so prints exposition about why it doesn't work yet
 
-- consider adding strict null checks before going any further
+- then "judge" or "survey", or other poetic/contextual commands are *only* available during an interpretation...
 
-- completely unify interpretation labels and boolean flags on the world object..?
-    - currently they are separate,
-        - only labels become css classes
-        - labels and boolean flags affect message rendering
-        - labels represented as list of strings, not key -> boolean
-        - 
+- STILL MISSING: need a decision about the poetic/contextual commands that are part of a local
+    -bit of exposition but not necessarily an "interpretation"
+    - e.g. "sequence of numbers" is your favorite
     
 
 - UI back up to parity
@@ -35,7 +32,7 @@ Priority
       - Autoocomplete options display with correct indentation
       - Select typeahead option with keybooard, mouse
     DONE 6. Support "locked" typeahead options
-    7. animations
+    DONE 7. animations
         - new command submission
         - new interps
         - new possible interps
