@@ -1,6 +1,6 @@
 import { Parser, ParserThread } from './parser';
 import { knit_puffers, map_puffer, Puffer, PufferAndWorld, PufferMapper } from './puffer';
-import { appender, Omit, update, Updater } from './utils';
+import { appender, update, Updater } from './utils';
 import { message_updater, MessageUpdateSpec } from './message';
 import { InterpretationOp } from './world';
 

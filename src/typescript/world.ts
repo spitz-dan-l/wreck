@@ -22,7 +22,7 @@
 
 import { infer_message_labels, Message, standard_render } from './message';
 import { Parser, Parsing, raw, RawInput } from './parser';
-import { appender_uniq, Omit, update, deep_equal } from './utils';
+import { appender_uniq, update, deep_equal } from './utils';
 
 export type InterpretationLabel = string;
 type AddOp = { kind: 'Add', label: InterpretationLabel };
@@ -60,7 +60,6 @@ export interface World {
     readonly index: number,
     readonly interpretations: Interpretations,
     readonly local_interpretations: LocalInterpretations
-    // readonly interpretation_receptors: InterpretationLabel[]
 }
 
 // TODO: need a more concise and cute term than "object level"
@@ -97,7 +96,7 @@ const INITIAL_WORLD: World = {
 
 // Helper to return INITIAL_WORLD constant as any kind of W type.
 export function get_initial_world<W extends World>(): Pick<W, keyof World> {
-    return INITIAL_WORLD;
+    return <W>INITIAL_WORLD;
 }
 
 export type WorldSpec<W extends World> = {

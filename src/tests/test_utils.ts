@@ -37,7 +37,7 @@ describe('update', () => {
 
         function f(t2: T2, x: boolean) {
             if (x) {
-                let result = update<T2>(t2, {
+                let result = update(t2, {
                     a: 3,
                     b: {
                         a: 3,

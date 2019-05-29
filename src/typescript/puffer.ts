@@ -131,7 +131,7 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
                     continue;
                 }
                 if (is_handler(handler) && stage === 0) {
-                    f(handler!);
+                    f(<any>handler!);
                 } else if (handler[stage] !== undefined) {
                     f(handler[stage]);
                 }

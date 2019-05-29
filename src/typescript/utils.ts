@@ -1,140 +1,140 @@
-export class FuckDict<K, V> {
-    readonly keys_map: Map<string, K>;
-    readonly values_map: Map<string, V>;
+// export class FuckDict<K, V> {
+//     readonly keys_map: Map<string, K>;
+//     readonly values_map: Map<string, V>;
 
-    size: number = 0
+//     size: number = 0
 
-    constructor(a?: [K, V][]) {
-        this.keys_map = new Map<string, K>();
-        this.values_map = new Map<string, V>();
+//     constructor(a?: [K, V][]) {
+//         this.keys_map = new Map<string, K>();
+//         this.values_map = new Map<string, V>();
 
-        if (a !== undefined) {
-            for (let [k, v] of a) {
-                this.set(k, v);
-            }
-        }
-    }
+//         if (a !== undefined) {
+//             for (let [k, v] of a) {
+//                 this.set(k, v);
+//             }
+//         }
+//     }
 
-    set(k: K, v: V) {
-        let s = k.toString();
-        this.keys_map.set(s, k);
-        this.values_map.set(s, v);
-        this.size = this.keys_map.size;
-        return this;
-    }
+//     set(k: K, v: V) {
+//         let s = k.toString();
+//         this.keys_map.set(s, k);
+//         this.values_map.set(s, v);
+//         this.size = this.keys_map.size;
+//         return this;
+//     }
 
-    get(k: K, default_value?: V): V | undefined {
-        if (!this.has_key(k) && default_value !== undefined) {
-            this.set(k, default_value);
-            return default_value;
-        }
-        let s = k.toString();
-        return this.values_map.get(s);
-    }
+//     get(k: K, default_value?: V): V | undefined {
+//         if (!this.has_key(k) && default_value !== undefined) {
+//             this.set(k, default_value);
+//             return default_value;
+//         }
+//         let s = k.toString();
+//         return this.values_map.get(s);
+//     }
 
-    update(a: [K, V][]): FuckDict<K, V> {
-        let updated = this.copy();
-        for (let [k, v] of a) {
-            updated.set(k, v);
-        }
-        return updated;
-    }
+//     update(a: [K, V][]): FuckDict<K, V> {
+//         let updated = this.copy();
+//         for (let [k, v] of a) {
+//             updated.set(k, v);
+//         }
+//         return updated;
+//     }
 
-    has_key(k: K) {
-        return this.keys_map.has(k.toString());
-    }
+//     has_key(k: K) {
+//         return this.keys_map.has(k.toString());
+//     }
 
-    keys_array() {
-        return Array.from(this.keys_map.values());
-    }
+//     keys_array() {
+//         return Array.from(this.keys_map.values());
+//     }
 
-    values_array() {
-        return Array.from(this.values_map.values());
-    }
+//     values_array() {
+//         return Array.from(this.values_map.values());
+//     }
 
-    entries_array(): [K, V][] {
-        let result: [K, V][] = [];
-        for (let [s, k] of this.keys_map.entries()) {
-            result.push([k, <V>this.values_map.get(s)]);
-        }
-        return result;
-    }
+//     entries_array(): [K, V][] {
+//         let result: [K, V][] = [];
+//         for (let [s, k] of this.keys_map.entries()) {
+//             result.push([k, <V>this.values_map.get(s)]);
+//         }
+//         return result;
+//     }
 
-    keys_equal(other: FuckDict<K, V>) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)){
-                return false;
-            }
-        }
+//     keys_equal(other: FuckDict<K, V>) {
+//         for (let elem of this.keys_array()) {
+//             if (!other.has_key(elem)){
+//                 return false;
+//             }
+//         }
 
-        for (let elem of other.keys_array()) {
-            if (!this.has_key(elem)){
-                return false;
-            }
-        }
+//         for (let elem of other.keys_array()) {
+//             if (!this.has_key(elem)){
+//                 return false;
+//             }
+//         }
 
-        return true;
-    }
+//         return true;
+//     }
 
-    keys_intersect(other: FuckDict<K, V>) {
-        let result: K[] = [];
-        for (let k of this.keys_array()) {
-            if (other.has_key(k)) {
-                result.push(k)
-            }
-        }
-        return result;
-    }
+//     keys_intersect(other: FuckDict<K, V>) {
+//         let result: K[] = [];
+//         for (let k of this.keys_array()) {
+//             if (other.has_key(k)) {
+//                 result.push(k)
+//             }
+//         }
+//         return result;
+//     }
 
-    keys_subset(other: FuckDict<K, V>) {
-        for (let elem of this.keys_array()) {
-            if (!other.has_key(elem)){
-                return false;
-            }
-        }
-        return true;
-    }
+//     keys_subset(other: FuckDict<K, V>) {
+//         for (let elem of this.keys_array()) {
+//             if (!other.has_key(elem)){
+//                 return false;
+//             }
+//         }
+//         return true;
+//     }
 
-    toString() {
-        let entry_strings: string[] = this.entries_array().map((x) => x.toString()).sort();
+//     toString() {
+//         let entry_strings: string[] = this.entries_array().map((x) => x.toString()).sort();
 
-        return `FuckDict<${entry_strings.join(',')}>`;
-    }
+//         return `FuckDict<${entry_strings.join(',')}>`;
+//     }
 
-    copy() {
-        return new FuckDict(this.entries_array());
-    }
-}
+//     copy() {
+//         return new FuckDict(this.entries_array());
+//     }
+// }
 
-// export type FuckSet<T> = FuckDict<T, undefined>;
-export class FuckSet<T> extends FuckDict<T, undefined> {
-    constructor(a?: T[]) {
-        if (a !== undefined) {
-            super(a.map(t => <[T, undefined]>[t, undefined]));
-        } else {
-            super();
-        }
-    }
-}
+// // export type FuckSet<T> = FuckDict<T, undefined>;
+// export class FuckSet<T> extends FuckDict<T, undefined> {
+//     constructor(a?: T[]) {
+//         if (a !== undefined) {
+//             super(a.map(t => <[T, undefined]>[t, undefined]));
+//         } else {
+//             super();
+//         }
+//     }
+// }
 
 export {Updater, update, update_any} from './update';
 
-export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
-    if (ar1.length !== ar2.length) {
-        return false;
-    }
+// export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
+//     if (ar1.length !== ar2.length) {
+//         return false;
+//     }
 
-    for (let i = 0; i < ar1.length; i++) {
-        if (ar1[i].toString() !== ar2[i].toString()) {
-            return false;
-        }
-    }
-    return true;
-}
+//     for (let i = 0; i < ar1.length; i++) {
+//         if (ar1[i].toString() !== ar2[i].toString()) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 
-export function array_fuck_contains<T>(ar: T[], elt: T){
-    return ar.some((x) => x.toString() === elt.toString())
-}
+// export function array_fuck_contains<T>(ar: T[], elt: T){
+//     return ar.some((x) => x.toString() === elt.toString())
+// }
 
 export type Point2 = [number, number];
 
@@ -291,9 +291,9 @@ export function tuple<T extends any[] & {0: any}>(...t: T): T {
 // export type Omit<T, K extends keyof any, X extends keyof T = Exclude<keyof T, K>> = {
 //   [P in X]: T[X]
 // };
-export type Omit<T, K extends keyof any> = {
-    [P in Exclude<keyof T, K>]: T[P]
-};
+// export type Omit<T, K extends keyof any> = {
+//     [P in Exclude<keyof T, K>]: T[P]
+// };
 
 // Currying //
 export type FirstArg<F> = F extends (arg0: infer P, ...args: any) => any ? P : never;
