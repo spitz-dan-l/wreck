@@ -1,5 +1,5 @@
 import * as React from 'react';
-// var React = require('react');
+
 import {Token, TokenMatch, is_match, is_partial, is_error, Parsing} from '../typescript/parser';
 
 export const Carat = () => <span>>&nbsp;</span>;

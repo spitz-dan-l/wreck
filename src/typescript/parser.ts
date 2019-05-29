@@ -448,9 +448,6 @@ export class Parser {
         return call_or_return(this, result);
     }
 
-    /*
-        TODO: support a callback for split() which takes both the result value, and the parser.
-    */
     split<T>(subthreads: ParserThread<T>[]): T;
     split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => R): R;
     split(subthreads: ParserThread<any>[], callback?: any): any {
@@ -481,7 +478,6 @@ export class Parser {
         let frontier: Path[] = [[]];
         let results: (T | NoMatch)[] = [];
         let parse_results: TokenMatch[][] = [];
-        // let processors: ((t: T) => T)[] = [];
 
         while (frontier.length > 0) {
             let path = <Path>frontier.pop();
@@ -499,25 +495,10 @@ export class Parser {
             }
 
             let p = new Parser(tokens, splits_to_take);
-            // function add_processor(processor: (result: T) => T): void {
-            //     processors.push(processor);
-            // }
 
-            // function eliminate(process?: (result: T) => T): never {
-            //     try {
-            //         return p.eliminate();
-            //     }
-            //     catch (e) {
-            //         if (e instanceof NoMatch) {
-            //             throw new NoMatchProcess(process);
-            //         } else {
-            //             throw e;
-            //         }
-            //     }
-            // }
             let result: T | NoMatch;
             try {
-                result = t(p); //, add_processor);
+                result = t(p);
             } catch (e) {
                 if (e instanceof NoMatch) {
                     result = e;
@@ -526,8 +507,6 @@ export class Parser {
                     for (let i = 0; i < e.n_splits; i++) {
                         new_splits.push(i);
                     } 
-                    // TODO: decide whether to unshift() or push() here. Affects typeahead display order.
-                    // frontier.unshift([...splits_to_take, new_splits[Symbol.iterator]()]);
                     frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
                     continue;
                 } else {
@@ -559,13 +538,12 @@ export class Parser {
         } else if (valid_results.length > 1) {
             throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
         } else {
-            // let processors: NoMatchProcess<T>[] = results.filter(r => r instanceof NoMatchProcess);
-            let result = valid_results[0] //processors.reduce((r, p) => p(r), valid_results[0]);
+            let result = valid_results[0];
             return {
                 kind: 'Parsed',
                 result: result,
                 parsing
-            }
+            };
             
         }
     }
@@ -581,8 +559,6 @@ export function raw(text: string, submit: boolean = true): RawInput {
     return { kind: 'RawInput', text, submit };
 }
 
-// export type ProcessHook<T> = ((process?: ((result: T) => T)) => void);
-
-export type ParserThread<T> = (p: Parser) => T; //, process_hook?: ProcessHook<T>) => T;
+export type ParserThread<T> = (p: Parser) => T;
 
 

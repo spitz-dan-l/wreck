@@ -2,12 +2,23 @@ TODOs
 
 Priority
 
-- new, right column
-    - undo button
-    - "collapse" button for some history elts
-- fix diffing logic for possible history
-- ~ means darkened, not blocked (and collapsible)
+Parser colors
+    - ~ means darkened, not blocked (and collapsible)
+    - Available, Used, Locked are the only token types (not just typeahead types)
+        - Locked continues to behave as-is in the parser
+        - Tokens have optional, arbitrary "labels"
+            - takes the place of Keyword, Option, Filler
+        - Styles use CSS classes rather than hard-coded styles
+        - Typeahead is colorful, indicating the type of command
+        - Color themes generally apply to whole commands, not just tokens
+
+
+
+
 - "consider" is a generic command on par with "look"
+
+- Refactor Terminal.tsx to be, uh, better
+
 - "try to" as hinting command?
     - you can only "try to" things that you're not actually able to do yet?
     - doing so prints exposition about why it doesn't work yet

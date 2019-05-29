@@ -36,3 +36,12 @@ ul.typeahead {
 .typeahead li {
       margin-top: 1em;
 }
+
+.parsed-text {
+    display: inline-block;
+}
+
+.parsed-text div,
+.parsed-text span {
+    display: inline-block;
+}

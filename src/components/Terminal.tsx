@@ -21,7 +21,6 @@ type AppAction =
   { kind: 'Submit' } |
   { kind: 'Undo' };
 
-
 // "reducer" function which returns updated state according to the
 // "kind" of the action passed to it
 // TODO look up whether there are methods for factoring reducers better
@@ -50,6 +49,16 @@ function app_reducer(state: AppState, action: AppAction): AppState {
           typeahead_index: -1
         });
       }
+    }
+    case 'Undo': {
+      let prev_command_result = state.updater(
+        state.command_result.world.previous!,
+        update(state.command_result.world.parsing!.raw, { submit: false })
+      );
+      return update(state, {
+        command_result: () => prev_command_result,
+        typeahead_index: -1
+      });
     }
   }
   throw new Error('should no get here');
@@ -167,8 +176,27 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
       <History world={current_world} possible_world={possible_world} renderer={initial_state.renderer} />
       <Prompt parsing={current_parsing} />
       <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} />
+      <UndoButton world={current_world} />
     </div>
   </AppDispatch.Provider>
+}
+
+type UndoProps = {
+  world: World
+};
+export const UndoButton: React.FunctionComponent<UndoProps> = ({world}) => {
+  const dispatch = React.useContext(AppDispatch);
+  return (
+    <div className="undo-button"
+         onClick={() => dispatch({kind: 'Undo'})}
+         style={{
+            float: 'right',
+            cursor: 'pointer',
+            display: world.previous === null ? 'none' : 'inherit'
+          }}
+    >
+      Undo
+    </div>);
 }
 
 export const Prompt: React.FunctionComponent<{parsing: Parsing}> = (props) => {
@@ -233,11 +261,8 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
     if (typeof s === 'string') {
       return s;
     }
+    // If we're here, s is SUBMIT_TOKEN.
     return String.fromCharCode(8629); // curving down arrow indicator
-  }
-
-  function handleKeys(event: React.KeyboardEvent) {
-
   }
 
   return <ul className="typeahead">
@@ -246,7 +271,8 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
         key={i} 
         onMouseOver={() => handleMouseOver(i)}
         style={{
-          opacity: option.type.kind === 'Available' ? 1.0 : 0.4
+          opacity: option.type.kind === 'Available' ? 1.0 : 0.4,
+          cursor: 'pointer'
         }}
         onClick={() => handleClick(i)}
       >
@@ -265,6 +291,7 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
         }) }
       </li>
     ))}
+    <li className='footer' />
   </ul>
 }
 
@@ -317,10 +344,6 @@ type HistoryEltProps = {
 }
 const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
   ({world, labels, possible_labels, renderer}) => {
-    React.useEffect(() => {
-      console.log('rendering world '+world.index);
-    });
-
     function key_union(a: {}, b: {}) {
       return new Set([...Object.keys(a), ...Object.keys(b)]).values();
     }
@@ -343,34 +366,23 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
         adding_labels.push(l);
       }
     }
-    // for (let l of key_union(labels, previous_labels || {})) {
-    //   if (previous_labels !== undefined) {
-    //     if (labels[l] && !previous_labels[l]) {
-    //       adding_labels.push(l);
-    //     } else if (!labels[l] && previous_labels[l]) {
-    //       removing_labels.push(l);
-    //     }
-    //   } else if (labels[l]) {
-    //     adding_labels.push(l);
-    //   }
-    // }
-    
-    // if (Object.keys(labels).length > 0) {
-    //   debugger;
-    // }
-    
+
     let [creating, set_creating] = React.useState(true); 
-
-
 
     React.useLayoutEffect(
       () => {
+        console.log('animating world '+world.index);
+
         animate(ref, creating, adding_labels, removing_labels);
-        set_creating(false);
-        set_previous_labels(labels);
+        if (creating) {
+          set_creating(false);
+        }
+        if (!deep_equal(labels, previous_labels)) {
+          set_previous_labels(labels);
+        }
       },
       Object.keys(world.local_interpretations).map(l => adding_labels.includes(l) ? 1 : removing_labels.includes(l) ? -1 : 0)
-      );// [adding_labels.includes('forgotten')]);
+    );
 
     let i = {...labels};
     if (possible_labels !== undefined) {
@@ -390,15 +402,6 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
       <OutputText rendering={rendering} />
     </div>;
   },
-  // (prev, next) => {
-  //   // if (possible_labels !== undefined) {
-  //   //   if (deep_equal(labels, possible_labels)) {
-  //   //     possible_labels = undefined;
-  //   //   }
-  //   // }
-
-  //   return false
-  // }
 );
 
 function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean, adding_classes: string[], removing_classes: string[]) {

@@ -3,28 +3,19 @@
     display: block;
 }
 
-.parsed-text {
-    display: inline-block;
-}
-
-.parsed-text div,
-.parsed-text span {
-    display: inline-block;
-}
-
 .history .output-text {
     white-space: normal;
     margin-top: 1em;
     margin-bottom: 1em;
 }
 
-.history.interpretation-block {
+.history .interpretation-block {
     outline: solid 1px ivory;
     outline-offset: 0.4em;
     transition: outline-color 400ms linear, background-color 400ms linear;
 }
 
-.history.interpretation-block.interpretation-active {
+.history .interpretation-block.interpretation-active {
     outline-color: ivory;
     animation-name: interpreting;
     animation-duration: 2s;
@@ -43,44 +34,47 @@
   }
 }
 
-.history.interpretation-block.interpretation-active.would-remove-interpretation-active {
+.history .interpretation-block.interpretation-active.would-remove-interpretation-active {
     outline-color: #f9dd04;
     animation: none !important;
 }
 
-.history.animation-new.animation-start .output-text {
+.history .animation-new.animation-start .output-text {
     opacity: 0.01;
     max-height: 0px;
 }
 
-.history.animation-new.animation-start.animation-active .output-text {
+.history .animation-new.animation-start.animation-active .output-text {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;
 }
 
+.history .would-add-forgotten {
+    opacity: 0.4;
+}
 /* add pulsing */
-.history.would-add-forgotten {
+.history .would-add-forgotten {
     opacity: 0.4;
 }
 
-.history.forgotten {
+.history .forgotten {
     display: none;
 }
 
-.history.forgotten.animation-pre-compute {
+.history .forgotten.animation-pre-compute {
     display: block;
     opacity: 0;
     --is-collapsing: 1;
 }
 
 /* AX2 */
-.history.forgotten.animation-start {
+.history .adding-forgotten.animation-start {
     display: block;
     opacity: 0.4;
 }
 
-.history.forgotten.animation-start.animation-active {
+.history .adding-forgotten.animation-start.animation-active {
     opacity: 0.01;
     max-height: 0px !important;
     transition: opacity 300ms ease-in, max-height 400ms linear;
@@ -89,24 +83,24 @@
 
 /* add pulsing */
 /* Alcove */
-.history.would-add-interp-alcove-1-enabled,
-.history.would-add-interp-alcove-2-enabled,
-.history.would-add-interp-alcove-3-enabled,
+.history .would-add-interp-alcove-1-enabled .face-of-it-1,
+.history .would-add-interp-alcove-2-enabled .face-of-it-2,
+.history .would-add-interp-alcove-3-enabled .face-of-it-3,
 /* Woods */
-.history.would-add-interp-woods-1-enabled,
-.history.would-add-interp-woods-2-enabled,
-.history.would-add-interp-woods-3-enabled,
+.history .would-add-interp-woods-1-enabled,
+.history .would-add-interp-woods-2-enabled,
+.history .would-add-interp-woods-3-enabled,
 /* Tangle */
-.history.would-add-reif-tangle-1-enabled,
-.history.would-add-reif-tangle-2-enabled,
-.history.would-add-reif-tangle-3-enabled,
+.history .would-add-reif-tangle-1-enabled,
+.history .would-add-reif-tangle-2-enabled,
+.history .would-add-reif-tangle-3-enabled,
 /* Parchment Trees */
-.history.would-add-interp-parchment-trees-enabled,
+.history .would-add-interp-parchment-trees-enabled,
 /* Dream */
-.history.would-add-reif-dream-1-enabled,
-.history.would-add-reif-dream-2-enabled,
-.history.would-add-reif-dream-3-enabled,
-.history.would-add-reif-dream-4-enabled
+.history .would-add-reif-dream-1-enabled,
+.history .would-add-reif-dream-2-enabled,
+.history .would-add-reif-dream-3-enabled,
+.history .would-add-reif-dream-4-enabled
 {
     background-color: black;
     animation-name: interpreting, would-interpret !important;
@@ -153,15 +147,15 @@
 
 .history .interp,
 /* Alcove interp */
-.history.interp-alcove-1-enabled .interp-alcove-1,
-.history.interp-alcove-2-enabled .interp-alcove-2,
-.history.interp-alcove-3-enabled .interp-alcove-3,
+.history .interp-alcove-1-enabled .interp-alcove-1,
+.history .interp-alcove-2-enabled .interp-alcove-2,
+.history .interp-alcove-3-enabled .interp-alcove-3,
 /* Woods interp */
-.history.interp-woods-1-enabled .interp-woods-1,
-.history.interp-woods-2-enabled .interp-woods-2,
-.history.interp-woods-3-enabled .interp-woods-3,
+.history .interp-woods-1-enabled .interp-woods-1,
+.history .interp-woods-2-enabled .interp-woods-2,
+.history .interp-woods-3-enabled .interp-woods-3,
 /* Parchment trees */
-.history.interp-parchment-trees-enabled .interp-parchment-trees
+.history .interp-parchment-trees-enabled .interp-parchment-trees
 {
     display: block;
     color: gold;
@@ -169,14 +163,14 @@
 }
 
 /* Tangle interp */
-.history.reif-tangle-1-enabled .reif-tangle-1,
-.history.reif-tangle-2-enabled .reif-tangle-2,
-.history.reif-tangle-3-enabled .reif-tangle-3,
+.history .reif-tangle-1-enabled .reif-tangle-1,
+.history .reif-tangle-2-enabled .reif-tangle-2,
+.history .reif-tangle-3-enabled .reif-tangle-3,
 /* Dream interp */
-.history.reif-dream-1-enabled .reif-dream-1,
-.history.reif-dream-2-enabled .reif-dream-2,
-.history.reif-dream-3-enabled .reif-dream-3,
-.history.reif-dream-4-enabled .reif-dream-4
+.history .reif-dream-1-enabled .reif-dream-1,
+.history .reif-dream-2-enabled .reif-dream-2,
+.history .reif-dream-3-enabled .reif-dream-3,
+.history .reif-dream-4-enabled .reif-dream-4
 {
     display: block;
     opacity: 1;
@@ -184,48 +178,48 @@
 
 
 /* Alcove interp */
-.history.adding-interp-alcove-1-enabled.animation-start .interp-alcove-1,
-.history.adding-interp-alcove-2-enabled.animation-start .interp-alcove-2,
-.history.adding-interp-alcove-3-enabled.animation-start .interp-alcove-3,
+.history .adding-interp-alcove-1-enabled.animation-start .interp-alcove-1,
+.history .adding-interp-alcove-2-enabled.animation-start .interp-alcove-2,
+.history .adding-interp-alcove-3-enabled.animation-start .interp-alcove-3,
 /* Woods interp */
-.history.adding-interp-woods-1-enabled.animation-start .interp-woods-1,
-.history.adding-interp-woods-2-enabled.animation-start .interp-woods-2,
-.history.adding-interp-woods-3-enabled.animation-start .interp-woods-3,
+.history .adding-interp-woods-1-enabled.animation-start .interp-woods-1,
+.history .adding-interp-woods-2-enabled.animation-start .interp-woods-2,
+.history .adding-interp-woods-3-enabled.animation-start .interp-woods-3,
 /* Tangle interp */
-.history.adding-reif-tangle-1-enabled.animation-start .reif-tangle-1,
-.history.adding-reif-tangle-2-enabled.animation-start .reif-tangle-2,
-.history.adding-reif-tangle-3-enabled.animation-start .reif-tangle-3,
+.history .adding-reif-tangle-1-enabled.animation-start .reif-tangle-1,
+.history .adding-reif-tangle-2-enabled.animation-start .reif-tangle-2,
+.history .adding-reif-tangle-3-enabled.animation-start .reif-tangle-3,
 /* Parchment trees */
-.history.adding-interp-parchment-trees-enabled.animation-start .interp-parchment-trees,
+.history .adding-interp-parchment-trees-enabled.animation-start .interp-parchment-trees,
 /* Dream interp */
-.history.adding-reif-dream-1-enabled.animation-start .reif-dream-1,
-.history.adding-reif-dream-2-enabled.animation-start .reif-dream-2,
-.history.adding-reif-dream-3-enabled.animation-start .reif-dream-3,
-.history.adding-reif-dream-4-enabled.animation-start .reif-dream-4
+.history .adding-reif-dream-1-enabled.animation-start .reif-dream-1,
+.history .adding-reif-dream-2-enabled.animation-start .reif-dream-2,
+.history .adding-reif-dream-3-enabled.animation-start .reif-dream-3,
+.history .adding-reif-dream-4-enabled.animation-start .reif-dream-4
 {
     opacity: 0.01;
     max-height: 0px;
 }
 
 /* Alcove interp */
-.history.adding-interp-alcove-1-enabled.animation-start.animation-active .interp-alcove-1,
-.history.adding-interp-alcove-2-enabled.animation-start.animation-active .interp-alcove-2,
-.history.adding-interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3,
+.history .adding-interp-alcove-1-enabled.animation-start.animation-active .interp-alcove-1,
+.history .adding-interp-alcove-2-enabled.animation-start.animation-active .interp-alcove-2,
+.history .adding-interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3,
 /* Woods interp */
-.history.adding-interp-woods-1-enabled.animation-start.animation-active .interp-woods-1,
-.history.adding-interp-woods-2-enabled.animation-start.animation-active .interp-woods-2,
-.history.adding-interp-woods-3-enabled.animation-start.animation-active .interp-woods-3,
+.history .adding-interp-woods-1-enabled.animation-start.animation-active .interp-woods-1,
+.history .adding-interp-woods-2-enabled.animation-start.animation-active .interp-woods-2,
+.history .adding-interp-woods-3-enabled.animation-start.animation-active .interp-woods-3,
 /* Tangle interp */
-.history.adding-reif-tangle-1-enabled.animation-start.animation-active .reif-tangle-1,
-.history.adding-reif-tangle-2-enabled.animation-start.animation-active .reif-tangle-2,
-.history.adding-reif-tangle-3-enabled.animation-start.animation-active .reif-tangle-3,
+.history .adding-reif-tangle-1-enabled.animation-start.animation-active .reif-tangle-1,
+.history .adding-reif-tangle-2-enabled.animation-start.animation-active .reif-tangle-2,
+.history .adding-reif-tangle-3-enabled.animation-start.animation-active .reif-tangle-3,
 /* Parchment trees */
-.history.adding-interp-parchment-trees-enabled.animation-start.animation-active .interp-parchment-trees,
+.history .adding-interp-parchment-trees-enabled.animation-start.animation-active .interp-parchment-trees,
 /* Dream interp */
-.history.adding-reif-dream-1-enabled.animation-start.animation-active .reif-dream-1,
-.history.adding-reif-dream-2-enabled.animation-start.animation-active .reif-dream-2,
-.history.adding-reif-dream-3-enabled.animation-start.animation-active .reif-dream-3,
-.history.adding-reif-dream-4-enabled.animation-start.animation-active .reif-dream-4
+.history .adding-reif-dream-1-enabled.animation-start.animation-active .reif-dream-1,
+.history .adding-reif-dream-2-enabled.animation-start.animation-active .reif-dream-2,
+.history .adding-reif-dream-3-enabled.animation-start.animation-active .reif-dream-3,
+.history .adding-reif-dream-4-enabled.animation-start.animation-active .reif-dream-4
 {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
