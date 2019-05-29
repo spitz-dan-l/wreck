@@ -33,15 +33,72 @@ ul.typeahead {
       color: silver;
 }
 
-.typeahead li {
+.typeahead li.option {
       margin-top: 1em;
+      cursor: pointer;
 }
 
-.parsed-text {
-    display: inline-block;
+.typeahead .option.used .token,
+.typeahead .option.locked .token {
+      opacity: 0.4;
 }
 
+.typeahead .option.available .token {
+      opacity: 0.8;
+}
+
+.typeahead .option.selected .token {
+      background: dimgray;
+}
+
+.typeahead .option .token.keyword {
+      color: aqua;
+}
+
+.typeahead .option .token.option {
+      color: orange;
+}
+
+.typeahead .option .token.filler {
+      color: ivory;
+}
+
+.parsed-text,
 .parsed-text div,
 .parsed-text span {
     display: inline-block;
+}
+
+.parsed-text .command {
+      white-space: pre-wrap;
+      position: relative;
+      font-weight: 100;
+}
+
+.parsed-text .command.submittable {
+      font-weight: 900;
+}
+
+.parsed-text .command.error-match {
+      opacity: 0.6;
+}
+
+.parsed-text .token.partial-match {
+      color: silver;
+}
+
+.parsed-text .token.error-match {
+      color: red;
+}
+
+.parsed-text .token.keyword {
+      color: aqua;
+}
+
+.parsed-text .token.option {
+      color: orange;
+}
+
+.parsed-text .token.filler {
+      color: ivory;
 }

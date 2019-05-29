@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { array_last, update, deep_equal } from '../typescript/utils';
 import { keys } from '../typescript/keyboard_tools';
-import { Parsing, RawInput, SUBMIT_TOKEN, Token } from '../typescript/parser';
+import { Parsing, RawInput, SUBMIT_TOKEN, Token, TypeaheadOption, TokenMatch, TokenAvailability } from '../typescript/parser';
 import { CommandResult, Interpretations, Renderer, World } from "../typescript/world";
 import { OutputText, ParsedText } from './Text';
 
@@ -92,7 +92,7 @@ function submit_typeahead(state: AppState) {
 
   row.option.forEach((m, i) => {
     if (m !== null) {
-      synthesized_tokens[i] = m.token;
+      synthesized_tokens[i] = m.expected.token;
     }
   });
 
@@ -195,7 +195,7 @@ export const UndoButton: React.FunctionComponent<UndoProps> = ({world}) => {
             display: world.previous === null ? 'none' : 'inherit'
           }}
     >
-      Undo
+      {String.fromCharCode(10226)} Undo
     </div>);
 }
 
@@ -215,7 +215,6 @@ export const Prompt: React.FunctionComponent<{parsing: Parsing}> = (props) => {
     <input
       ref={input_elt}
       onChange={handleChange}
-      // onKeyDown={handleKeys}
       value={props.parsing.raw.text}
     />
     <span>
@@ -265,35 +264,73 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
     return String.fromCharCode(8629); // curving down arrow indicator
   }
 
+  function cssify_availability(availability: TokenAvailability): string {
+    switch (availability.kind) {
+      case 'Available':
+        return 'available';
+      case 'Used':
+        return 'used';
+      case 'Locked':
+        return 'locked';
+    }
+  }
+
+  function get_option_class(option: TypeaheadOption, index: number, selected_index: number): string {
+    let classes = ['option', cssify_availability(option.availability)];
+    if (index === selected_index) {
+      classes.push('selected');
+    }
+    return classes.join(' ');
+  }
+
+  function get_option_token_class(match: TokenMatch | null): string {
+    if (match === null) {
+      return '';
+    }
+
+    let classes = ['token', cssify_availability(match.expected.availability)];
+    for (let [label, on] of Object.entries(match.expected.labels)) {
+      if (on) {
+        classes.push(label);
+      }
+    }
+    return classes.join(' ');
+
+  }
+
   return <ul className="typeahead">
     {parsing.view.typeahead_grid.map((option, i) => (
       <li
         key={i} 
         onMouseOver={() => handleMouseOver(i)}
-        style={{
-          opacity: option.type.kind === 'Available' ? 1.0 : 0.4,
-          cursor: 'pointer'
-        }}
+        className={get_option_class(option, i, typeahead_index)}
         onClick={() => handleClick(i)}
       >
         <span>{'  '}</span>
         { option.option.map((m, j) => {
-          let style = {
-            background: (i === typeahead_index && m !== null) ? 'DimGray' : 'inherit'
-          };
-          return <span key={j} style={style}>
+          let classes = get_option_token_class(m);
+          return <span key={j} className={get_option_token_class(m)}>
           { m === null ?
             parsing.whitespace[j] + whitespace(convert_token(parsing.tokens[j])) :
             (j >= parsing.whitespace.length || j !== 0 && parsing.whitespace[j] === '' ?
               ' ' :
-              parsing.whitespace[j]) + convert_token(m.token) }
+              parsing.whitespace[j]) + convert_token(m.expected.token) }
           </span>
         }) }
+        { option.availability.kind === 'Locked' ? <Lock /> : '' }
       </li>
     ))}
     <li className='footer' />
   </ul>
 }
+
+const Lock: React.FunctionComponent = (props) => {
+  return (
+    <span className="token lock">
+      {' ' + String.fromCharCode(8416)}
+    </span>
+  );
+};
 
 type HistoryProps = {
   world: World,
@@ -315,10 +352,6 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
     { worlds.map(w => {
       let labels = world.interpretations[w.index] || {};
       
-      // let previous_labels: Interpretations[number] | undefined = undefined;
-      // if (world.previous !== null) {
-      //   previous_labels = world.previous.interpretations[w.index];
-      // }
       let possible_labels: Interpretations[number] | undefined = undefined;
       if (possible_world !== null) {
         possible_labels = possible_world.interpretations[w.index];
@@ -327,7 +360,6 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
                key={w.index}
                world={w}
                labels={labels}
-               // previous_labels={previous_labels}
                possible_labels={possible_labels}
                renderer={renderer}
              />;
@@ -338,7 +370,6 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
 type HistoryEltProps = {
   world: World,
   labels: Interpretations[number],
-  // previous_labels: Interpretations[number] | undefined,
   possible_labels: Interpretations[number] | undefined,
   renderer: Renderer
 }
@@ -463,7 +494,6 @@ function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean,
     comp_elt.classList.add('animation-active');
 
     setTimeout(() => {
-      // debugger;
       comp_elt.classList.remove(
         'animation-new',
         'animation-start',

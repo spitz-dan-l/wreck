@@ -18,20 +18,12 @@
         - what colors to highlight the various input words with
         - what to display beneath the input prompt as typeahead options
 
-
-
-
 */
 
 import { array_last, deep_equal } from './utils';
 import { starts_with, tokenize } from './text_tools';
 
 class NoMatch {};
-
-// Used to both fail a parse and post process the result if there is one in another split path
-class NoMatchProcess<T> extends NoMatch {
-    constructor(public processor?: (t: T) => T) { super(); }
-};
 
 class ParseRestart {
     constructor(public n_splits: number) {}
@@ -44,53 +36,36 @@ export type Token = string | typeof SUBMIT_TOKEN;
 export const NEVER_TOKEN = Symbol('NEVER');
 export type TaintedToken = Token | typeof NEVER_TOKEN;
 
-export type TokenType = 
-    { kind: 'Filler' } |
-    { kind: 'Option' } |
-    { kind: 'Keyword' };
-
-export type TypeaheadType =
+export type TokenAvailability =
     { kind: 'Available' } |
     { kind: 'Used' } |
-    { kind: 'Locked' }; // TODO: Need to actually make this invalid when parsed.
+    { kind: 'Locked' };
 
-export interface ConsumeSpec {
+export type TokenLabels = {
+    [label: string]: boolean
+};
+
+export type ConsumeSpec = {
     kind: 'ConsumeSpec';
     token: TaintedToken;
-    token_type: TokenType;
-    typeahead_type: TypeaheadType;
+    availability: TokenAvailability;
+    labels: TokenLabels;
 }
 
 
 export type MatchStatus = 'Match' | 'PartialMatch' | 'ErrorMatch';
 
-export type Match = { kind: 'Match', type: TokenType };
-export type PartialMatch = { kind: 'PartialMatch', token: Token, type: TypeaheadType };
-export type ErrorMatch = { kind: 'ErrorMatch', token: Token };
-
-export type MatchType = 
-    Match |
-    PartialMatch |
-    ErrorMatch;
-
-export function is_match(m: TokenMatch): m is TokenMatch & {type: Match} {
-    return m.type.kind === 'Match'
+export type TokenMatch = {
+    kind: 'TokenMatch',
+    status: MatchStatus,
+    expected: ConsumeSpec & { token: Token },
+    actual: Token
 }
-
-export function is_partial(m: TokenMatch): m is TokenMatch & {type: PartialMatch} {
-    return m.type.kind === 'PartialMatch'
-}
-
-export function is_error(m: TokenMatch): m is TokenMatch & {type: ErrorMatch} {
-    return m.type.kind === 'ErrorMatch'
-}
-
-export type TokenMatch = { kind: 'TokenMatch', token: Token, type: MatchType };
 
 export type TypeaheadOption = {
     kind: 'TypeaheadOption',
-    type: TypeaheadType,
-    option: (PartialMatch | null)[] // null left-padded to match length of token match
+    availability: TokenAvailability,
+    option: ((TokenMatch & { status: 'PartialMatch' }) | null)[] // null left-padded to match length of token match
 };
 
 /*
@@ -154,45 +129,46 @@ export type NotParsed = { kind: 'NotParsed', parsing: Parsing };
 export type ParseResult<T> = Parsed<T> | NotParsed;
 
 export function is_parse_result_valid(result: TokenMatch[]) {
-    return result.length === 0 || is_match(array_last(result));
+    return result.length === 0 || array_last(result).status === 'Match';
 }
 
 // for each of the input tokens, how should they be displayed/highighted?
 export function compute_view(parse_results: TokenMatch[][], input_stream: Token[]): ParsingView {
-    // let parse_results: TokenMatch[][] = parsing.parses;
-    // let input_stream: Token[] = parsing.tokens;
-
     let match_status: MatchStatus;
     let submission = false;
     let row: TokenMatch[];
 
-    if ((row = parse_results.find(row => array_last(row).type.kind === 'Match')!) !== undefined) {
+    if ((row = parse_results.find(row => array_last(row).status === 'Match')!) !== undefined) {
         match_status = 'Match';
-        // TODO: throw a runtime exc here if we have a Match at the end but it's not SUBMIT_TOKEN ?
-        // Would imply a commmand thread that doesn't end in submit.
-        submission = array_last(row).token === SUBMIT_TOKEN;
+        submission = array_last(row).actual === SUBMIT_TOKEN;
 
         if (!submission) {
             throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
         }
-    } else if ((row = parse_results.find(row => is_partial(array_last(row)))!) !== undefined) {
+    } else if ((row = parse_results.find(row => array_last(row).status === 'PartialMatch')!) !== undefined) {
         // chop off the partial bits that haven't been started yet
         row = row.slice(0, input_stream.length);
         match_status = 'PartialMatch';
     } else {
-        row = input_stream.map(tok => ({
-            kind: 'TokenMatch',
-            token: tok,
-            type: {
-                kind: 'ErrorMatch',
-                token: tok
+        row = input_stream.map(tok => {
+            let expected: ConsumeSpec & { token: Token } = {
+                kind: 'ConsumeSpec',
+                token: tok,
+                availability: { kind: 'Available' },
+                labels: {}
             }
-        }));
+            return {
+                kind: 'TokenMatch',
+                status: 'ErrorMatch',
+                actual: tok,
+                expected
+            };
+        });
         match_status = 'ErrorMatch';
     }
 
     let typeahead_grid = compute_typeahead(parse_results, input_stream);
-    let submittable = typeahead_grid.some(row => array_last(row.option)!.token === SUBMIT_TOKEN)
+    let submittable = typeahead_grid.some(row => array_last(row.option)!.expected.token === SUBMIT_TOKEN)
 
     return {
         kind: 'ParsingView',
@@ -211,10 +187,14 @@ Typeahead
     Typeahead is the Partial TokenMatches suffix (always at the end)
 */
 export function compute_typeahead(parse_results: TokenMatch[][], input_stream: Token[]): TypeaheadOption[] {
-    // let parse_results: TokenMatch[][] = parsing.parses;
-    // let input_stream: Token[] = parsing.tokens;
+    type PartialMatch = TokenMatch & { status: 'PartialMatch' };
+    
+    function is_partial(tm: TokenMatch): tm is PartialMatch {
+        return tm.status === 'PartialMatch';
+    }
+
     let rows_with_typeahead = parse_results.filter(pr => 
-        !(is_error(array_last(pr)))
+        !(array_last(pr).status === 'ErrorMatch')
         && pr.slice(input_stream.length - 1).some(is_partial)
     );
 
@@ -227,8 +207,8 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
     rows_with_typeahead.forEach(pr => {
         let start_idx = pr.findIndex(is_partial);
         let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
-        let elts = <{ type: PartialMatch }[]>pr.slice(start_idx);
-        option.push(...elts.map(tm => tm.type));
+        let elts = <PartialMatch[]>pr.slice(start_idx);
+        option.push(...elts);
 
         if (!unique_options.some((u_opt) => options_equal(u_opt, option))) {
             unique_options.push(option);
@@ -237,11 +217,9 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
 
     return unique_options.map(option => ({
         kind: 'TypeaheadOption',
-        type: array_last(option)!.type,
+        availability: array_last(option)!.expected.availability,
         option
     }));
-
-    // TODO: add dedupe step here
 }
 
 
@@ -291,33 +269,33 @@ export class Parser {
         let toks = tokenize(dsl)[0];
 
         for (let t of toks) {
-            let token_type: TokenType = { kind: 'Filler' };
-            let typeahead_type: TypeaheadType  = { kind: 'Available' };;
+            let labels: TokenLabels = { filler: true };
+            let availability: TokenAvailability  = { kind: 'Available' };;
 
             if (t.startsWith('~')) {
-                typeahead_type = { kind: 'Locked' };
+                availability = { kind: 'Locked' };
                 t = t.slice(1);
             } else if (t.startsWith('+')) {
-                typeahead_type = { kind: 'Available' };
+                availability = { kind: 'Available' };
                 t = t.slice(1);
             }
 
             if (t.startsWith('*')) {
-                token_type = { kind: 'Keyword' };
+                labels = { keyword: true };
                 t = t.slice(1);
             } else if (t.startsWith('&')) {
-                token_type = { kind: 'Option' };
+                labels = { option: true };
                 t = t.slice(1);
             } else if (t.startsWith('=')) {
-                token_type = { kind: 'Filler' };
+                labels = { filler: true };
                 t = t.slice(1);
             }
 
             this._consume(t.split('_').map(t => ({
                 kind: 'ConsumeSpec',
                 token: t,
-                token_type,
-                typeahead_type
+                availability,
+                labels
             })));
         }
     }
@@ -351,7 +329,7 @@ export class Parser {
             }
             let input = this.input_stream[this.pos + i];
             if (spec_value === input) {
-                if (spec.typeahead_type.kind === 'Locked') {
+                if (spec.availability.kind === 'Locked') {
                     // TODO: special case for typeahead = Locked
                     error = true;
                     break;
@@ -377,17 +355,21 @@ export class Parser {
             break;
         }
 
+        function sanitize(spec: ConsumeSpec): ConsumeSpec & { token: Token } {
+            if (spec.token !== NEVER_TOKEN) {
+                return <ConsumeSpec & { token: Token }>spec;
+            }
+            return {...spec, token: ''};
+        }
+
         if (partial) {
             // push all tokens as partials
             this.parse_result.push(...tokens.map((t, j) => 
                 ({
                     kind: 'TokenMatch',
-                    token: this.input_stream[this.pos + j] || '',
-                    type: {
-                        kind: 'PartialMatch',
-                        token: t.token === NEVER_TOKEN ? '' : t.token,
-                        type: t.typeahead_type
-                    }
+                    status: 'PartialMatch',
+                    actual: this.input_stream[this.pos + j] || '',
+                    expected: sanitize(t)
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
@@ -399,11 +381,9 @@ export class Parser {
             this.parse_result.push(...tokens.map((t, j) =>
                 ({
                     kind: 'TokenMatch',
-                    token: this.input_stream[this.pos + j] || '',
-                    type: {
-                        kind: 'ErrorMatch',
-                        token: t.token === NEVER_TOKEN ? '' : t.token
-                    }
+                    status: 'ErrorMatch',
+                    actual: this.input_stream[this.pos + j] || '',
+                    expected: sanitize(t)
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
@@ -414,8 +394,9 @@ export class Parser {
         this.parse_result.push(...tokens.map((t, j) =>
             ({
                 kind: 'TokenMatch',
-                token: this.input_stream[this.pos + j],
-                type: { kind: 'Match', type: t.token_type }
+                status: 'Match',
+                actual: this.input_stream[this.pos + j],
+                expected: sanitize(t)
             } as const)));
         // increment pos
         this.pos += tokens.length;
@@ -429,9 +410,9 @@ export class Parser {
         return <never>this._consume([{
             kind: 'ConsumeSpec',
             token: NEVER_TOKEN,
-            token_type: { kind: 'Filler' },
-            typeahead_type: { kind: 'Available' }
-        }]);
+            labels: { filler: true },
+            availability: { kind: 'Available' }
+        } as const]);
     }
 
     submit(): void;
@@ -441,9 +422,9 @@ export class Parser {
         this._consume([{
             kind: 'ConsumeSpec',
             token: SUBMIT_TOKEN,
-            token_type: { kind: 'Filler' },
-            typeahead_type: { kind: 'Available' }
-        }]);
+            labels: { filler: true },
+            availability: { kind: 'Available' }
+        } as const]);
 
         return call_or_return(this, result);
     }

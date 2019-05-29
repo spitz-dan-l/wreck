@@ -1,27 +1,30 @@
 import * as React from 'react';
 
-import {Token, TokenMatch, is_match, is_partial, is_error, Parsing} from '../typescript/parser';
+import {Token, TokenMatch, MatchStatus, Parsing} from '../typescript/parser';
 
 export const Carat = () => <span>>&nbsp;</span>;
 
-function get_display_color(tm: TokenMatch) {
-  if (is_match(tm)) {
-    switch (tm.type.type.kind) {
-      case 'Keyword':
-        return 'aqua';
-      case 'Option':
-        return 'orange';
-      case 'Filler':
-        return 'ivory';
+function cssify_status(status: MatchStatus): string {
+  switch (status) {
+    case 'Match':
+      return 'match';
+    case 'PartialMatch':
+      return 'partial-match';
+    case 'ErrorMatch':
+      return 'error-match';
+  }
+}
+
+function get_class_name(tm: TokenMatch) {
+  let classes: string[] = ['token', cssify_status(tm.status)];
+  if (tm.status === 'Match') {
+    for (let [label, on] of Object.entries(tm.expected.labels)) {
+      if (on) {
+        classes.push(label);
+      }
     }
   }
-  if (is_partial(tm)) {
-    return 'silver';
-  }
-
-  if (is_error(tm)) {
-    return 'red';
-  }
+  return classes.join(' ');
 }
 
 export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
@@ -33,15 +36,13 @@ export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
     position: 'relative'
   }
   
+  let command_classes = ['command'];
+
   let view = parsing.view;
+  command_classes.push(cssify_status(view.match_status));
 
   if (view.submittable || view.submission) {
-    style.fontWeight = '900';
-  } else {
-    style.fontWeight = '100';
-    if (view.match_status === 'ErrorMatch') {
-      style.opacity = '0.6';
-    }
+    command_classes.push('submittable');
   }
 
   function convert_token(s: Token) {
@@ -50,15 +51,16 @@ export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
     }
     return '';
   }
+
   return (
     <div className="parsed-text">
       <Carat />
-      <div style={style}>
+      <div className={command_classes.join(' ')}>
         {
           view.matches.map((elt, i) => (
-            <div key={i.toString()} style={{color: get_display_color(elt)}}>
+            <div key={i.toString()} className={get_class_name(elt)}>
               <span>
-                { parsing.whitespace[i] + convert_token(elt.token) }
+                { parsing.whitespace[i] + convert_token(elt.actual) }
               </span>
               { ( i === 0 ) ? children : '' }
             </div>

@@ -20,10 +20,10 @@
         "./src/tests",
         "./src/typescript/*",
         "./src/typescript/venience/*",
-        "./src/components/*"
+        "./src/components"
     ],
 
     "exclude": [
-        "./src/typescript/venience"
+        "./src/typescript/venience",
     ]
 }

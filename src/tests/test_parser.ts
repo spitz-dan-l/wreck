@@ -41,7 +41,7 @@ describe('parser', () => {
         console.log(result);
 
         console.log(result.parsing.view);
-        console.log(array_last(result.parsing.view.matches).type);
+        console.log(array_last(result.parsing.view.matches).status);
 
         let ta = result.parsing.view.typeahead_grid;
         console.log(ta);
@@ -60,10 +60,66 @@ describe('parser', () => {
         
         let view = result.parsing.view;
         let expected_matches: TokenMatch[] = [
-            { kind: 'TokenMatch', token: 'daniel', type: { kind: 'Match', type: { kind: 'Keyword' } } },
-            { kind: 'TokenMatch', token: "didn't", type: { kind: 'Match', type: { kind: 'Filler' } } },
-            { kind: 'TokenMatch', token: 'wash', type: { kind: 'Match', type: { kind: 'Option' } } },
-            { kind: 'TokenMatch', token: SUBMIT_TOKEN, type: { kind: 'Match', type: { kind: 'Filler' } } }
+            {
+                "actual": "daniel",
+                "expected": {
+                    "availability": {
+                        "kind": "Available"
+                    },
+                    "kind": "ConsumeSpec",
+                    "labels": {
+                        "keyword": true
+                    },
+                    "token": "daniel"
+                },
+                "kind": "TokenMatch",
+                "status": "Match"
+            },
+            {
+                "actual": "didn't",
+                "expected": {
+                    "availability": {
+                        "kind": "Available"
+                    },
+                    "kind": "ConsumeSpec",
+                    "labels": {
+                        "filler": true
+                    },
+                    "token": "didn't"
+                },
+                "kind": "TokenMatch",
+                "status": "Match"
+            },
+            {
+                "actual": "wash",
+                "expected": {
+                    "availability": {
+                        "kind": "Available"
+                    },
+                    "kind": "ConsumeSpec",
+                    "labels": {
+                        "option": true
+                    },
+                    "token": "wash"
+                },
+                "kind": "TokenMatch",
+                "status": "Match"
+            },
+            {
+                "actual": SUBMIT_TOKEN,
+                "expected": {
+                    "availability": {
+                        "kind": "Available"
+                    },
+                    "kind": "ConsumeSpec",
+                    "labels": {
+                        "filler": true
+                    },
+                    "token": SUBMIT_TOKEN
+                },
+                "kind": "TokenMatch",
+                "status": "Match"
+            }
         ];
         assert.deepEqual(view.matches, expected_matches);
     });
