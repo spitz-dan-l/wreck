@@ -10,6 +10,7 @@ import { OutputText, ParsedText } from './Text';
 type AppState = {
   command_result: CommandResult<World>,
   typeahead_index: number,
+  undo_selected: boolean,
   updater: (world: World, command: RawInput) => CommandResult<World>,
   renderer: Renderer
 }
@@ -18,6 +19,8 @@ type AppAction =
   RawInput |
   { kind: 'SelectTypeahead', index: number } |
   { kind: 'SelectRelativeTypeahead', direction: 'up' | 'down' } |
+  { kind: 'SelectUndo' } |
+  { kind: 'ToggleUndoSelected' } |
   { kind: 'Submit' } |
   { kind: 'Undo' };
 
@@ -26,18 +29,32 @@ type AppAction =
 // TODO look up whether there are methods for factoring reducers better
 function app_reducer(state: AppState, action: AppAction): AppState {
   switch (action.kind) {
-    case 'RawInput':
+    case 'RawInput': {
       let new_result = state.updater(state.command_result.world!, action);
       return update(state, {
         command_result: () => new_result,
         typeahead_index: new_result.parsing.view.typeahead_grid.length > 0 ? 0 : -1
       });
+    }
     case 'SelectTypeahead':
-      return update(state, { typeahead_index: () => action.index });
+      return update(state, {
+        typeahead_index: () => action.index,
+        undo_selected: false
+      });
     case 'SelectRelativeTypeahead':
       return select_relative_typeahead(state, action.direction);
+    case 'SelectUndo':
+      return update(state, { undo_selected: true });
+    case 'ToggleUndoSelected': {
+      if (state.command_result.world.previous === null) {
+        return state;
+      }
+      return update(state, { undo_selected: _ => !_});
+    }
     case 'Submit': {
-      if (state.typeahead_index !== -1) {
+      if (state.undo_selected) {
+        return undo(state);
+      } else if (state.typeahead_index !== -1) {
         return submit_typeahead(state);
       } else {
         return update(state, {
@@ -46,25 +63,35 @@ function app_reducer(state: AppState, action: AppAction): AppState {
               state.command_result.world!,
               update(state.command_result.parsing.raw, {
                 submit: state.command_result.parsing.view.submittable })),
-          typeahead_index: -1
+          typeahead_index: -1,
+          undo_selected: false
         });
       }
     }
     case 'Undo': {
-      let prev_command_result = state.updater(
-        state.command_result.world.previous!,
-        update(state.command_result.world.parsing!.raw, { submit: false })
-      );
-      return update(state, {
-        command_result: () => prev_command_result,
-        typeahead_index: -1
-      });
+      return undo(state);
     }
   }
   throw new Error('should no get here');
 }
 
+function undo(state: AppState) {
+  let prev_command_result = state.updater(
+      state.command_result.world.previous!,
+      update(state.command_result.world.parsing!.raw, { submit: false })
+    );
+    return update(state, {
+      command_result: () => prev_command_result,
+      typeahead_index: 0,
+      undo_selected: false
+    });
+}
+
 function select_relative_typeahead(state: AppState, direction: 'up' | 'down') {
+  if (state.undo_selected) {
+    return state;
+  }
+
   let n_options = state.command_result.parsing.view.typeahead_grid.length;
 
   let new_index: number;
@@ -145,6 +172,10 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
       input_elt.focus();
     }
 
+    if (event.keyCode === keys.left || event.keyCode === keys.right) {
+      dispatch({kind: 'ToggleUndoSelected' });
+    }
+
     if (event.keyCode === keys.up) {
       dispatch({ kind: 'SelectRelativeTypeahead', direction: 'up' });
     } else if (event.keyCode === keys.down) {
@@ -175,25 +206,34 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
     <div>
       <History world={current_world} possible_world={possible_world} renderer={initial_state.renderer} />
       <Prompt parsing={current_parsing} />
-      <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} />
-      <UndoButton world={current_world} />
+      <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} undo_selected={state.undo_selected} />
+      <UndoButton world={current_world} undo_selected={state.undo_selected} />
     </div>
   </AppDispatch.Provider>
 }
 
 type UndoProps = {
-  world: World
+  world: World,
+  undo_selected: boolean
 };
-export const UndoButton: React.FunctionComponent<UndoProps> = ({world}) => {
+export const UndoButton: React.FunctionComponent<UndoProps> = ({world, undo_selected}) => {
   const dispatch = React.useContext(AppDispatch);
+  function get_undo_class() {
+    let classes = ['undo-button'];
+    if (undo_selected) {
+      classes.push('selected');
+    }
+    if (world.previous === null) {
+      classes.push('disabled');
+    }
+
+    return classes.join(' ');
+  }
   return (
-    <div className="undo-button"
+    <div className={get_undo_class()}
+         onMouseOver={() => dispatch({kind: 'SelectUndo'})}
          onClick={() => dispatch({kind: 'Undo'})}
-         style={{
-            float: 'right',
-            cursor: 'pointer',
-            display: world.previous === null ? 'none' : 'inherit'
-          }}
+         style={{}}
     >
       {String.fromCharCode(10226)} Undo
     </div>);
@@ -233,7 +273,12 @@ const Cursor = (props) => {
   );
 };
 
-export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_index: number}> = ({parsing, typeahead_index}) => {
+type TypeaheadProps = {
+  parsing: Parsing,
+  typeahead_index: number,
+  undo_selected: boolean
+}
+export const Typeahead: React.FunctionComponent<TypeaheadProps> = ({parsing, typeahead_index, undo_selected}) => {
   let dispatch = React.useContext(AppDispatch);
 
   function handleMouseOver(i: number) {
@@ -275,9 +320,9 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
     }
   }
 
-  function get_option_class(option: TypeaheadOption, index: number, selected_index: number): string {
+  function get_option_class(option: TypeaheadOption, index: number, selected_index: number, undo_selected: boolean): string {
     let classes = ['option', cssify_availability(option.availability)];
-    if (index === selected_index) {
+    if (index === selected_index && !undo_selected) {
       classes.push('selected');
     }
     return classes.join(' ');
@@ -303,7 +348,7 @@ export const Typeahead: React.FunctionComponent<{parsing: Parsing, typeahead_ind
       <li
         key={i} 
         onMouseOver={() => handleMouseOver(i)}
-        className={get_option_class(option, i, typeahead_index)}
+        className={get_option_class(option, i, typeahead_index, undo_selected)}
         onClick={() => handleClick(i)}
       >
         <span>{'  '}</span>

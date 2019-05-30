@@ -53,7 +53,7 @@ let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 
     let dir = parser.split(
         (['up', 'down'] as const).map(dir =>
-            () => parser.consume(`${is_locked[dir] ? '~' : ''}&${dir}_stairs`, dir)
+            () => parser.consume(`${is_locked[dir] ? '^' : ''}&${dir}_stairs`, dir)
         )
     );
 

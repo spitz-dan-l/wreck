@@ -19,7 +19,7 @@ let LocationPuffer: Puffer<Location> = {
 
         let dir = parser.split(
             (['up', 'down'] as const).map(dir =>
-                () => parser.consume(`${is_locked[dir] ? '~' : ''}&${dir}_stairs`, dir)
+                () => parser.consume(`${is_locked[dir] ? '^' : ''}&${dir}_stairs`, dir)
             )
         );
 

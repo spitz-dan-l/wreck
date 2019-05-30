@@ -188,7 +188,7 @@ ObserverMoments(
 
         let other_consumer = (p: Parser) => {
             let can_appproach = ['alcove, general', 'self, 1'].every(p => world.has_perceived[p]);
-            p.consume(`${can_appproach ? '' : '~'}*approach the_desk`);
+            p.consume(`${can_appproach ? '' : '^'}*approach the_desk`);
             p.submit();
             return transition_to(world, 'desk, sitting down');
         };
@@ -243,7 +243,7 @@ ObserverMoments(
     <br/><br/>
     <i>Empty?</i>`,
     transitions: {
-        // 'try_to ~*remember': null,
+        // 'try_to ^*remember': null,
         'try_to *understand': 'desk, trying to understand 1'
     }
 },
@@ -316,7 +316,7 @@ ObserverMoments(
     handle_command: (world, parser) => {
         parser.consume('*consider the_sense_of');
         parser.split([
-            () => parser.consume('~panic'),
+            () => parser.consume('^panic'),
             () => parser.consume('&dread')
         ]);
         parser.submit();
@@ -398,12 +398,12 @@ ObserverMoments(
         let step = world.alcove_interp_step;
 
         let judge_consumer = () => {
-            let locked = step < 2 ? '' : '~';
+            let locked = step < 2 ? '' : '^';
             parser.consume(`${locked}*judge`);
 
             parser.split([
-                () => parser.consume(`${step === 0 ? '' : '~'}&the_direction_of_gravity`),
-                () => parser.consume(`${step === 1 ? '' : '~'}&the_slickness_of_the_ice`)
+                () => parser.consume(`${step === 0 ? '' : '^'}&the_direction_of_gravity`),
+                () => parser.consume(`${step === 1 ? '' : '^'}&the_slickness_of_the_ice`)
             ]);
 
             parser.submit();
@@ -411,7 +411,7 @@ ObserverMoments(
         };
 
         let survey_consumer = () => {
-            let locked = step === 2 ? '' : '~';
+            let locked = step === 2 ? '' : '^';
             parser.consume(`${locked}*survey the_horizon`);
             parser.submit();
             return next_interp();
@@ -511,7 +511,7 @@ function make_perceiver(world: PW, percs: PerceptSpec, prepend_look: boolean=tru
                 if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
                     parser.eliminate();
                 }
-                parser.consume(`${prepend_look ? '*look ' : ''}${world.has_perceived[pid] ? '~' : ''}${cmd}`);
+                parser.consume(`${prepend_look ? '*look ' : ''}${world.has_perceived[pid] ? '^' : ''}${cmd}`);
                 parser.submit();
                 return percieve(world, pid);
             })

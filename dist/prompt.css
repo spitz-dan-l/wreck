@@ -24,6 +24,19 @@
       overflow: hidden;
 }
 
+.undo-button {
+      float: right;
+      cursor: pointer;
+}
+
+.undo-button.selected {
+      background: dimgray;
+}
+
+.undo-button.disabled {
+      display: none;
+}
+
 ul.typeahead {
       position: absolute;
       list-style-type: none;

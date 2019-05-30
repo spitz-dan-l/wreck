@@ -123,7 +123,7 @@ function make_perceiver(world: PW, percs: readonly PerceptID[]) {
                 if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
                     parser.eliminate();
                 }
-                parser.consume(`${world.has_perceived[pid] ? '~' : ''}${split_tokens(pid).join('_')}`);
+                parser.consume(`${world.has_perceived[pid] ? '^' : ''}${split_tokens(pid).join('_')}`);
                 parser.submit();
                 return percieve(world, pid);
             })

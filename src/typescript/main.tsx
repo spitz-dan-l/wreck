@@ -21,7 +21,7 @@ console.timeEnd('world_build');
 
 
 console.time('render');
-ReactDom.render(<App typeahead_index={0} command_result={result} updater={updater} renderer={renderer} />, document.getElementById('terminal'));
+ReactDom.render(<App typeahead_index={0} undo_selected={false} command_result={result} updater={updater} renderer={renderer} />, document.getElementById('terminal'));
 // ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');
 

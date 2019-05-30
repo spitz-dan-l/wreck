@@ -272,8 +272,11 @@ export class Parser {
             let labels: TokenLabels = { filler: true };
             let availability: TokenAvailability  = { kind: 'Available' };;
 
-            if (t.startsWith('~')) {
+            if (t.startsWith('^')) {
                 availability = { kind: 'Locked' };
+                t = t.slice(1);
+            } else if (t.startsWith('~')) {
+                availability = { kind: 'Used' };
                 t = t.slice(1);
             } else if (t.startsWith('+')) {
                 availability = { kind: 'Available' };
