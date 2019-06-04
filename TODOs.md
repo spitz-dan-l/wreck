@@ -2,6 +2,22 @@ TODOs
 
 Priority
 
+- Parser: fix deduplication of typeahead
+- Display: "blink" effects firing too many times
+
+
+- Fixing up the initial interp puzzle
+    - don't just lock all the commands but one
+        - if the player tries to do one out of order, pop down an error/hint message
+        - if the player repeats an already-correct one, flash it in the UI
+            - Need to support flashing/animating an interp label without leaving it there
+                - to be used multiple times in a row, not altering the display permanently
+
+- Move interp classes down to apply only to output text (?)
+- Investigate greensock for animations
+    - Potentially remove the need for all the "adding-" "removing-" classes and the messy "animate()" function
+        - Only if TweenLite can actually properly animate between display: none and display: block without hacking max-height.
+
 Parser colors
     - ~ means darkened, not blocked (and collapsible)
     - Available, Used, Locked are the only token types (not just typeahead types)

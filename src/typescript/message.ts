@@ -1,7 +1,7 @@
-import * as React from 'react';
 import * as Mustache from 'mustache';
-import { InterpretationLabel, LocalInterpretations, World, Renderer } from './world';
+import { World } from './world';
 import { appender, update, Updater, merge_objects } from './utils';
+import { InterpretationLabel, LocalInterpretations } from './interpretation';
 
 /*
     Message is comprised of (any of)
@@ -74,6 +74,8 @@ export let message_updater = (spec: MessageUpdateSpec) =>
         - Detect diffs from previous renderings using state.
         - Use effects to animate the differences ala book guy.
 */
+
+export type Renderer = (world: World, labels?: LocalInterpretations, possible_labels?: LocalInterpretations) => string;
 
 export let standard_render: Renderer;
 standard_render = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {

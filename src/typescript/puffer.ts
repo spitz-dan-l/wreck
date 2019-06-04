@@ -12,37 +12,59 @@
 
 import { Parser, ParserThread } from './parser';
 import { IntersectTupleTypes } from './utils';
-import { InterpretationOp, make_world_spec, ObjectLevel, ObjectLevelWorld, Renderer, World, WorldSpec } from './world';
+import { make_world_spec, ObjectLevel, ObjectLevelWorld, World, WorldSpec } from './world';
 
-export type PufferAndWorld<W> = W & ObjectLevelWorld;
+export type PufferAndWorld<W> = W & World;
 
 export type PufferCommandHandler<W> = (world: PufferAndWorld<W>, parser: Parser) => PufferAndWorld<W>;
 export type PufferUpdater<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
 export type PufferNarrator<W> = (new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) => PufferAndWorld<W>;
-export type PufferHistoryInterpreter<W> = (new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) => InterpretationOp[];
+// export type PufferHistoryInterpreter<W> = (new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) => LocalInterpretations;
 
 
-type Stages<X> = { [stage: number]: X };
-type MaybeStages<X> = X | Stages<X>
-type Handler<T extends MaybeStages<any>> = T extends Stages<infer U> ? U : never;
+export type Stages<X extends (...args: any) => any> = { [stage: number]: X };
+export type MaybeStages<X extends (...args: any) => any> = X | Stages<X>
+export type Handler<T extends MaybeStages<any>> = T extends Stages<infer U> ? U : never;
 
-function is_handler<T>(x: MaybeStages<T>): x is T {
+export function is_handler<T extends (...args: any) => any>(x: MaybeStages<T>): x is T {
     return typeof x === 'function';
 }
 
-type PufferSpec<W> = {
-    readonly pre?: PufferUpdater<W>,
-    readonly handle_command?: PufferCommandHandler<W>,
-    readonly post?: PufferNarrator<W>,
-    readonly interpret_history?: PufferHistoryInterpreter<W>,
+export function normalize_stages<T extends (...args: any) => any>(x?: MaybeStages<T>): Stages<T> {
+    if (x === undefined) {
+        return {};
+    }
+
+    if (is_handler(x)) {
+        return { [0]: x };
+    }
+
+    return x;
 }
 
-export type Puffer<W> = {
-    [K in keyof PufferSpec<W>]: MaybeStages<PufferSpec<W>[K]>
+// type PufferSpec<W> = {
+//     readonly pre?: PufferUpdater<W>,
+//     readonly handle_command?: PufferCommandHandler<W>,
+//     readonly post?: PufferNarrator<W>,
+//     readonly interpret_history?: PufferHistoryInterpreter<W>,
+// }
+
+type PufferSpec_<W> = {
+    readonly pre: PufferUpdater<W>,
+    readonly handle_command: PufferCommandHandler<W>,
+    readonly post: PufferNarrator<W>,
+}
+export type PufferSpec<W> = Partial<PufferSpec_<W>>;
+
+type Puffer_<W> = {
+    [K in keyof PufferSpec_<W>]: MaybeStages<PufferSpec_<W>[K]>
 };
 
-type PufferForWorld<W extends World> = Puffer<Partial<ObjectLevel<W>>>;
-type PufferSpecForWorld<W extends World> = PufferSpec<ObjectLevel<W>>;
+export type Puffer<W> = Partial<Puffer_<W>>;
+
+
+type PufferForWorld<W extends World> = Puffer<Partial<W>>;
+type PufferSpecForWorld<W extends World> = PufferSpec<W>;
 
 // type CompatPuffer<W0 extends World, P> = P & (P extends Puffer<infer W1> ?
 //     Extract<ObjectLevel<Required<W0>>, Required<W1>> extends never ? 
@@ -71,7 +93,7 @@ export type PufferMapper<T> = {
 };
 
 export function map_puffer<T>(mapper: PufferMapper<T>, puffer: Puffer<T>): Puffer<T> {
-    function visit<P extends 'pre' | 'handle_command' | 'post' | 'interpret_history'>(prop: P) {
+    function visit<P extends 'pre' | 'handle_command' | 'post'>(prop: P) {
         if (mapper[prop] === undefined) {
             return puffer[prop];
         }
@@ -89,7 +111,7 @@ export function map_puffer<T>(mapper: PufferMapper<T>, puffer: Puffer<T>): Puffe
     }
 
     let result = {};
-    for (let p of ['pre', 'handle_command', 'post', 'interpret_history'] as const) {
+    for (let p of ['pre', 'handle_command', 'post'] as const) {
         result[p] = visit(p);
     }
 
@@ -104,13 +126,14 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
     type W = IntersectTupleTypes<UnwrapPufferTuple<T>>;
 
     // let puffers: Puffer<W>[] = puffers_tuple as unknown as Puffer<W>[];
-    function get_stages<P extends 'pre' | 'handle_command' | 'post' | 'interpret_history'>(prop: P) {
+    function get_stages<P extends 'pre' | 'handle_command' | 'post'>(prop: P) {
         let stages = new Set<number>();
         puffers.forEach(p => {
-            if (p[prop] === undefined) {
+            let p_ = p[prop];
+            if (p_ === undefined) {
                 return;
             }
-            if (is_handler<Puffer<any>[P]>(p[prop])) {
+            if (is_handler<PufferSpec_<any>[P]>(<any>p_)) {
                 stages.add(0);
                 return;
             }
@@ -122,7 +145,7 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
     }
 
     // This winds up "sort of" typechecking. It thinks that p[prop] is always PufferNarrator
-    function iterate<P extends 'pre' | 'handle_command' | 'post' | 'interpret_history'>(prop: P, f: (cb: Required<PufferSpec<W>>[P]) => void) {
+    function iterate<P extends 'pre' | 'handle_command' | 'post'>(prop: P, f: (cb: Required<PufferSpec<W>>[P]) => void) {
         let stages = get_stages(prop);
         for (let stage of stages) {
             for (let p of puffers) {
@@ -163,24 +186,15 @@ export function knit_puffers<T extends readonly Puffer<any>[]>(puffers: T): Puff
         return result;
     }
 
-    function interpret_history(new_world: PufferAndWorld<W>, old_world: PufferAndWorld<W>) {
-        let ops: InterpretationOp[] = [];
-
-        iterate('interpret_history', cb => { ops.push(...<any>cb(new_world, old_world)); });
-
-        return ops;
-    }
-
     return {
         pre,
         handle_command,
         post,
-        interpret_history
     }
 }
 
 export function make_puffer_world_spec<W extends World & IntersectTupleTypes<UnwrapPufferTuple<Index>>, Index extends readonly PufferForWorld<W>[]>
-    (initial_world: W, puffer_index: Index, render?: Renderer)
+    (initial_world: W, puffer_index: Index)
     : WorldSpec<W> {
     
     let spec: Required<PufferSpecForWorld<W>> = <Required<PufferSpecForWorld<W>>> <unknown> knit_puffers(puffer_index);
@@ -189,6 +203,5 @@ export function make_puffer_world_spec<W extends World & IntersectTupleTypes<Unw
     return make_world_spec({
         initial_world,
         ...spec,
-        render
     });
 }

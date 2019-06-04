@@ -83,9 +83,9 @@
 
 /* add pulsing */
 /* Alcove */
-.history .would-add-interp-alcove-1-enabled .face-of-it-1,
-.history .would-add-interp-alcove-2-enabled .face-of-it-2,
-.history .would-add-interp-alcove-3-enabled .face-of-it-3,
+.history .would-add-interp-alcove-gravity-enabled .face-of-it-1,
+.history .would-add-interp-alcove-slickness-enabled .face-of-it-2,
+.history .would-add-interp-alcove-horizon-enabled .face-of-it-3,
 /* Woods */
 .history .would-add-interp-woods-1-enabled,
 .history .would-add-interp-woods-2-enabled,
@@ -120,9 +120,9 @@
   }
 }
 
-.history .interp-alcove-1,
-.history .interp-alcove-2,
-.history .interp-alcove-3,
+.history .interp-alcove-gravity,
+.history .interp-alcove-slickness,
+.history .interp-alcove-horizon,
 .history .interp-woods-1,
 .history .interp-woods-2,
 .history .interp-woods-3,
@@ -147,9 +147,9 @@
 
 .history .interp,
 /* Alcove interp */
-.history .interp-alcove-1-enabled .interp-alcove-1,
-.history .interp-alcove-2-enabled .interp-alcove-2,
-.history .interp-alcove-3-enabled .interp-alcove-3,
+.history .interp-alcove-gravity-enabled .interp-alcove-gravity,
+.history .interp-alcove-slickness-enabled .interp-alcove-slickness,
+.history .interp-alcove-horizon-enabled .interp-alcove-horizon,
 /* Woods interp */
 .history .interp-woods-1-enabled .interp-woods-1,
 .history .interp-woods-2-enabled .interp-woods-2,
@@ -178,9 +178,9 @@
 
 
 /* Alcove interp */
-.history .adding-interp-alcove-1-enabled.animation-start .interp-alcove-1,
-.history .adding-interp-alcove-2-enabled.animation-start .interp-alcove-2,
-.history .adding-interp-alcove-3-enabled.animation-start .interp-alcove-3,
+.history .adding-interp-alcove-gravity-enabled.animation-start .interp-alcove-gravity,
+.history .adding-interp-alcove-slickness-enabled.animation-start .interp-alcove-slickness,
+.history .adding-interp-alcove-horizon-enabled.animation-start .interp-alcove-horizon,
 /* Woods interp */
 .history .adding-interp-woods-1-enabled.animation-start .interp-woods-1,
 .history .adding-interp-woods-2-enabled.animation-start .interp-woods-2,
@@ -202,9 +202,9 @@
 }
 
 /* Alcove interp */
-.history .adding-interp-alcove-1-enabled.animation-start.animation-active .interp-alcove-1,
-.history .adding-interp-alcove-2-enabled.animation-start.animation-active .interp-alcove-2,
-.history .adding-interp-alcove-3-enabled.animation-start.animation-active .interp-alcove-3,
+.history .adding-interp-alcove-gravity-enabled.animation-start.animation-active .interp-alcove-gravity,
+.history .adding-interp-alcove-slickness-enabled.animation-start.animation-active .interp-alcove-slickness,
+.history .adding-interp-alcove-horizon-enabled.animation-start.animation-active .interp-alcove-horizon,
 /* Woods interp */
 .history .adding-interp-woods-1-enabled.animation-start.animation-active .interp-woods-1,
 .history .adding-interp-woods-2-enabled.animation-start.animation-active .interp-woods-2,
@@ -225,6 +225,25 @@
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;
 }
+
+/* Alcove interp */
+.history .adding-interp-alcove-gravity-blink.animation-start .interp-alcove-gravity,
+.history .adding-interp-alcove-slickness-blink.animation-start .interp-alcove-slickness,
+.history .adding-interp-alcove-horizon-blink.animation-start .interp-alcove-horizon
+{
+    background-color: orange;
+}
+
+
+/* Alcove interp */
+.history .adding-interp-alcove-gravity-blink.animation-start.animation-active .interp-alcove-gravity,
+.history .adding-interp-alcove-slickness-blink.animation-start.animation-active .interp-alcove-slickness,
+.history .adding-interp-alcove-horizon-blink.animation-start.animation-active .interp-alcove-horizon
+{
+    background-color: inherit;
+    transition: background-color 700ms linear;
+}
+
 
 .history .alien-interp {
     display: block;

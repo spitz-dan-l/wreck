@@ -1,9 +1,11 @@
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
-import { array_last, update, deep_equal } from '../typescript/utils';
+import { array_last, update, deep_equal, empty } from '../typescript/utils';
 import { keys } from '../typescript/keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token, TypeaheadOption, TokenMatch, TokenAvailability } from '../typescript/parser';
-import { CommandResult, Interpretations, Renderer, World } from "../typescript/world";
+import { CommandResult, World } from "../typescript/world";
+import { Interpretations } from '../typescript/interpretation';
+import { standard_render } from '../typescript/message';
 import { OutputText, ParsedText } from './Text';
 
 
@@ -11,8 +13,7 @@ type AppState = {
   command_result: CommandResult<World>,
   typeahead_index: number,
   undo_selected: boolean,
-  updater: (world: World, command: RawInput) => CommandResult<World>,
-  renderer: Renderer
+  updater: (world: World, command: RawInput) => CommandResult<World>
 }
 
 type AppAction =
@@ -204,7 +205,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
   return <AppDispatch.Provider value={dispatch}>
     <div>
-      <History world={current_world} possible_world={possible_world} renderer={initial_state.renderer} />
+      <History world={current_world} possible_world={possible_world} />
       <Prompt parsing={current_parsing} />
       <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} undo_selected={state.undo_selected} />
       <UndoButton world={current_world} undo_selected={state.undo_selected} />
@@ -379,11 +380,10 @@ const Lock: React.FunctionComponent = (props) => {
 
 type HistoryProps = {
   world: World,
-  possible_world: World | null,
-  renderer: Renderer
+  possible_world: World | null
 }
 
-export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world, renderer}) => {
+export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world}) => {
   let worlds: World[] = [];
 
   // unroll all the historical worlds
@@ -406,7 +406,6 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
                world={w}
                labels={labels}
                possible_labels={possible_labels}
-               renderer={renderer}
              />;
     }) }
   </div>
@@ -416,40 +415,51 @@ type HistoryEltProps = {
   world: World,
   labels: Interpretations[number],
   possible_labels: Interpretations[number] | undefined,
-  renderer: Renderer
 }
 const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
-  ({world, labels, possible_labels, renderer}) => {
+  ({world, labels, possible_labels}) => {
+    // We are doing a bad thing in this function and modifying labels and possible_labels
+    // so we just copy them up front to maintain referential transparency
+    labels = {...labels};
+    if (possible_labels !== undefined) {
+      possible_labels = {...possible_labels};
+    }
     function key_union(a: {}, b: {}) {
-      return new Set([...Object.keys(a), ...Object.keys(b)]).values();
+      return [...new Set([...Object.keys(a), ...Object.keys(b)]).values()];
     }
 
     let ref = React.useRef<HTMLDivElement>() as React.MutableRefObject<HTMLDivElement>;
     
-    let [previous_labels, set_previous_labels] = React.useState(labels);
-
     let adding_labels: string[] = [];
     let removing_labels: string[] = [];
 
+    let classes = {...labels};
+
+    let [previous_labels, set_previous_labels] = React.useState(labels);
+    let [creating, set_creating] = React.useState(true); 
+
+
     for (let l of key_union(labels, previous_labels || {})) {
       if (previous_labels !== undefined) {
-        if (labels[l] && !previous_labels[l]) {
+        if (labels[l] &&
+             (!previous_labels[l] ||               // previous doesn't have it on, or
+              labels[l] !== previous_labels[l])) { // previous or current is a blink/symbol
           adding_labels.push(l);
-        } else if (!labels[l] && previous_labels[l]) {
+        } else if (!labels[l] && previous_labels[l] === true) {
           removing_labels.push(l);
         }
       } else if (labels[l]) {
         adding_labels.push(l);
       }
     }
-
-    let [creating, set_creating] = React.useState(true); 
-
+    
     React.useLayoutEffect(
       () => {
-        console.log('animating world '+world.index);
-
-        animate(ref, creating, adding_labels, removing_labels);
+        if (world.index === 1 && (!empty(adding_labels) || !empty(removing_labels))) {
+          // debugger;
+        }
+        let msg = 'animating world '+world.index;
+        animate(ref, creating, adding_labels, removing_labels, msg);
         if (creating) {
           set_creating(false);
         }
@@ -457,21 +467,25 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
           set_previous_labels(labels);
         }
       },
-      Object.keys(world.local_interpretations).map(l => adding_labels.includes(l) ? 1 : removing_labels.includes(l) ? -1 : 0)
+      // TODO: find a way to bring back this dupe checker
+      // [adding_labels.join(' '), removing_labels.join(' ')]
+      // Object.keys(world.local_interpretations).map(l => adding_labels.includes(l) ? 1 : removing_labels.includes(l) ? -1 : 0)
     );
 
-    let i = {...labels};
+    
     if (possible_labels !== undefined) {
       for (let l of key_union(labels, possible_labels)) {
-        if (possible_labels[l] && !labels[l]) {
-          i[`would-add-${l}`] = true;
-        } else if (!possible_labels[l] && labels[l]) {
-          i[`would-remove-${l}`] = true;
+        if (possible_labels[l] &&
+              (!labels[l] ||
+               possible_labels[l] !== labels[l])) {
+          classes[`would-add-${l}`] = true;
+        } else if (!possible_labels[l] && labels[l] === true) {
+          classes[`would-remove-${l}`] = true;
         }
       }
     }
-    let className = Object.entries(i).filter(([k, v]) => v).map(([k, v]) => k).join(' ');
-    let rendering= renderer(world, labels, possible_labels)
+    let className = Object.entries(classes).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
+    let rendering= standard_render(world, labels, possible_labels);
 
     return <div ref={ref} className={className}>
       { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
@@ -480,11 +494,11 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
   },
 );
 
-function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean, adding_classes: string[], removing_classes: string[]) {
+function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean, adding_classes: string[], removing_classes: string[], msg?: string) {
   if (!creating && adding_classes.length === 0 && removing_classes.length === 0) {
     return;
   }
-
+  console.log(msg);
   function walkElt(elt, f: (e: HTMLElement) => void){
     let children = elt.children;
     for (let i = 0; i < children.length; i++) {

@@ -210,6 +210,12 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
         let elts = <PartialMatch[]>pr.slice(start_idx);
         option.push(...elts);
 
+        // TODO: don't just check for simple equality.
+        // You can have same token + labels, but different availabilities.
+        // Availability should work like this:
+        //     Any options are Available -> Available
+        //     Else, any options Used -> Used
+        //     Else, Locked.
         if (!unique_options.some((u_opt) => options_equal(u_opt, option))) {
             unique_options.push(option);
         }
@@ -545,4 +551,14 @@ export function raw(text: string, submit: boolean = true): RawInput {
 
 export type ParserThread<T> = (p: Parser) => T;
 
+// Helper to create a gated ParserThread. cond() is called, and if its condition is 
+// not met, the thread is eliminated, else it runs the parser thread, t.
+export function gate<Ret>(cond: () => boolean, t: ParserThread<Ret>): ParserThread<Ret> {
+    return p => {
+        if (!cond()) {
+            p.eliminate();
+        }
+        return t(p);
+    }
+}
 

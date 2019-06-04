@@ -1,17 +1,17 @@
-import { narrative_fsa_builder } from '../../narrative_fsa';
-import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../../puffer';
 import { MessageUpdateSpec, message_updater } from '../../message';
-import { update, appender_uniq } from '../../utils';
-import { Parser, ParserThread } from '../../parser';
-import {split_tokens} from '../../text_tools';
-import {World, get_initial_world, world_driver, InterpretationOp} from '../../world';
+import { narrative_fsa_builder } from '../../narrative_fsa';
+import { Parser, ParserThread, gate } from '../../parser';
+import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../../puffer';
+import { update } from '../../utils';
+import { get_initial_world, World, world_driver } from '../../world';
+import { LocalInterpretations, find_historical, self_interpretation } from '../../interpretation';
 
 type ObserverMomentID = string;
 
 interface Venience {
     node: ObserverMomentID;
     has_perceived: Record<PerceptID, boolean>,
-    alcove_interp_step: number
+    alcove_interp: AlcoveInterp
 }
 
 type PW = PufferAndWorld<Venience>;
@@ -19,15 +19,15 @@ type PW = PufferAndWorld<Venience>;
 let {
     make_transitioner,
     transition_to,
-    make_node
+    make_state
 } = narrative_fsa_builder<Venience, 'node', ObserverMomentID>('node');
 
 const ObserverMomentIndex: Puffer<Venience>[] = [];
 
-type NodeSpec = Parameters<typeof make_node>[0]
+type NodeSpec = Parameters<typeof make_state>[0]
 
 function ObserverMoments(...spec: NodeSpec[]) {
-    ObserverMomentIndex.push(...spec.map(make_node));
+    ObserverMomentIndex.push(...spec.map(make_state));
 }
 
 ObserverMoments(
@@ -124,11 +124,11 @@ ObserverMoments(
     You slide back under the blankets. The pre-spring breeze cools your face.`,
     transitions: {'sleep until_sunrise': 'bed, sleeping 2'},
     interpretations: {
-        'bed, trying to remember 1': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 2': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 3': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 4': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 5': [{kind: 'Add', label: 'forgotten'}]
+        'bed, trying to remember 1': { forgotten: true },
+        'bed, trying to remember 2': { forgotten: true },
+        'bed, trying to remember 3': { forgotten: true },
+        'bed, trying to remember 4': { forgotten: true },
+        'bed, trying to remember 5': { forgotten: true }
     }
 },
 {
@@ -152,29 +152,19 @@ ObserverMoments(
     enter_message: `You awaken in your bed again.`,
     transitions: {'sit_up': 'bed, sitting up 2'},
     interpretations: {
-        'bed, sleeping 1': [{kind: 'Add', label: 'forgotten'}],
-        'bed, awakening 1': [{kind: 'Add', label: 'forgotten'}],
-        'bed, sitting up 1': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 1': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 2': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 3': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 4': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 5': [{kind: 'Add', label: 'forgotten'}],
-        'bed, trying to remember 6': [{kind: 'Add', label: 'forgotten'}],
-        'bed, lying down 1': [{kind: 'Add', label: 'forgotten'}],
-        'bed, sleeping 2': [{kind: 'Add', label: 'forgotten'}]
+        'bed, sleeping 1': { forgotten: true },
+        'bed, awakening 1': { forgotten: true },
+        'bed, sitting up 1': { forgotten: true },
+        'bed, trying to remember 1': { forgotten: true },
+        'bed, trying to remember 2': { forgotten: true },
+        'bed, trying to remember 3': { forgotten: true },
+        'bed, trying to remember 4': { forgotten: true },
+        'bed, trying to remember 5': { forgotten: true },
+        'bed, trying to remember 6': { forgotten: true },
+        'bed, lying down 1': { forgotten: true },
+        'bed, sleeping 2': { forgotten: true }
     }
 });
-
-function gate<Ret>(cond: () => boolean, t: ParserThread<Ret>): ParserThread<Ret> {
-    return p => {
-        if (!cond()) {
-            p.eliminate();
-        }
-        return t(p);
-    }
-}
-
 
 ObserverMoments(
 {
@@ -249,6 +239,13 @@ ObserverMoments(
 },
 {
     id: 'desk, trying to understand 1',
+    enter: (world) => update(world, {
+        message: message_updater(`
+        Years of work.
+        <br/><br/>
+        Sequence Number Twelve.
+        </br><br/>
+        How does it go?`)}),
     enter_message: `
     Years of work.
     <br/><br/>
@@ -353,6 +350,25 @@ ObserverMoments(
 },
 );
 
+type AlcoveInterp = {
+    gravity: boolean,
+    slickness: boolean,
+    horizon: boolean
+}
+
+const initial_alcove_interp: AlcoveInterp = {
+    gravity: false,
+    slickness: false,
+    horizon: false
+}
+
+function find_box(world: PufferAndWorld<Venience>) {
+    return find_historical(world, (w) => 
+        w.node === 'alcove, beginning interpretation' &&
+        Object.entries(w.alcove_interp).every(([k, v]) => !v)
+    );
+}
+
 ObserverMoments(
 {
     id: 'alcove, beginning interpretation',
@@ -361,99 +377,93 @@ ObserverMoments(
     A nervous energy buzzes within your mind.
     </div>
     <br/>
-    {{#interp-alcove-1-enabled}}
-    <div class="interp-alcove-1">
+    {{#interp-alcove-gravity-enabled}}
+    <div class="interp-alcove-gravity">
     Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to a sense of meaning within the world. You have a <i>compass</i>.
     <br/><br/>
     </div>
-    {{/interp-alcove-1-enabled}}
+    {{/interp-alcove-gravity-enabled}}
     <div class="face-of-it-2">
     Your notes are gone.
     </div>
     <br/>
-    {{#interp-alcove-2-enabled}}
-    <div class="interp-alcove-2">
+    {{#interp-alcove-slickness-enabled}}
+    <div class="interp-alcove-slickness">
     Your effort to organize and understand everything Katya taught you over the years. If your notes are truly gone, it is a great setback.
     <br/><br/>
     But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
     <br/><br/>
     </div>
-    {{/interp-alcove-2-enabled}}
+    {{/interp-alcove-slickness-enabled}}
     <div class="face-of-it-3">
     You are alone in a grassy alcove in the forest.
     </div>
-    {{#interp-alcove-3-enabled}}
-    <div class="interp-alcove-3">
+    {{#interp-alcove-horizon-enabled}}
+    <div class="interp-alcove-horizon">
     <br/>
     Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
     <br/><br/>
     Your view of the horizon is occluded by the trees from in here. Set out, seeking <i>new vantages.</i>
     </div>
-    {{/interp-alcove-3-enabled}}`,
+    {{/interp-alcove-horizon-enabled}}`,
     handle_command: (world, parser) => {
-        let next_interp = () => update(world, {
-            alcove_interp_step: _ => _ + 1
-        });
+        let box_index = find_box(world)!.index;
 
-        let step = world.alcove_interp_step;
+        let interp_consumer = () => {
+            let stuff = {
+                gravity: '*judge the_direction_of_gravity',
+                slickness: '*judge the_slickness_of_the_ice',
+                horizon: '*survey the_horizon'
+            };
 
-        let judge_consumer = () => {
-            let locked = step < 2 ? '' : '^';
-            parser.consume(`${locked}*judge`);
+            return parser.split(Object.entries(stuff).map(([k, cmd]) => () => {
+                let used = world.alcove_interp[k] ? '~' : '';
+                parser.consume(`${used}${cmd}`);
+                parser.submit();
 
-            parser.split([
-                () => parser.consume(`${step === 0 ? '' : '^'}&the_direction_of_gravity`),
-                () => parser.consume(`${step === 1 ? '' : '^'}&the_slickness_of_the_ice`)
-            ]);
-
-            parser.submit();
-            return next_interp();
-        };
-
-        let survey_consumer = () => {
-            let locked = step === 2 ? '' : '^';
-            parser.consume(`${locked}*survey the_horizon`);
-            parser.submit();
-            return next_interp();
+                if (used) {
+                    return update(world, {
+                        interpretations: { [box_index]: {
+                            [`interp-alcove-${k}-blink`]: Symbol('Once')
+                        }}
+                    });
+                } else {
+                    return update(world, {
+                        alcove_interp: { [k]: true },
+                        
+                    });
+                }
+            }))
         };
 
         let end_consumer = gate(
-            () => step === 3,
+            () => Object.entries(world.alcove_interp).every(([k, v]) => v),
             make_transitioner(world, {
                 '*end_interpretation': 'alcove, ending interpretation'
             }));
 
         return parser.split([
-            judge_consumer,
-            survey_consumer,
-            end_consumer]);
+            interp_consumer,
+            end_consumer
+        ]);
     },
     // dest_oms: ['alcove, ending interpretation'],
-    post: (world_2, world_1) => {
-        if (world_2.node === 'alcove, beginning interpretation') {
-            return update(world_2, { local_interpretations: {
-                'interpretation-block': _ => _ || false,
-                'interpretation-active': _ => _ || false
-            }})
-        }
-        return world_2;
-    },
-    interpret_history: (world_2, world_1) => {
-        let hist_om = world_1.node;
-        let result: InterpretationOp[] = [];
-        if (hist_om === 'alcove, beginning interpretation') {
-            let hist_step = world_1.alcove_interp_step;    
-            if (hist_step=== 0) {
-                let step = world_2.alcove_interp_step;
-                if (step > 0) {
-                    result.push({kind: 'Add', label: `interp-alcove-${step}-enabled`});
-                } else {
-                    result.push({kind: 'Add', label: 'interpretation-block'});
-                    result.push({kind: 'Add', label: 'interpretation-active'});
+    here: (world) => {
+        let box = find_box(world)!;
+        if (world.index === box.index) {
+            return update(world, { interpretations: {
+                [world.index]: {
+                    'interpretation-block': true,
+                    'interpretation-active': true
                 }
-            }
+            }});
         }
-        return result;
+        return update(world, {
+            interpretations: { [box.index]: Object.fromEntries(
+                ['gravity', 'slickness', 'horizon'].map(k =>
+                    [`interp-alcove-${k}-enabled`, world.alcove_interp[k]])
+            )}
+        });
     }
 },
 {
@@ -467,7 +477,7 @@ ObserverMoments(
         'enter the forest': 'alcove, entering the forest',
     },
     interpretations: {
-        'alcove, beginning interpretation': [{kind: 'Remove', label:'interpretation-active'}]
+        'alcove, beginning interpretation': { 'interpretation-active': false }
     }
 },
 {
@@ -550,14 +560,13 @@ const initial_venience_world: VenienceWorld = {
     ...get_initial_world<VenienceWorld>(),
     node: 'grass, asking 2', //'bed, sleeping 1',
     has_perceived: {},
-    alcove_interp_step: 0,
-    local_interpretations: { forgotten: false }
+    alcove_interp: initial_alcove_interp,
 };
 
 let Meta: Puffer<Venience> = {
-    pre: world => update(world, {
-        local_interpretations: { forgotten: false }
-    })
+    // pre: world => update(world, {
+    //     local_interpretations: { forgotten: false }
+    // })
 };
 
 const venience_world_spec = make_puffer_world_spec(initial_venience_world, [Meta, ...ObserverMomentIndex]);

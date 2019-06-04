@@ -22,36 +22,8 @@
 
 import { infer_message_labels, Message, standard_render } from './message';
 import { Parser, Parsing, raw, RawInput } from './parser';
-import { appender_uniq, update, deep_equal } from './utils';
-
-export type InterpretationLabel = string;
-type AddOp = { kind: 'Add', label: InterpretationLabel };
-type RemoveOp = { kind: 'Remove', label: InterpretationLabel };
-export type InterpretationOp = AddOp | RemoveOp;
-export type LocalInterpretations = { [K in InterpretationLabel]: boolean }
-export type Interpretations = { [k: number]: LocalInterpretations };
-
-
-function apply_interpretation_op(interp: LocalInterpretations, op: InterpretationOp): LocalInterpretations {
-    if (op.kind === 'Add'){
-        if (!interp[op.label]) {
-            return {...interp, [op.label]: true};
-        }
-    }
-    if (op.kind === 'Remove'){
-        if (interp[op.label]) {
-            let new_interp = {...interp};
-            delete new_interp[op.label];
-            return new_interp;
-        }
-    }
-
-    return interp;
-}
-
-function apply_interpretation_ops(interp: LocalInterpretations, ops: InterpretationOp[]): LocalInterpretations {
-    return ops.reduce(apply_interpretation_op, interp);
-}
+import { deep_equal, update } from './utils';
+import { Interpretations, pre_interp } from './interpretation';
 
 export interface World {
     readonly message: Message,
@@ -59,23 +31,21 @@ export interface World {
     readonly previous: this | null,
     readonly index: number,
     readonly interpretations: Interpretations,
-    readonly local_interpretations: LocalInterpretations
 }
 
 // TODO: need a more concise and cute term than "object level"
 export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations';
-export type ObjectLevelKeys = 'message' | 'local_interpretations';
+export type ObjectLevelKeys = 'message';
 
 
 export type ObjectLevel<W extends World> = Omit<W, MetaLevelKeys>;
 export type ObjectLevelWorld = Pick<World, ObjectLevelKeys>;
 
-export type WorldUpdater<W extends World> = (world: ObjectLevel<W>) => ObjectLevel<W>;
-export type CommandHandler<W extends World> = (world: ObjectLevel<W>, parser: Parser) => ObjectLevel<W>;
+export type WorldUpdater<W extends World> = (world: W) => W;
 
-export type Narrator<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => ObjectLevel<W>;
-export type HistoryInterpreter<W extends World> = (new_world: ObjectLevel<W>, old_world: ObjectLevel<W>) => InterpretationOp[];
-export type Renderer = (world: World, labels?: LocalInterpretations, possible_labels?: LocalInterpretations) => string;
+export type CommandHandler<W extends World> = (world: W, parser: Parser) => W;
+
+export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
 export const INITIAL_MESSAGE: Message = {
     kind: 'Message',
@@ -91,7 +61,6 @@ const INITIAL_WORLD: World = {
     previous: null,
     index: 0,
     interpretations: {},
-    local_interpretations: {}
 };
 
 // Helper to return INITIAL_WORLD constant as any kind of W type.
@@ -109,14 +78,7 @@ export type WorldSpec<W extends World> = {
     readonly handle_command: CommandHandler<W>,
 
     // update the world after handling the command
-    readonly post?: Narrator<W>,//WorldUpdater<W>,
-    
-    // Given an historically previous world and the current (new) world,
-    // return any history interpretation ops to be applied to the previous world
-    readonly interpret_history?: HistoryInterpreter<W>,
-
-    // Return a string given the current message
-    readonly render: Renderer
+    readonly post?: Narrator<W>,
 }
 
 export function make_world_spec<W extends World>(spec: {
@@ -124,15 +86,7 @@ export function make_world_spec<W extends World>(spec: {
     pre?: WorldUpdater<W>,
     handle_command: CommandHandler<W>,
     post?: Narrator<W>,
-    interpret_history?: HistoryInterpreter<W>,
-    render?: Renderer
 }): WorldSpec<W> {
-    if (spec.render === undefined) {
-        spec = {
-            ...spec,
-            render: standard_render
-        }
-    }
     return <WorldSpec<W>>spec;
 }
 
@@ -156,8 +110,8 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
     next_state = update(next_state, {
         previous: _ => world,
         index: _ => _ + 1,
-        local_interpretations: {},
-        message: INITIAL_MESSAGE
+        message: INITIAL_MESSAGE,
+        interpretations: pre_interp
     });
 
     if (spec.pre !== undefined) {
@@ -189,41 +143,6 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
         next_state = <World>spec.post(next_state, world);
     }
 
-    let inferred_interpretation_receptors: LocalInterpretations = infer_message_labels(next_state.message);
-
-    next_state = update(next_state, {
-        local_interpretations: _ => ({
-            ...inferred_interpretation_receptors,
-            ..._
-        })
-    });
-
-    // Next apply history interp            
-    if (spec.interpret_history !== undefined) {
-        let hist_state: World | null = next_state;
-        while (hist_state !== null) {
-            let ops = spec.interpret_history(next_state, hist_state);
-            let old_receptors = hist_state.local_interpretations;
-            let old_interp = next_state.interpretations[hist_state.index] || old_receptors;//{};
-            // Important: filter out any ops applying to labels which have never been set in
-            // the local interpretations
-            // This effectively means the world must "subscribe" to future interpretations
-            // by setting them to false or true locally.
-            // Note: This irks me philosophically. In real life, we can creatively apply
-            // new interpretations to past experiences.
-            // But in this game, all possible interpretations
-            // of the world are known at the outset.
-            ops = ops.filter(op => old_receptors[op.label] !== undefined);
-            let new_interp: LocalInterpretations = apply_interpretation_ops(old_interp, ops);
-            if (!deep_equal(old_interp, new_interp)) {
-                next_state = update(next_state, {
-                    interpretations: { [hist_state.index]: () => new_interp }
-                });
-            }
-            hist_state = hist_state.previous;
-        }
-    }
-
     let next_parsing = apply_command(spec, next_state, raw('', false)).parsing;
     return {
         kind: 'CommandResult',
@@ -233,14 +152,14 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
     };
 }
 
-export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>, Renderer] {
+export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>] { //, Renderer] {
     function update(world: W, command: RawInput) {
         return apply_command(spec, world, command);
     }
 
     let initial_result = update(spec.initial_world, raw('', false));
 
-    return [initial_result, update, spec.render];
+    return [initial_result, update]
 
 }
 

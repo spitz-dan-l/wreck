@@ -1,10 +1,10 @@
+import { MessageUpdateSpec, message_updater } from '../message';
 import { narrative_fsa_builder } from '../narrative_fsa';
 import { Parser } from '../parser';
 import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../puffer';
 import { split_tokens } from '../text_tools';
-import { appender, update } from '../utils';
+import { update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
-import { MessageUpdateSpec, message_updater } from '../message';
 
 /*
     TODO:
@@ -134,15 +134,15 @@ function make_perceiver(world: PW, percs: readonly PerceptID[]) {
 let {
     make_transitioner,
     transition_to,
-    make_node
+    make_state
 } = narrative_fsa_builder<Hex, 'node', ObserverMomentID>('node');
 
 const ObserverMomentIndex: Puffer<Hex>[] = [];
 
-type NodeSpec = Parameters<typeof make_node>[0]
+type NodeSpec = Parameters<typeof make_state>[0]
 
 function ObserverMoments(...spec: NodeSpec[]) {
-    ObserverMomentIndex.push(...spec.map(make_node));
+    ObserverMomentIndex.push(...spec.map(make_state));
 }
 
 ObserverMoments(

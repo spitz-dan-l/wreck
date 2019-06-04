@@ -1,140 +1,4 @@
-// export class FuckDict<K, V> {
-//     readonly keys_map: Map<string, K>;
-//     readonly values_map: Map<string, V>;
-
-//     size: number = 0
-
-//     constructor(a?: [K, V][]) {
-//         this.keys_map = new Map<string, K>();
-//         this.values_map = new Map<string, V>();
-
-//         if (a !== undefined) {
-//             for (let [k, v] of a) {
-//                 this.set(k, v);
-//             }
-//         }
-//     }
-
-//     set(k: K, v: V) {
-//         let s = k.toString();
-//         this.keys_map.set(s, k);
-//         this.values_map.set(s, v);
-//         this.size = this.keys_map.size;
-//         return this;
-//     }
-
-//     get(k: K, default_value?: V): V | undefined {
-//         if (!this.has_key(k) && default_value !== undefined) {
-//             this.set(k, default_value);
-//             return default_value;
-//         }
-//         let s = k.toString();
-//         return this.values_map.get(s);
-//     }
-
-//     update(a: [K, V][]): FuckDict<K, V> {
-//         let updated = this.copy();
-//         for (let [k, v] of a) {
-//             updated.set(k, v);
-//         }
-//         return updated;
-//     }
-
-//     has_key(k: K) {
-//         return this.keys_map.has(k.toString());
-//     }
-
-//     keys_array() {
-//         return Array.from(this.keys_map.values());
-//     }
-
-//     values_array() {
-//         return Array.from(this.values_map.values());
-//     }
-
-//     entries_array(): [K, V][] {
-//         let result: [K, V][] = [];
-//         for (let [s, k] of this.keys_map.entries()) {
-//             result.push([k, <V>this.values_map.get(s)]);
-//         }
-//         return result;
-//     }
-
-//     keys_equal(other: FuckDict<K, V>) {
-//         for (let elem of this.keys_array()) {
-//             if (!other.has_key(elem)){
-//                 return false;
-//             }
-//         }
-
-//         for (let elem of other.keys_array()) {
-//             if (!this.has_key(elem)){
-//                 return false;
-//             }
-//         }
-
-//         return true;
-//     }
-
-//     keys_intersect(other: FuckDict<K, V>) {
-//         let result: K[] = [];
-//         for (let k of this.keys_array()) {
-//             if (other.has_key(k)) {
-//                 result.push(k)
-//             }
-//         }
-//         return result;
-//     }
-
-//     keys_subset(other: FuckDict<K, V>) {
-//         for (let elem of this.keys_array()) {
-//             if (!other.has_key(elem)){
-//                 return false;
-//             }
-//         }
-//         return true;
-//     }
-
-//     toString() {
-//         let entry_strings: string[] = this.entries_array().map((x) => x.toString()).sort();
-
-//         return `FuckDict<${entry_strings.join(',')}>`;
-//     }
-
-//     copy() {
-//         return new FuckDict(this.entries_array());
-//     }
-// }
-
-// // export type FuckSet<T> = FuckDict<T, undefined>;
-// export class FuckSet<T> extends FuckDict<T, undefined> {
-//     constructor(a?: T[]) {
-//         if (a !== undefined) {
-//             super(a.map(t => <[T, undefined]>[t, undefined]));
-//         } else {
-//             super();
-//         }
-//     }
-// }
-
 export {Updater, update, update_any} from './update';
-
-// export function arrays_fuck_equal<T>(ar1: T[], ar2: T[]) {
-//     if (ar1.length !== ar2.length) {
-//         return false;
-//     }
-
-//     for (let i = 0; i < ar1.length; i++) {
-//         if (ar1[i].toString() !== ar2[i].toString()) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// export function array_fuck_contains<T>(ar: T[], elt: T){
-//     return ar.some((x) => x.toString() === elt.toString())
-// }
 
 export type Point2 = [number, number];
 
@@ -262,6 +126,10 @@ export function array_last<T>(arr: T[]): T {
     return arr[arr.length - 1];
 }
 
+export function empty(x: Object): boolean {
+    return Object.keys(x).length === 0;
+}
+
 export function set_eq(arr1: any[], arr2: any[]) {
     if (arr1 === undefined && arr2 === undefined) {
         return true;
@@ -274,6 +142,10 @@ export function set_eq(arr1: any[], arr2: any[]) {
 
 export function merge_objects<T extends {}>(arr: T[]): T {
     return arr.reduce((acc, cur) => ({...acc, ...cur}), {} as T);
+}
+
+export function sorted<X>(arr: X[]): X[] {
+    return [...arr].sort();
 }
 
 // Helper for declaring values with tuple types.
@@ -391,3 +263,26 @@ export const statics =
 //   static isMember: string;
 //   // ...
 // }
+
+function foo1<X>(x: X) {
+    return 'butt';
+}
+
+type T1 = typeof foo1;
+type T2 = Parameters<T1>[0]
+
+interface Callable<P extends any[], R> {
+  (...args: P): R;
+}
+
+// type GenericReturnType<R, X> = X extends Callable<R> ? R : never;
+// type GenericParameters<R, X> = 
+
+
+type T3<F> = F extends (x: infer X) => any ? X : never;
+type ZZZ = T3<typeof foo1>
+
+
+
+
+

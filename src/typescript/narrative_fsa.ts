@@ -1,53 +1,47 @@
+import { MessageUpdateSpec, message_updater } from './message';
 import { Parser, ParserThread } from './parser';
-import { knit_puffers, map_puffer, Puffer, PufferAndWorld, PufferMapper } from './puffer';
-import { appender, update, Updater } from './utils';
-import { message_updater, MessageUpdateSpec } from './message';
-import { InterpretationOp } from './world';
+import { knit_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferAndWorld, PufferMapper, PufferNarrator, Stages } from './puffer';
+import { update, Updater } from './utils';
+import { LocalInterpretations, map_interpretations } from './interpretation';
+import { World } from './world';
 
-// export type BaseGraphWorld<NodeID extends string=string> = {
-//     node: NodeID
-// }
-
-// export type Transitions<NodeID extends string=string> = Record<string, NodeID>;
-// export type Interpretations<NodeID extends string=string> = Record<NodeID, InterpretationOp[]>;
-
-// export type NodeSpec<W extends BaseGraphWorld<NodeID>, NodeID extends string=W['node']> = {
-//     id: NodeID,
-//     enter_message?: MessageUpdateSpec,
-//     transitions?: Transitions<NodeID>,
-//     interpretations?: Interpretations<NodeID>
-//     debug?: boolean
-// } & Puffer<W>;
-
-type GraphWorld<Prop extends string, NodeID extends string> = {
-    [K in Prop]: NodeID
+type FSAWorld<Prop extends string, StateID extends string> = {
+    [K in Prop]: StateID
 }
 
-export function narrative_fsa_builder<W extends GraphWorld<Prop, NodeID>, Prop extends string, NodeID extends string=string>(prop_name: Prop) {
-    if (prop_name === undefined) {
-        prop_name = <Prop>'state';
-    }
+export function narrative_fsa_builder
+<
+    W extends FSAWorld<Prop, StateID>,
+    Prop extends string,
+    StateID extends string=string
+>
+(prop_name: Prop) {
 
-    type Transitions<NodeID extends string=string> = Record<string, NodeID>;
-    type Interpretations<NodeID extends string=string> = Record<NodeID, InterpretationOp[]>;
+    type Transitions = Record<string, StateID>;
+    type Interpretations = Record<StateID, LocalInterpretations>;
+
+    type PWUpdate<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
 
     type NodeSpec = {
-        id: NodeID,
+        id: StateID,
         enter_message?: MessageUpdateSpec,
-        transitions?: Transitions<NodeID>,
-        interpretations?: Interpretations<NodeID>
+        transitions?: Transitions,
+        interpretations?: Interpretations,
+        enter?: MaybeStages<PWUpdate<W>>,
+        exit?: MaybeStages<PWUpdate<W>>,
+        here?: MaybeStages<PWUpdate<W>>,
         debug?: boolean
     } & Puffer<W>;
 
     type PW = PufferAndWorld<W>;
 
-    function node_of(world: PW): NodeID {
-        return <NodeID><unknown>world[prop_name];
+    function state_id_of(world: PW): StateID {
+        return <StateID><unknown>world[prop_name];
     }
 
     // Return a parser thread that consumes commands to transition the player to
     // the nodes specified in transitions.
-    function make_transitioner(world: PW, transitions: Transitions<NodeID>, debug: boolean=false) {
+    function make_transitioner(world: PW, transitions: Transitions, debug: boolean=false) {
         return (parser: Parser) => {
             if (transitions === undefined || Object.keys(transitions).length === 0) {
                 parser.eliminate();
@@ -65,20 +59,83 @@ export function narrative_fsa_builder<W extends GraphWorld<Prop, NodeID>, Prop e
             );
         }
     }
-    function transition_to(world: PW, dest: NodeID, updater?: Updater<Omit<PW, Prop>>) {
+    function transition_to(world: PW, dest: StateID, updater?: Updater<Omit<PW, Prop>>) {
         return update(world, <Updater<PW>> <unknown> {
             ...(updater !== undefined ? updater : {}),
             [prop_name]: dest
         });
     }
 
-    function make_node<W extends PW>(spec: NodeSpec): Puffer<W> {
+    function make_state(spec: NodeSpec): Puffer<W>;
+    function make_state(spec: NodeSpec): Puffer<W> {
+        let enter = normalize_stages(spec.enter);
+        let exit = normalize_stages(spec.exit);
+        let here = normalize_stages(spec.here);
+
+        let stages: number[] = [0];
+        stages.push(...Object.keys(enter).map(x => parseInt(x)));
+        stages.push(...Object.keys(exit).map(x => parseInt(x)));
+        stages.push(...Object.keys(here).map(x => parseInt(x)));
+
+        stages = [...new Set(stages)];
+        stages.sort();
+
+        let post: Stages<PufferNarrator<W>> = {};
+
+        for (let stage of stages) {
+            post[stage] = (world_2, world_1) => {
+                if (spec.debug) {
+                    debugger;
+                }
+
+                // exiting
+                if (state_id_of(world_2) !== spec.id &&
+                    state_id_of(world_1) === spec.id) {
+
+                    if (exit[stage] !== undefined) {
+                        world_2 = exit[stage](world_2);
+                    }
+                }
+
+                // entering
+                if (state_id_of(world_2) === spec.id &&
+                    state_id_of(world_1) !== spec.id) {
+                    
+                    if (enter[stage] !== undefined) {
+                        world_2 = enter[stage](world_2);
+                    }
+
+                    if (stage === 0 && spec.enter_message !== undefined) {
+                        world_2 = update(world_2, <Updater<PW>> <unknown> {
+                            message: message_updater(spec.enter_message)
+                        });
+                    }
+                }
+
+                // here
+                if (state_id_of(world_2) === spec.id) {
+                    if (spec.interpretations !== undefined) {
+                        world_2 = <PW><unknown> update(<World><unknown>world_2, {
+                            interpretations: map_interpretations(world_2, (w, prev) => 
+                                ({...prev, ...spec.interpretations![state_id_of(w)]})
+                            )
+                        });
+                    }
+                    if (here[stage] !== undefined) {
+                        world_2 = here[stage](world_2);
+                    }
+                }
+
+                return world_2;
+            }
+        }
+
         // The base_puffer interprets the declarative transitions
         // and produces command handling logic for them.
         // It also prints the enter fragment upon entering a given node
-        let base_puffer: Puffer<PW> = {
+        let base_puffer: Puffer<W> = {
             handle_command: (world, parser) => {
-                if (node_of(world) !== spec.id) {
+                if (state_id_of(world) !== spec.id) {
                     parser.eliminate();
                 }
 
@@ -90,41 +147,16 @@ export function narrative_fsa_builder<W extends GraphWorld<Prop, NodeID>, Prop e
 
                 return parser.split(threads);
             },
-            post: (world_2, world_1) => {
-                if (node_of(world_2) === spec.id &&
-                    node_of(world_1) !== spec.id &&
-                    spec.enter_message !== undefined) {
-                    
-                    if (spec.debug) {
-                        debugger;
-                    }
-                    return update(world_2, <Updater<PW>> <unknown> {
-                        message: message_updater(spec.enter_message)
-                    });
-                }
-                return world_2;
-            },
-            interpret_history: (world_2, world_1) => {
-                if (node_of(world_2) === spec.id &&
-                    spec.interpretations !== undefined &&
-                    spec.interpretations[node_of(world_1)] !== undefined) {
-
-                    if (spec.debug) {
-                        debugger;
-                    }
-                    return spec.interpretations[node_of(world_1)];
-                }
-                return [];
-            }
+            post
         }
 
         // The mapper gates all of the passed-in "custom" puffer handlers behind a
         // conditional check that we are currently at the node in question.
         // This is a little confusing for post()- it will be allowed when *either*
         // the previous world *or* the current world is at the node in question.
-        let mapper: PufferMapper<PW> = {
+        let mapper: PufferMapper<W> = {
             pre: (cb) => (world) => {
-                if (cb === undefined || node_of(world) !== spec.id) {
+                if (cb === undefined || state_id_of(world) !== spec.id) {
                     return world;
                 }
 
@@ -136,13 +168,13 @@ export function narrative_fsa_builder<W extends GraphWorld<Prop, NodeID>, Prop e
             },
 
             handle_command: (cb, stage) => (world, parser) => {
-                if (cb === undefined || node_of(world) !== spec.id) {
+                if (cb === undefined || state_id_of(world) !== spec.id) {
                     parser.eliminate();
                 }
                 return cb!(world, parser);
             },
             post: (cb) => (world_2, world_1) => {
-                if (node_of(world_2) === spec.id || node_of(world_1) === spec.id) {
+                if (state_id_of(world_2) === spec.id || state_id_of(world_1) === spec.id) {
 
                     if (cb !== undefined) {
                         if (spec.debug) {
@@ -152,18 +184,6 @@ export function narrative_fsa_builder<W extends GraphWorld<Prop, NodeID>, Prop e
                     }
                 }
                 return world_2;
-            },
-
-            interpret_history: (cb) => (world_2, world_1) => {
-                if (cb === undefined || node_of(world_2) !== spec.id) {
-                    return [];
-                }
-
-                if (spec.debug) {
-                    debugger;
-                }
-
-                return cb(world_2, world_1);
             }
         };
 
@@ -173,7 +193,7 @@ export function narrative_fsa_builder<W extends GraphWorld<Prop, NodeID>, Prop e
     return {
         make_transitioner,
         transition_to,
-        make_node
+        make_state
     };
 };
 

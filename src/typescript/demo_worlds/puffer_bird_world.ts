@@ -1,17 +1,14 @@
-import { appender, appender_uniq, tuple, update } from '../utils';
-import { make_puffer_world_spec, Puffer, knit_puffers } from '../puffer';
+import { make_puffer_world_spec, Puffer } from '../puffer';
 import { random_choice } from '../text_tools';
-import { world_driver, World, get_initial_world, ObjectLevel } from '../world';
+import { appender, update } from '../utils';
+import { get_initial_world, World, world_driver } from '../world';
+import { map_interpretations } from '../interpretation';
 
 interface Location {
     is_in_heaven: boolean;
 }
 
 let LocationPuffer: Puffer<Location> = {
-    pre: world => update(world, {
-        local_interpretations: { happy: false }
-    }),
-
     handle_command: (world, parser) => {
         parser.consume('*go');
 
@@ -36,12 +33,16 @@ let LocationPuffer: Puffer<Location> = {
         });
     },
 
-    interpret_history: (new_world, old_world) => {
-        if (old_world.is_in_heaven === new_world.is_in_heaven) {
-            return [{ kind: 'Add', label: 'happy' }];
-        } else {
-            return [{ kind: 'Remove', label: 'happy' }];
-        }
+    post: (new_world, old_world) => {
+        return update(new_world, {
+            interpretations: map_interpretations(new_world, (w, prev) => {
+                if (w.is_in_heaven === new_world.is_in_heaven) {
+                    return {...prev, happy: true };
+                } else {
+                    return {...prev, happy: false };
+                }
+            })
+        });
     }
 };
 
@@ -153,13 +154,17 @@ let RolePuffer: Puffer<Roles> = {
             }
         });
     },
-    interpret_history: (new_world, old_world) => {
-        if (new_world.role === 'vulnerable') {
-            return [{ kind: 'Add', label: 'vulnerable' }];
-        } else {
-            return [{ kind: 'Remove', label: 'vulnerable' }];
-        }
-    }
+
+    post: (new_world, old_world) =>
+        update(new_world, {
+            interpretations: map_interpretations(new_world, (w, prev) => {
+                if (new_world.role === 'vulnerable') {
+                    return {...prev, vulnerable: true };
+                } else {
+                    return {...prev, vulnerable: false };
+                }        
+            })
+        })
 };
 
 interface BirdWorld extends World
