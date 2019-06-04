@@ -9,13 +9,13 @@
     margin-bottom: 1em;
 }
 
-.history .interpretation-block {
+.history .interpretation-block .output-text {
     outline: solid 1px ivory;
     outline-offset: 0.4em;
     transition: outline-color 400ms linear, background-color 400ms linear;
 }
 
-.history .interpretation-block.interpretation-active {
+.history .interpretation-block.interpretation-active .output-text {
     outline-color: ivory;
     animation-name: interpreting;
     animation-duration: 2s;
@@ -34,7 +34,7 @@
   }
 }
 
-.history .interpretation-block.interpretation-active.would-remove-interpretation-active {
+.history .interpretation-block.interpretation-active.would-remove-interpretation-active .output-text {
     outline-color: #f9dd04;
     animation: none !important;
 }
