@@ -18,6 +18,17 @@
         - what colors to highlight the various input words with
         - what to display beneath the input prompt as typeahead options
 
+    TODO:
+        - Availability constrains future availability
+            - If a token is consumed with Used, then all subsequent tokens will have Available swapped to Used
+            - Likewise for Locked, though in practice this doesn't matter because you can't consume pased a locked token.
+        - When deduping typeahead options,
+            - Availability:
+                - Available is used if any options are available,
+                - Used is used if any options are Used
+                - Locked otherwise
+            - The same tokens with different labels count as different options
+
 */
 
 import { array_last, deep_equal } from './utils';
@@ -41,8 +52,14 @@ export type TokenAvailability =
     { kind: 'Used' } |
     { kind: 'Locked' };
 
+const availability_order = {
+    'Available': 0,
+    'Used': 1,
+    'Locked': 2
+} as const
+
 export type TokenLabels = {
-    [label: string]: boolean
+    [label: string]: true
 };
 
 export type ConsumeSpec = {
@@ -204,21 +221,86 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
         return x.length === y.length && x.every((m, i) => deep_equal(m, y[i]))
     }
 
+    function options_match(x: (PartialMatch | null)[], y: (PartialMatch | null)[]): boolean {
+        return x.length === y.length && x.every((m, i) => {
+            let n = y[i];
+            if (m === null || n === null) {
+                return m === n;
+            }
+
+            return (m.expected.token === n.expected.token &&
+                    deep_equal(m.expected.labels, n.expected.labels));
+        })
+    }
+
+    let grouped_options: {
+        [k: string]: (PartialMatch | null)[][]
+    } = {};
+
+    function stringify_option(x: (PartialMatch | null)[]): string {
+        let result = '';
+        result += x.length+';';
+        let n_nulls = x.findIndex(l => l !== null);
+        result += n_nulls + ';';
+
+        function stringify_elt(elt: PartialMatch): string {
+            let result = '';
+            if (typeof elt.expected.token === 'string') {
+                result += elt.expected.token;
+            }
+            result += '|';
+            result += Object.keys(elt.expected.labels);
+            return result;
+        }
+        for (let l of x.slice(n_nulls)) {
+            result += stringify_elt(<PartialMatch>l) + ';';
+        }
+        return result;
+    }
+
     rows_with_typeahead.forEach(pr => {
         let start_idx = pr.findIndex(is_partial);
         let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
         let elts = <PartialMatch[]>pr.slice(start_idx);
         option.push(...elts);
 
-        // TODO: don't just check for simple equality.
-        // You can have same token + labels, but different availabilities.
-        // Availability should work like this:
-        //     Any options are Available -> Available
-        //     Else, any options Used -> Used
-        //     Else, Locked.
-        if (!unique_options.some((u_opt) => options_equal(u_opt, option))) {
-            unique_options.push(option);
+        let key = stringify_option(option);
+
+        if (grouped_options[key] === undefined) {
+            grouped_options[key] = [option];
+        } else {
+            grouped_options[key].push(option);
         }
+
+        // // TODO: don't just check for simple equality.
+        // // You can have same token + labels, but different availabilities.
+        // // Availability should work like this:
+        // //     Any options are Available -> Available
+        // //     Else, any options Used -> Used
+        // //     Else, Locked.
+        // if (!unique_options.some((u_opt) => options_equal(u_opt, option))) {
+        //     unique_options.push(option);
+        // }
+    });
+
+    return Object.entries(grouped_options).map(([key, options]) => {
+        let current_a: TokenAvailability = {kind: 'Locked'};
+        let current_index = 0;
+
+        for (let i = 0; i < options.length; i++) {
+            let opt = options[i];
+            let a = array_last(opt)!.expected.availability;
+            if (availability_order[a.kind] < availability_order[current_a.kind]) {
+                current_a = a;
+                current_index = i;
+            }
+        }
+
+        return {
+            kind: 'TypeaheadOption',
+            availability: current_a,
+            option: options[current_index]
+        };
     });
 
     return unique_options.map(option => ({
@@ -255,6 +337,8 @@ export class Parser {
     pos: number = 0;
 
     parse_result: TokenMatch[] = [];
+
+    current_availability: TokenAvailability = {kind: 'Available'}
     
     _split_iter: Iterator<number>;
 
@@ -309,6 +393,14 @@ export class Parser {
         }
     }
 
+    clamp_availability(spec: ConsumeSpec) {
+        if (availability_order[spec.availability.kind] < availability_order[this.current_availability.kind]) {
+            return {...spec, availability: this.current_availability};
+        } else if (availability_order[spec.availability.kind] > availability_order[this.current_availability.kind]) {
+            this.current_availability = spec.availability;
+        }
+        return spec;
+    }
     /*
         This will throw a parse exception if the desired tokens can't be consumed.
         It is expected that every ParserThread is wrapped in an exception handler for
@@ -319,12 +411,15 @@ export class Parser {
             throw new ParseError('Tried to consume() on a done parser.');
         }
 
+        tokens = tokens.map(t => this.clamp_availability(t));
+
         let partial = false;
         let error = false;
         let i = 0
         // check if exact match
         for (i = 0; i < tokens.length; i++) {
             let spec = tokens[i];
+
             let spec_value = spec.token;
 
             if (spec_value === NEVER_TOKEN) {

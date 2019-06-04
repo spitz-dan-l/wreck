@@ -3,8 +3,6 @@ TODOs
 Priority
 
 - Parser: fix deduplication of typeahead
-- Display: "blink" effects firing too many times
-
 
 - Fixing up the initial interp puzzle
     - don't just lock all the commands but one

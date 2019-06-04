@@ -104,6 +104,11 @@ ul.typeahead {
       color: red;
 }
 
+.parsed-text .token.used,
+.parsed-text .token.locked {
+      opacity: 0.4;
+}
+
 .parsed-text .token.keyword {
       color: aqua;
 }

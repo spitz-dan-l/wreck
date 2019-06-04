@@ -1,6 +1,6 @@
 import * as React from 'react';
+import { MatchStatus, Parsing, Token, TokenAvailability, TokenMatch } from '../typescript/parser';
 
-import {Token, TokenMatch, MatchStatus, Parsing} from '../typescript/parser';
 
 export const Carat = () => <span>>&nbsp;</span>;
 
@@ -15,8 +15,24 @@ function cssify_status(status: MatchStatus): string {
   }
 }
 
+function cssify_availability(availability: TokenAvailability) {
+  switch (availability.kind) {
+    case 'Available':
+      return 'available';
+    case 'Used':
+      return 'used';
+    case 'Locked':
+      return 'locked';
+  }
+}
+
 function get_class_name(tm: TokenMatch) {
-  let classes: string[] = ['token', cssify_status(tm.status)];
+  let classes: string[] = [
+    'token',
+    cssify_status(tm.status),
+    cssify_availability(tm.expected.availability)
+  ];
+
   if (tm.status === 'Match') {
     for (let [label, on] of Object.entries(tm.expected.labels)) {
       if (on) {
@@ -30,11 +46,6 @@ function get_class_name(tm: TokenMatch) {
 export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
   let parsing: Parsing = props.parsing;
   let children = props.children;
-
-  let style: any = {
-    whiteSpace: 'pre-wrap',
-    position: 'relative'
-  }
   
   let command_classes = ['command'];
 
