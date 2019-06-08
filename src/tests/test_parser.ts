@@ -26,7 +26,7 @@ describe('parser', () => {
             }
 
             let how = p.split([
-                () => p.consume('~happily', 'happily'),
+                () => p.consume({ tokens: 'happily', used: true}, 'happily'),
                 () => p.consume('sadly', 'sadly'),
                 () => 'neutrally'
             ]);
@@ -51,7 +51,7 @@ describe('parser', () => {
     });
 
     it('should do the dsl thing', () => {
-        let main_thread = (p) => p.consume("*daniel didn't &wash", () => p.submit('unclean'));
+        let main_thread = (p) => p.consume([{tokens:"daniel", labels: {keyword: true}}, "didn't", {tokens:"wash", labels: {option: true}}], () => p.submit('unclean'));
 
         let result = <Parsed<string>>Parser.run_thread(raw("daniel didn't wash"), main_thread);
         assert.equal(result.kind, 'Parsed');
@@ -63,10 +63,8 @@ describe('parser', () => {
             {
                 "actual": "daniel",
                 "expected": {
-                    "availability": {
-                        "kind": "Available"
-                    },
-                    "kind": "ConsumeSpec",
+                    "availability": "Available",
+                    "kind": "RawConsumeSpec",
                     "labels": {
                         "keyword": true
                     },
@@ -78,10 +76,8 @@ describe('parser', () => {
             {
                 "actual": "didn't",
                 "expected": {
-                    "availability": {
-                        "kind": "Available"
-                    },
-                    "kind": "ConsumeSpec",
+                    "availability": "Available",
+                    "kind": "RawConsumeSpec",
                     "labels": {
                         "filler": true
                     },
@@ -93,10 +89,8 @@ describe('parser', () => {
             {
                 "actual": "wash",
                 "expected": {
-                    "availability": {
-                        "kind": "Available"
-                    },
-                    "kind": "ConsumeSpec",
+                    "availability": "Available",
+                    "kind": "RawConsumeSpec",
                     "labels": {
                         "option": true
                     },
@@ -108,10 +102,8 @@ describe('parser', () => {
             {
                 "actual": SUBMIT_TOKEN,
                 "expected": {
-                    "availability": {
-                        "kind": "Available"
-                    },
-                    "kind": "ConsumeSpec",
+                    "availability": "Available",
+                    "kind": "RawConsumeSpec",
                     "labels": {
                         "filler": true
                     },

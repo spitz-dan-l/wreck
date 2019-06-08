@@ -51,13 +51,18 @@ let handle_command: CommandHandler<BirdWorld> = (world, parser) => {
 }
 
 let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
-    parser.consume('*go');
+    parser.consume({ tokens: 'go', labels: { keyword: true}});
 
     let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
 
     let dir = parser.split(
         (['up', 'down'] as const).map(dir =>
-            () => parser.consume(`${is_locked[dir] ? '^' : ''}&${dir}_stairs`, dir)
+            () =>
+                parser.consume({
+                    tokens: `${dir}_stairs`,
+                    locked: is_locked[dir],
+                    labels: {option: true}
+                }, dir)
         )
     );
 
@@ -76,7 +81,7 @@ let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
         parser.eliminate();
     }
 
-    parser.consume("*mispronounce zarathustra's name");
+    parser.consume({ tokens: "mispronounce zarathustra's name", labels: {keyword: true}});
     parser.submit();
 
     let utterance_options = [
@@ -97,7 +102,7 @@ let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 }
 
 let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
-    parser.consume('*be');
+    parser.consume({ tokens: 'be', labels: { keyword: true }});
 
     let roles: string[] = [
         'the One Who Gazes Ahead',
@@ -127,7 +132,7 @@ let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 
     let quality = parser.split(
         roles.map((r, i) =>
-            () => parser.consume(`&${r.replace(/ /g, '_')}`, qualities[i]))
+            () => parser.consume({ tokens: `${r.replace(/ /g, '_')}`, labels: { option: true }}, qualities[i]))
     );
 
     parser.submit();

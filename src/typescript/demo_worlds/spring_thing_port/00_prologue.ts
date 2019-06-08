@@ -1,45 +1,244 @@
 import { MessageUpdateSpec, message_updater } from '../../message';
 import { narrative_fsa_builder } from '../../narrative_fsa';
-import { Parser, ParserThread, gate } from '../../parser';
+import { Parser, ParserThread, gate, ConsumeSpec } from '../../parser';
 import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../../puffer';
-import { update } from '../../utils';
+import { update, Updater, entries, cond } from '../../utils';
 import { get_initial_world, World, world_driver } from '../../world';
 import { LocalInterpretations, find_historical, self_interpretation } from '../../interpretation';
 
-type ObserverMomentID = string;
+/*
+    TODO
+        - Convert various expositive bits to "consider" or "remember" commands, so they can be repeated.
+        - use separate state machines for the various flowy bits
+            - e.g. first waking up, you awaken, sit up, try to remember, numbers,
+            lie down, etc.
+        - fix up the parser dsl to support arb token labels
+*/
+
+
+type ObserverMomentID =
+    'bed' |
+    'desk, sitting down' |
+    'desk, opening the envelope' |
+    'desk, reacting' |
+    'desk, trying to understand 1' |
+    'desk, trying to understand 2' |
+    'desk, considering the sense of panic' |
+    'desk, searching for the notes' |
+    'grass, slipping further' |
+    'grass, considering the sense of dread' |
+    'grass, asking 1' |
+    'grass, asking 2' |
+    'alcove, beginning interpretation' |
+    'alcove, ending interpretation' |
+    'alcove, entering the forest' |
+    'title' |
+    'alone in the woods'
+    ;
 
 interface Venience {
     node: ObserverMomentID;
-    has_perceived: Record<PerceptID, boolean>,
-    alcove_interp: AlcoveInterp
+    has_perceived: Partial<Record<PerceptID, boolean>>;
+    alcove_interp: AlcoveInterp;
+    bed_scene_state: BedSceneID;
+    current_interpretation: number | null;
+    has_acquired: Record<AbstractionID, boolean>;
 }
+
+type AbstractAction = {
+    name: string, // e.g. gravity
+    get_wrong_msg: (facet_phrase: string) => MessageUpdateSpec, // e.g. judging the direction of gravity
+    get_cmd: (facet_phrase: ConsumeSpec) => ConsumeSpec
+}
+
+type AbstractionID = string;
+type Abstraction = {
+    name: AbstractionID, // e.g. "the Mountain"
+    phrase: ConsumeSpec,
+    actions: AbstractAction[]
+}
+
+const AbstractionIndex: readonly Abstraction[] = [
+{
+    name: 'the Mountain',
+    phrase: 'the_Mountain',
+    actions: [
+    {
+        name: 'gravity',
+        get_cmd: (facet) => ['judge the_direction_of_gravity for', facet],
+        get_wrong_msg: (facet) => `You struggle to connect the direction of gravity to ${facet}.`
+    },
+    {
+        name: 'ice',
+        get_cmd: (facet) => ['judge the_slickness_of_the_ice for', facet],
+        get_wrong_msg: (facet) => `You struggle to connect the slickness of the ice to ${facet}.`
+    },
+    {
+        name: 'horizon',
+        get_cmd: (facet) => ['survey the_horizon from', facet],
+        get_wrong_msg: (facet) => `You struggle to connect the horizon to ${facet}.`
+    }]
+}
+];
+
+// FACETS
+type FacetID = string;
+
+type FacetSpec = {
+    id: FacetID,
+    name: string, // e.g. "the sense of dread"
+    phrase: ConsumeSpec,
+    can_interpret: (current_world: PW, interpretted_world: PW) => boolean,
+    used: (action: [AbstractionID, string], world: PW) => boolean,
+    interpret: (action: [AbstractionID, string], current_world: PW, interpretted_world: PW) => PW | false
+};
+
+function make_facet(spec: FacetSpec): Puffer<Venience> {
+    return {
+        handle_command: {
+            0: (world, parser) => {
+                if (world.current_interpretation === null) {
+                    return parser.eliminate();
+                }
+
+                let interpretted_world = find_historical(world, w => w.index === world.current_interpretation)!;
+
+                if (!spec.can_interpret(world, interpretted_world)){
+                    parser.eliminate();
+                }
+
+                for (let [k, on] of Object.entries(world.has_acquired)) {
+                    if (on) {
+                        const abs = AbstractionIndex.find((a => a.name === k));
+                        if (abs === undefined) {
+                            throw Error('Invalid abstraction name: '+k);
+                        }
+                        
+                        let threads: ParserThread<PW>[] = [];
+
+                        for (let action of abs.actions) {
+                            threads.push(() => {
+                                let used = spec.used([abs.name, action.name], world);
+                                parser.consume({
+                                    tokens: ['invoking', abs.phrase],
+                                    used
+                                });
+                                parser.consume(action.get_cmd(spec.phrase));
+                                parser.submit();
+
+                                let result = spec.interpret([abs.name, action.name], world, interpretted_world);
+                                if (result === false) {
+                                    return update(world, {
+                                        message: message_updater(action.get_wrong_msg(spec.name))
+                                    });
+                                }
+                                return result;
+                            })
+                        }
+
+                        return parser.split(threads);
+                    }
+                }
+                return world;
+            }
+        }
+    }
+}
+
+let InterpPuffer: Puffer<Venience> = {
+    handle_command: {
+        2: (world, parser) => {
+            if (world.current_interpretation === null) {
+                parser.consume('begin_interpretation');
+                parser.submit();
+
+                let index = world.previous && world.previous.index;
+                let new_interps: Updater<PW> = {};
+                if (index !== null) {
+                    new_interps = { interpretations: {
+                        [index]: {
+                            'interpretation-block': true,
+                            'interpretation-active': true
+                        }
+                    }};
+                }
+                return update(world,
+                    { current_interpretation: index },
+                    new_interps
+                );
+            } else {
+                parser.consume('end_interpretation');
+                parser.submit();
+
+                return update(world, {
+                    current_interpretation: null,
+                    interpretations: {
+                        [world.current_interpretation]: {'interpretation-active': false}
+                    }
+                });
+            }
+        }
+    }
+};
+
 
 type PW = PufferAndWorld<Venience>;
 
+let transition_to = (w: PW, node: ObserverMomentID) => update(w, { node });
+
 let {
     make_transitioner,
-    transition_to,
-    make_state
-} = narrative_fsa_builder<Venience, 'node', ObserverMomentID>('node');
+    make_state,
+    apply_state,
+    apply_states
+} = narrative_fsa_builder<Venience, ObserverMomentID>(w => w.node, transition_to);
 
 const ObserverMomentIndex: Puffer<Venience>[] = [];
 
-type NodeSpec = Parameters<typeof make_state>[0]
+let ObserverMoments = apply_states()(p => { ObserverMomentIndex.push(p) });
 
-function ObserverMoments(...spec: NodeSpec[]) {
-    ObserverMomentIndex.push(...spec.map(make_state));
-}
 
-ObserverMoments(
+type BedSceneID =
+    'bed, sleeping 1' |
+    'bed, awakening 1' |
+    'bed, sitting up 1' |
+    'bed, trying to remember 1' |
+    'bed, trying to remember 2' |
+    'bed, trying to remember 3' |
+    'bed, trying to remember 4' |
+    'bed, trying to remember 5' |
+    'bed, trying to remember 6' |
+    'bed, lying down 1' |
+    'bed, sleeping 2' |
+    'bed, awakening 2' |
+    'bed, sitting up 2' |
+    'done';
+
+let bed_scene = narrative_fsa_builder<Venience, BedSceneID>(
+    (w) => w.bed_scene_state,
+    (w, id) => update(w, { bed_scene_state: id })
+);
+
+let BedSceneMomentIndex: Puffer<Venience>[] = [];
+let BedSceneMoments = bed_scene.apply_states()(p => {
+    let result = make_state({
+        id: 'bed',
+        ...p
+    });
+    ObserverMomentIndex.push(result);
+});
+
+
+BedSceneMoments(
 {
     id: 'bed, sleeping 1',
     enter_message: '',
-    transitions: {'awaken': 'bed, awakening 1'}
+    transitions: {'bed, awakening 1': 'awaken'}
 },
 {
     id: 'bed, awakening 1',
     enter_message: 'You awaken in your bed.',
-    transitions: {'sit_up': 'bed, sitting up 1'},
+    transitions: {'bed, sitting up 1': 'sit_up'},
 },
 {
     id: 'bed, sitting up 1',
@@ -50,13 +249,13 @@ ObserverMoments(
     Your body still feels heavy with sleep.
     <br /><br />
     Something important nags quietly at you from the back of your mind...`,
-    transitions: {'try_to *remember': 'bed, trying to remember 1'}
+    transitions: {'bed, trying to remember 1': 'try_to_remember'}
 },
 {
     id: 'bed, trying to remember 1',
     enter_message: `
     Something to do with Katya's twelfth sequence.`,
-    transitions: {'remember the_twelfth_sequence': 'bed, trying to remember 2'}
+    transitions: {'bed, trying to remember 2': 'remember the_twelfth_sequence'}
 },
 {
     id: 'bed, trying to remember 2',
@@ -66,7 +265,7 @@ ObserverMoments(
     None of the greek symbols, none of the allusions to physical constants.
     <br/><br/>
     Just numbers. Eighty-seven of them.`,
-    transitions: {'remember the_numbers': 'bed, trying to remember 3'}
+    transitions: {'bed, trying to remember 3': 'remember the_numbers'}
 },
 {
     id: 'bed, trying to remember 3',
@@ -78,13 +277,13 @@ ObserverMoments(
     57 44 35
     <br/><br/>
     and continues:`,
-    transitions: {'20 699 319': 'bed, trying to remember 4'}
+    transitions: {'bed, trying to remember 4': '20 699 319'}
 },
 {
     id: 'bed, trying to remember 4',
     enter_message: `
     Your favorite bit is positions fifty-one through fifty-three:`,
-    transitions: {'936 5223 2717': 'bed, trying to remember 5'}
+    transitions: {'bed, trying to remember 5': '936 5223 2717'}
 },
 {
     id: 'bed, trying to remember 5',
@@ -96,7 +295,7 @@ ObserverMoments(
     Katya was brilliant, after all.
     <br/><br/>
     Sometimes frighteningly so.`,
-    transitions: {'remember Katya': 'bed, trying to remember 6'}
+    transitions: {'bed, trying to remember 6': 'remember Katya'}
 },
 {
     id: 'bed, trying to remember 6',
@@ -112,7 +311,7 @@ ObserverMoments(
     <br/><br/>
     Number Twelve can wait til morning,"</i> you imagine she'd say.
     </div>`,
-    transitions: {'lie_down': 'bed, lying down 1'}
+    transitions: {'bed, lying down 1': 'lie_down'}
 },
 {
     id: 'bed, lying down 1',
@@ -122,7 +321,7 @@ ObserverMoments(
     You can update your notes first thing tomorrow.
     <br/><br/>
     You slide back under the blankets. The pre-spring breeze cools your face.`,
-    transitions: {'sleep until_sunrise': 'bed, sleeping 2'},
+    transitions: {'bed, sleeping 2': 'sleep until_sunrise'},
     interpretations: {
         'bed, trying to remember 1': { forgotten: true },
         'bed, trying to remember 2': { forgotten: true },
@@ -145,12 +344,13 @@ ObserverMoments(
     <br/><br/>
     and <i>her voice.</i>
     </div>`,
-    transitions: {'awaken': 'bed, awakening 2'}
+    transitions: {'bed, awakening 2': 'awaken'}
 },
 {
     id: 'bed, awakening 2',
     enter_message: `You awaken in your bed again.`,
-    transitions: {'sit_up': 'bed, sitting up 2'},
+    transitions: {'done': 'sit_up'}, //{'bed, sitting up 2': 'sit_up'},
+    exit_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
     interpretations: {
         'bed, sleeping 1': { forgotten: true },
         'bed, awakening 1': { forgotten: true },
@@ -164,16 +364,20 @@ ObserverMoments(
         'bed, lying down 1': { forgotten: true },
         'bed, sleeping 2': { forgotten: true }
     }
-});
+},
+);
 
 ObserverMoments(
 {
-    id: 'bed, sitting up 2',
-    enter_message: `As you do, the first ray of sun sparkles through the trees, hitting your face. Your alcove begins to come to life.`,
+    id: 'bed', //'bed, sitting up 2',
     handle_command: (world, parser) => {
+        if (world.bed_scene_state !== 'done') {
+            parser.eliminate();
+        }
+
         let look_consumer = make_perceiver(world, {
-            '&around': 'alcove, general',
-            '&at_myself': 'self, 1'
+            'alcove, general': '&around',
+            'self, 1': '&at_myself'
         });
 
         let other_consumer = (p: Parser) => {
@@ -194,15 +398,15 @@ ObserverMoments(
     On the desk is a large parchment envelope, bound in twine.`,
     handle_command: (world, parser) => {
         let look_consumer = make_perceiver(world, {
-            '&at_the_envelope': 'alcove, envelope',
-            '&around': 'alcove, general',
-            '&at_myself': 'self, 1'
+            'alcove, envelope': '&at_the_envelope',
+            'alcove, general': '&around',
+            'self, 1': '&at_myself'
         });
 
         let open_consumer = gate(
-            () => world.has_perceived['alcove, envelope'],
+            () => world.has_perceived['alcove, envelope'] || false,
             make_transitioner(world, {
-                '*open the_envelope': 'desk, opening the envelope'
+                'desk, opening the envelope': '*open the_envelope'
             }));
 
         
@@ -220,7 +424,7 @@ ObserverMoments(
     You unfold the envelope’s flap.
     <br /><br />
     It’s empty.`,
-    transitions: {'what?': 'desk, reacting'}
+    transitions: {'desk, reacting': 'what?'}
 },
 {
     id: 'desk, reacting',
@@ -234,7 +438,7 @@ ObserverMoments(
     <i>Empty?</i>`,
     transitions: {
         // 'try_to ^*remember': null,
-        'try_to *understand': 'desk, trying to understand 1'
+        'desk, trying to understand 1': 'try_to *understand'
     }
 },
 {
@@ -276,7 +480,7 @@ ObserverMoments(
     <br /><br />
     How will you possibly understand? How will you honor Katya’s memory?`,
     transitions: {
-        '*consider the_sense_of &panic': 'desk, considering the sense of panic'
+        'desk, considering the sense of panic': '*consider the_sense_of &panic'
     }
 },
 {
@@ -287,7 +491,7 @@ ObserverMoments(
     It throws one particular path into relief: the path to the bottom.
     </div>`,
     transitions: {
-        'search_for the_notes': 'desk, searching for the notes'
+        'desk, searching for the notes': 'search_for the_notes'
     }
 },
 {
@@ -302,7 +506,7 @@ ObserverMoments(
     You can feel yourself slipping down an icy hill.
     </div>`,
     transitions: {
-        'slip further': 'grass, slipping further'
+        'grass, slipping further': 'slip further'
     }
 },
 {
@@ -326,7 +530,7 @@ ObserverMoments(
     enter_message: `<div class="interp">
     <i>"Catch your breath, dear,"</i> Katya would say. <i>"The mountain, the ice, they are here to tell you something."</i>
     </div>`,
-    transitions: {'tell_me_what?': 'grass, asking 1'}
+    transitions: {'grass, asking 1': 'tell_me_what?'}
 },
 {
     id: 'grass, asking 1',
@@ -335,7 +539,7 @@ ObserverMoments(
     <br /><br />
     That your capacity to experience meaning is as energetic as a body sliding down a mountain."</i>
     </div>`,
-    transitions: {'what_should_I_do?': 'grass, asking 2'}
+    transitions: {'grass, asking 2': 'what_should_I_do?'}
 },
 {
     id: 'grass, asking 2',
@@ -346,7 +550,7 @@ ObserverMoments(
     <br /><br />
     And then, choose where to go."
     </i></div>`,
-    transitions: {'*begin_interpretation': 'alcove, beginning interpretation'}
+    transitions: {'alcove, beginning interpretation': '*begin_interpretation'}
 },
 );
 
@@ -368,6 +572,40 @@ function find_box(world: PufferAndWorld<Venience>) {
         Object.entries(w.alcove_interp).every(([k, v]) => !v)
     );
 }
+
+let dread_facet = make_facet({
+    id: 'dread',
+    name: 'the sense of dread',
+    phrase: 'the_sense_of_dread',
+    can_interpret: (current_world, interp_world) =>
+        interp_world.node === 'alcove, beginning interpretation',
+
+    used: ([abs, action], world) => world.alcove_interp[action],
+    
+    interpret: ([abstraction, action], world, interp_world) => {
+        if (abstraction === 'the Mountain' && action === 'gravity') {
+            let used = world.alcove_interp.gravity;
+            //correct
+            if (used) {
+                return update(world, {
+                    interpretations: { [interp_world.index]: {
+                        [`interp-alcove-gravity-blink`]: Symbol('Once')
+                    }}
+                });
+            } else {
+                return update(world, {
+                    alcove_interp: { gravity: true },
+                    
+                });
+            }
+        } else {
+            return update(world, {
+                message: message_updater("Something tells you that isn't what Katya meant.")
+            })
+        }
+    }
+});
+ObserverMomentIndex.push(dread_facet);
 
 ObserverMoments(
 {
@@ -439,7 +677,7 @@ ObserverMoments(
         let end_consumer = gate(
             () => Object.entries(world.alcove_interp).every(([k, v]) => v),
             make_transitioner(world, {
-                '*end_interpretation': 'alcove, ending interpretation'
+                'alcove, ending interpretation': '*end_interpretation'
             }));
 
         return parser.split([
@@ -474,7 +712,7 @@ ObserverMoments(
     <br /><br />
     But your sense of purpose compels you. To go. To seek. To try to understand.`,
     transitions: {
-        'enter the forest': 'alcove, entering the forest',
+        'alcove, entering the forest': 'enter the forest',
     },
     interpretations: {
         'alcove, beginning interpretation': { 'interpretation-active': false }
@@ -483,7 +721,7 @@ ObserverMoments(
 {
     id: 'alcove, entering the forest',
     enter_message: `What lies within the forest, and beyond? What will it be like, out there?`,
-    transitions: {'continue': 'title'}
+    transitions: {'title': 'continue'}
 },
 {
     id: 'title',
@@ -491,11 +729,15 @@ ObserverMoments(
     <br />
     <br />
     An Interactive Fiction by Daniel Spitz`,
-    transitions: {'continue': 'alone in the woods'}
+    transitions: {'alone in the woods': 'continue'}
 }
 )
 
-type PerceptID = string;
+type PerceptID =
+    'alcove, general' |
+    'self, 1' |
+    'alcove, envelope' |
+    'sequence, 12';
 
 type Percept = {
     id: PerceptID,
@@ -510,18 +752,22 @@ function percieve(world: PW, perc: PerceptID) {
     });
 }
 
-type PerceptSpec = Record<string, PerceptID>;
+type PerceptSpec = Partial<Record<PerceptID, ConsumeSpec>>;
 
 // TODO: Have this take a proper spec as input, like make_transitioner
 function make_perceiver(world: PW, percs: PerceptSpec, prepend_look: boolean=true) {
     return (parser: Parser) =>
         parser.split(
-            Object.entries(percs).map(([cmd, pid]) => () => {
+            entries(percs).map(([pid, cmd]) => () => {
                 let perc = Percepts.find(p => p.id === pid)!;
                 if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
                     parser.eliminate();
                 }
-                parser.consume(`${prepend_look ? '*look ' : ''}${world.has_perceived[pid] ? '^' : ''}${cmd}`);
+                let cs: ConsumeSpec[] = [
+                    ...cond(prepend_look, () => ({tokens: 'look', labels: {keyword: true}})),
+                    cmd
+                ];
+                parser.consume({tokens: cs, used: world.has_perceived[pid]});
                 parser.submit();
                 return percieve(world, pid);
             })
@@ -551,25 +797,31 @@ const Percepts: Percept[] = [
         You've been analyzing Katya's work for years now.
         <br/><br/>
         Your career is built in reverence of hers.`
-    }
+    },
+    {
+        id: 'sequence, 12',
+        message: `
+        The twelfth sequence was the first purely numeric one in Katya's notes.
+        <br/><br/>
+        None of the greek symbols, none of the allusions to physical constants.
+        <br/><br/>
+        Just numbers. Eighty-seven of them.`,
+    },
 ];
 
 interface VenienceWorld extends World, Venience {}
 
 const initial_venience_world: VenienceWorld = {
     ...get_initial_world<VenienceWorld>(),
-    node: 'grass, asking 2', //'bed, sleeping 1',
+    node: 'bed', //'grass, asking 2', //'bed, sleeping 1',
     has_perceived: {},
     alcove_interp: initial_alcove_interp,
+    bed_scene_state: 'bed, sleeping 1',
+    current_interpretation: null,
+    has_acquired: { 'the Mountain': false }
 };
 
-let Meta: Puffer<Venience> = {
-    // pre: world => update(world, {
-    //     local_interpretations: { forgotten: false }
-    // })
-};
-
-const venience_world_spec = make_puffer_world_spec(initial_venience_world, [Meta, ...ObserverMomentIndex]);
+const venience_world_spec = make_puffer_world_spec(initial_venience_world, [InterpPuffer, ...ObserverMomentIndex]);
 
 
 export function new_venience_world() {

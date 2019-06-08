@@ -1,43 +1,34 @@
 import { MessageUpdateSpec, message_updater } from './message';
-import { Parser, ParserThread } from './parser';
-import { knit_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferAndWorld, PufferMapper, PufferNarrator, Stages } from './puffer';
-import { update, Updater } from './utils';
+import { Parser, ParserThread, ConsumeSpec } from './parser';
+import { knit_puffers, bake_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferAndWorld, PufferMapper, PufferNarrator, Stages } from './puffer';
+import { update, Updater, entries } from './utils';
 import { LocalInterpretations, map_interpretations } from './interpretation';
 import { World } from './world';
 
-type FSAWorld<Prop extends string, StateID extends string> = {
-    [K in Prop]: StateID
-}
-
 export function narrative_fsa_builder
-<
-    W extends FSAWorld<Prop, StateID>,
-    Prop extends string,
-    StateID extends string=string
->
-(prop_name: Prop) {
-
-    type Transitions = Record<string, StateID>;
-    type Interpretations = Record<StateID, LocalInterpretations>;
+<W, StateID extends string=string>
+(
+    get_state_id: (w:PufferAndWorld<W>) => StateID,
+    transition_to: (w: PufferAndWorld<W>, state: StateID) => PufferAndWorld<W>
+) {
+    type Transitions = Partial<Record<StateID, ConsumeSpec>>;//{ [K in StateID]: ConsumeSpec };
+    type Interpretations = Partial<Record<StateID, LocalInterpretations>>;
 
     type PWUpdate<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
 
-    type NodeSpec = {
+    type StateSpec<W1 extends W=W> = {
         id: StateID,
         enter_message?: MessageUpdateSpec,
+        exit_message?: MessageUpdateSpec,
         transitions?: Transitions,
         interpretations?: Interpretations,
-        enter?: MaybeStages<PWUpdate<W>>,
-        exit?: MaybeStages<PWUpdate<W>>,
-        here?: MaybeStages<PWUpdate<W>>,
+        enter?: MaybeStages<PWUpdate<W1>>,
+        exit?: MaybeStages<PWUpdate<W1>>,
+        here?: MaybeStages<PWUpdate<W1>>,
         debug?: boolean
-    } & Puffer<W>;
+    } & Puffer<W1>;
 
-    type PW = PufferAndWorld<W>;
-
-    function state_id_of(world: PW): StateID {
-        return <StateID><unknown>world[prop_name];
-    }
+    type PW<W1 extends W=W> = PufferAndWorld<W1>;
 
     // Return a parser thread that consumes commands to transition the player to
     // the nodes specified in transitions.
@@ -51,23 +42,17 @@ export function narrative_fsa_builder
             }
             
             return parser.split(
-                Object.entries(transitions).map(([consume_spec, destination]) => () => {
-                    parser.consume(consume_spec);
+                Object.entries(transitions).map(([destination, consume_spec]) => () => {
+                    parser.consume(<ConsumeSpec>consume_spec);
                     parser.submit();
-                    return transition_to(world, destination);
+                    return transition_to(world, <StateID>destination);
                 })
             );
         }
     }
-    function transition_to(world: PW, dest: StateID, updater?: Updater<Omit<PW, Prop>>) {
-        return update(world, <Updater<PW>> <unknown> {
-            ...(updater !== undefined ? updater : {}),
-            [prop_name]: dest
-        });
-    }
 
-    function make_state(spec: NodeSpec): Puffer<W>;
-    function make_state(spec: NodeSpec): Puffer<W> {
+    function make_state<W1 extends W>(spec: StateSpec<W1>): Puffer<W1>;
+    function make_state(spec: StateSpec): Puffer<W> {
         let enter = normalize_stages(spec.enter);
         let exit = normalize_stages(spec.exit);
         let here = normalize_stages(spec.here);
@@ -89,17 +74,23 @@ export function narrative_fsa_builder
                 }
 
                 // exiting
-                if (state_id_of(world_2) !== spec.id &&
-                    state_id_of(world_1) === spec.id) {
+                if (get_state_id(world_2) !== spec.id &&
+                    get_state_id(world_1) === spec.id) {
 
                     if (exit[stage] !== undefined) {
                         world_2 = exit[stage](world_2);
                     }
+
+                    if (stage === 0 && spec.exit_message !== undefined) {
+                        world_2 = update(world_2, <Updater<PW>> <unknown> {
+                            message: message_updater(spec.exit_message)
+                        });
+                    }
                 }
 
                 // entering
-                if (state_id_of(world_2) === spec.id &&
-                    state_id_of(world_1) !== spec.id) {
+                if (get_state_id(world_2) === spec.id &&
+                    get_state_id(world_1) !== spec.id) {
                     
                     if (enter[stage] !== undefined) {
                         world_2 = enter[stage](world_2);
@@ -113,11 +104,11 @@ export function narrative_fsa_builder
                 }
 
                 // here
-                if (state_id_of(world_2) === spec.id) {
+                if (get_state_id(world_2) === spec.id) {
                     if (spec.interpretations !== undefined) {
                         world_2 = <PW><unknown> update(<World><unknown>world_2, {
                             interpretations: map_interpretations(world_2, (w, prev) => 
-                                ({...prev, ...spec.interpretations![state_id_of(w)]})
+                                ({...prev, ...spec.interpretations![get_state_id(w)]!})
                             )
                         });
                     }
@@ -135,7 +126,7 @@ export function narrative_fsa_builder
         // It also prints the enter fragment upon entering a given node
         let base_puffer: Puffer<W> = {
             handle_command: (world, parser) => {
-                if (state_id_of(world) !== spec.id) {
+                if (get_state_id(world) !== spec.id) {
                     parser.eliminate();
                 }
 
@@ -156,7 +147,7 @@ export function narrative_fsa_builder
         // the previous world *or* the current world is at the node in question.
         let mapper: PufferMapper<W> = {
             pre: (cb) => (world) => {
-                if (cb === undefined || state_id_of(world) !== spec.id) {
+                if (cb === undefined || get_state_id(world) !== spec.id) {
                     return world;
                 }
 
@@ -168,13 +159,13 @@ export function narrative_fsa_builder
             },
 
             handle_command: (cb, stage) => (world, parser) => {
-                if (cb === undefined || state_id_of(world) !== spec.id) {
+                if (cb === undefined || get_state_id(world) !== spec.id) {
                     parser.eliminate();
                 }
                 return cb!(world, parser);
             },
             post: (cb) => (world_2, world_1) => {
-                if (state_id_of(world_2) === spec.id || state_id_of(world_1) === spec.id) {
+                if (get_state_id(world_2) === spec.id || get_state_id(world_1) === spec.id) {
 
                     if (cb !== undefined) {
                         if (spec.debug) {
@@ -190,10 +181,17 @@ export function narrative_fsa_builder
         return <Puffer<W>><unknown>knit_puffers([map_puffer(mapper, spec), base_puffer]);
     }
 
+    let apply_state = <W1 extends W>() => <R>(f: (p: Puffer<W1>) => R) =>
+        (spec: StateSpec<W1>) => f(make_state(spec));
+
+    let apply_states = <W1 extends W>() => <R>(f: (p: Puffer<W1>) => R) =>
+        (...specs: StateSpec<W1>[]) => specs.map(make_state).map(f);
+
     return {
         make_transitioner,
-        transition_to,
-        make_state
+        make_state,
+        apply_state,
+        apply_states
     };
 };
 

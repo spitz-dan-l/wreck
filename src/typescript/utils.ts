@@ -140,13 +140,42 @@ export function set_eq(arr1: any[], arr2: any[]) {
     return arr1.every(x => arr2.includes(x)) && arr2.every(x => arr1.includes(x));
 }
 
+export function sorted<X>(arr: X[]): X[] {
+    return [...arr].sort();
+}
+
+// Helper for building lists with optional elements
+export function cond<R>(c: boolean, r: () => R) {
+    if (c) {
+        return [r()];
+    }
+    return [];
+}
+
+
+
+// Object helpers //
+
 export function merge_objects<T extends {}>(arr: T[]): T {
     return arr.reduce((acc, cur) => ({...acc, ...cur}), {} as T);
 }
 
-export function sorted<X>(arr: X[]): X[] {
-    return [...arr].sort();
+// WARNING: this will break if obj has a property that is explicitly set to undefined!
+export function entries<K extends string, V>(obj: {[k in K]?: V}) {
+    return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
 }
+
+export function drop_keys<O extends {}, K extends keyof O>(obj: O, ...keys: K[]): Omit<O, K> {
+    let result: any = {};
+
+    for (let [k, v] of Object.entries(obj)) {
+        if (!keys.includes(<K>k)) {
+            result[k] = v;
+        }
+    }
+    return result;
+}
+
 
 // Helper for declaring values with tuple types.
 // "as const" would nearly make this unnecessary but @babel/preset-typescript 3.7.7 doesn't parse as const
@@ -263,26 +292,6 @@ export const statics =
 //   static isMember: string;
 //   // ...
 // }
-
-function foo1<X>(x: X) {
-    return 'butt';
-}
-
-type T1 = typeof foo1;
-type T2 = Parameters<T1>[0]
-
-interface Callable<P extends any[], R> {
-  (...args: P): R;
-}
-
-// type GenericReturnType<R, X> = X extends Callable<R> ? R : never;
-// type GenericParameters<R, X> = 
-
-
-type T3<F> = F extends (x: infer X) => any ? X : never;
-type ZZZ = T3<typeof foo1>
-
-
 
 
 

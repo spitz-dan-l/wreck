@@ -10,13 +10,17 @@ interface Location {
 
 let LocationPuffer: Puffer<Location> = {
     handle_command: (world, parser) => {
-        parser.consume('*go');
+        parser.consume('go');
 
         let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
 
         let dir = parser.split(
             (['up', 'down'] as const).map(dir =>
-                () => parser.consume(`${is_locked[dir] ? '^' : ''}&${dir}_stairs`, dir)
+                () => parser.consume({
+                    tokens: `${dir}_stairs`,
+                    locked: is_locked[dir],
+                    labels: {option: true}
+                }, dir)
             )
         );
 
@@ -57,7 +61,7 @@ let ZarathustraPuffer: Puffer<Zarathustra> = {
             parser.eliminate();
         }
 
-        parser.consume("*mispronounce zarathustra's name");
+        parser.consume("mispronounce zarathustra's name");
         parser.submit();
 
         let utterance_options = [
@@ -138,11 +142,11 @@ let RolePuffer: Puffer<Roles> = {
             parser.eliminate();
         }
 
-        parser.consume('*be');
+        parser.consume('be');
 
         let choice = parser.split(
             roles.map((r, i) =>
-                () => parser.consume(`&${r.replace(/ /g, '_')}`, i))
+                () => parser.consume(`${r.replace(/ /g, '_')}`, i))
         );
 
         parser.submit();
@@ -175,7 +179,7 @@ interface BirdWorld extends World
 
 };
 
-const BirdWorldPuffers= [
+const BirdWorldPuffers = [
     LocationPuffer,
     ZarathustraPuffer,
     RolePuffer

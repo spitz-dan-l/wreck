@@ -31,7 +31,7 @@
 
 */
 
-import { array_last, deep_equal } from './utils';
+import { array_last, deep_equal, drop_keys } from './utils';
 import { starts_with, tokenize } from './text_tools';
 
 class NoMatch {};
@@ -48,9 +48,7 @@ export const NEVER_TOKEN = Symbol('NEVER');
 export type TaintedToken = Token | typeof NEVER_TOKEN;
 
 export type TokenAvailability =
-    { kind: 'Available' } |
-    { kind: 'Used' } |
-    { kind: 'Locked' };
+    'Available' | 'Used' | 'Locked';
 
 const availability_order = {
     'Available': 0,
@@ -59,11 +57,11 @@ const availability_order = {
 } as const
 
 export type TokenLabels = {
-    [label: string]: true
+    [label: string]: boolean
 };
 
-export type ConsumeSpec = {
-    kind: 'ConsumeSpec';
+export type RawConsumeSpec = {
+    kind: 'RawConsumeSpec';
     token: TaintedToken;
     availability: TokenAvailability;
     labels: TokenLabels;
@@ -75,7 +73,7 @@ export type MatchStatus = 'Match' | 'PartialMatch' | 'ErrorMatch';
 export type TokenMatch = {
     kind: 'TokenMatch',
     status: MatchStatus,
-    expected: ConsumeSpec & { token: Token },
+    expected: RawConsumeSpec & { token: Token },
     actual: Token
 }
 
@@ -168,10 +166,10 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
         match_status = 'PartialMatch';
     } else {
         row = input_stream.map(tok => {
-            let expected: ConsumeSpec & { token: Token } = {
-                kind: 'ConsumeSpec',
+            let expected: RawConsumeSpec & { token: Token } = {
+                kind: 'RawConsumeSpec',
                 token: tok,
-                availability: { kind: 'Available' },
+                availability: 'Available',
                 labels: {}
             }
             return {
@@ -284,13 +282,13 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
     });
 
     return Object.entries(grouped_options).map(([key, options]) => {
-        let current_a: TokenAvailability = {kind: 'Locked'};
+        let current_a: TokenAvailability = 'Locked';
         let current_index = 0;
 
         for (let i = 0; i < options.length; i++) {
             let opt = options[i];
             let a = array_last(opt)!.expected.availability;
-            if (availability_order[a.kind] < availability_order[current_a.kind]) {
+            if (availability_order[a] < availability_order[current_a]) {
                 current_a = a;
                 current_index = i;
             }
@@ -325,6 +323,21 @@ function call_or_return(parser: Parser, result?: any): any {
     return result;
 }
 
+export type ConsumeSpec =
+    string |
+    ConsumeSpecObj |
+    ConsumeSpecArray;
+
+type ConsumeSpecObj = {
+    tokens: ConsumeSpec,
+    labels?: TokenLabels,
+    used?: boolean,
+    locked?: boolean
+    
+};
+export type ConsumeSpecOverrides = Omit<ConsumeSpecObj, 'tokens'>;
+
+interface ConsumeSpecArray extends Array<ConsumeSpec> {};
 
 export class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
@@ -338,21 +351,98 @@ export class Parser {
 
     parse_result: TokenMatch[] = [];
 
-    current_availability: TokenAvailability = {kind: 'Available'}
-    
+    label_context: TokenLabels = {};
+
+    _current_availability: TokenAvailability = 'Available'
+    get current_availability(): TokenAvailability { return this._current_availability; }
+    set current_availability(val) {
+        if (availability_order[val] < availability_order[this._current_availability]) {
+            return;
+        }
+        this._current_availability = val;
+    }
+
+    with_label_context<R>(labels: TokenLabels, cb: () => R) {
+        let old_label_context = {...this.label_context};
+
+        this.label_context = {...this.label_context, ...labels};
+
+        try {
+            return cb();
+        } finally {
+            this.label_context = old_label_context;
+        }
+    }
+
     _split_iter: Iterator<number>;
 
-
-    consume(spec: string | ConsumeSpec[]): void;
-    consume<T>(spec: string | ConsumeSpec[], callback: ParserThread<T>): T;
-    consume<T>(spec: string | ConsumeSpec[], result: T): T;
-    consume(spec: string | ConsumeSpec[], result?: any): any {
-        if (typeof spec === 'string') {
-            this._consume_dsl(spec);
-        } else {
-            this._consume(spec);
-        }
+    consume(spec: ConsumeSpec): void;
+    consume<T>(spec: ConsumeSpec, callback: ParserThread<T>): T;
+    consume<T>(spec: ConsumeSpec, result: T): T;
+    consume(spec: ConsumeSpec, result?: any): any {
+        this._consume_spec(spec);
         return call_or_return(this, result);
+    }
+
+    _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): void {
+        if (spec instanceof Array) {
+            for (let s of spec) {
+                this._consume_spec(s, overrides);
+            }
+        } else if (typeof spec === 'string') {
+            return this._consume_string(spec, overrides);
+        } else {
+            return this._consume_object(spec, overrides);
+        }
+    }
+
+    _consume_string(spec: string, overrides?: ConsumeSpecOverrides): void {
+        let toks = tokenize(spec)[0];
+            
+        let labels: TokenLabels = { filler: true };
+        let availability: TokenAvailability = 'Available';
+        
+        if (overrides) {
+            if (overrides.labels) {
+                labels = overrides.labels;
+            }
+            
+            if (overrides.used) {
+                availability = 'Used';
+            }
+
+            if (overrides.locked) {
+                availability = 'Locked'
+            }
+        }
+        
+        for (let t of toks) {
+            this._consume(t.split('_').map(t => ({
+                kind: 'RawConsumeSpec',
+                token: t,
+                availability,
+                labels
+            })));
+        }
+    }
+
+    _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): void {
+        let spec_: ConsumeSpecObj = {...spec};
+
+        if (overrides) {
+            if (overrides.used !== undefined) {
+                spec_.used = overrides.used;
+            }
+            if (overrides.locked !== undefined) {
+                spec_.locked = overrides.locked
+            }
+
+            if (overrides.labels) {
+                spec_.labels = {...spec.labels, ...overrides.labels};
+            }
+        }
+
+        return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'))
     }
 
     _consume_dsl(dsl: string): void {
@@ -360,16 +450,16 @@ export class Parser {
 
         for (let t of toks) {
             let labels: TokenLabels = { filler: true };
-            let availability: TokenAvailability  = { kind: 'Available' };;
+            let availability: TokenAvailability  = 'Available';
 
             if (t.startsWith('^')) {
-                availability = { kind: 'Locked' };
+                availability = 'Locked';
                 t = t.slice(1);
             } else if (t.startsWith('~')) {
-                availability = { kind: 'Used' };
+                availability = 'Used';
                 t = t.slice(1);
             } else if (t.startsWith('+')) {
-                availability = { kind: 'Available' };
+                availability = 'Available';
                 t = t.slice(1);
             }
 
@@ -385,7 +475,7 @@ export class Parser {
             }
 
             this._consume(t.split('_').map(t => ({
-                kind: 'ConsumeSpec',
+                kind: 'RawConsumeSpec',
                 token: t,
                 availability,
                 labels
@@ -393,10 +483,10 @@ export class Parser {
         }
     }
 
-    clamp_availability(spec: ConsumeSpec) {
-        if (availability_order[spec.availability.kind] < availability_order[this.current_availability.kind]) {
+    clamp_availability(spec: RawConsumeSpec) {
+        if (availability_order[spec.availability] < availability_order[this.current_availability]) {
             return {...spec, availability: this.current_availability};
-        } else if (availability_order[spec.availability.kind] > availability_order[this.current_availability.kind]) {
+        } else if (availability_order[spec.availability] > availability_order[this.current_availability]) {
             this.current_availability = spec.availability;
         }
         return spec;
@@ -406,7 +496,7 @@ export class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    _consume(tokens: ConsumeSpec[]) {
+    _consume(tokens: RawConsumeSpec[]) {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
@@ -433,7 +523,7 @@ export class Parser {
             }
             let input = this.input_stream[this.pos + i];
             if (spec_value === input) {
-                if (spec.availability.kind === 'Locked') {
+                if (spec.availability === 'Locked') {
                     // TODO: special case for typeahead = Locked
                     error = true;
                     break;
@@ -459,9 +549,9 @@ export class Parser {
             break;
         }
 
-        function sanitize(spec: ConsumeSpec): ConsumeSpec & { token: Token } {
+        function sanitize(spec: RawConsumeSpec): RawConsumeSpec & { token: Token } {
             if (spec.token !== NEVER_TOKEN) {
-                return <ConsumeSpec & { token: Token }>spec;
+                return <RawConsumeSpec & { token: Token }>spec;
             }
             return {...spec, token: ''};
         }
@@ -512,10 +602,10 @@ export class Parser {
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
         return <never>this._consume([{
-            kind: 'ConsumeSpec',
+            kind: 'RawConsumeSpec',
             token: NEVER_TOKEN,
             labels: { filler: true },
-            availability: { kind: 'Available' }
+            availability: 'Available'
         } as const]);
     }
 
@@ -524,10 +614,10 @@ export class Parser {
     submit<T>(result: T): T;
     submit<T>(result?: any) {
         this._consume([{
-            kind: 'ConsumeSpec',
+            kind: 'RawConsumeSpec',
             token: SUBMIT_TOKEN,
             labels: { filler: true },
-            availability: { kind: 'Available' }
+            availability: 'Available'
         } as const]);
 
         return call_or_return(this, result);

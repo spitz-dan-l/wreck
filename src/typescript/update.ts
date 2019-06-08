@@ -68,7 +68,7 @@ type ObjectUpdater<T> = {
 
 // The second generic type parameter is a hack to prevent typescript from using the contents of updater
 // to figure out the source and return types when doing type inference on calls to this function.
-export function update<S, U extends S=S>(source: S, updater: Updater<U>): S {
+export function update1<S, U extends S=S>(source: S, updater: Updater<U>): S {
     // if updater is a function, call it and return the result
     if (updater instanceof Function) {
         return <S>(<Function> updater)(source);
@@ -104,6 +104,12 @@ export function update<S, U extends S=S>(source: S, updater: Updater<U>): S {
     }
 
     throw Error('Should never get here');
+}
+
+// The second generic type parameter is a hack to prevent typescript from using the contents of updater
+// to figure out the source and return types when doing type inference on calls to this function.
+export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S {
+    return updaters.reduce(update1, source);
 }
 
 export function update_any<S>(source: S, updater: any): S {

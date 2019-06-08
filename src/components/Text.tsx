@@ -16,7 +16,7 @@ function cssify_status(status: MatchStatus): string {
 }
 
 function cssify_availability(availability: TokenAvailability) {
-  switch (availability.kind) {
+  switch (availability) {
     case 'Available':
       return 'available';
     case 'Used':

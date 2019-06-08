@@ -3,7 +3,7 @@ import { narrative_fsa_builder } from '../narrative_fsa';
 import { Parser } from '../parser';
 import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../puffer';
 import { split_tokens } from '../text_tools';
-import { update } from '../utils';
+import { update, Updater } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
 
 /*
@@ -130,12 +130,12 @@ function make_perceiver(world: PW, percs: readonly PerceptID[]) {
         );
 }
 
+let transition_to = (w: PW, node: ObserverMomentID, updater?: Updater<PW>) => update(w, {...updater, node});
 
 let {
     make_transitioner,
-    transition_to,
     make_state
-} = narrative_fsa_builder<Hex, 'node', ObserverMomentID>('node');
+} = narrative_fsa_builder<Hex, ObserverMomentID>(w => w.node, transition_to);
 
 const ObserverMomentIndex: Puffer<Hex>[] = [];
 
@@ -194,7 +194,7 @@ ObserverMoments(
         <br/><br/>
         You hear the dolphin's click, first through its eardrums, and then, a split second later, through yours.`,
     transitions: {
-        'listen_for_echoes': 'imagining 3'
+        'imagining 3': 'listen_for_echoes'
     }
 },
 {
@@ -206,7 +206,7 @@ ObserverMoments(
         <br/><br/>
         Does the Dark Pool absorb sound too? Or is it just enormous within its depths?`,
     transitions: {
-        'focus': 'imagining 4'
+        'imagining 4': 'focus'
     }
 },
 {
@@ -224,7 +224,7 @@ ObserverMoments(
             That's a fun one."
         </div>`,
     transitions: {
-        'what?': 'imagining 5'
+        'imagining 5': 'what?'
     }
 },
 {
@@ -244,7 +244,7 @@ ObserverMoments(
         <br/><br/>
         The dolphin drifts slowly downward, into the Dark Pool, until its body is enveloped.`,
     transitions: {
-        'go_home': 'home 1'
+        'home 1': 'go_home'
     }
 },
 {
@@ -260,8 +260,8 @@ ObserverMoments(
         <br/><br/>
         Such rage seethes within them. Such spirit.`,
     transitions: {
-        '&silence_them': 'home silenced',
-        '&listen_to_them': 'home listened'
+        'home silenced': { tokens: 'silence_them', labels: { option: true }},
+        'home listened': { tokens: 'listen_to_them', labels: { option: true }}
     }
 },
 {
@@ -275,7 +275,7 @@ ObserverMoments(
         <br/><br/>
         You can hear the faint sound of laughter somewhere outside.`,
     transitions: {
-        'follow_the_laughter': 'outside 1'
+        'outside 1': 'follow_the_laughter'
     }
 },
 {
@@ -287,7 +287,7 @@ ObserverMoments(
         <br/><br/>
         You can hear the faint sound of laughter somewhere outside.`,
     transitions: {
-        'follow_the_laughter': 'outside 1'
+        'outside 1': 'follow_the_laughter'
     }
 },
 {
@@ -317,7 +317,7 @@ ObserverMoments(
         description: [`You can make out a figure in the distance.`]
     },
     transitions: {
-        'continue': 'outside 3'
+        'outside 3': 'continue'
     }
 },
 {
@@ -382,8 +382,8 @@ ObserverMoments(
         <br/><br/>
         "I'll protect you, father!" Dasani screams.`,
     transitions: {
-        '&stop_her': 'outside 5, death',
-        '&let_her': 'outside 5'
+        'outside 5, death': {tokens:'stop_her', labels:{option:true}},
+        'outside 5': {tokens:'let_her', labels:{option:true}}
     }
 },
 {
@@ -397,7 +397,7 @@ ObserverMoments(
         <br/><br/>
         She saved you so that you could understand."`,
     transitions: {
-        'proceed': 'dark pool 1'
+        'dark pool 1': 'proceed'
     }
 },
 {
@@ -438,7 +438,7 @@ ObserverMoments(
         <br/><br/>
         What lies within the depths?`,
     transitions: {
-        'enter_the_Dark_Pool': 'dark pool 2'
+        'dark pool 2': 'enter_the_Dark_Pool'
     }
 },
 {
@@ -456,7 +456,7 @@ ObserverMoments(
             I think you'll like my improvements."
         </div>`,
     transitions: {
-        'look_at_it': 'dark pool 3'
+        'dark pool 3': 'look_at_it'
     }
 },
 {
@@ -476,7 +476,7 @@ ObserverMoments(
         <br/><br/>
         like a fishing buoy.`,
     transitions: {
-        'listen_through_it': 'dark pool 4'
+        'dark pool 4': 'listen_through_it'
     }
 },
 {
@@ -500,8 +500,8 @@ ObserverMoments(
         <br/><br/>
         stem and you really want to`,
     transitions: {
-        '&stop_her': 'dark pool 5, death',
-        '&let_her': 'dark pool 5'
+        'dark pool 5, death': {tokens:'stop_her', labels:{option: true}},
+        'dark pool 5': {tokens:'let_her', labels:{option: true}}
     }
 },
 {
@@ -540,7 +540,7 @@ ObserverMoments(
         <br/><br/>
         And now she is gone.`,
     transitions: {
-        'follow_her': 'dark pool 6'
+        'dark pool 6': 'follow_her'
     }
 },
 {

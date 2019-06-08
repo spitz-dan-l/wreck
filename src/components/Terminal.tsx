@@ -311,7 +311,7 @@ export const Typeahead: React.FunctionComponent<TypeaheadProps> = ({parsing, typ
   }
 
   function cssify_availability(availability: TokenAvailability): string {
-    switch (availability.kind) {
+    switch (availability) {
       case 'Available':
         return 'available';
       case 'Used':
@@ -363,7 +363,7 @@ export const Typeahead: React.FunctionComponent<TypeaheadProps> = ({parsing, typ
               parsing.whitespace[j]) + convert_token(m.expected.token) }
           </span>
         }) }
-        { option.availability.kind === 'Locked' ? <Lock /> : '' }
+        { option.availability === 'Locked' ? <Lock /> : '' }
       </li>
     ))}
     <li className='footer' />
