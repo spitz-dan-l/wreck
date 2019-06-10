@@ -53,17 +53,22 @@ type PufferSpec_<W> = {
     pre: PufferUpdater<W>,
     handle_command: PufferCommandHandler<W>,
     post: PufferNarrator<W>,
+    css_rules: string[]
 }
 export type PufferSpec<W> = Partial<PufferSpec_<W>>;
 
 type Puffer_<W> = {
-    [K in keyof PufferSpec_<W>]: MaybeStages<PufferSpec_<W>[K]>
+    [K in Exclude<keyof PufferSpec_<W>, 'css_rules'>]: MaybeStages<PufferSpec_<W>[K]>
+} & {
+    css_rules: string[]
 };
 
 export type Puffer<W> = Partial<Puffer_<W>>;
 
 export type PufferNormalForm<W> = {
-    [K in keyof PufferSpec_<W>]: Stages<PufferSpec_<W>[K]>
+    [K in Exclude<keyof PufferSpec_<W>, 'css_rules'>]: Stages<PufferSpec_<W>[K]>
+} & {
+    css_rules: string[]
 };
 
 type PufferForWorld<W extends World> = Puffer<Partial<W>>;
@@ -113,9 +118,13 @@ export function map_puffer<T>(mapper: PufferMapper<T>, puffer: Puffer<T>): Puffe
         }
     }
 
-    let result = {};
+    let result: Puffer<T> = {};
     for (let p of ['pre', 'handle_command', 'post'] as const) {
         result[p] = visit(p);
+    }
+
+    if (puffer.css_rules !== undefined) {
+        result.css_rules = puffer.css_rules;
     }
 
     return result;
@@ -150,7 +159,7 @@ export function gate_puffer<W>(cond: (world: W) => boolean, puffer: Puffer<W>): 
                 return undefined;
             }
             return (new_world, old_world) => {
-                if (cond(new_world)) {
+                if (cond(new_world) || cond(old_world)) {
                     return cb(new_world, old_world);
                 }
                 return new_world;
@@ -170,7 +179,8 @@ export function knit_puffers(puffers: Puffer<{}>[]): PufferNormalForm<{}> {
     let stages: { [K in keyof PufferSpec_<{}>]: number[] } = {
         pre: [],
         handle_command: [],
-        post: []
+        post: [],
+        css_rules: []
     };
     for (let puffer of puffers) {
         let norm_puffer: PufferNormalForm<{}> = <any>{};
@@ -179,6 +189,7 @@ export function knit_puffers(puffers: Puffer<{}>[]): PufferNormalForm<{}> {
             norm_puffer[prop] = <any>normalize_stages<PufferSpec_<any>[typeof prop]>(puffer[prop]);
             stages[prop].push(...Object.keys(norm_puffer[prop]).map(x => parseInt(x)))
         }
+        norm_puffer.css_rules = puffer.css_rules || [];
         
         normalized.push(norm_puffer);
     }
@@ -202,7 +213,8 @@ export function knit_puffers(puffers: Puffer<{}>[]): PufferNormalForm<{}> {
     let result: PufferNormalForm<any> = {
         pre: {},
         handle_command: {},
-        post: {}
+        post: {},
+        css_rules: []
     };
     
     result.pre = iterate('pre', (pres) => (world) => {
@@ -232,6 +244,8 @@ export function knit_puffers(puffers: Puffer<{}>[]): PufferNormalForm<{}> {
         return result;
     });
 
+    result.css_rules = normalized.flatMap(p => p.css_rules);
+    
     return result;
 }
 
@@ -298,11 +312,18 @@ export function bake_puffers(puffers: Puffer<{}>[]): PufferSpec<{}> {
         return result;
     }
 
-    return {
+    let css_rules = puffers.flatMap(p => p.css_rules || []);
+
+    let result: PufferSpec<{}> = {
         pre,
         handle_command,
         post,
+    };
+    if (css_rules.length > 0) {
+        result.css_rules = css_rules;
     }
+
+    return result;
 }
 
 export function make_puffer_world_spec<W extends World & IntersectTupleTypes<UnwrapPufferTuple<Index>>, Index extends readonly PufferForWorld<W>[]>

@@ -583,7 +583,7 @@ let dread_facet = make_facet({
     used: ([abs, action], world) => world.alcove_interp[action],
     
     interpret: ([abstraction, action], world, interp_world) => {
-        if (abstraction === 'the Mountain' && action === 'gravity') {
+        if (action === 'gravity') {
             let used = world.alcove_interp.gravity;
             //correct
             if (used) {
@@ -594,14 +594,11 @@ let dread_facet = make_facet({
                 });
             } else {
                 return update(world, {
-                    alcove_interp: { gravity: true },
-                    
+                    alcove_interp: { gravity: true }
                 });
             }
         } else {
-            return update(world, {
-                message: message_updater("Something tells you that isn't what Katya meant.")
-            })
+            return false;
         }
     }
 });

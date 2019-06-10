@@ -747,3 +747,4 @@ export function gate<Ret>(cond: () => boolean, t: ParserThread<Ret>): ParserThre
     }
 }
 
+// TODO: Helper to extract all possible valid inputs from a parser thread

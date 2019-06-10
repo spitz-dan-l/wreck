@@ -20,7 +20,7 @@
 
 */
 
-import { infer_message_labels, Message, standard_render } from './message';
+import { infer_message_labels, Message, INITIAL_MESSAGE, standard_render } from './message';
 import { Parser, Parsing, raw, RawInput } from './parser';
 import { deep_equal, update } from './utils';
 import { Interpretations, pre_interp } from './interpretation';
@@ -47,13 +47,6 @@ export type CommandHandler<W extends World> = (world: W, parser: Parser) => W;
 
 export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
-export const INITIAL_MESSAGE: Message = {
-    kind: 'Message',
-    action: [],
-    consequence: [],
-    description: [],
-    prompt: []
-};
 
 const INITIAL_WORLD: World = {
     message: INITIAL_MESSAGE,
@@ -79,6 +72,8 @@ export type WorldSpec<W extends World> = {
 
     // update the world after handling the command
     readonly post?: Narrator<W>,
+
+    readonly css_rules?: string[]
 }
 
 export function make_world_spec<W extends World>(spec: {
@@ -86,6 +81,7 @@ export function make_world_spec<W extends World>(spec: {
     pre?: WorldUpdater<W>,
     handle_command: CommandHandler<W>,
     post?: Narrator<W>,
+    css_rules?: string[]
 }): WorldSpec<W> {
     return <WorldSpec<W>>spec;
 }
@@ -152,14 +148,14 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
     };
 }
 
-export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>] { //, Renderer] {
+export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>, string[]?] { //, Renderer] {
     function update(world: W, command: RawInput) {
         return apply_command(spec, world, command);
     }
 
     let initial_result = update(spec.initial_world, raw('', false));
 
-    return [initial_result, update]
+    return [initial_result, update, spec.css_rules]
 
 }
 

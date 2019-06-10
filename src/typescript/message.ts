@@ -36,6 +36,14 @@ export type Message = {
     prompt: Fragment[]
 };
 
+export const INITIAL_MESSAGE: Message = {
+    kind: 'Message',
+    action: [],
+    consequence: [],
+    description: [],
+    prompt: []
+};
+
 export type MessageUpdateSpec =
     Fragment | 
     {
@@ -58,7 +66,7 @@ export let message_updater = (spec: MessageUpdateSpec) =>
         }
 
         let updater: Updater<Message> = {};
-        for (let prop of ['action', 'consequence', 'description', 'prompt'] as const) {
+        for (let prop of ['action', 'consequence', 'description', 'prompt', 'css_rules'] as const) {
             if (spec[prop] !== undefined && spec[prop]!.length > 0) {
                 updater[prop] = appender(...spec[prop]!);
             }
@@ -85,7 +93,7 @@ standard_render = function(world: World, labels: LocalInterpretations = {}, poss
         .map(x => x.map(f => Mustache.render(f,
             Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val}), <LocalInterpretations>{}) //world.local_interpretations)
         )).join(' '))
-        .join('<br/><br/>');
+        .join('<br/>');
 }
 
 // find interp labels inside any message fragments

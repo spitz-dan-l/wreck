@@ -7,6 +7,12 @@
     white-space: normal;
     margin-top: 1em;
     margin-bottom: 1em;
+    line-height: 2em;
+}
+
+.history .output-text blockquote {
+    margin-block-start: 0em;
+    margin-block-end: 0em;
 }
 
 .history .interpretation-block .output-text {
