@@ -30,7 +30,7 @@ describe('world', () => {
         // debugger;
         result = updater(result.world, raw('go down stairs')); // this will be invalid
         
-        assert.equal(standard_render(result.world), 'You wave bye to Zarathustra.<br/><br/>You are currently standing around on the ground.');
+        assert.equal(standard_render(result.world), 'You wave bye to Zarathustra.<br/>You are currently standing around on the ground.');
         assert.equal(result.world.index, 2);
     });
 });

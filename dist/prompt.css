@@ -51,6 +51,11 @@ ul.typeahead {
       cursor: pointer;
 }
 
+.typeahead li.footer {
+      position: absolute;
+      top: 10em;
+}
+
 .typeahead .option.used .token,
 .typeahead .option.locked .token {
       opacity: 0.4;
@@ -62,18 +67,6 @@ ul.typeahead {
 
 .typeahead .option.selected .token {
       background: dimgray;
-}
-
-.typeahead .option .token.keyword {
-      color: aqua;
-}
-
-.typeahead .option .token.option {
-      color: orange;
-}
-
-.typeahead .option .token.filler {
-      color: ivory;
 }
 
 .parsed-text,
@@ -109,14 +102,19 @@ ul.typeahead {
       opacity: 0.4;
 }
 
-.parsed-text .token.keyword {
+.token {
+      color: ivory;
+}
+
+.token.interp {
+      color: gold;
+}
+
+.token.keyword {
       color: aqua;
 }
 
-.parsed-text .token.option {
+.token.option {
       color: orange;
 }
 
-.parsed-text .token.filler {
-      color: ivory;
-}

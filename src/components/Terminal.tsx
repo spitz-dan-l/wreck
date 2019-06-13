@@ -152,8 +152,8 @@ function submit_typeahead(state: AppState) {
 }
 
 function scroll_down() {
-  let bottom = document.querySelector('.typeahead')!;
-  bottom.scrollIntoView({behavior: "smooth", block: "start", inline: "end"});
+  let bottom = document.querySelector('.typeahead .footer')!;
+  bottom.scrollIntoView({behavior: "smooth", block: "end", inline: "end"});
 }
 
 // The global context storing the state update dispatcher
@@ -366,7 +366,7 @@ export const Typeahead: React.FunctionComponent<TypeaheadProps> = ({parsing, typ
         { option.availability === 'Locked' ? <Lock /> : '' }
       </li>
     ))}
-    <li className='footer' />
+    <li className='footer'>&nbsp;</li>
   </ul>
 }
 

@@ -122,7 +122,9 @@ export function appender_uniq<T>(...elts: T[]) {
     return (arr: T[]) => [...arr, ...elts.filter(t => !arr.includes(t))];
 }
 
-export function array_last<T>(arr: T[]): T {
+export function array_last<T>(arr: T[] & { 0: T }): T;
+export function array_last<T>(arr: T[]): T | undefined;
+export function array_last<T>(arr: T[]): T | undefined {
     return arr[arr.length - 1];
 }
 

@@ -41,7 +41,7 @@ describe('parser', () => {
         console.log(result);
 
         console.log(result.parsing.view);
-        console.log(array_last(result.parsing.view.matches).status);
+        console.log(array_last(result.parsing.view.matches)!.status);
 
         let ta = result.parsing.view.typeahead_grid;
         console.log(ta);

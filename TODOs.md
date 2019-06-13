@@ -2,7 +2,18 @@ TODOs
 
 Priority
 
-- Parser: fix deduplication of typeahead
+- don't drop the interp box if they did the whole thing right (?)
+- Add the end to the puzzle
+- Make more, single-action abstractions.
+    - Noticing someone hurts
+    - Doing the right thing for them
+- Erase incorrect thingies during interp
+
+- standardize order in which modules run
+    - add a tag to puffers to have them locked automatically if they weeren't
+    - generally figure out a logical way to do global-level setup annd structure
+
+**********************************************
 
 - Fixing up the initial interp puzzle
     - don't just lock all the commands but one

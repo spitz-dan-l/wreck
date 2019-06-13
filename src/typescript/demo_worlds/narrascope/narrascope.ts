@@ -1,351 +1,250 @@
-import { MessageUpdateSpec, message_updater } from '../../message';
 import { narrative_fsa_builder } from '../../narrative_fsa';
-import { Parser, ParserThread, gate, ConsumeSpec } from '../../parser';
-import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../../puffer';
-import { update, Updater, entries, cond } from '../../utils';
+import { make_puffer_world_spec, PufferAndWorld } from '../../puffer';
+import { update } from '../../utils';
 import { get_initial_world, World, world_driver } from '../../world';
-import { LocalInterpretations, find_historical, self_interpretation } from '../../interpretation';
-import { Metaphors, init_metaphors, Facets, Abstractions, init_metaphor_puffers } from './metaphors';
-
-/*
-    TODO
-        - Convert various expositive bits to "consider" or "remember" commands, so they can be repeated.
-        - use separate state machines for the various flowy bits
-            - e.g. first waking up, you awaken, sit up, try to remember, numbers,
-            lie down, etc.
-        - fix up the parser dsl to support arb token labels
-*/
+import { global_lock, Owner, PufferIndex, Puffers, Venience, TopicID, initialize } from './prelude';
+import { Abstractions, Facets, init_metaphors } from './metaphor';
+import { Topics, Memories } from './topic';
+import { message_updater } from '../../message';
 
 
-type ObserverMomentID =
-    'start' |
-    'learning the mountain' |
-    'alcove, beginning interpretation' |
-    'alcove, ending interpretation' |
-    'alcove, entering the forest' |
-    'title' |
-    'alone in the woods'
-    ;
+export const null_lock = global_lock(null);
 
-export type AbstractionID =
-    'the mountain';
-
-export type ActionID =
-    'gravity' |
-    'ice' |
-    'horizon';
-
-export type FacetID =
-    'the sense of dread' |
-    'the missing notes' |
-    'your location';
-
-export interface Venience extends Metaphors {
-    node: ObserverMomentID;
-    has_perceived: Partial<Record<PerceptID, boolean>>;
-    alcove_interp: AlcoveInterp;
-}
-
-const PufferIndex: Puffer<Venience>[] = [];
-export function Puffers(...puffers: Puffer<Venience>[]) {
-    PufferIndex.push(...puffers)
-}
 
 type PW = PufferAndWorld<Venience>;
 
-let transition_to = (w: PW, node: ObserverMomentID) => update(w, { node });
-
-let {
-    make_transitioner,
-    make_state,
-    apply_state,
-    apply_states
-} = narrative_fsa_builder<Venience, ObserverMomentID>(w => w.node, transition_to);
-
-// type ObserverMomentSpec = Parameters<(typeof make_state)>[0];
-
-// const ObserverMomentIndex: ObserverMomentSpec[] = [];
-
-let ObserverMoments = apply_states()(p => { PufferIndex.push(p) });
-
-
-type AlcoveInterp = {
-    dread: boolean,
-    ice: boolean,
-    horizon: boolean
+declare module './prelude' {
+    export interface Venience {}
 }
 
-const initial_alcove_interp: AlcoveInterp = {
-    dread: false,
-    ice: false,
-    horizon: false
-}
+initialize();
 
-init_metaphor_puffers();
+/*
+
+    The attendant - notices something amiss, panics at disorientation
+    The examiner - focuses on Sam, notes that something is amiss behind his eyes, but cannot fathom what
+    The hammer - dismantles the perrception that Sam is doing well, but leaves the view in ruin, cannot build back up
+    The participant - provides the courage/self-importance to ask what is wrong
+
+*/
 
 Abstractions({
-    name: 'the mountain',
-    get_cmd: (action) => ['invoking_the_mountain,', action],
+    name: 'the attentive mode',
+    name_cmd: 'the_attentive_mode',
+    slug: 'attentive-mode',
+    description: '"Wake up, my dear. Attend to the world around you."',
+    get_cmd: (action) => action,
     actions: [
-    {
-        name: 'gravity',
-        get_cmd: (facet) => ['judge the_direction_of_gravity_for', facet],
-        get_wrong_msg: (facet) => `You struggle to connect the direction of gravity to ${facet}.`
-    },
-    {
-        name: 'ice',
-        get_cmd: (facet) => ['judge the_slickness_of_the_ice_for', facet],
-        get_wrong_msg: (facet) => `You struggle to connect the slickness of the ice to ${facet}.`
-    },
-    {
-        name: 'horizon',
-        get_cmd: (facet) => ['survey the_horizon_from', facet],
-        get_wrong_msg: (facet) => `You struggle to connect the horizon to ${facet}.`
-    }]
+        {
+            name: 'attend' as const,
+            description: "The ability to attend to particular facets of one's perception.",
+            slug: 'attend',
+            get_cmd: (facet) => ['attend_to', facet],
+            get_wrong_msg: (facet) => `Merely paying more attention to ${facet} does not seem to be enough.`
+        }
+    ]
 });
+
+Topics({
+    name: 'Sam',
+    cmd: 'sam',
+    can_consider: () => true,
+    message: `
+    <div class="sam">
+        An old friend.
+        <br/>
+        On his way to work.
+        <br/>
+        <div class="sam-demeanor">
+            He glances at you, smiling vaguely.
+            {{#interp-sam-demeanor}}
+            <blockquote class="interp-sam-demeanor">
+                Something about his smile feels... wrong. False. A lie.
+                <br/>
+                And his eyes. Flicking here and there. Noncommital. Nervous.
+            </blockquote>
+            {{/interp-sam-demeanor}}
+        </div>
+        {{#interp-sam}}
+        <div class="interp-sam">
+            ...Something is wrong.
+        </div>
+        {{/interp-sam}}
+
+    </div>`,
+    reconsider: (w2, w1) => {
+        if (w2.has_acquired['the attentive mode'] && !w2.has_chill) {
+            return true;
+        }
+
+        if (w2.has_acquired['the scrutinizing mode'] && !w2.has_recognized_something_wrong) {
+            return true;
+        }
+
+        return false;
+    }
+});
+
+Topics({
+    name: 'myself',
+    cmd: 'myself',
+    can_consider: () => true,
+    message: `You haven't entirely woken up.
+    <br/>
+    A <strong>thick notebook</strong> sits at your lap.`,
+});
+
+Topics({
+    name: 'my notebook',
+    cmd: 'my_notebook',
+    can_consider: (world) => !!world.has_considered['myself'],
+    message: {
+        description: [`
+            You keep it with you at all times.
+            <br/>
+            It is filled with the words of someone very wise, who you once knew.`],
+        prompt: [`
+            Each day you try to <strong>remember something</strong> that she told you, and write it down.`]
+    }
+});
+
+Memories({
+    abstraction: 'the attentive mode',
+    could_remember: world => !!world.has_considered['my notebook']
+});
+
+
+declare module './prelude' {
+    export interface Venience {
+        has_chill: boolean;
+        has_recognized_something_wrong: boolean;
+    }
+}
+
+
+// Big old hack but it'll do for now
+function about_sam(world: PW) {
+    return world.gist !== null && world.gist.name.endsWith('Sam');
+}
 
 Facets({
-    name: 'the sense of dread',
-    description: `The sense of nervous dread weighing down your mind.`,
-
-    slug: 'dread',
-    phrase: 'the_sense_of_dread',
-    can_recognize: (current_world, interp_world) =>
-        interp_world.node === 'alcove, beginning interpretation' &&
-        interp_world.previous!.node !== 'alcove, beginning interpretation',
-
-    correct: ([abs, action], world) => action === 'gravity',
-
-    solved: (world) => world.alcove_interp.dread,
-
-    set_solved: (world) => update(world, {
-        alcove_interp: { dread: true }}),
-},
-{
-    name: 'the missing notes',
-    description: `The disappearance of your notes.`,
-
-    slug: 'missing',
-    phrase: 'the_missing_notes',
-    can_recognize: (current_world, interp_world) =>
-        interp_world.node === 'alcove, beginning interpretation' &&
-        interp_world.previous!.node !== 'alcove, beginning interpretation',
-
-    correct: ([abs, action], world) => action === 'ice',
-
-    solved: (world) => world.alcove_interp.ice,
-
-    set_solved: (world) => update(world, {
-        alcove_interp: { ice: true }}),
-},
-{
-    name: 'your location',
-    description: `Your location within the woods; your alcove.`,
-
-    slug: 'lost',
-    phrase: 'my_location',
-    can_recognize: (current_world, interp_world) =>
-        interp_world.node === 'alcove, beginning interpretation' &&
-        interp_world.previous!.node !== 'alcove, beginning interpretation',
-
-    correct: ([abs, action], world) => action === 'horizon',
-
-    solved: (world) => world.alcove_interp.horizon,
-
-    set_solved: (world) => update(world, {
-        alcove_interp: { horizon: true }}),
-},);
-
-
-ObserverMoments(
-{
-    id: 'start',
-    transitions: {
-        "learning the mountain": 'learn the_mountain'
+    name: 'Sam',
+    description: "Sam's presence by your side.",
+    slug: 'sam',
+    phrase: 'sam',
+    can_recognize: (w2, w1) =>
+        about_sam(w1) && !!w2.has_acquired['the attentive mode'],
+    solved: w => w.has_chill,
+    handle_action: ([abstraction, action], world) => {
+        if (action.name === 'attend') {
+            return update(world, 
+                { has_chill: true },
+                message_updater(`A chill comes over you.
+                    <br/>
+                    Something about Sam is incorrect.
+                    <br/>
+                    You can feel the discordance in your bones. It scares you.`)
+            );
+        } else {
+            // TODO: replace generic wrong msg with hint asking for more specifity
+            if (action.name === 'scrutinize') {
+                return update(world, message_updater("You'll need to be more specific about what to scrutinize."))
+            }
+            return update(world, message_updater(action.get_wrong_msg('sam')));
+        }
     }
-},
-{
-    id: 'learning the mountain',
-    enter_message: `<div class="interp">
-    <i>"Catch your breath, dear,"</i> Katya would say. <i>"The mountain, the ice, they are here to tell you something."</i>
-    </div>
-    <div class="interp">
-    <i>"That you are capable of a great deal of care, my dear.
-    <br /><br />
-    That your capacity to experience meaning is as energetic as a body sliding down a mountain."</i>
-    </div>
-    <div class="interp"><i>
-    "Judge the direction of gravity. Judge the slickness of the ice.
-    <br /><br />
-    Survey the horizon.
-    <br /><br />
-    And then, choose where to go."
-    </i></div>`,
-    handle_command: (world, parser) => {
-        parser.consume('think_about_what_is_going_on');
-        parser.submit();
-
-        return update(transition_to(world, 'alcove, beginning interpretation'), {
-            has_acquired: { 'the mountain': true }
-        })
-    },
+        
 });
 
-ObserverMoments(
-{
-    id: 'alcove, beginning interpretation',
-    // TODO: fix the style/line breaks here
-    enter_message: `
-    <div class="dread">
-        A nervous energy buzzes within your mind.
-        {{#interp-dread}}
-            <div class="interp-dread">
-                Care. Orientation. Like gravity binds a body to the earth, your vulnerability binds you to a sense of meaning within the world. You have a <i>compass</i>.
-            </div>
-        {{/interp-dread}}
-    </div>
-    <div class="missing">
-        Your notes are gone.
-        {{#interp-missing}}
-            <div class="interp-missing">
-                Your effort to organize and understand everything Katya taught you over the years. If your notes are truly gone, it is a great setback.
-                <br/>
-                But the ice is not impossibly slick; the rock face not impossibly sheer. You have your mind. She still whispers to you, even now, <i>my dear.</i>
-                <br/>
-            </div>
-        {{/interp-missing}}
-    </div>
-    <div class="lost">
-        You are alone in a grassy alcove in the forest.
-        {{#interp-lost}}
-            <div class="interp-lost">
-                <br/>
-                Indeed. And perhaps it is time to leave. To venture forth from the confines of this sanctuary you have constructed.
-                <br/>
-                Your view of the horizon is occluded by the trees from in here. Set out, seeking <i>new vantages.</i>
-            </div>
-        {{/interp-lost}}
-    </div>`,
-    
-},
-{
-    id: 'alcove, ending interpretation',
-    enter_message: `A sense of purpose exists within you. It had been occluded by the panic, but you can feel it there, now.
-    <br /><br />
-    You do not know precisely what awaits you, out there. You have slept and worked within this alcove for such a long time. You are afraid to leave.
-    <br /><br />
-    But your sense of purpose compels you. To go. To seek. To try to understand.`,
-    transitions: {
-        'alcove, entering the forest': 'enter the forest',
-    },
-    interpretations: {
-        'alcove, beginning interpretation': { 'interpretation-active': false }
+Abstractions({
+    name: 'the scrutinizing mode',
+    name_cmd: 'the_scrutinizing_mode',
+    slug: 'scrutinizing-mode',
+    description: '"Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance."',
+    get_cmd: (action) => action,
+    actions: [
+        {
+            name: 'scrutinize' as const,
+            description: "The ability to unpack details and look beyond your initial assumptions.",
+            slug: 'scrutinize',
+            get_cmd: (facet) => ['scrutinize', facet],
+            get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains conerning.`
+        }
+    ]
+});
+
+Memories({
+    abstraction: 'the scrutinizing mode',
+    could_remember: world => !!world.has_chill
+})
+
+Facets({
+    name: "Sam's demeanor",
+    description: "Sam's typical, warm demeanor",
+    slug: 'sam-demeanor',
+    phrase: "sam's_demeanor",
+    can_recognize: (w2, w1) =>
+        about_sam(w1) && !!w2.has_acquired['the scrutinizing mode'],
+    solved: w => w.has_recognized_something_wrong,
+    handle_action: ([abstraction, action], world) => {
+        if (action.name === 'scrutinize') {
+            return update(world,
+                { has_recognized_something_wrong: true },
+                message_updater(`
+                    You are struck by the alarming incongruence of his demeanor.
+                    <br/>
+                    The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.`))
+        } else if (action.name === 'attend') {
+            return update(world,
+                message_updater(`You notice nothing new about his demeanor.`));
+        } else {
+            return update(world, message_updater(action.get_wrong_msg("sam's demeanor")));
+        }
+
     }
-},
-{
-    id: 'alcove, entering the forest',
-    enter_message: `What lies within the forest, and beyond? What will it be like, out there?`,
-    transitions: {'title': 'continue'}
-},
-{
-    id: 'title',
-    enter_message: `VENIENCE WORLD
-    <br />
-    <br />
-    An Interactive Fiction by Daniel Spitz`,
-    transitions: {'alone in the woods': 'continue'}
-}
-)
+});
 
-type PerceptID =
-    'alcove, general' |
-    'self, 1' |
-    'alcove, envelope' |
-    'sequence, 12';
 
-type Percept = {
-    id: PerceptID,
-    prereqs?: readonly PerceptID[],
-    message: MessageUpdateSpec
-};
+Abstractions({
+    name: 'the hammer',
+    name_cmd: 'the_hammer',
+    slug: 'hammer',
+    description: '"Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble."',
+    get_cmd: (action) => action,
+    actions: [
+        {
+            name: 'hammer' as const,
+            description: "The act of dismantling one's own previously-held beliefs.",
+            slug: 'to-hammer',
+            get_cmd: (facet) => ['hammer_against_the_foundations_of', facet],
+            get_wrong_msg: (facet) => `You find yourself unable to shake ${facet}, despite your efforts.`
+        }
+    ]
+});
 
-function percieve(world: PW, perc: PerceptID) {
-    return update(world, {
-        has_perceived: { [perc]: true },
-        message: message_updater(Percepts.find(p => p.id === perc)!.message)
-    });
-}
+Memories({
+    abstraction: 'the hammer',
+    could_remember: world => !!world.has_recognized_something_wrong
+});
 
-type PerceptSpec = Partial<Record<PerceptID, ConsumeSpec>>;
-
-// TODO: Have this take a proper spec as input, like make_transitioner
-function make_perceiver(world: PW, percs: PerceptSpec, prepend_look: boolean=true) {
-    return (parser: Parser) =>
-        parser.split(
-            entries(percs).map(([pid, cmd]) => () => {
-                let perc = Percepts.find(p => p.id === pid)!;
-                if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
-                    parser.eliminate();
-                }
-                let cs: ConsumeSpec[] = [
-                    ...cond(prepend_look, () => ({tokens: 'look', labels: {keyword: true}})),
-                    cmd
-                ];
-                parser.consume({tokens: cs, used: world.has_perceived[pid]});
-                parser.submit();
-                return percieve(world, pid);
-            })
-        );
-}
-
-const Percepts: Percept[] = [
-    // {
-    //     id: 'alcove, general',
-    //     message: `
-    //     You turn and dangle your knees off the bed. Your feet brush against the damp grass on the ground.
-    //     <br /><br />
-    //     You see your desk and chair a few paces away, in the center of the alcove.
-    //     <br /><br />
-    //     On all sides you are surrounded by trees.`
-    // },
-    // {
-    //     id: 'self, 1',
-    //     message: `
-    //     You are wearing a perfectly dignified pair of silk pajamas.`
-    // },
-    // {
-    //     id: 'alcove, envelope',
-    //     message: `
-    //     You keep your research in this thick envelope.
-    //     <br/><br/>
-    //     You've been analyzing Katya's work for years now.
-    //     <br/><br/>
-    //     Your career is built in reverence of hers.`
-    // },
-    // {
-    //     id: 'sequence, 12',
-    //     message: `
-    //     The twelfth sequence was the first purely numeric one in Katya's notes.
-    //     <br/><br/>
-    //     None of the greek symbols, none of the allusions to physical constants.
-    //     <br/><br/>
-    //     Just numbers. Eighty-seven of them.`,
-    // },
-];
 
 interface VenienceWorld extends World, Venience {}
 
-const initial_venience_world: VenienceWorld = {
-    ...get_initial_world<VenienceWorld>(),
-    node: 'start', //'grass, asking 2', //'bed, sleeping 1',
-    has_perceived: {},
-    alcove_interp: initial_alcove_interp,
-    ...init_metaphors
-    
-};
+const initial_venience_world: VenienceWorld = update({
+        ...get_initial_world<VenienceWorld>(),
+        ...init_metaphors,
+        owner: null,
+        gist: null,
+        has_acquired: {},
+        has_considered: {},
+        has_tried: {},
+        has_chill: false,
+        has_recognized_something_wrong: false
+    },
+    message_updater('You and Sam are sitting together on the bus.')
+);
 
 const venience_world_spec = make_puffer_world_spec(initial_venience_world, PufferIndex);
-
 
 export function new_venience_world() {
     return world_driver(venience_world_spec);

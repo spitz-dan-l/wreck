@@ -1,7 +1,7 @@
 import { random_choice } from '../text_tools';
 import { update } from '../utils';
 import { CommandHandler, get_initial_world, make_world_spec, World, world_driver, Narrator } from '../world';
-import { map_interpretations } from '../interpretation';
+import { interpretation_updater } from '../interpretation';
 
 interface BirdWorld extends World {
     readonly is_in_heaven: boolean
@@ -29,15 +29,13 @@ export function new_bird_world() {
 }
 
 let post: Narrator<BirdWorld> = (new_world, old_world) => {
-    return update(new_world, {
-        interpretations: map_interpretations(new_world, (w) => {
-            if (w.is_in_heaven === new_world.is_in_heaven) {
-                return { happy: true };
-            } else {
-                return { happy: false };
-            }
-        })
-    });
+    return update(new_world, interpretation_updater(new_world, (w) => {
+        if (w.is_in_heaven === new_world.is_in_heaven) {
+            return { happy: true };
+        } else {
+            return { happy: false };
+        }
+    }));
 }
 
 let handle_command: CommandHandler<BirdWorld> = (world, parser) => {

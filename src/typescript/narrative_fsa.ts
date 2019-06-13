@@ -2,7 +2,7 @@ import { MessageUpdateSpec, message_updater } from './message';
 import { Parser, ParserThread, ConsumeSpec } from './parser';
 import { knit_puffers, bake_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferAndWorld, PufferMapper, PufferNarrator, Stages } from './puffer';
 import { update, Updater, entries } from './utils';
-import { LocalInterpretations, map_interpretations } from './interpretation';
+import { LocalInterpretations, interpretation_updater } from './interpretation';
 import { World } from './world';
 
 export function narrative_fsa_builder
@@ -82,9 +82,7 @@ export function narrative_fsa_builder
                     }
 
                     if (stage === 0 && spec.exit_message !== undefined) {
-                        world_2 = update(world_2, <Updater<PW>> <unknown> {
-                            message: message_updater(spec.exit_message)
-                        });
+                        world_2 = update(world_2, <Updater<PW>> message_updater(spec.exit_message));
                     }
                 }
 
@@ -97,20 +95,16 @@ export function narrative_fsa_builder
                     }
 
                     if (stage === 0 && spec.enter_message !== undefined) {
-                        world_2 = update(world_2, <Updater<PW>> <unknown> {
-                            message: message_updater(spec.enter_message)
-                        });
+                        world_2 = update(world_2, <Updater<PW>> message_updater(spec.enter_message));
                     }
                 }
 
                 // here
                 if (get_state_id(world_2) === spec.id) {
                     if (spec.interpretations !== undefined) {
-                        world_2 = <PW><unknown> update(<World><unknown>world_2, {
-                            interpretations: map_interpretations(world_2, (w, prev) => 
-                                ({...prev, ...spec.interpretations![get_state_id(w)]!})
-                            )
-                        });
+                        world_2 = <PW><unknown> update(<World><unknown>world_2,
+                            interpretation_updater(
+                                world_2, (w) => spec.interpretations![get_state_id(w)]!));
                     }
                     if (here[stage] !== undefined) {
                         world_2 = here[stage](world_2);

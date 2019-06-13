@@ -57,8 +57,8 @@ function is_fragment(spec: MessageUpdateSpec): spec is Fragment {
     return typeof spec === 'string';
 }
 
-export let message_updater = (spec: MessageUpdateSpec) =>
-    (orig_message: Message) => {
+export let message_updater = (spec: MessageUpdateSpec) => ({
+    message: (orig_message: Message) => {
         if (is_fragment(spec)) {
             return update(orig_message, {
                 consequence: appender(spec)
@@ -74,6 +74,7 @@ export let message_updater = (spec: MessageUpdateSpec) =>
 
         return update(orig_message, updater);
     }
+});
 
 /*
     TODO: standard_render is actually a react component, not a function returning string

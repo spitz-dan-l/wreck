@@ -144,7 +144,47 @@ export type NotParsed = { kind: 'NotParsed', parsing: Parsing };
 export type ParseResult<T> = Parsed<T> | NotParsed;
 
 export function is_parse_result_valid(result: TokenMatch[]) {
-    return result.length === 0 || array_last(result).status === 'Match';
+    return result.length === 0 || array_last(result)!.status === 'Match';
+}
+
+
+type GroupableRow = (TokenMatch | null)[]
+function group_rows(options: GroupableRow[]) {
+    let grouped_options: {
+        [k: string]: GroupableRow[]
+    } = {};
+
+    function stringify_option(x: GroupableRow): string {
+        let result = '';
+        result += x.length+';';
+        let n_nulls = x.findIndex(l => l !== null);
+        result += n_nulls + ';';
+
+        function stringify_elt(elt: TokenMatch): string {
+            let result = '';
+            if (typeof elt.expected.token === 'string') {
+                result += elt.expected.token;
+            }
+            result += '|';
+            result += Object.keys(elt.expected.labels);
+            return result;
+        }
+        for (let l of x.slice(n_nulls)) {
+            result += stringify_elt(<TokenMatch>l) + ';';
+        }
+        return result;
+    }
+
+    for (let option of options) {
+        let key = stringify_option(option);
+
+        if (grouped_options[key] === undefined) {
+            grouped_options[key] = [option];
+        } else {
+            grouped_options[key].push(option);
+        }
+    }
+    return grouped_options;
 }
 
 // for each of the input tokens, how should they be displayed/highighted?
@@ -153,16 +193,42 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
     let submission = false;
     let row: TokenMatch[];
 
-    if ((row = parse_results.find(row => array_last(row).status === 'Match')!) !== undefined) {
+    if ((row = parse_results.find(row => array_last(row)!.status === 'Match')!) !== undefined) {
         match_status = 'Match';
-        submission = array_last(row).actual === SUBMIT_TOKEN;
+        submission = array_last(row)!.actual === SUBMIT_TOKEN;
 
         if (!submission) {
             throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
         }
-    } else if ((row = parse_results.find(row => array_last(row).status === 'PartialMatch')!) !== undefined) {
-        // chop off the partial bits that haven't been started yet
-        row = row.slice(0, input_stream.length);
+    } else if (parse_results.some(row => array_last(row)!.status === 'PartialMatch')) {
+        // TODO: group all partial match rows by tokens and labels
+        // set "row" to a possibly-synthesized version with min availability
+        //    (TODO: flip availability scale s.t. Available is 2, not 0.)
+        if (input_stream.length === 0) {
+            row = [];
+        } else {
+
+            let all_partial_rows = parse_results.filter(row => array_last(row)!.status === 'PartialMatch');
+            let truncated = all_partial_rows.map(row => row.slice(0, input_stream.length));
+
+            let grouped = <{[k:string]: TokenMatch[][]}> group_rows(truncated);
+
+            let first_group = grouped[Object.keys(grouped)[0]];
+
+            // NOTE: It should ALWAYS get switched from Locked since Locked specs can never be entered
+            let current_a: TokenAvailability = 'Locked';
+            let current_index = 0;
+            
+            for (let i = 0; i < first_group.length; i++) {
+                let opt = first_group[i];
+                let a = array_last(opt)!.expected.availability;
+                if (availability_order[a] < availability_order[current_a]) {
+                    current_a = a;
+                    current_index = i;
+                }
+            }
+            row = first_group[current_index]
+        }
         match_status = 'PartialMatch';
     } else {
         row = input_stream.map(tok => {
@@ -209,77 +275,20 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
     }
 
     let rows_with_typeahead = parse_results.filter(pr => 
-        !(array_last(pr).status === 'ErrorMatch')
+        !(array_last(pr)!.status === 'ErrorMatch')
         && pr.slice(input_stream.length - 1).some(is_partial)
     );
 
-    let unique_options: (PartialMatch | null)[][] = [];
-
-    function options_equal(x: (PartialMatch | null)[], y: (PartialMatch | null)[]): boolean {
-        return x.length === y.length && x.every((m, i) => deep_equal(m, y[i]))
-    }
-
-    function options_match(x: (PartialMatch | null)[], y: (PartialMatch | null)[]): boolean {
-        return x.length === y.length && x.every((m, i) => {
-            let n = y[i];
-            if (m === null || n === null) {
-                return m === n;
-            }
-
-            return (m.expected.token === n.expected.token &&
-                    deep_equal(m.expected.labels, n.expected.labels));
-        })
-    }
-
-    let grouped_options: {
-        [k: string]: (PartialMatch | null)[][]
-    } = {};
-
-    function stringify_option(x: (PartialMatch | null)[]): string {
-        let result = '';
-        result += x.length+';';
-        let n_nulls = x.findIndex(l => l !== null);
-        result += n_nulls + ';';
-
-        function stringify_elt(elt: PartialMatch): string {
-            let result = '';
-            if (typeof elt.expected.token === 'string') {
-                result += elt.expected.token;
-            }
-            result += '|';
-            result += Object.keys(elt.expected.labels);
-            return result;
+    type groups_of_partials = { [k: string]: (PartialMatch | null)[][] };
+    let grouped_options: groups_of_partials = <groups_of_partials> group_rows(
+        rows_with_typeahead.map(pr => {
+            let start_idx = pr.findIndex(is_partial);
+            let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
+            let elts = <PartialMatch[]>pr.slice(start_idx);
+            option.push(...elts);
+            return option
         }
-        for (let l of x.slice(n_nulls)) {
-            result += stringify_elt(<PartialMatch>l) + ';';
-        }
-        return result;
-    }
-
-    rows_with_typeahead.forEach(pr => {
-        let start_idx = pr.findIndex(is_partial);
-        let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
-        let elts = <PartialMatch[]>pr.slice(start_idx);
-        option.push(...elts);
-
-        let key = stringify_option(option);
-
-        if (grouped_options[key] === undefined) {
-            grouped_options[key] = [option];
-        } else {
-            grouped_options[key].push(option);
-        }
-
-        // // TODO: don't just check for simple equality.
-        // // You can have same token + labels, but different availabilities.
-        // // Availability should work like this:
-        // //     Any options are Available -> Available
-        // //     Else, any options Used -> Used
-        // //     Else, Locked.
-        // if (!unique_options.some((u_opt) => options_equal(u_opt, option))) {
-        //     unique_options.push(option);
-        // }
-    });
+    ));
 
     return Object.entries(grouped_options).map(([key, options]) => {
         let current_a: TokenAvailability = 'Locked';
@@ -300,12 +309,6 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
             option: options[current_index]
         };
     });
-
-    return unique_options.map(option => ({
-        kind: 'TypeaheadOption',
-        availability: array_last(option)!.expected.availability,
-        option
-    }));
 }
 
 
@@ -353,7 +356,7 @@ export class Parser {
 
     label_context: TokenLabels = {};
 
-    _current_availability: TokenAvailability = 'Available'
+    private _current_availability: TokenAvailability = 'Available'
     get current_availability(): TokenAvailability { return this._current_availability; }
     set current_availability(val) {
         if (availability_order[val] < availability_order[this._current_availability]) {
@@ -384,7 +387,7 @@ export class Parser {
         return call_or_return(this, result);
     }
 
-    _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): void {
+    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): void {
         if (spec instanceof Array) {
             for (let s of spec) {
                 this._consume_spec(s, overrides);
@@ -396,7 +399,7 @@ export class Parser {
         }
     }
 
-    _consume_string(spec: string, overrides?: ConsumeSpecOverrides): void {
+    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): void {
         let toks = tokenize(spec)[0];
             
         let labels: TokenLabels = { filler: true };
@@ -426,7 +429,7 @@ export class Parser {
         }
     }
 
-    _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): void {
+    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): void {
         let spec_: ConsumeSpecObj = {...spec};
 
         if (overrides) {
@@ -445,44 +448,6 @@ export class Parser {
         return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'))
     }
 
-    _consume_dsl(dsl: string): void {
-        let toks = tokenize(dsl)[0];
-
-        for (let t of toks) {
-            let labels: TokenLabels = { filler: true };
-            let availability: TokenAvailability  = 'Available';
-
-            if (t.startsWith('^')) {
-                availability = 'Locked';
-                t = t.slice(1);
-            } else if (t.startsWith('~')) {
-                availability = 'Used';
-                t = t.slice(1);
-            } else if (t.startsWith('+')) {
-                availability = 'Available';
-                t = t.slice(1);
-            }
-
-            if (t.startsWith('*')) {
-                labels = { keyword: true };
-                t = t.slice(1);
-            } else if (t.startsWith('&')) {
-                labels = { option: true };
-                t = t.slice(1);
-            } else if (t.startsWith('=')) {
-                labels = { filler: true };
-                t = t.slice(1);
-            }
-
-            this._consume(t.split('_').map(t => ({
-                kind: 'RawConsumeSpec',
-                token: t,
-                availability,
-                labels
-            })));
-        }
-    }
-
     clamp_availability(spec: RawConsumeSpec) {
         if (availability_order[spec.availability] < availability_order[this.current_availability]) {
             return {...spec, availability: this.current_availability};
@@ -496,7 +461,7 @@ export class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    _consume(tokens: RawConsumeSpec[]) {
+    private _consume(tokens: RawConsumeSpec[]) {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
@@ -626,6 +591,10 @@ export class Parser {
     split<T>(subthreads: ParserThread<T>[]): T;
     split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => R): R;
     split(subthreads: ParserThread<any>[], callback?: any): any {
+        if (subthreads.length === 0) {
+            return this.eliminate(); // TODO: make sure this actually helps
+        }
+
         let {value: split_value, done} = this._split_iter.next();
         if (done) {
             throw new ParseRestart(subthreads.length);

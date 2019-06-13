@@ -111,7 +111,7 @@ type PW = PufferAndWorld<Hex>;
 function percieve(world: PW, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
-        message: message_updater(Percepts.find(p => p.id === perc)!.message)
+        ...message_updater(Percepts.find(p => p.id === perc)!.message)
     });
 }
 

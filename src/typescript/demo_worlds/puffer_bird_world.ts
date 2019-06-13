@@ -2,7 +2,7 @@ import { make_puffer_world_spec, Puffer } from '../puffer';
 import { random_choice } from '../text_tools';
 import { appender, update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
-import { map_interpretations } from '../interpretation';
+import { interpretation_updater } from '../interpretation';
 
 interface Location {
     is_in_heaven: boolean;
@@ -38,15 +38,13 @@ let LocationPuffer: Puffer<Location> = {
     },
 
     post: (new_world, old_world) => {
-        return update(new_world, {
-            interpretations: map_interpretations(new_world, (w, prev) => {
-                if (w.is_in_heaven === new_world.is_in_heaven) {
-                    return {...prev, happy: true };
-                } else {
-                    return {...prev, happy: false };
-                }
-            })
-        });
+        return update(new_world, interpretation_updater(new_world, (w) => {
+            if (w.is_in_heaven === new_world.is_in_heaven) {
+                return {happy: true };
+            } else {
+                return {happy: false };
+            }
+        }));
     }
 };
 
@@ -160,15 +158,13 @@ let RolePuffer: Puffer<Roles> = {
     },
 
     post: (new_world, old_world) =>
-        update(new_world, {
-            interpretations: map_interpretations(new_world, (w, prev) => {
-                if (new_world.role === 'vulnerable') {
-                    return {...prev, vulnerable: true };
-                } else {
-                    return {...prev, vulnerable: false };
-                }        
-            })
-        })
+        update(new_world, interpretation_updater(new_world, (w) => {
+            if (new_world.role === 'vulnerable') {
+                return {vulnerable: true };
+            } else {
+                return {vulnerable: false };
+            }        
+        }))
 };
 
 interface BirdWorld extends World

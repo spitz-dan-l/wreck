@@ -130,7 +130,7 @@ export function map_puffer<T>(mapper: PufferMapper<T>, puffer: Puffer<T>): Puffe
     return result;
 }
 
-export function gate_puffer<W>(cond: (world: W) => boolean, puffer: Puffer<W>): Puffer<W> {
+export function gate_puffer<W>(cond: (world: PufferAndWorld<W>) => boolean, puffer: Puffer<W>): Puffer<W> {
     return map_puffer({
         pre: (cb) => {
             if (cb === undefined) {

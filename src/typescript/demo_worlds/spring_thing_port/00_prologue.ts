@@ -128,9 +128,9 @@ function make_facet(spec: FacetSpec): Puffer<Venience> {
 
                                 let result = spec.interpret([abs.name, action.name], world, interpretted_world);
                                 if (result === false) {
-                                    return update(world, {
-                                        message: message_updater(action.get_wrong_msg(spec.name))
-                                    });
+                                    return update(world, 
+                                        message_updater(action.get_wrong_msg(spec.name))
+                                    );
                                 }
                                 return result;
                             })
@@ -443,13 +443,13 @@ ObserverMoments(
 },
 {
     id: 'desk, trying to understand 1',
-    enter: (world) => update(world, {
-        message: message_updater(`
+    enter: (world) => update(world, 
+        message_updater(`
         Years of work.
         <br/><br/>
         Sequence Number Twelve.
         </br><br/>
-        How does it go?`)}),
+        How does it go?`)),
     enter_message: `
     Years of work.
     <br/><br/>
@@ -745,7 +745,7 @@ type Percept = {
 function percieve(world: PW, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
-        message: message_updater(Percepts.find(p => p.id === perc)!.message)
+        ...message_updater(Percepts.find(p => p.id === perc)!.message)
     });
 }
 
