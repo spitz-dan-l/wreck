@@ -12,11 +12,11 @@
       display: block;
 }
 
-.terminal {
-      padding: 3em;
+#terminal>div {
+      margin: 3em;
 }
 
-.terminal:focus {
+#terminal:focus {
       outline: none;
 }
 

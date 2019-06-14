@@ -1,0 +1,13 @@
+I struggled to understand proofs for awhile after they were first introduced to me in highschool.
+
+The sequential nature of proofs confused me for a long time. When presented with an example of a proof, I remember not understanding why the logical steps were ordered so particularly. I would disagree with the units of forward progress introduced in each step; it felt arbitrary and disproportionate. I would try to imagine not doing a particular step, and see if I could get to the desired conclusion without it, and I often felt I could. I would consider how certain later steps felt more like they should precede certain earlier steps, in the sense that they somehow justified or explained them.
+
+I would also consider how there were entirely different ways of thinking about a given problem, which could yield the same correct solution, but had little to do with the steps presented by the proof at hand.
+
+Looking back, there are a number of core ideas I was missing at the time that would have been necessary to resolve my confusion.
+
+I didn't understand that a proof does not model a cognitive process, but a mechanical one. A proof is not a series of convincing thoughts, each one feeling motivated by the last. A proof is not a prescription about the right way to feel or think about a given problem. The language we use to describe proofs and formal logic makes the distinction pretty tough to catch.
+
+I didn't understand that a proof is only operational within the context of the axioms, inference rules and structures selected to go along with it. Or that various sets of these ingredients are fungible to a degree. Or that for a given set of ingredients, there may be multiple proofs for the same statement, none of which is clearly "best". In practice, there is strategy and art to selecting the right ingredients for a proof.
+
+I didn't understand that formalization can come after a period of intuitive exploration, or interspersed within it. The way proofs were introduced in school was as an antidote to our otherwise inexact, error-prone, sketchy styles of mathematical thinking. I implicitly took this to mean that the solution-seeking process to a given problem should necessarily take the form of strict proof construction. What a hobbling constraint. And doubly hobbling when you're under the impression that the domain of your proof isn't up to you.

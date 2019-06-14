@@ -20,6 +20,24 @@ Does not work on the iphone. (The text doesn't render at the right size, and I c
 
 I have not tested for IE/Edge/Opera/Android.
 
+## Development
+
+Clone this repo and `npm install`.
+
+A few commands are exposed as npm package scripts:
+
+#### `npm test`
+Performs type-checking, compiles to JS in the build/ directory and runs unit tests.
+
+#### `npm run debug`
+Same as above, but runs the unit tests in debug mode, so you can insert breakpoints and step through interactively.
+
+#### `npm run build-dev`
+Bundles the game and saves it in `dist/venience.js`. It will Just Work if you open `dist/venience.html` in your browser. NOTE: DOES NOT DO TYPE CHECKING.
+
+#### `npm run build`
+Builds the game in production mode- no source maps, smaller bundle, faster renders. Also saves to `dist/venience.js` so `build` and `build-dev` overwrite each other.
+
 ## Architecture
 
 The game uses React for UI, and a segregated original typescript framework for all game logic.
@@ -37,8 +55,6 @@ See `src/components/` for the react component code. See `src/typescript/main.tsx
 #### Parser
 
 Quite disorganized but powerful. The parser itself is arguably the cornerstone of Venience World, and the style of parsing implemented is quite powerful; it supports arbitrary look ahead with multiple possible independent "consumer threads". The act of instructing the parser how to consume things also automatically produces the typeahead/autocomplete that is used in the UI.
-
-Currently, however, all of these powerful constructs are founded on an idiosyncratic/just-so core implementation of parsing, which is easy to break and hard to understand. I plan to refactor the core parsing code sometime soon.
 
 See `src/typescript/parser.ts`.
 

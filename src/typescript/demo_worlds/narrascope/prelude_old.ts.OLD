@@ -1,0 +1,61 @@
+import { lock_builder } from '../../lock';
+import { Puffer } from '../../puffer';
+import { update } from '../../utils';
+import { World, get_initial_world } from '../../world';
+
+
+export type ObserverMomentID =
+    'start' |
+    'learning the mountain' |
+    'alcove, beginning interpretation' |
+    'alcove, ending interpretation' |
+    'alcove, entering the forest' |
+    'title' |
+    'alone in the woods'
+    ;
+
+export type AbstractionID =
+    'the mountain';
+
+export type ActionID =
+    'gravity' |
+    'ice' |
+    'horizon';
+
+export type FacetID =
+    'the sense of dread' |
+    'the missing notes' |
+    'your location';
+
+export type Owner =
+    'Metaphor';
+
+export interface Venience {
+    node: ObserverMomentID;    
+    owner: Owner | null;
+}
+
+
+export const global_lock = () => lock_builder<Venience, Owner>({
+    owner: (w) => w.owner,
+    set_owner: (w, owner) => update(w, { owner} )
+});
+
+export const PufferIndex: Puffer<Venience>[] = [];
+
+export function Puffers(...puffers: Puffer<Venience>[]) {
+    PufferIndex.push(...puffers)
+}
+
+// interface VenienceWorld extends Venience, World {};
+
+// //TODO set up a registry of partial initial worlds
+// export interface initializers extends Array<any> {
+//     0: World
+// }
+
+// type inits = initializers[0 | 1];
+
+// declare let xxx: initializers;
+
+// xxx[0]

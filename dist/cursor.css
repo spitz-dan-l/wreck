@@ -1,4 +1,3 @@
-
 .blinking-cursor {
   color: #2E3D48;
   -webkit-animation: 1s blink step-end infinite;

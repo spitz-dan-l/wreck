@@ -1,11 +1,16 @@
+// const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
+const EvalSourceMapDevToolPlugin = require('webpack').EvalSourceMapDevToolPlugin;
+
+const path = require('path');
+
 module.exports = {
     entry: "./src/typescript/main.tsx",
     output: {
-        filename: "bundle.js",
-        path: __dirname + "/dist"
+        filename: "venience.js",
+        path: path.resolve(__dirname, "dist")
     },
 
-    devtool: 'source-map',
+    devtool: false,
 
     resolve: {
         // Add '.ts' and '.tsx' as resolvable extensions.
@@ -14,20 +19,15 @@ module.exports = {
 
     module: {
         rules: [
-            // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
-            {
-                test: /\.tsx?$/,
-                loader: "awesome-typescript-loader",
-                options: {
-                    useBabel: true,
-                    useCache: true,
-                }
-            },
-
+            { test: /\.(ts|js)x?$/, loader: 'babel-loader', exclude: /node_modules/ },
         ]
     },
-    externals: {
-        "react": "React",
-        "react-dom": "ReactDOM"
-    },
+
+    plugins: [
+        // NOTE: the Eval plugin actually follows the exclude: option, while the vanilla one just doesn't. Dumb.
+        new EvalSourceMapDevToolPlugin({
+            test: /\.(ts|js)x?$/,
+            exclude: /node_modules/
+        })
+    ]
 };

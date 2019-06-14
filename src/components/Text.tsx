@@ -1,66 +1,79 @@
 import * as React from 'react';
+import { MatchStatus, Parsing, Token, TokenAvailability, TokenMatch } from '../typescript/parser';
 
-import {DisplayEltType, MatchValidity} from '../typescript/parser';
 
-export const Carat = () => (
-  <span>
-    >&nbsp;
-  </span>
-);
+export const Carat = () => <span>>&nbsp;</span>;
 
-function get_display_color(det: DisplayEltType) {
-  switch (det) {
-    case DisplayEltType.keyword:
-      return 'aqua';
-    case DisplayEltType.option:
-      return 'orange';
-    case DisplayEltType.filler:
-      return 'ivory';
-    case DisplayEltType.partial:
-      return 'silver';
-    case DisplayEltType.error:
-      return 'red';
+function cssify_status(status: MatchStatus): string {
+  switch (status) {
+    case 'Match':
+      return 'match';
+    case 'PartialMatch':
+      return 'partial-match';
+    case 'ErrorMatch':
+      return 'error-match';
   }
 }
 
-export const ParsedText = (props) => {
-  let {parser, typeaheadIndex, children} = props;
-
-  let style: any = {
-    //display: 'inline-block',
-    whiteSpace: 'pre-wrap',
-    position: 'relative'
+function cssify_availability(availability: TokenAvailability) {
+  switch (availability) {
+    case 'Available':
+      return 'available';
+    case 'Used':
+      return 'used';
+    case 'Locked':
+      return 'locked';
   }
-  let validity = parser.validity;
-  if (validity === MatchValidity.valid) {
-    style.fontWeight = '900';
-    //style.fontStyle = 'italic'
-  } else {
-    style.fontWeight = '100';
-    if (validity === MatchValidity.invalid) {
-      style.opacity = '0.6';
+}
+
+function get_class_name(tm: TokenMatch) {
+  let classes: string[] = [
+    'token',
+    cssify_status(tm.status),
+    cssify_availability(tm.expected.availability)
+  ];
+
+  if (tm.status === 'Match') {
+    for (let [label, on] of Object.entries(tm.expected.labels)) {
+      if (on) {
+        classes.push(label);
+      }
     }
   }
+  return classes.join(' ');
+}
 
-  const elt_style: any = {
-    //display: 'inline-block'
+export const ParsedText = (props: { parsing: Parsing, children?: any }) => {
+  let parsing: Parsing = props.parsing;
+  let children = props.children;
+  
+  let command_classes = ['command'];
+
+  let view = parsing.view;
+  command_classes.push(cssify_status(view.match_status));
+
+  if (view.submittable || view.submission) {
+    command_classes.push('submittable');
   }
 
-  const span_style: any = {
-    //display: 'inline-block'
+  function convert_token(s: Token) {
+     if (typeof s === 'string') {
+      return s;
+    }
+    return '';
   }
 
   return (
-    <div className="parsed-text" style={{/*display: 'inline-block'*/}}>
+    <div className="parsed-text">
       <Carat />
-      <div style={style}>
-        {(parser === undefined) ? '' : 
-          parser.match.map((elt, i) => (
-            <div key={i.toString()} style={{...elt_style, ...{color: get_display_color(elt.display)}}}>
-              <span style={span_style}>
-                {elt.match + ( i === parser.match.length - 1  ? parser.tail_padding : '' ) }
+      <div className={command_classes.join(' ')}>
+        {
+          view.matches.map((elt, i) => (
+            <div key={i.toString()} className={get_class_name(elt)}>
+              <span>
+                { parsing.whitespace[i] + convert_token(elt.actual) }
               </span>
-              { ( i === typeaheadIndex ) ? children : '' }
+              { ( i === 0 ) ? children : '' }
             </div>
           ))
         }
@@ -70,9 +83,9 @@ export const ParsedText = (props) => {
 }
 
 export const OutputText = (props) => {
-  const {message_html} = props;
+  const {rendering} = props;
 
   return (
-    <div className="output-text" dangerouslySetInnerHTML={{__html: message_html}} />
+    <div className="output-text" dangerouslySetInnerHTML={{__html: rendering}} />
   );
 }
