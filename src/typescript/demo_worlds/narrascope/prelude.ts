@@ -5,26 +5,34 @@ import { World, get_initial_world } from '../../world';
 
 export type TopicID =
     'Sam' |
-    'myself' |
-    'my notebook';
+    'yourself' |
+    'your notebook' |
+    'your history with Sam';
 
 export type AbstractionID =
     'the attentive mode' |
     'the scrutinizing mode' |
     'the hammer' |
-    'participation';
+    'the volunteer';
 
 export type ActionID =
     'attend' |
     'scrutinize' |
-    'hammer';
+    'hammer' |
+    'volunteer';
 
 export type FacetID =
     "Sam" |
-    "Sam's demeanor";
+    "Sam's demeanor" |
+    "Sam's personality" |
+    "your friendship with Sam" |
+    "your drifting apart" |
+    "your culpability" |
+    "the old affinity";
 
 export type Owner =
-    'Metaphor';
+    'Metaphor' |
+    'Outro';
 
 export interface Venience {
     owner: Owner | null;

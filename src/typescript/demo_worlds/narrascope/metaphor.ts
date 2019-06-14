@@ -3,7 +3,7 @@ import { MessageUpdateSpec, message_updater } from "../../message";
 import { ConsumeSpec, ParserThread } from "../../parser";
 import { Puffer, PufferAndWorld } from "../../puffer";
 import { capitalize } from '../../text_tools';
-import { update } from "../../utils";
+import { update, Updater } from "../../utils";
 import { AbstractionID, ActionID, FacetID, global_lock, Owner, Puffers, Venience, Initializers } from "./prelude";
 
 export interface Metaphors {
@@ -233,8 +233,7 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                         }
                     },
                     message_updater({
-                        action: [`You contemplate ${interp_world.gist!.name}.`],
-                        consequence: [`A sense of focus begins to permeate your mind.`],
+                        action: [`You contemplate ${interp_world.gist!.name}. A sense of focus begins to permeate your mind.`],
                         description: descriptions
                     }),
                 );
@@ -273,9 +272,8 @@ type FacetSpec = {
     phrase: ConsumeSpec,
     description: string,
     can_recognize: (current_world: PW, interpretted_world: PW) => boolean,
-    solved: (world: PW) => boolean,
-    // set_solved: (world: PW) => PW,
-    // correct: (action: [AbstractionID, ActionID], world: PW) => boolean,
+    can_apply: (action: [Abstraction, Action]) => boolean,
+    solved: (world: PW) => boolean | symbol,
     handle_action: (action: [Abstraction, Action], world: PW) => PW
 };
 
@@ -308,11 +306,17 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
             
             for (let action of abs.actions) {
                 let qual_action: [Abstraction, Action] = [abs, action];
+                
+                if (!spec.can_apply(qual_action)) {
+                    continue;
+                }
+                // TODO: disable certain actions
+
                 threads.push(() => {
                     let already_solved = spec.solved(world);
                     parser.consume({
                         tokens: abs.get_cmd(action.get_cmd(spec.phrase)),
-                        used: already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
+                        used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
                         labels: { interp: true, filler: true }
                     });
                     parser.submit();
@@ -335,19 +339,20 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
                             has_tried: { [action.name]: { [spec.name]: true }}
                         });
 
-                    if (spec.solved(world)) {
-                        if (already_solved) {
-                            return update(world, {
-                                interpretations: { [interpretted_world.index]: {
-                                    [`interp-${spec.slug}-solved-blink`]: Symbol('Once')
-                                }}
-                            });
-                        } else {
+                    let solved = spec.solved(world)
+                    if (solved) {
+                        if (!already_solved) {
                             return update(world,
                                 { interpretations: { [interpretted_world.index]: {
                                     [`interp-${spec.slug}`]: true
                                 }}}
                             );
+                        } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
+                            return update(world, {
+                                interpretations: { [interpretted_world.index]: {
+                                    [`interp-${spec.slug}-solved-blink`]: Symbol('Once')
+                                }}
+                            });
                         }
                     }
                     return world;
@@ -358,14 +363,28 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
         return parser.split(threads);
     },
     post: (world2, world1) => {
+        let updates: Updater<PW>[] = [];
+
+        if (world2.current_interpretation !== null && world2.current_interpretation === world1.current_interpretation) {
+            let interpretted_world = find_historical(world2, w => w.index === world2.current_interpretation)!;
+            if (!spec.can_recognize(world1, interpretted_world) && spec.can_recognize(world2, interpretted_world)) {
+                updates.push(message_updater({
+                    prompt: [`
+                    You notice an aspect that you hadn't before:
+                    <blockquote class="descr-${spec.slug}">
+                        ${spec.description}
+                    </blockquote>`]}));
+            }
+        }
+
         if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
-            return update(world2,
+            updates.push(
                 { interpretations: { [world2.index]: {
                     [`interp-${spec.slug}`]: true
                 }}}
             );
         }
-        return world2;
+        return update(world2, ...updates);
     },
     css_rules: [`
         .history .would-add-interp-${spec.slug}-blink .${spec.slug} {
@@ -397,7 +416,9 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
             opacity: 1;
         }`,
 
-
+        `.history .output-text .interp-${spec.slug} {
+            display: none;
+        }`,
 
         `.history .adding-interp-${spec.slug}-blink.animation-start .${spec.slug} .interp-${spec.slug} {
             background-color: orange;

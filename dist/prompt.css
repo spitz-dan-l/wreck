@@ -53,7 +53,7 @@ ul.typeahead {
 
 .typeahead li.footer {
       position: absolute;
-      top: 10em;
+      top: 12em;
 }
 
 .typeahead .option.used .token,

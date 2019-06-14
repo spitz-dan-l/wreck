@@ -153,10 +153,41 @@ export function cond<R>(c: boolean, r: () => R) {
     }
     return [];
 }
+// type SpreadableMaybe<R extends {}> = (R | {}) & Iterable<R>
 
+// export function cond<R extends {}>(c: boolean, r: () => R): SpreadableMaybe<R> {
+//     let result_obj: R | {} = {};
+//     let result_arr: R[] = [];
+//     if (c) {
+//         result_obj = r();
+//         result_arr.push(<R>result_obj);        
+//     }
+    
+//     result_obj[Symbol.iterator] = result_arr[Symbol.iterator];
+//     return <SpreadableMaybe<R>>result_obj;
 
+//     // return <SpreadableMaybe<R>> new Proxy(result_obj, {
+//     //     get: (target, prop, receiver) => {
+//     //         if (prop === Symbol.iterator) {
+//     //             return result_arr[prop];
+//     //         }
+//     //         return Reflect.get(target, prop, receiver);
+//     //     }
+//     // })
+// }
+
+export const included = <T, T2 extends T=T>(value: T, arr: readonly T2[]) =>
+    arr.includes(<T2>value);
 
 // Object helpers //
+
+
+export function cond_obj<R extends {}>(c: boolean, r: () => R) {
+    if (c) {
+        return r();
+    }
+    return {};
+}
 
 export function merge_objects<T extends {}>(arr: T[]): T {
     return arr.reduce((acc, cur) => ({...acc, ...cur}), {} as T);

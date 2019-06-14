@@ -41,7 +41,7 @@
 }
 
 .history .interpretation-block.interpretation-active.would-remove-interpretation-active .output-text {
-    outline-color: #f9dd04;
+    /*outline-color: #f9dd04;*/
     animation: none !important;
 }
 
@@ -136,6 +136,9 @@
     display: inline;
 }
 
+.history .output-text .blue {
+    color: aqua;
+}
 
 .history .output-text .interp
 {
