@@ -105,7 +105,7 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
                     <div class="interp">
                         ${abstraction.description}
                     </div>
-                    You write this down.`
+                    You write this down in your <strong>notes</strong>.`
                 ));
         },
         post: (world2, world1) => {

@@ -28,7 +28,11 @@ export type FacetID =
     "your friendship with Sam" |
     "your drifting apart" |
     "your culpability" |
-    "the old affinity";
+    "the old affinity" |
+    'a memory 1' |
+    'a memory 2' |
+    'a memory 3' |
+    'a memory 4';
 
 export type Owner =
     'Metaphor' |
