@@ -41,7 +41,7 @@ Abstractions({
     <div class="memory-1">
         "Wake up, my dear. Attend to the world around you."
         <blockquote class="interp-memory-1">
-            Katya took you the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
+            Katya took you to the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
             <br/>
             There was to be little time to relax or sleep in; astronomers are busy folk.
         </blockquote>
