@@ -1,7 +1,7 @@
 import { MessageUpdateSpec, message_updater } from '../message';
 import { narrative_fsa_builder } from '../narrative_fsa';
 import { Parser } from '../parser';
-import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../puffer';
+import { make_puffer_world_spec, Puffer } from '../puffer';
 import { split_tokens } from '../text_tools';
 import { update, Updater } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
@@ -100,22 +100,20 @@ const Percepts: readonly Percept[] = [
 
 type ObserverMomentID = string;
 
-interface Hex {
+interface Hex extends World {
     node: ObserverMomentID;
     has_perceived: { [K in PerceptID]: boolean };
     with_daughters: boolean;
 }
 
-type PW = PufferAndWorld<Hex>;
-
-function percieve(world: PW, perc: PerceptID) {
+function percieve(world: Hex, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
         ...message_updater(Percepts.find(p => p.id === perc)!.message)
     });
 }
 
-function make_perceiver(world: PW, percs: readonly PerceptID[]) {
+function make_perceiver(world: Hex, percs: readonly PerceptID[]) {
     return (parser: Parser) =>
         parser.split(
             percs.map(pid => () => {
@@ -130,7 +128,7 @@ function make_perceiver(world: PW, percs: readonly PerceptID[]) {
         );
 }
 
-let transition_to = (w: PW, node: ObserverMomentID, updater?: Updater<PW>) => update(w, {...updater, node});
+let transition_to = (w: Hex, node: ObserverMomentID, updater?: Updater<Hex>) => update(w, {...updater, node});
 
 let {
     make_transitioner,
@@ -568,10 +566,8 @@ ObserverMoments(
 }
 );
 
-interface HexWorld extends World, Hex {}
-
-const initial_hex_world: HexWorld = {
-    ...get_initial_world<HexWorld>(),
+const initial_hex_world: Hex = {
+    ...get_initial_world<Hex>(),
 
     node: 'imagining 0',
     with_daughters: false,

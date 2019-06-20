@@ -1,6 +1,6 @@
 import { TopicID, AbstractionID, ActionID, FacetID, global_lock, Owner, Puffers, Venience } from "./prelude";
 import { ConsumeSpec } from '../../parser';
-import { PufferAndWorld, Puffer } from '../../puffer';
+import { Puffer } from '../../puffer';
 import { message_updater, MessageUpdateSpec } from '../../message';
 import { Gist, AbstractionIndex } from './metaphor';
 import { update, cond } from '../../utils';
@@ -14,15 +14,13 @@ declare module './prelude' {
     export interface Venience extends Topics {}
 }
 
-type PW = PufferAndWorld<Venience>;
-
 export type TopicSpec = {
     name: TopicID,
     cmd: ConsumeSpec,
-    can_consider: (w: PW) => boolean,
+    can_consider: (w: Venience) => boolean,
     message: MessageUpdateSpec,
-    consider?: (w: PW) => PW,
-    reconsider?: (w2: PW, w1: PW) => boolean
+    consider?: (w: Venience) => Venience,
+    reconsider?: (w2: Venience, w1: Venience) => boolean
 }
 
 export function make_topic(spec: TopicSpec): Puffer<Venience> {
@@ -77,7 +75,7 @@ export function Topics(...specs: TopicSpec[]) {
 
 export type MemorySpec = {
     abstraction: AbstractionID,
-    could_remember: (w: PW) => boolean,
+    could_remember: (w: Venience) => boolean,
 }
 
 export function make_memory(spec: MemorySpec): Puffer<Venience> {

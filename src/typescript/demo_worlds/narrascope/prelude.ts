@@ -38,7 +38,7 @@ export type Owner =
     'Metaphor' |
     'Outro';
 
-export interface Venience {
+export interface Venience extends World {
     owner: Owner | null;
 }
 

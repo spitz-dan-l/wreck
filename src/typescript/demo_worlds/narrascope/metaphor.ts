@@ -1,7 +1,7 @@
 import { find_historical, interpretation_updater } from "../../interpretation";
 import { MessageUpdateSpec, message_updater } from "../../message";
 import { ConsumeSpec, ParserThread } from "../../parser";
-import { Puffer, PufferAndWorld } from "../../puffer";
+import { Puffer } from "../../puffer";
 import { capitalize } from '../../text_tools';
 import { update, Updater } from "../../utils";
 import { AbstractionID, ActionID, FacetID, global_lock, Owner, Puffers, Venience, Initializers } from "./prelude";
@@ -36,9 +36,6 @@ export const init_metaphors: Metaphors = {
 
 let null_lock = global_lock(null);
 let metaphor_lock = global_lock('Metaphor');
-
-
-type PW = PufferAndWorld<Venience>;
 
 export type Gist = {
     cmd: ConsumeSpec,
@@ -122,7 +119,7 @@ export function Abstractions(...abstractions: Abstraction[]) {
     // TODO: push puffers containining css rules for each abstraction
 }
 
-function get_abstractions(world: PW) {
+function get_abstractions(world: Venience) {
     let abstractions: Abstraction[] = [];
     Object.entries(world.has_acquired).forEach(([abs_id, on]) => {
         if (on) {
@@ -132,7 +129,7 @@ function get_abstractions(world: PW) {
     return abstractions;
 }
 
-function any_abstractions(world: PW) {
+function any_abstractions(world: Venience) {
     return Object.entries(world.has_acquired).some(([abs, on]) => on);
 }
 
@@ -183,11 +180,11 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                     return parser.eliminate();
                 }
 
-                let threads: ParserThread<PW>[] = [];
-                let w: PW | null = world.previous;
+                let threads: ParserThread<Venience>[] = [];
+                let w: Venience | null = world.previous;
                 let i = 0;
                 while (w !== null && i < 1) {
-                    const i_world: PW = w; // gross way of having each thread capture a different world ref
+                    const i_world: Venience = w; // gross way of having each thread capture a different world ref
                     w = i_world.previous;
                     i++;
 
@@ -271,10 +268,10 @@ type FacetSpec = {
     slug: string,
     phrase: ConsumeSpec,
     description: string,
-    can_recognize: (current_world: PW, interpretted_world: PW) => boolean,
+    can_recognize: (current_world: Venience, interpretted_world: Venience) => boolean,
     can_apply: (action: [Abstraction, Action]) => boolean,
-    solved: (world: PW) => boolean | symbol,
-    handle_action: (action: [Abstraction, Action], world: PW) => PW
+    solved: (world: Venience) => boolean | symbol,
+    handle_action: (action: [Abstraction, Action], world: Venience) => Venience
 };
 
 const FacetIndex: FacetSpec[] = [];
@@ -292,7 +289,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
             parser.eliminate();
         }
 
-        let threads: ParserThread<PW>[] = [];
+        let threads: ParserThread<Venience>[] = [];
 
         for (let [k, on] of Object.entries(world.has_acquired)) {
             if (!on) {
@@ -363,7 +360,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
         return parser.split(threads);
     },
     post: (world2, world1) => {
-        let updates: Updater<PW>[] = [];
+        let updates: Updater<Venience>[] = [];
 
         if (world2.current_interpretation !== null && world2.current_interpretation === world1.current_interpretation) {
             let interpretted_world = find_historical(world2, w => w.index === world2.current_interpretation)!;

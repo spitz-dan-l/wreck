@@ -1,7 +1,7 @@
 import { MessageUpdateSpec, message_updater } from '../../message';
 import { narrative_fsa_builder } from '../../narrative_fsa';
 import { Parser, ParserThread, gate, ConsumeSpec } from '../../parser';
-import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../../puffer';
+import { make_puffer_world_spec, Puffer } from '../../puffer';
 import { update, Updater, entries, cond } from '../../utils';
 import { get_initial_world, World, world_driver } from '../../world';
 import { LocalInterpretations, find_historical, self_interpretation } from '../../interpretation';
@@ -36,7 +36,7 @@ type ObserverMomentID =
     'alone in the woods'
     ;
 
-interface Venience {
+interface Venience extends World {
     node: ObserverMomentID;
     has_perceived: Partial<Record<PerceptID, boolean>>;
     alcove_interp: AlcoveInterp;
@@ -88,9 +88,9 @@ type FacetSpec = {
     id: FacetID,
     name: string, // e.g. "the sense of dread"
     phrase: ConsumeSpec,
-    can_interpret: (current_world: PW, interpretted_world: PW) => boolean,
-    used: (action: [AbstractionID, string], world: PW) => boolean,
-    interpret: (action: [AbstractionID, string], current_world: PW, interpretted_world: PW) => PW | false
+    can_interpret: (current_world: Venience, interpretted_world: Venience) => boolean,
+    used: (action: [AbstractionID, string], world: Venience) => boolean,
+    interpret: (action: [AbstractionID, string], current_world: Venience, interpretted_world: Venience) => Venience | false
 };
 
 function make_facet(spec: FacetSpec): Puffer<Venience> {
@@ -114,7 +114,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> {
                             throw Error('Invalid abstraction name: '+k);
                         }
                         
-                        let threads: ParserThread<PW>[] = [];
+                        let threads: ParserThread<Venience>[] = [];
 
                         for (let action of abs.actions) {
                             threads.push(() => {
@@ -153,7 +153,7 @@ let InterpPuffer: Puffer<Venience> = {
                 parser.submit();
 
                 let index = world.previous && world.previous.index;
-                let new_interps: Updater<PW> = {};
+                let new_interps: Updater<Venience> = {};
                 if (index !== null) {
                     new_interps = { interpretations: {
                         [index]: {
@@ -181,10 +181,7 @@ let InterpPuffer: Puffer<Venience> = {
     }
 };
 
-
-type PW = PufferAndWorld<Venience>;
-
-let transition_to = (w: PW, node: ObserverMomentID) => update(w, { node });
+let transition_to = (w: Venience, node: ObserverMomentID) => update(w, { node });
 
 let {
     make_transitioner,
@@ -566,7 +563,7 @@ const initial_alcove_interp: AlcoveInterp = {
     horizon: false
 }
 
-function find_box(world: PufferAndWorld<Venience>) {
+function find_box(world: Venience) {
     return find_historical(world, (w) => 
         w.node === 'alcove, beginning interpretation' &&
         Object.entries(w.alcove_interp).every(([k, v]) => !v)
@@ -742,7 +739,7 @@ type Percept = {
     message: MessageUpdateSpec
 };
 
-function percieve(world: PW, perc: PerceptID) {
+function percieve(world: Venience, perc: PerceptID) {
     return update(world, {
         has_perceived: { [perc]: true },
         ...message_updater(Percepts.find(p => p.id === perc)!.message)
@@ -752,7 +749,7 @@ function percieve(world: PW, perc: PerceptID) {
 type PerceptSpec = Partial<Record<PerceptID, ConsumeSpec>>;
 
 // TODO: Have this take a proper spec as input, like make_transitioner
-function make_perceiver(world: PW, percs: PerceptSpec, prepend_look: boolean=true) {
+function make_perceiver(world: Venience, percs: PerceptSpec, prepend_look: boolean=true) {
     return (parser: Parser) =>
         parser.split(
             entries(percs).map(([pid, cmd]) => () => {
@@ -806,10 +803,8 @@ const Percepts: Percept[] = [
     },
 ];
 
-interface VenienceWorld extends World, Venience {}
-
-const initial_venience_world: VenienceWorld = {
-    ...get_initial_world<VenienceWorld>(),
+const initial_venience_world: Venience = {
+    ...get_initial_world<Venience>(),
     node: 'bed', //'grass, asking 2', //'bed, sleeping 1',
     has_perceived: {},
     alcove_interp: initial_alcove_interp,

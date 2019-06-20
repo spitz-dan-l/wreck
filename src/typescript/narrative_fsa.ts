@@ -1,20 +1,20 @@
 import { MessageUpdateSpec, message_updater } from './message';
 import { Parser, ParserThread, ConsumeSpec } from './parser';
-import { knit_puffers, bake_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferAndWorld, PufferMapper, PufferNarrator, Stages } from './puffer';
+import { knit_puffers, bake_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferMapper, Stages } from './puffer';
 import { update, Updater, entries } from './utils';
 import { LocalInterpretations, interpretation_updater } from './interpretation';
-import { World } from './world';
+import { World, Narrator } from './world';
 
 export function narrative_fsa_builder
-<W, StateID extends string=string>
+<W extends World, StateID extends string=string>
 (
-    get_state_id: (w:PufferAndWorld<W>) => StateID,
-    transition_to: (w: PufferAndWorld<W>, state: StateID) => PufferAndWorld<W>
+    get_state_id: (w: W) => StateID,
+    transition_to: (w: W, state: StateID) => W
 ) {
     type Transitions = Partial<Record<StateID, ConsumeSpec>>;//{ [K in StateID]: ConsumeSpec };
     type Interpretations = Partial<Record<StateID, LocalInterpretations>>;
 
-    type PWUpdate<W> = (world: PufferAndWorld<W>) => PufferAndWorld<W>;
+    type PWUpdate<W> = (world: W) => W;
 
     type StateSpec<W1 extends W=W> = {
         id: StateID,
@@ -28,7 +28,7 @@ export function narrative_fsa_builder
         debug?: boolean
     } & Puffer<W1>;
 
-    type PW<W1 extends W=W> = PufferAndWorld<W1>;
+    type PW<W1 extends W=W> = W1;
 
     // Return a parser thread that consumes commands to transition the player to
     // the nodes specified in transitions.
@@ -65,7 +65,7 @@ export function narrative_fsa_builder
         stages = [...new Set(stages)];
         stages.sort();
 
-        let post: Stages<PufferNarrator<W>> = {};
+        let post: Stages<Narrator<W>> = {};
 
         for (let stage of stages) {
             post[stage] = (world_2, world_1) => {
@@ -124,7 +124,7 @@ export function narrative_fsa_builder
                     parser.eliminate();
                 }
 
-                let threads: ParserThread<PufferAndWorld<PW>>[] = [];
+                let threads: ParserThread<PW>[] = [];
 
                 if (spec.transitions !== undefined) {
                     threads.push(make_transitioner(world, spec.transitions, spec.debug));

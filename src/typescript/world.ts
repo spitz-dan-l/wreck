@@ -33,14 +33,6 @@ export interface World {
     readonly interpretations: Interpretations,
 }
 
-// TODO: need a more concise and cute term than "object level"
-export type MetaLevelKeys = 'parsing' | 'previous' | 'index' | 'interpretations';
-export type ObjectLevelKeys = 'message';
-
-
-export type ObjectLevel<W extends World> = Omit<W, MetaLevelKeys>;
-export type ObjectLevelWorld = Pick<World, ObjectLevelKeys>;
-
 export type WorldUpdater<W extends World> = (world: W) => W;
 
 export type CommandHandler<W extends World> = (world: W, parser: Parser) => W;

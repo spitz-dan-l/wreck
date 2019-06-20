@@ -4,11 +4,17 @@ import { appender, update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
 import { interpretation_updater } from '../interpretation';
 
+interface BirdWorld extends World {}
+
+
+
 interface Location {
     is_in_heaven: boolean;
 }
 
-let LocationPuffer: Puffer<Location> = {
+interface BirdWorld extends Location {}
+
+let LocationPuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
         parser.consume('go');
 
@@ -53,7 +59,9 @@ interface Zarathustra {
     has_seen_zarathustra: boolean;
 }
 
-let ZarathustraPuffer: Puffer<Zarathustra> = {
+interface BirdWorld extends Zarathustra {}
+
+let ZarathustraPuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
         if (!world.is_in_heaven) {
             parser.eliminate();
@@ -134,7 +142,9 @@ interface Roles {
     role: Qualities[number] | undefined;
 }
 
-let RolePuffer: Puffer<Roles> = {
+interface BirdWorld extends Roles {}
+
+let RolePuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
         if (world.is_in_heaven) {
             parser.eliminate();
@@ -195,6 +205,8 @@ const initial_bird_world: BirdWorld = {
 };
 
 const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);
+
+import {WorldUpdater} from '../world';
 
 export function new_bird_world() {
     return world_driver(bird_world_spec);

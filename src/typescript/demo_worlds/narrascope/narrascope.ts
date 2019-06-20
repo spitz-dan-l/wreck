@@ -1,5 +1,5 @@
 import { message_updater } from '../../message';
-import { make_puffer_world_spec, Puffer, PufferAndWorld } from '../../puffer';
+import { make_puffer_world_spec, Puffer } from '../../puffer';
 import { included, update, cond } from '../../utils';
 import { get_initial_world, World, world_driver } from '../../world';
 import { Abstractions, Facets, init_metaphors } from './metaphor';
@@ -8,9 +8,6 @@ import { Memories, Topics } from './topic';
 
 
 export const null_lock = global_lock(null);
-
-
-type PW = PufferAndWorld<Venience>;
 
 interface PuzzleState {
     has_scrutinized_memory: {
@@ -58,7 +55,7 @@ Abstractions({
     ]
 });
 
-function about_attentive(w: PW) {
+function about_attentive(w: Venience) {
     return w.gist !== null && w.gist.name.endsWith('the attentive mode');
 }
 
@@ -81,7 +78,7 @@ Facets({
     }     
 });
 
-function about_scrutinizing(w: PW) {
+function about_scrutinizing(w: Venience) {
     return w.gist !== null && w.gist.name.endsWith('the scrutinizing mode');
 }
 
@@ -104,7 +101,7 @@ Facets({
     }     
 });
 
-function about_hammer(w: PW) {
+function about_hammer(w: Venience) {
     return w.gist !== null && w.gist.name.endsWith('the hammer');
 }
 
@@ -127,7 +124,7 @@ Facets({
     }     
 });
 
-function about_volunteer(w: PW) {
+function about_volunteer(w: Venience) {
     return w.gist !== null && w.gist.name.endsWith('the volunteer');
 }
 
@@ -226,7 +223,7 @@ Memories({
 });
 
 // Big old hack but it'll do for now
-function about_sam(world: PW) {
+function about_sam(world: Venience) {
     return world.gist !== null && world.gist.name === 'your impression of Sam';
 }
 
@@ -400,7 +397,7 @@ Topics({
 });
 
 
-function is_about_history(w: PW) {
+function is_about_history(w: Venience) {
     return w.gist !== null && w.gist.name === 'your impression of your history with Sam';
 }
 
