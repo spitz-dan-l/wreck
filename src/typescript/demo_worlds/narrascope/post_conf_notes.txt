@@ -1,0 +1,152 @@
+Proposal about what to do next
+
+Three major core additions:
+- "supervenience" capabilities
+    - The ability to search through future world states programmatically
+    - Taking direct inspiration from hadean lands' goal system; the ability to specify a "goal" command, the achievemet of which requires executing many smaller commands.
+    - Initially thought of this for the "contemplate" case-
+        The constraint on contemplation is that in order to contemplate something you need to have its "object level" text very recent in the history, preferably immediately previous to the current command.
+
+        This imposes a counterintuitive constraint on which things you can contemplate- only those things that occurred recently in the history. While I like the echoes this has on real life, players at narrascope found it frustrating and confusing.
+
+        I initally thought I could ameliorate this by allowing the player to contemplate, e.g., any of the *three* most recent history elements, rather than just the most recent one, This would grant more flexibility while still maintaining the recency constraint to some degree.
+
+        However, another approach would be to employ a Hadean-lands-style "goal system". If the player wishes to contemplate something from far back in the history, they can- and the game will automatically first "consider" the necessary subject matter (or bring it up from "notes"), so that it appears in recent history, and only then will it execute the "contemplate" command.
+
+        Unlike the Hadean Lands mechanic, this would actually execute each constituent command in the history, not merely summarize them with "First taking the key, first unlocking the door, first ... etc."
+
+        In order to not be jarring to the player, this mechanic would both need to be artfully introduced in gameplay, and exposited well through animation and display effects.
+
+        An additional use case might be automating out the "available"/"used" settings for command options-
+            - Used would mean that the command does not participate in a shortest path to somewhere new in the state space.
+            - This would also potentially make certain subtle narrative effects easier, like forward-looking or goal-oriented language in prompts. Feels like a nice complement to the ability to look backwards in the history.
+            - It also feels like an extension of how the parser is currently implemented with arbitrary lookahead of many candidate parser threads.
+
+        Yet another is testing-
+            Use this outside the game to walk the full state space, identifying:
+                - well-hidden errors/exceptions (e.g. commands that don't end in submit() or consume things after submit())
+                - Unreachable states that either should be reachable or can be deleted
+
+        The mechanic would involve two bits:
+            - A breadth-first walk through world-state space (with commands as transitions)
+            - The ability for the author to label properties or sets of properties as "dimensions" in the state space. This would make it possible to prune the search tree of extraneous steps when searching for a specific goal, or discard irrelevant differences between similar states when searching for novelty
+
+        Things that will potentially be necessary:
+            - The ability to add tags to commands for strictly programmatic consumption. This could assist in constraining goal-oriented searches, or in prioritizing one path to a goal state over another.
+                - Similarly, you'd need a way to constrain the search to "atomic" commands only- else you could have cases where the search never terminates. A label on command options for this could be an easy way to implement it
+
+        List of use cases
+            - Supervenience/goal-oriented commands
+            - Automatic Used/Available logic
+            - assisted "prompt" generation
+            - Testing
+
+        Risks:
+            This risks being computationally expensive to the point of lagging, and potentially a lot of work to implement.
+
+            The power of it seems really appealing though. The goal commands in hadean lands is the greatest advance in IF in a long time, and something uniquely-IF. I think it would be great to nod to that, and potentially extend it.
+
+        I think because of the lag risk, it'd be worthwhile to implement some bare bones form of it as an experiment, and see how it performs. If it does well, keep going, else stop.
+
+- sophisticated animation support using greensock
+    - numerous new use cases that involve animated effects, that really ought to couple display/layout logic with behavior logic
+        - An "empty input prompt", a pause between animations that waits for some simple user input. So this would happen *sometimes* after entering a command. Where does the logic for it live? Is it special-cased into the react app? (God no.)
+
+        Instead you need some way to trigger animation effects like this based on what elements are getting added to the dom. There would be a repository of rules (like css rules) that would take effect for certain situations. The effects would just be more complicated than what css can do (and hopefully, better-factored/more-readable too).
+        - several examples of wanting icons to display only when e.g. a command has a particular label. The css-only solution to this is not great; the natural solution would involve creating actual DOM elements for the icons, and laying them out correctly without interfering with the rest of the dom.
+        - Want to e.g. float a label in the corner of the contemplation box that says "contemplating..." Need a dom element for that, but history interp cannot technically update the dom, just set labels.
+    - css is also annoyingly verbose
+    - Would possibly use MutationObserver
+
+- Gists could somehow be integrated with Messages
+    - Gists could be generated for a world frame based on its message or other state rather than explicitly set
+        - Gists could exist as fragmentary aspects of messages, which naturally compose with each other when combined in a frame
+            - (including a "description phrase" form for frame-referential commands or message text)
+            - Importantly, the gist should become part of the message type
+                - Challenge: gists should automatically compose/nest, but cannot be functions if they are a part of world state
+
+Changes to demo mechanics based on feedback
+    - Make it more clear that contemplating Sam is where it's at
+    - Better indication that the box is linked to contemplation
+    - The writing; earn the guilt better, flesh out the friendship a bit more
+    - Find a way to be less confusing re: the difference b/w Contemplate/consider, and attend/scrutinize
+    - Smoother introduction of:
+        Initial ability to contemplate
+        The first contemplative action (either attend, or throw out attend and use scrutinize)
+            So after memory, a more explicit prompt to use the action
+            Separate prompt to contemplate and prompt to use action?
+    - Instances of facets that respond to multiple actions
+        Find a tasteful way of doing error messages for wrong uses of actions
+        Re-jigger the facets and the actions s.t. there are more reasonable interpretations of "do [action] for [facet]", e.g. more plausible "right answers"
+    - Don't expose the player to the un-gettable memories too early
+        Wait until they *definitely* know what they are doing with contemplation, and *definitely* have a focus on Sam
+    - "notes" stands out as a non-verb
+    - it is confusing when text appeared in two places at once during contemplation
+        - Either a delay between the two effects
+        - Or a confirmation prompt
+    - player didn't always notice when contemplation text was added
+        - Either draw the eye to it more explicitly, or use a confirmation prompt or something
+    - a partially entered command should be able to cause visible display changes
+        - Requires a subtle finesse to the parser, where terminated threads can still cause visible changes
+            - proposal: Threads imperatively register result values as they go. When the overall parse status is partial, the first partial result is used as "possible world"
+    - "volunteer" feels less contemplative and more active
+        - I think there is still a contemplative step to it, the step to open yourself to volunteering. But once you've done that, you should exit contemplation and actually speak.
+        - Also volunteer "to foster" is a bit awkward
+    - Unbolden "remember something" after considering the notebook for the first time
+    - include abstraction info in memory slide
+    - Better indication interp is over, the box staying there makes it harder to tell
+    - Visual indication you are reading notes
+
+    UI changes
+        - Mode to disable typeahead selection (so you have to actually type words)
+        - shortcut to delete a whole token
+        - Corner case where all but the first command result is Used, but the typeahead selection is on the first result, so it's hard to tell it has different brightness.
+            - Possible solution is to have an icon for Used (like a gray clock) in addition to/instead of just dimming
+        
+        Mouse usecase
+            - bigger clickable area for submitting a command
+            - delete tokens w mouse
+
+        - mouse hovering over undo button leads to confusing behavior
+        - up/down keys to cycle through options should immediately loop around from edges, not disappear in between
+
+New features
+    - Facets respond to multiple actions, and apply history interp named by action rather than by facet
+    
+
+Code restructuring/enhancements
+    - Used vs Available should not have to be hand-coded for each type of command
+            (see Supervenience proposal above)
+    - Simplify and unify some of the accrued abstractions. Action/Abstraction distinction seems questionable
+    - Standardize how to build up static functions/data to be used by various puffers
+        - General case could support:
+            - indexes of particular types of objects. E.g. an index of facets, an index of abstractions, etc.
+                - Sometimes you don't ever need to refer directly to the index because you just map each element to a puffer that closes over its element.
+                - But sometimes you do, like you may need to look up a particular abstraction, or list all of them in one place.
+                - Does not hurt to make it the default to keep a referencable index
+                - Need a generic way to register and look up any given index without storing it in the world state
+            - decentralized registering of initial world state fragments
+                - All gets merged at the end, and typechecked
+                - We can do this for the world interface via module augmentation pattern. but doing it with values, not just types, seems more nuanced
+            - register global transformers to decorate puffers as they get registered
+                - Useful for e.g. locking puffers by default
+                - would extend the puffer type with additional tags that say whether they have e.g. been locked yet, so the decorator knows whether to mess with it or not.
+                - Could extend beyond just the puffer type, apply to e.g. abstractions, facets too
+    - Remove all the stuff about object level vs not, or distinction b/w puffer type and puffer-and-world type
+        - Ultimately more trouble than it's worth
+
+
+Categories of work
+
+- Major core additions
+    - Supervenience
+    - Animations
+    - Composable gists as part of the Message type
+- Numerous player-feedback-based changes
+- New features
+- Code restructuring
+
+Plan
+1. Supervenience initial experiment
+2. Animations overhaul - necessary for many downstream polish things
+3. Pick off smaller tasks from the remaining categories
