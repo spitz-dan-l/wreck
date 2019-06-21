@@ -209,6 +209,15 @@ export function drop_keys<O extends {}, K extends keyof O>(obj: O, ...keys: K[])
     return result;
 }
 
+export function from_entries<K extends keyof any, V>(entries: ReadonlyArray<readonly [K, V]>): {[k in K]: V} {
+    let result: any = {};
+
+    entries.forEach(([k, v]) => {
+        result[k] = v;
+    });
+
+    return result;
+}
 
 // Helper for declaring values with tuple types.
 // "as const" would nearly make this unnecessary but @babel/preset-typescript 3.7.7 doesn't parse as const

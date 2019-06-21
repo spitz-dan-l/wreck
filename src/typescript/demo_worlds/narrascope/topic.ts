@@ -48,8 +48,7 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
             );
         },
         post: (world2, world1) => {
-            if (world2.owner !== null ||
-                spec.reconsider === undefined ||
+            if (spec.reconsider === undefined ||
                 world2.gist && world2.gist.name === `your impression of ${spec.name}` ||
                 !spec.reconsider(world2, world1)) {
                 return world2;

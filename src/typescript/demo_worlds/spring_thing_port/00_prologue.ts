@@ -96,6 +96,7 @@ type FacetSpec = {
 function make_facet(spec: FacetSpec): Puffer<Venience> {
     return {
         handle_command: {
+            kind: 'Stages',
             0: (world, parser) => {
                 if (world.current_interpretation === null) {
                     return parser.eliminate();
@@ -147,6 +148,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> {
 
 let InterpPuffer: Puffer<Venience> = {
     handle_command: {
+        kind: 'Stages',
         2: (world, parser) => {
             if (world.current_interpretation === null) {
                 parser.consume('begin_interpretation');

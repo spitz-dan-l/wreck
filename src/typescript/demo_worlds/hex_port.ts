@@ -160,7 +160,8 @@ ObserverMoments(
             Imagine you're Chitin Wastrel.
         </div>`,
     
-    handle_command: { 
+    handle_command: {
+        kind: 'Stages',
         0: (world, parser) => {
             let percepts = [
                 'myself',

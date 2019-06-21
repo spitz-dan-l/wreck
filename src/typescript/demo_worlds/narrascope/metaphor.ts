@@ -61,40 +61,42 @@ type Abstraction = {
 
 function make_abstraction(spec: Abstraction): Puffer<Venience> {
     return null_lock.lock_puffer({
-        handle_command: { 1: (world, parser) => {
-            if (!world.has_acquired[spec.name]) {
-                return parser.eliminate();
-            }
+        handle_command: { 
+            kind: 'Stages',
+            1: (world, parser) => {
+                if (!world.has_acquired[spec.name]) {
+                    return parser.eliminate();
+                }
 
-            parser.consume(['notes about', spec.name_cmd]);
-            parser.submit();
+                parser.consume(['notes about', spec.name_cmd]);
+                parser.submit();
 
-            let msg: MessageUpdateSpec = {
-                description: ['<div class="interp">'+spec.description+'</div>']
-            };
+                let msg: MessageUpdateSpec = {
+                    description: ['<div class="interp">'+spec.description+'</div>']
+                };
 
-            if (spec.actions.length === 1) {
-                let act = spec.actions[0];
-                msg.description!.push(
-                    `${capitalize(spec.name)} confers:`,
-                    `<span class="descr-${act.slug}">${act.description}</span>`
-                );
-            } else {
-                msg.description!.push(
-                    `<br/>Comprising ${spec.name} confers:`,
-                    ...spec.actions.map(act =>
-                        `<blockquote class="descr-${act.slug}">${act.description}</blockquote>`)
-                );
-            }
+                if (spec.actions.length === 1) {
+                    let act = spec.actions[0];
+                    msg.description!.push(
+                        `${capitalize(spec.name)} confers:`,
+                        `<span class="descr-${act.slug}">${act.description}</span>`
+                    );
+                } else {
+                    msg.description!.push(
+                        `<br/>Comprising ${spec.name} confers:`,
+                        ...spec.actions.map(act =>
+                            `<blockquote class="descr-${act.slug}">${act.description}</blockquote>`)
+                    );
+                }
 
-            return update(world,
-                message_updater(msg),
-                {
-                    gist: {
-                        name: `your notes about ${spec.name}`,
-                        cmd: ['my_notes about', spec.name_cmd]
-                    }
-                });
+                return update(world,
+                    message_updater(msg),
+                    {
+                        gist: {
+                            name: `your notes about ${spec.name}`,
+                            cmd: ['my_notes about', spec.name_cmd]
+                        }
+                    });
         }},
         css_rules: [
             `${spec.actions.map(a =>
@@ -137,6 +139,7 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
     pre: world => update(world, { gist: null }),    
 
     handle_command: {
+        kind: 'Stages',
         1: (world, parser) => {
             let list_consumer = null_lock.lock_parser_thread(
                 world,
@@ -166,7 +169,6 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                 });
             return list_consumer(parser);
         },
-
         2: (world, parser) => {
             if (!any_abstractions(world)) {
                 parser.eliminate();

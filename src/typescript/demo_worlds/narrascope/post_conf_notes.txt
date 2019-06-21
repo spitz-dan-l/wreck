@@ -132,9 +132,11 @@ Code restructuring/enhancements
                 - Useful for e.g. locking puffers by default
                 - would extend the puffer type with additional tags that say whether they have e.g. been locked yet, so the decorator knows whether to mess with it or not.
                 - Could extend beyond just the puffer type, apply to e.g. abstractions, facets too
-    - Remove all the stuff about object level vs not, or distinction b/w puffer type and puffer-and-world type
-        - Ultimately more trouble than it's worth
-
+    - Consider removing IntersectTupleTypes stuff, does not work on types with a recursive "this" property.
+            - Still deciding whether to remove it entirely, or find a way to get the this' to merge
+            - With declaration merging/module augmentation, there is already a solution to define worlds AOP style.
+            - But separation of concerns is dead now... Could just be acceptable.
+    - DONE Generalize Stages to support non-function types
 
 Categories of work
 

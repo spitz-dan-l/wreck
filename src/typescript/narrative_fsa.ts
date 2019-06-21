@@ -1,9 +1,9 @@
+import { interpretation_updater, LocalInterpretations } from './interpretation';
 import { MessageUpdateSpec, message_updater } from './message';
-import { Parser, ParserThread, ConsumeSpec } from './parser';
-import { knit_puffers, bake_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferMapper, Stages } from './puffer';
-import { update, Updater, entries } from './utils';
-import { LocalInterpretations, interpretation_updater } from './interpretation';
-import { World, Narrator } from './world';
+import { ConsumeSpec, Parser, ParserThread } from './parser';
+import { knit_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferMapper, Stages, stage_keys } from './puffer';
+import { update, Updater } from './utils';
+import { Narrator, World } from './world';
 
 export function narrative_fsa_builder
 <W extends World, StateID extends string=string>
@@ -58,14 +58,13 @@ export function narrative_fsa_builder
         let here = normalize_stages(spec.here);
 
         let stages: number[] = [0];
-        stages.push(...Object.keys(enter).map(x => parseInt(x)));
-        stages.push(...Object.keys(exit).map(x => parseInt(x)));
-        stages.push(...Object.keys(here).map(x => parseInt(x)));
+        stages.push(...stage_keys(enter));
+        stages.push(...stage_keys(exit));
+        stages.push(...stage_keys(here));
 
-        stages = [...new Set(stages)];
-        stages.sort();
+        stages = [...new Set(stages)].sort();
 
-        let post: Stages<Narrator<W>> = {};
+        let post: Stages<Narrator<W>> = {kind: 'Stages'};
 
         for (let stage of stages) {
             post[stage] = (world_2, world_1) => {

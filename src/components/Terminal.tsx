@@ -498,7 +498,7 @@ function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean,
   if (!creating && adding_classes.length === 0 && removing_classes.length === 0) {
     return;
   }
-  console.log(msg);
+  // console.log(msg);
   function walkElt(elt, f: (e: HTMLElement) => void){
     let children = elt.children;
     for (let i = 0; i < children.length; i++) {

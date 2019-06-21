@@ -11,122 +11,90 @@
 */
 
 import { Parser, ParserThread, gate } from './parser';
-import { IntersectTupleTypes } from './utils';
+import { IntersectTupleTypes, drop_keys, from_entries } from './utils';
 import { make_world_spec, World, WorldSpec, WorldUpdater, CommandHandler, Narrator } from './world';
 
-export type Stages<X extends (...args: any) => any> = { [stage: number]: X };
-export type MaybeStages<X extends (...args: any) => any> = X | Stages<X>
-export type Handler<T extends MaybeStages<any>> = T extends Stages<infer U> ? U : never;
 
-export function is_handler<T extends (...args: any) => any>(x: MaybeStages<T>): x is T {
-    return typeof x === 'function';
+export type Stages<X> = { kind: 'Stages', [stage: number]: X };
+export type MaybeStages<X> = X | Stages<X>
+
+export function is_stages<T>(x: MaybeStages<T>): x is Stages<T> {
+    return (<any>x).kind === 'Stages';
 }
 
-export function normalize_stages<T extends (...args: any) => any>(x?: MaybeStages<T>): Stages<T> {
+export function normalize_stages<T>(x?: MaybeStages<T>): Stages<T> {
     if (x === undefined) {
-        return {};
+        return { kind: 'Stages' };
     }
-
-    if (is_handler(x)) {
-        return { [0]: x };
+    if (is_stages(x)) {
+        return x;
     }
-
-    return x;
+    return { kind: 'Stages', [0]: x };
 }
 
-// type PufferSpec<W> = {
-//     readonly pre?: PufferUpdater<W>,
-//     readonly handle_command?: PufferCommandHandler<W>,
-//     readonly post?: PufferNarrator<W>,
-//     readonly interpret_history?: PufferHistoryInterpreter<W>,
-// }
+export function stage_keys(x: Stages<any>): number[] {
+    return Object.keys(x).filter(s => s !== 'kind').map(s => parseInt(s)).sort();
+}
 
-type PufferSpec_<W extends World> = {
+export function stage_entries<X>(x: Stages<X>): [number, X][] {
+    return stage_keys(x).map(s => [s, x[s]]);
+}
+
+export function map_stages<T, R>(f: (t: T, stage?: number) => R, x: Stages<T>): Stages<R> {
+    return {
+        kind: 'Stages',
+        ...from_entries(
+            stage_entries(x)
+            .map(([s, t]) => [s, f(t, s)] as const))
+    }
+}
+
+type PufferSpec<W extends World> = {
     pre: WorldUpdater<W>,
     handle_command: CommandHandler<W>,
     post: Narrator<W>,
     css_rules: string[]
 }
-export type PufferSpec<W extends World> = Partial<PufferSpec_<W>>;
 
-type Puffer_<W extends World> = {
-    [K in Exclude<keyof PufferSpec_<W>, 'css_rules'>]: MaybeStages<PufferSpec_<W>[K]>
+export type Puffer<W extends World> = {
+    [K in Exclude<keyof PufferSpec<W>, 'css_rules'>]?: MaybeStages<PufferSpec<W>[K]>
 } & {
-    css_rules: string[]
+    css_rules?: string[]
 };
-
-export type Puffer<W extends World> = Partial<Puffer_<W>>;
 
 export type PufferNormalForm<W extends World> = {
-    [K in Exclude<keyof PufferSpec_<W>, 'css_rules'>]: Stages<PufferSpec_<W>[K]>
+    [K in Exclude<keyof PufferSpec<W>, 'css_rules'>]: Stages<PufferSpec<W>[K]>
 } & {
     css_rules: string[]
 };
 
-type PufferSpecForWorld<W extends World> = PufferSpec<W>;
-
-// type CompatPuffer<W0 extends World, P> = P & (P extends Puffer<infer W1> ?
-//     Extract<ObjectLevel<Required<W0>>, Required<W1>> extends never ? 
-//         'Puffer type not a strict subset of world type' :
-//         unknown :
-//     'P is not a puffer');
-
-// type PufferIndex<W extends World, Index extends readonly PufferForWorld<W>[]> = {
-//     [K in keyof Index]: Index[K] & CompatPuffer<W, Index[K]>
-// };
-
-/*
-    2 useful things
-        - Sharing a conditional "gate" across pre, handle_command, post, interpret_history calls
-            Thus far it seems like pre and handle_command often like sharing the gate,
-            but post wants the gate for both the current world and the previous one
-                That means post still needs to do the check for which world met the condition
-        - Flexibly controlling the priority of different phases relative to other puffers
-            - Suggestion: You can map the phase handlers to integers.
-                        A puffer can have multiple versions of a handler, which run in the order
-                        of their integer assignments
-*/
+export function normalize_puffer<W extends World>(puffer: Puffer<W>): PufferNormalForm<W> {
+    return {
+        pre: normalize_stages(puffer.pre),
+        handle_command: normalize_stages(puffer.handle_command),
+        post: normalize_stages(puffer.post),
+        css_rules: puffer.css_rules || []
+    }
+}
 
 export type PufferMapper<T extends World> = {
-    [K in keyof PufferSpec<T>]?: (cb: undefined | PufferSpec<T>[K], stage?: number) => PufferSpec<T>[K]
+    [K in keyof PufferSpec<T>]?: (cb: PufferSpec<T>[K], stage?: number) => PufferSpec<T>[K]
 };
 
 export function map_puffer<T extends World>(mapper: PufferMapper<T>, puffer: Puffer<T>): Puffer<T> {
-    function visit<P extends 'pre' | 'handle_command' | 'post'>(prop: P) {
-        if (mapper[prop] === undefined) {
-            return puffer[prop];
-        }
-        if (puffer[prop] === undefined || typeof puffer[prop] === 'function') {
-            return (mapper[prop] as any)(puffer[prop] as any, 0);
-        } else if (puffer[prop] instanceof Array) {
-            return (puffer[prop] as any[]).map(mapper[prop] as any);
-        } else {
-            let result = {};
-            for (let [stage, cb] of Object.entries(<any>puffer[prop])) {
-                result[stage] = (<any>mapper[prop])(cb, parseInt(stage));
-            }
-            return result;
-        }
-    }
+    let norm_puffer = normalize_puffer(puffer);
 
-    let result: Puffer<T> = {};
-    for (let p of ['pre', 'handle_command', 'post'] as const) {
-        result[p] = visit(p);
+    return {
+        pre: mapper.pre ? map_stages(mapper.pre, norm_puffer.pre) : norm_puffer.pre,
+        handle_command: mapper.handle_command ? map_stages(mapper.handle_command, norm_puffer.handle_command) : norm_puffer.handle_command,
+        post: mapper.post ? map_stages(mapper.post, norm_puffer.post) : norm_puffer.post,
+        css_rules: norm_puffer.css_rules
     }
-
-    if (puffer.css_rules !== undefined) {
-        result.css_rules = puffer.css_rules;
-    }
-
-    return result;
 }
 
-export function gate_puffer<W extends World>(cond: (world: W) => boolean, puffer: Puffer<W>): Puffer<W> {
+export function gate_puffer<W extends World>(cond: (world: W, old_world?: boolean) => boolean, puffer: Puffer<W>): Puffer<W> {
     return map_puffer({
         pre: (cb) => {
-            if (cb === undefined) {
-                return undefined;
-            }
             return (world) => {
                 if (cond(world)) {
                     return cb(world);
@@ -135,9 +103,6 @@ export function gate_puffer<W extends World>(cond: (world: W) => boolean, puffer
             };
         },
         handle_command: (cb) => {
-            if (cb === undefined) {
-                return undefined;
-            }
             return (world, parser) => {
                 if (!cond(world)) {
                     parser.eliminate();
@@ -146,11 +111,8 @@ export function gate_puffer<W extends World>(cond: (world: W) => boolean, puffer
             };
         },
         post: (cb) => {
-            if (cb === undefined) {
-                return undefined;
-            }
             return (new_world, old_world) => {
-                if (cond(new_world) || cond(old_world)) {
+                if (cond(new_world, false) || cond(old_world, true)) {
                     return cb(new_world, old_world);
                 }
                 return new_world;
@@ -164,32 +126,24 @@ type UnwrapPufferTuple<T extends { [k: number]: Puffer<World> }> = { [P in keyof
 
 export function knit_puffers<T extends readonly Puffer<World>[]>(puffers: T): PufferNormalForm<World & IntersectTupleTypes<UnwrapPufferTuple<T>>>;
 export function knit_puffers(puffers: Puffer<World>[]): PufferNormalForm<World> {
-    let normalized: PufferNormalForm<World>[] = []
+    let normalized: PufferNormalForm<World>[] = puffers.map(normalize_puffer);
 
-    let stages: { [K in keyof PufferSpec_<World>]: number[] } = {
+    let stages: { [K in 'pre' | 'handle_command' | 'post']: number[] } = {
         pre: [],
         handle_command: [],
-        post: [],
-        css_rules: []
+        post: []
     };
-    for (let puffer of puffers) {
-        let norm_puffer: PufferNormalForm<World> = <any>{};
-
-        for (let prop of ['pre', 'handle_command', 'post'] as const) {
-            norm_puffer[prop] = <any>normalize_stages<PufferSpec_<any>[typeof prop]>(puffer[prop]);
-            stages[prop].push(...Object.keys(norm_puffer[prop]).map(x => parseInt(x)))
+    for (let prop of ['pre', 'handle_command', 'post'] as const) {
+        for (let puffer of normalized) {
+            stages[prop].push(...stage_keys(puffer[prop]));
         }
-        norm_puffer.css_rules = puffer.css_rules || [];
-        
-        normalized.push(norm_puffer);
+        stages[prop] = [...new Set(stages[prop]).values()].sort();
     }
 
-    function iterate<Prop extends 'pre' | 'handle_command' | 'post'>(prop: Prop, combine: (cbs: PufferSpec_<World>[Prop][]) => PufferSpec_<World>[Prop]) {      
-        stages[prop].sort();
-
-        let result: Stages<PufferSpec_<any>[Prop]> = {};
+    function iterate<Prop extends 'pre' | 'handle_command' | 'post'>(prop: Prop, combine: (cbs: PufferSpec<World>[Prop][]) => PufferSpec<World>[Prop]) {
+        let result: Stages<PufferSpec<any>[Prop]> = {kind: 'Stages'};
         for (let stage of stages[prop]) {
-            let cbs: PufferSpec_<any>[Prop][] = [];
+            let cbs: PufferSpec<any>[Prop][] = [];
             for (let p of normalized) {
                 if (p[prop][stage] !== undefined) {
                     cbs.push(<any>p[prop][stage]);
@@ -201,37 +155,23 @@ export function knit_puffers(puffers: Puffer<World>[]): PufferNormalForm<World> 
     }
 
     let result: PufferNormalForm<any> = {
-        pre: {},
-        handle_command: {},
-        post: {},
+        pre: {kind: 'Stages'},
+        handle_command: {kind: 'Stages'},
+        post: {kind: 'Stages'},
         css_rules: []
     };
     
     result.pre = iterate('pre', (pres) => (world) => {
-        for (let p of pres) {
-            world = p(world);
-        }
-        return world;
+        return pres.reduce((acc, p) => p(acc), world)
     });
 
     result.handle_command = iterate('handle_command', (hcs) => (world, parser) => {
-        let threads: ParserThread<any>[] = [];
-
-        for (let hc of hcs) {
-            threads.push(() => hc(world, parser));
-        }
-
-        return parser.split(threads);
+        return parser.split(
+            hcs.map((hc) => () => hc(world, parser)));
     });
 
     result.post = iterate('post', (posts) => (new_world, old_world) => {
-        let result = new_world;
-
-        for (let p of posts) {
-            result = p(result, old_world);
-        }
-
-        return result;
+        return posts.reduce((acc, p) => p(acc, old_world), new_world);
     });
 
     result.css_rules = normalized.flatMap(p => p.css_rules);
@@ -239,68 +179,44 @@ export function knit_puffers(puffers: Puffer<World>[]): PufferNormalForm<World> 
     return result;
 }
 
-
+// "Bakes" a list of puffers into a single PufferSpec_ with all stages removed
 export function bake_puffers<T extends readonly Puffer<World>[]>(puffers: T): PufferSpec<World & IntersectTupleTypes<UnwrapPufferTuple<T>>>;
 export function bake_puffers(puffers: Puffer<World>[]): PufferSpec<World> {
-    function get_stages<P extends 'pre' | 'handle_command' | 'post'>(prop: P) {
-        let stages = new Set<number>();
-        puffers.forEach(p => {
-            let p_ = p[prop];
-            if (p_ === undefined) {
-                return;
-            }
-            if (is_handler<PufferSpec_<any>[P]>(<any>p_)) {
-                stages.add(0);
-                return;
-            }
-            Object.keys(p[prop] as any).map(k => parseInt(k)).forEach(s => stages.add(s));
-        });
-        let ordered_stages = [...stages.values()];
-        ordered_stages.sort();
-        return ordered_stages;
+    let normalized = puffers.map(normalize_puffer);
+
+    let all_stages: { [K in 'pre' | 'handle_command' | 'post']: number[] } = {
+        pre: [],
+        handle_command: [],
+        post: []
+    };
+    for (let prop of ['pre', 'handle_command', 'post'] as const) {
+        for (let puffer of normalized) {
+            all_stages[prop].push(...stage_keys(puffer[prop]));
+        }
+        all_stages[prop] = [...new Set(all_stages[prop]).values()].sort();
     }
 
-    // This winds up "sort of" typechecking. It thinks that p[prop] is always PufferNarrator
-    function iterate<P extends 'pre' | 'handle_command' | 'post'>(prop: P, f: (cb: PufferSpec_<World>[P]) => void) {
-        let stages = get_stages(prop);
-        for (let stage of stages) {
-            for (let p of puffers) {
-                let handler = p[prop]!;
-                if (handler === undefined) {
-                    continue;
-                }
-                if (is_handler(<any>handler) && stage === 0) {
-                    f(<any>handler!);
-                } else if (handler[stage] !== undefined) {
-                    f(handler[stage]);
+    function iterate<Prop extends 'pre' | 'handle_command' | 'post'>(prop: Prop, combine: (cbs: PufferSpec<World>[Prop][]) => PufferSpec<World>[Prop]) {
+        let result: PufferSpec<any>[Prop];
+        let cbs: PufferSpec<any>[Prop][] = [];
+        for (let stage of all_stages[prop]) {
+            for (let p of normalized) {
+                if (p[prop][stage] !== undefined) {
+                    cbs.push(<any>p[prop][stage]);
                 }
             }
         }
+        return combine(cbs);
     }
 
-    function pre(world: World): World {
-        let result = world;
+    let pre = iterate('pre', (cbs) => (world) =>
+        cbs.reduce((acc, cb) => cb(acc), world));
 
-        iterate('pre', pre => { result = pre(result); });
+    let handle_command = iterate('handle_command', (cbs) => (world, parser) =>
+        parser.split(cbs.map(cb => (p) => cb(world, p))));
 
-        return result;
-    }
-
-    function handle_command(world: World, parser: Parser): World {
-        let threads: ParserThread<World>[] = [];
-
-        iterate('handle_command', cb => threads.push(() => cb(world, parser)));
-
-        return parser.split(threads);
-    }
-
-    function post(new_world: World, old_world: World): World {
-        let result = new_world;
-
-        iterate('post', post => { result = post(result, old_world); });
-
-        return result;
-    }
+    let post = iterate('post', (cbs) => (new_world, old_world) =>
+        cbs.reduce((acc, cb) => cb(acc, old_world), new_world));
 
     let css_rules = puffers.flatMap(p => p.css_rules || []);
 
@@ -308,10 +224,8 @@ export function bake_puffers(puffers: Puffer<World>[]): PufferSpec<World> {
         pre,
         handle_command,
         post,
+        css_rules
     };
-    if (css_rules.length > 0) {
-        result.css_rules = css_rules;
-    }
 
     return result;
 }
@@ -320,7 +234,7 @@ export function make_puffer_world_spec<Index extends readonly Puffer<World & Par
     (initial_world: W, puffer_index: Index)
     : WorldSpec<W> {
     
-    let spec: Required<PufferSpecForWorld<W>> = <Required<PufferSpecForWorld<W>>> <unknown> bake_puffers(puffer_index);
+    let spec: PufferSpec<W> = <PufferSpec<W>> bake_puffers(puffer_index);
 
 
     return make_world_spec({
