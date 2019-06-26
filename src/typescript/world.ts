@@ -21,8 +21,8 @@
 */
 
 import { infer_message_labels, Message, INITIAL_MESSAGE, standard_render } from './message';
-import { Parser, Parsing, raw, RawInput } from './parser';
-import { deep_equal, update } from './utils';
+import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows } from './parser';
+import { deep_equal, update, array_last } from './utils';
 import { Interpretations, pre_interp } from './interpretation';
 
 export interface World {
@@ -78,12 +78,6 @@ export function make_world_spec<W extends World>(spec: {
     return <WorldSpec<W>>spec;
 }
 
-// TODO: Need a cute name for "World and also stuff that is not part of the world, its history or interpretations about it, that God uses to keep things going"
-// This type contains a bit more information than a World.
-// It didn't make sense to add extra parsing and possible world attributes to world,
-// Since they can change every keystroke while the world only changes on the scale of
-// valid command submissions.
-// IMO World is a good level of abstraction currently.
 export type CommandResult<W extends World> = {
     kind: 'CommandResult',
     parsing: Parsing,
@@ -91,23 +85,44 @@ export type CommandResult<W extends World> = {
     possible_world: W | null
 };
 
-export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;
-export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {
+export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
+    return (world: W) => make_update_thread(spec, world);
+}
+
+export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W>;
+export function make_update_thread(spec: WorldSpec<World>, world: World) {
     let next_state = world;
 
     next_state = update(next_state, {
         previous: _ => world,
         index: _ => _ + 1,
         message: INITIAL_MESSAGE,
-        interpretations: pre_interp
+        interpretations: pre_interp,
+        parsing: () => undefined
+        // TODO: add empty parsing here?
     });
 
     if (spec.pre !== undefined) {
         next_state = <World> spec.pre(next_state);
     }
 
-    // First handle the command
-    let result = Parser.run_thread(command, (p) => spec.handle_command(next_state, p));
+    return function update_thread(parser: Parser) {
+        // First handle the command
+        let next_state1 = spec.handle_command(next_state, parser);
+        
+        if (spec.post !== undefined) {
+            next_state1 = <World>spec.post(next_state1, world);
+        }
+
+        return next_state1;
+    }
+}
+
+export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;
+export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {
+    let thread = make_update_thread(spec, world);
+
+    let result = Parser.run_thread(command, thread);
 
     if (result.kind === 'NotParsed') {
         let possible_world: World | null = null;
@@ -123,32 +138,42 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
         };
     }
 
-    next_state = update(<World>result.result, {
-        parsing: _ => result.parsing,
-    });
-    
-    if (spec.post !== undefined) {
-        next_state = <World>spec.post(next_state, world);
-    }
+    // todo: add the successful parsing to the world
+    let w = result.result;
 
-    let next_parsing = apply_command(spec, next_state, raw('', false)).parsing;
+    w = update(w, { parsing: () => result.parsing });
+
+    let next_parsing = apply_command(spec, w, raw('', false)).parsing;
     return {
         kind: 'CommandResult',
         parsing: next_parsing,
-        world: next_state,
+        world: w,
         possible_world: null
     };
 }
 
-export function world_driver<W extends World>(spec: WorldSpec<W>): [CommandResult<W>, (world: W, command: RawInput) => CommandResult<W>, string[]?] { //, Renderer] {
+export type WorldDriver<W extends World> = {
+    initial_result: CommandResult<W>,
+    update: (world: W, command: RawInput) => CommandResult<W>,
+    thread_maker: (world: W) => ParserThread<W>,
+    css_rules?: string[]
+}
+
+export function world_driver<W extends World>(spec: WorldSpec<W>): WorldDriver<W> {
     function update(world: W, command: RawInput) {
         return apply_command(spec, world, command);
     }
 
     let initial_result = update(spec.initial_world, raw('', false));
 
-    return [initial_result, update, spec.css_rules]
+    let thread_maker = (world: W) => make_update_thread(spec, world);
 
+    return {
+        initial_result,
+        update,
+        thread_maker,
+        css_rules: spec.css_rules
+    }
 }
 
 /*

@@ -12,7 +12,7 @@ import { new_hex_world } from './demo_worlds/hex_port';
 import { new_venience_world } from './demo_worlds/narrascope/narrascope';
 
 console.time('world_build');
-let [result, updater, css_rules] = new_venience_world();//new_hex_world();//new_bird_world();
+let {initial_result, update, css_rules} = new_venience_world();//new_hex_world();//new_bird_world();
 
 // for (let i = 0; i < 3; i++) {
 //     result = updater(result.world, raw('go up stairs'));
@@ -31,7 +31,7 @@ if (css_rules !== undefined) {
     }
 }
 
-ReactDom.render(<App typeahead_index={0} undo_selected={false} command_result={result} updater={updater} />, document.getElementById('terminal'));
+ReactDom.render(<App typeahead_index={0} undo_selected={false} command_result={initial_result} updater={update} />, document.getElementById('terminal'));
 // ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');
 

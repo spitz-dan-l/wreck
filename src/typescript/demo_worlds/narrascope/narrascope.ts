@@ -528,7 +528,7 @@ Puffers({
 });
 
 
-interface VenienceWorld extends World, Venience {}
+export interface VenienceWorld extends World, Venience {}
 
 const initial_venience_world: VenienceWorld = update({
         ...get_initial_world<VenienceWorld>(),

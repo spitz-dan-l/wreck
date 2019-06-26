@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import 'mocha';
-import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread } from '../typescript/parser';
+import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread } from '../typescript/parser';
 import { array_last } from '../typescript/utils';
 
 
@@ -35,7 +35,7 @@ describe('parser', () => {
 
             return `Looked at ${who} ${how}`;
         }
-
+        console.log(traverse_thread(main_thread));
         let result = Parser.run_thread(raw('look at me'), main_thread);
 
         console.log(result);
@@ -52,7 +52,7 @@ describe('parser', () => {
 
     it('should do the dsl thing', () => {
         let main_thread = (p) => p.consume([{tokens:"daniel", labels: {keyword: true}}, "didn't", {tokens:"wash", labels: {option: true}}], () => p.submit('unclean'));
-
+        console.log(traverse_thread(main_thread));
         let result = <Parsed<string>>Parser.run_thread(raw("daniel didn't wash"), main_thread);
         assert.equal(result.kind, 'Parsed');
         assert.equal(result.result, 'unclean', 'daniel was too clean');

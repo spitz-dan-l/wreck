@@ -18,21 +18,10 @@
         - what colors to highlight the various input words with
         - what to display beneath the input prompt as typeahead options
 
-    TODO:
-        - Availability constrains future availability
-            - If a token is consumed with Used, then all subsequent tokens will have Available swapped to Used
-            - Likewise for Locked, though in practice this doesn't matter because you can't consume pased a locked token.
-        - When deduping typeahead options,
-            - Availability:
-                - Available is used if any options are available,
-                - Used is used if any options are Used
-                - Locked otherwise
-            - The same tokens with different labels count as different options
-
 */
 
-import { array_last, deep_equal, drop_keys } from './utils';
 import { starts_with, tokenize } from './text_tools';
+import { array_last, drop_keys } from './utils';
 
 class NoMatch {};
 
@@ -147,9 +136,8 @@ export function is_parse_result_valid(result: TokenMatch[]) {
     return result.length === 0 || array_last(result)!.status === 'Match';
 }
 
-
 type GroupableRow = (TokenMatch | null)[]
-function group_rows(options: GroupableRow[]) {
+export function group_rows(options: GroupableRow[], consider_labels=true) {
     let grouped_options: {
         [k: string]: GroupableRow[]
     } = {};
@@ -165,8 +153,10 @@ function group_rows(options: GroupableRow[]) {
             if (typeof elt.expected.token === 'string') {
                 result += elt.expected.token;
             }
-            result += '|';
-            result += Object.keys(elt.expected.labels);
+            if (consider_labels) {
+                result += '|';
+                result += Object.keys(elt.expected.labels).join(',');
+            }
             return result;
         }
         for (let l of x.slice(n_nulls)) {
@@ -201,13 +191,10 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
             throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
         }
     } else if (parse_results.some(row => array_last(row)!.status === 'PartialMatch')) {
-        // TODO: group all partial match rows by tokens and labels
-        // set "row" to a possibly-synthesized version with min availability
         //    (TODO: flip availability scale s.t. Available is 2, not 0.)
         if (input_stream.length === 0) {
             row = [];
         } else {
-
             let all_partial_rows = parse_results.filter(row => array_last(row)!.status === 'PartialMatch');
             let truncated = all_partial_rows.map(row => row.slice(0, input_stream.length));
 
@@ -215,7 +202,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
 
             let first_group = grouped[Object.keys(grouped)[0]];
 
-            // NOTE: It should ALWAYS get switched from Locked since Locked specs can never be entered
+            // NOTE: It should always get switched from Locked since Locked specs can never be entered
             let current_a: TokenAvailability = 'Locked';
             let current_index = 0;
             
@@ -316,8 +303,6 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
     Helper function for parser methods that take an optional callback or return value on success
     The pattern is to use function overloading to get the types right, and call this
     function to get the behavior right.
-
-    TODO: Can we get what we want using promises?
 */
 function call_or_return(parser: Parser, result?: any): any {
     if (result instanceof Function) {
@@ -468,6 +453,20 @@ export class Parser {
 
         tokens = tokens.map(t => this.clamp_availability(t));
 
+        // TODO: optimize for the NEVER_TOKEN case
+        // if (tokens.length === 1 && tokens[0].token === NEVER_TOKEN) {
+        //     this.parse_result.push(
+        //         ({
+        //             kind: 'TokenMatch',
+        //             status: 'ErrorMatch',
+        //             actual: this.input_stream[this.pos] || '',
+        //             expected: sanitize(tokens[0])
+        //         } as const));
+        //     // increment pos
+        //     this.pos = this.input_stream.length;
+        //     throw new NoMatch();
+        // }
+
         let partial = false;
         let error = false;
         let i = 0
@@ -559,7 +558,6 @@ export class Parser {
             } as const)));
         // increment pos
         this.pos += tokens.length;
-
     }
 
     eliminate(): never {
@@ -595,7 +593,14 @@ export class Parser {
             return this.eliminate(); // TODO: make sure this actually helps
         }
 
+        // console.time('call next');
         let {value: split_value, done} = this._split_iter.next();
+        // console.timeEnd('call next')
+
+        // console.time('unpack next');
+        // let {value: split_value, done} = zzz;
+        // console.timeEnd('unpack next');
+
         if (done) {
             throw new ParseRestart(subthreads.length);
         }
@@ -611,69 +616,83 @@ export class Parser {
     }
 
     static run_thread<T>(raw: RawInput, t: ParserThread<T>): ParseResult<T> {
-        
-        let [tokens, whitespace]: [Token[], string[]] = tokenize(raw.text);
-        
+        const [tokens, whitespace]: [Token[], string[]] = tokenize(raw.text);
         if (raw.submit) {
             tokens.push(SUBMIT_TOKEN);
         }
 
-        type Path = (number | Iterator<number>)[];
-        let frontier: Path[] = [[]];
-        let results: (T | NoMatch)[] = [];
-        let parse_results: TokenMatch[][] = [];
+        // The core parsing algorithm
+        function match_input() {
+            let n_iterations = 0;
+            let n_splits = 0;
 
-        while (frontier.length > 0) {
-            let path = <Path>frontier.pop();
-            let splits_to_take;
-            if (path.length === 0) {
-                splits_to_take = path;
-            } else {
-                let n = (array_last(path) as Iterator<number>).next();
-                if (n.done) {
-                    continue;
+
+            type Path = (number | Iterator<number>)[];
+            const frontier: Path[] = [[]];
+            const results: (T | NoMatch)[] = [];
+            const parse_results: TokenMatch[][] = [];
+
+            while (frontier.length > 0) {
+                const path = <Path>frontier.pop();
+                let splits_to_take;
+                if (path.length === 0) {
+                    splits_to_take = path;
                 } else {
-                    frontier.push(path);
+                    let n = (array_last(path) as Iterator<number>).next();
+                    if (n.done) {
+                        continue;
+                    } else {
+                        frontier.push(path);
+                    }
+                    splits_to_take = [...path.slice(0, -1), n.value];
                 }
-                splits_to_take = [...path.slice(0, -1), n.value];
+
+                const p = new Parser(tokens, splits_to_take);
+
+                let result: T | NoMatch = new NoMatch();
+                n_iterations++;
+                try {
+                    result = t(p);
+                } catch (e) {
+                    if (e instanceof NoMatch) {
+                        result = e;
+                    } else if (e instanceof ParseRestart) {
+                        n_splits++;
+                        const new_splits: number[] = [];
+                        for (let i = 0; i < e.n_splits; i++) {
+                            new_splits.push(i);
+                        } 
+                        frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                        continue;
+                    } else {
+                        throw e;
+                    }
+                }
+
+                results.push(result);
+                parse_results.push(p.parse_result);
             }
 
-            let p = new Parser(tokens, splits_to_take);
-
-            let result: T | NoMatch;
-            try {
-                result = t(p);
-            } catch (e) {
-                if (e instanceof NoMatch) {
-                    result = e;
-                } else if (e instanceof ParseRestart) {
-                    let new_splits: number[] = [];
-                    for (let i = 0; i < e.n_splits; i++) {
-                        new_splits.push(i);
-                    } 
-                    frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
-                    continue;
-                } else {
-                    throw e;
-                }
-            }
-
-            results.push(result);
-            parse_results.push(p.parse_result);
+            return [results, parse_results] as const;
         }
 
-        let view = compute_view(parse_results, tokens);
+        const [results, parses] = match_input();        
+
+        // Assembling the view object, data structures for building views of the parsed text
+        let view = compute_view(parses, tokens);
 
         let parsing: Parsing = {
             kind: 'Parsing',
             view,
-            parses: parse_results,
+            parses,
             tokens,
             whitespace,
             raw
         };
 
+        // Filter and find the single valid result to return
         let valid_results = <T[]>results.filter(r => !(r instanceof NoMatch));
+
         if (valid_results.length === 0) {
             return {
                 kind: 'NotParsed',
@@ -716,4 +735,71 @@ export function gate<Ret>(cond: () => boolean, t: ParserThread<Ret>): ParserThre
     }
 }
 
-// TODO: Helper to extract all possible valid inputs from a parser thread
+
+// Helper to extract all possible valid inputs from a parser thread
+/*
+Can take up to 20-30ms to walk a reasonably deep thread. That is too slow.
+
+Options
+    - Use option labels to prune the walk,
+      and only ever do walks with filters
+    - Find a way to drastically speed up parsing
+        - wasm
+        - no exceptions
+        - something else clever
+
+*/
+
+export function traverse_thread<T>(thread: ParserThread<T>) {
+    let n_partials = 0;
+    let n_matches = 0;
+
+    let result: { [cmd: string]: Parsed<T> } = {};
+
+    let frontier: RawInput[] = [{kind: 'RawInput', text: '', submit: false}];
+
+    while (frontier.length > 0) {
+        // console.timeEnd('traverse_thread_loop');
+        // console.time('traverse_thread_loop');
+        let cmd = frontier.shift()!;
+        let res = Parser.run_thread(cmd, thread);
+        // (console as any).timeLog('traverse_thread_loop', 'time to run the command')
+        if (res.kind === 'Parsed') {
+            result[cmd.text] = res;
+            // console.log('loop contains a full match');
+            n_matches++;
+        } else {
+            n_partials++;
+            // console.log('loop contains a partial match');
+        }
+
+        let partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch')
+        let grps = group_rows(partial_parses, false);
+
+        for (let k of Object.keys(grps)) {
+            let grp = grps[k];
+
+            let new_cmd: RawInput = <RawInput>{
+                kind: 'RawInput',
+                submit: false
+            };
+            let toks: string[] = [];
+            for (let m of grp[0]) {
+                let tok = m!.expected.token;
+                if (typeof(tok) === 'string') {
+                    toks.push(tok);
+                } else {
+                    // it must be SUBMIT.
+                    new_cmd.submit = true;
+                    break;
+                }
+            }
+            new_cmd.text = toks.join(' ');
+            frontier.push(new_cmd);
+        }
+    }
+    // console.log(`Finished traversal with ${n_partials} passes over partial matches and ${n_matches} final matches.`);
+    return result;
+}
+
+

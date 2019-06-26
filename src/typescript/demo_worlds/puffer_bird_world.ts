@@ -4,15 +4,13 @@ import { appender, update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
 import { interpretation_updater } from '../interpretation';
 
-interface BirdWorld extends World {}
-
-
+export interface BirdWorld extends World {}
 
 interface Location {
     is_in_heaven: boolean;
 }
 
-interface BirdWorld extends Location {}
+export interface BirdWorld extends Location {}
 
 let LocationPuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
@@ -59,7 +57,7 @@ interface Zarathustra {
     has_seen_zarathustra: boolean;
 }
 
-interface BirdWorld extends Zarathustra {}
+export interface BirdWorld extends Zarathustra {}
 
 let ZarathustraPuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
@@ -142,7 +140,7 @@ interface Roles {
     role: Qualities[number] | undefined;
 }
 
-interface BirdWorld extends Roles {}
+export interface BirdWorld extends Roles {}
 
 let RolePuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
@@ -177,7 +175,7 @@ let RolePuffer: Puffer<BirdWorld> = {
         }))
 };
 
-interface BirdWorld extends World
+export interface BirdWorld extends World
     , Location
     , Zarathustra
     , Roles
@@ -204,7 +202,7 @@ const initial_bird_world: BirdWorld = {
     role: undefined
 };
 
-const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);
+export const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);
 
 import {WorldUpdater} from '../world';
 

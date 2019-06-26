@@ -133,10 +133,20 @@ Code restructuring/enhancements
                 - would extend the puffer type with additional tags that say whether they have e.g. been locked yet, so the decorator knows whether to mess with it or not.
                 - Could extend beyond just the puffer type, apply to e.g. abstractions, facets too
     - Consider removing IntersectTupleTypes stuff, does not work on types with a recursive "this" property.
-            - Still deciding whether to remove it entirely, or find a way to get the this' to merge
-            - With declaration merging/module augmentation, there is already a solution to define worlds AOP style.
-            - But separation of concerns is dead now... Could just be acceptable.
+        - Probably also slows down typechecking by some stupid amount
+        - Still deciding whether to remove it entirely, or find a way to get the this' to merge
+        - With declaration merging/module augmentation, there is already a solution to define worlds AOP style.
+        - But separation of concerns is dead now... Could just be acceptable.
     - DONE Generalize Stages to support non-function types
+    - Find ways to optimize parser performance. Becomes necessary as we try to implement supervenience and generally add more options
+        - Convert consume_() logic to wasm
+            - May not actually fix the real problem which seems like it might be the use of exceptions
+        - Convert parser threads to generators
+            - Would eliminate the use of exceptions which probably would successfully speed things up
+            - would add a layer of awkwardness to writing comand handlers, easy to accidentally forget to "yield" when you are supposed to
+        - distribute splits across web workers
+            - Unconvinced the added overhead would be worth it
+            - Would require logical restructuring of Parser.run_thread and parser.split
 
 Categories of work
 

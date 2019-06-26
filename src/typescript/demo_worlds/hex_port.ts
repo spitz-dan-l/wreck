@@ -100,7 +100,7 @@ const Percepts: readonly Percept[] = [
 
 type ObserverMomentID = string;
 
-interface Hex extends World {
+export interface Hex extends World {
     node: ObserverMomentID;
     has_perceived: { [K in PerceptID]: boolean };
     with_daughters: boolean;

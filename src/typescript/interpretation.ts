@@ -98,3 +98,7 @@ export function find_historical<W extends World>(world: W, f: (w: W) => boolean)
 
     return null;
 }
+
+export function find_index<W extends World>(world: W, index: number) {
+    return find_historical(world, w => w.index === index);
+}

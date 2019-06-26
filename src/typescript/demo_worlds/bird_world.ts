@@ -20,12 +20,13 @@ let initial_world: BirdWorld = {
     interpretations: { 0: {happy: true} }
 };
 
+export const bird_world_spec = () => make_world_spec({
+    initial_world,
+    handle_command,
+});
+
 export function new_bird_world() {
-    return world_driver(make_world_spec({
-        initial_world,
-        handle_command,
-        // interpret_history
-    }));
+    return world_driver(bird_world_spec());
 }
 
 let post: Narrator<BirdWorld> = (new_world, old_world) => {
