@@ -89,7 +89,7 @@ export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
     return (world: W) => make_update_thread(spec, world);
 }
 
-export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W>;
+export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W & {parsing: undefined}>;
 export function make_update_thread(spec: WorldSpec<World>, world: World) {
     let next_state = world;
 
@@ -139,7 +139,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
     }
 
     // todo: add the successful parsing to the world
-    let w = result.result;
+    let w: World = result.result;
 
     w = update(w, { parsing: () => result.parsing });
 
@@ -155,7 +155,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
 export type WorldDriver<W extends World> = {
     initial_result: CommandResult<W>,
     update: (world: W, command: RawInput) => CommandResult<W>,
-    thread_maker: (world: W) => ParserThread<W>,
+    thread_maker: (world: W) => ParserThread<W & { parsing: undefined }>,
     css_rules?: string[]
 }
 

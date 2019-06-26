@@ -5,13 +5,13 @@ import { new_hex_world, Hex } from '../typescript/demo_worlds/hex_port';
 import { new_bird_world, BirdWorld } from '../typescript/demo_worlds/puffer_bird_world';
 import { VenienceWorld, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
 import { Gist } from '../typescript/demo_worlds/narrascope/metaphor';
-import { search_future, NarrativeDimension, NarrativeGoal } from '../typescript/supervenience';
+import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec } from '../typescript/supervenience';
 import { find_index } from '../typescript/interpretation';
 import { deep_equal, included, array_last, drop_keys } from '../typescript/utils';
 
 
 
-describe('supervenience birdworld', () => {
+describe.only('supervenience birdworld', () => {
     it('beats birdworld', () => {
         
         let {initial_result, thread_maker} = new_bird_world();
@@ -20,13 +20,19 @@ describe('supervenience birdworld', () => {
             return w.is_in_heaven && w.has_seen_zarathustra && w.role === 'vulnerable';
         }
 
-        let narrative_dimensions: NarrativeDimension<BirdWorld>[] = [
+        let space: NarrativeDimension<BirdWorld>[] = [
             w => w.is_in_heaven,
             w => w.has_seen_zarathustra,
             w => w.role === 'vulnerable'
         ];
 
-        search_future(thread_maker, initial_result.world, [goal_met], narrative_dimensions);
+        let search_spec: FutureSearchSpec<BirdWorld> = {
+            thread_maker,
+            goals: [goal_met],
+            space
+        };
+
+        search_future(search_spec, initial_result.world);
     });
 });
 
@@ -37,7 +43,7 @@ describe.only('supervenience narrascope', () => {
         return w.end;
     }
 
-    let narrative_goals: NarrativeGoal<VenienceWorld>[] = [
+    let goals: NarrativeGoal<VenienceWorld>[] = [
         w => !!w.has_chill,
         w => !!w.has_recognized_something_wrong,
         w => !!w.is_curious_about_history,
@@ -47,7 +53,7 @@ describe.only('supervenience narrascope', () => {
         goal_met
     ]
 
-    let narrative_dimensions: NarrativeDimension<VenienceWorld>[] = [
+    let space: NarrativeDimension<VenienceWorld>[] = [
         w => {
             if (w.owner !== 'Metaphor') {
                 return false;
@@ -66,15 +72,30 @@ describe.only('supervenience narrascope', () => {
     ];
 
     it('beats narrascope demo using dimensions', () => {
-        search_future(thread_maker, initial_result.world, [goal_met], narrative_dimensions);
+        let spec: FutureSearchSpec<VenienceWorld> = {
+            thread_maker,
+            goals: [goal_met],
+            space
+        };
+        search_future(spec, initial_result.world);
     });
 
     it('beats narrascope demo using subgoals', () => {
-        search_future(thread_maker, initial_result.world, narrative_goals, [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations')]);
+        let spec: FutureSearchSpec<VenienceWorld> = {
+            thread_maker,
+            goals,
+            space: [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations')]
+        };
+        search_future(spec, initial_result.world);
     });
 
     it('beats narrascope demo using both', () => {
-        search_future(thread_maker, initial_result.world, narrative_goals, narrative_dimensions);
+        let spec: FutureSearchSpec<VenienceWorld> = {
+            thread_maker,
+            goals,
+            space
+        };
+        search_future(spec, initial_result.world);
     })
 
 });
