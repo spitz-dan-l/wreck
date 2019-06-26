@@ -1,0 +1,27 @@
+possible topics
+
+- social/anthropological perspective on narrascope
+- Supervenience in IF
+- What I am trying to do in Venience World
+    - Advance the parser/text-based genre
+    - Play to the strengths of text
+        - Non-physical acts
+            - Mechanized metaphors/abstractions
+        - Introverted narrative
+        - Performative utterance
+        - "Living" text
+            - Text is colored and styled for emphasis, categorization, characterization
+            - Specific passages are annotated, selected, highlighted, circled, quoted to express revision, expansion, affirmation, disavowal, invocation
+            - Currently constraining to never change the contents of existing text post-hoc.
+                - Only annotating, expanding, arguing with, adding nuance to, not erasing or rewriting.
+            - Text functions as an expression of our thoughts, models, perceptions of the world.
+                - Our inner work surface
+                - This is a plastic, dynamic thing. Our ideas evolve and change all the time.
+                - Importantly, NOT advocating for extreme relativism/subjectivism
+                    - Such a ham-handed, all-or-nothing technique
+                    - There *is* an actual state of affairs, and we are seeking it out
+                - There is a visual language of text markup/revision
+                    - Seen in essay writing. There is the base manuscript, and then there are the notes in the margins, the footnotes, the markup
+
+
+- Puffers
