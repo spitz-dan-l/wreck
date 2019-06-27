@@ -20,7 +20,7 @@
 
 */
 
-import { starts_with, tokenize } from './text_tools';
+import { starts_with, tokenize, split_tokens } from './text_tools';
 import { array_last, drop_keys } from './utils';
 
 class NoMatch {};
@@ -385,7 +385,7 @@ export class Parser {
     }
 
     private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): void {
-        let toks = tokenize(spec)[0];
+        let toks = split_tokens(spec);//tokenize(spec)[0];
             
         let labels: TokenLabels = { filler: true };
         let availability: TokenAvailability = 'Available';
@@ -517,7 +517,9 @@ export class Parser {
             if (spec.token !== NEVER_TOKEN) {
                 return <RawConsumeSpec & { token: Token }>spec;
             }
-            return {...spec, token: ''};
+            let result = {...spec};
+            result.token = '';
+            return <RawConsumeSpec & { token: Token }>result;
         }
 
         if (partial) {

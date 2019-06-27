@@ -19,7 +19,7 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
         }
 
         function lock_puffer(puffer: Puffer<W>): Puffer<W> {
-            return gate_puffer((w, old=false) => old || has_permission(w), puffer);
+            return gate_puffer((w, old=false) => !old && has_permission(w), puffer);
         }
 
         function lock(world: W, start_index?: number) {
