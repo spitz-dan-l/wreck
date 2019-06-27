@@ -1,5 +1,5 @@
 import {World, WorldSpec, update_thread_maker} from './world';
-import { traverse_thread, ParserThread } from './parser';
+import { traverse_thread, ParserThread, PossibleConsumeSpec } from './parser';
 import { deep_equal, drop_keys } from './utils';
 import { find_historical } from './interpretation';
 
@@ -28,6 +28,8 @@ export type NarrativeDimension<W extends World> = (w: W) => any;
 export type NarrativeGoal<W extends World> = (w: W) => boolean;
 
 
+export type CommandFilter<W extends World> = (w: W, command: PossibleConsumeSpec[]) => boolean;
+
 function get_score<W extends World>(w: W, goals: NarrativeGoal<W>[]) {
     return goals.map(g => g(w)).reduce((acc, goal_met) => acc + (goal_met ? 1 : 0), 0);
 }
@@ -36,7 +38,9 @@ export type FutureSearchSpec<W extends World> = {
     thread_maker: (w: W) => ParserThread<W>,
     goals: NarrativeGoal<W>[],
     space: NarrativeDimension<W>[],
-    give_up_after?: number
+    give_up_after?: number,
+    max_steps?: number,
+    command_filter?: CommandFilter<W>
 }
 
 export const worlds_under_search: Set<World> = new Set();
@@ -52,7 +56,6 @@ export type FutureSearchStats = {
     states_skipped: number
 }
 
-
 export type FutureSearchStatus =
     'Found' |
     'Timeout' |
@@ -64,25 +67,7 @@ export type FutureSearchResult<W extends World> = {
     status: FutureSearchStatus,
     result: W | null,
     stats: FutureSearchStats | null
-} & (
-    {
-        status: 'Found',
-        result: W
-    } |
-    {
-        status: 'Timeout' | 'Unreachable' | 'InSimulation'
-        result: null
-    }
-) & (
-    {
-        status: 'Found' | 'Timeout' | 'Unreachable',
-        stats: FutureSearchStats
-    } |
-    {
-        status: 'InSimulation',
-        stats: null
-    }
-)
+};
 
 // do a breadth-first search of possible futures for some goal state
 export function search_future<W extends World>(spec: FutureSearchSpec<W>, world: W): FutureSearchResult<W>
@@ -155,7 +140,16 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
                 };
             }
 
-            const transitions = traverse_thread(spec.thread_maker(w));
+            if (spec.max_steps !== undefined && w.index - world.index >= spec.max_steps) {
+                i++;
+                continue;
+            }
+
+            const transitions = traverse_thread(
+                spec.thread_maker(w), 
+                spec.command_filter !== undefined
+                    ? (cmd) => spec.command_filter!(w, cmd)
+                    : undefined);
 
             const neighbor_states = Object.values(transitions);
             if (neighbor_states.length === 0) {

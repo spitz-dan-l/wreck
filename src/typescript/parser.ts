@@ -752,7 +752,9 @@ Options
 
 */
 
-export function traverse_thread<T>(thread: ParserThread<T>) {
+export type PossibleConsumeSpec = RawConsumeSpec & {token: Token};
+
+export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (consume_spec: PossibleConsumeSpec[]) => boolean) {
     let n_partials = 0;
     let n_matches = 0;
 
@@ -761,18 +763,13 @@ export function traverse_thread<T>(thread: ParserThread<T>) {
     let frontier: RawInput[] = [{kind: 'RawInput', text: '', submit: false}];
 
     while (frontier.length > 0) {
-        // console.timeEnd('traverse_thread_loop');
-        // console.time('traverse_thread_loop');
         let cmd = frontier.shift()!;
         let res = Parser.run_thread(cmd, thread);
-        // (console as any).timeLog('traverse_thread_loop', 'time to run the command')
         if (res.kind === 'Parsed') {
             result[cmd.text] = res;
-            // console.log('loop contains a full match');
             n_matches++;
         } else {
             n_partials++;
-            // console.log('loop contains a partial match');
         }
 
         let partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch')
@@ -780,6 +777,13 @@ export function traverse_thread<T>(thread: ParserThread<T>) {
 
         for (let k of Object.keys(grps)) {
             let grp = grps[k];
+
+            if (traverse_command !== undefined) {
+                let expected = grp[0].map(m => m!.expected);
+                if (!traverse_command(expected)) {
+                    continue;
+                }
+            }
 
             let new_cmd: RawInput = <RawInput>{
                 kind: 'RawInput',
@@ -800,7 +804,6 @@ export function traverse_thread<T>(thread: ParserThread<T>) {
             frontier.push(new_cmd);
         }
     }
-    // console.log(`Finished traversal with ${n_partials} passes over partial matches and ${n_matches} final matches.`);
     return result;
 }
 
