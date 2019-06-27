@@ -1,6 +1,6 @@
 import { MessageUpdateSpec, message_updater } from '../message';
 import { narrative_fsa_builder } from '../narrative_fsa';
-import { Parser } from '../parser';
+import { Parser, failed } from '../parser';
 import { make_puffer_world_spec, Puffer } from '../puffer';
 import { split_tokens } from '../text_tools';
 import { update, Updater } from '../utils';
@@ -119,10 +119,18 @@ function make_perceiver(world: Hex, percs: readonly PerceptID[]) {
             percs.map(pid => () => {
                 let perc = Percepts.find(p => p.id === pid)!;
                 if (perc.prereqs !== undefined && perc.prereqs.some(p => !world.has_perceived[p])) {
-                    parser.eliminate();
+                    return parser.eliminate();
                 }
                 parser.consume(`${world.has_perceived[pid] ? '^' : ''}${split_tokens(pid).join('_')}`);
+                if (parser.failure) {
+                    return parser.failure;
+                }
+
                 parser.submit();
+                if (parser.failure) {
+                    return parser.failure;
+                }
+                
                 return percieve(world, pid);
             })
         );
@@ -179,7 +187,7 @@ ObserverMoments(
         // NOTE: the "1:"" here causes this handler's typeahead to appear *after* the options for the percepts.
         1: (world, parser) => {
             if (!world.has_perceived['experiment']) {
-                parser.eliminate();
+                return parser.eliminate();
             }
             
             return make_transitioner(world, {'operate_broadcaster': 'imagining 2'})(parser);
@@ -298,7 +306,15 @@ ObserverMoments(
             () => parser.consume('&they_can_come', true),
             () => parser.consume('&they_must_stay', false)
         ]);
+
+        if (failed(they_can_come)) {
+            return they_can_come;
+        }
+
         parser.submit();
+        if (parser.failure) {
+            return parser.failure;
+        }
 
         return transition_to(world, 'outside 2', {
             with_daughters: they_can_come
@@ -344,7 +360,14 @@ ObserverMoments(
         and towards the Dark Pool.`,
     handle_command: (world, parser) => {
         parser.consume('follow_the_trail');
+        if (parser.failure) {
+            return parser.failure;
+        }
+
         parser.submit();
+        if (parser.failure) {
+            return parser.failure;
+        }
 
         if (world.with_daughters) {
             return transition_to(world, 'outside 4');

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import 'mocha';
-import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread } from '../typescript/parser';
+import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread, failed } from '../typescript/parser';
 import { array_last } from '../typescript/utils';
 
 
@@ -10,7 +10,7 @@ describe('parser', () => {
     it('should do a thing', () => {
         
         function main_thread(p: Parser) {
-            p.consume('*look');
+            p.consume('look');
 
             let who = p.split([
                 () => p.consume('at me', 'me'),
@@ -21,17 +21,28 @@ describe('parser', () => {
                 () => p.eliminate()
             ]);
 
-            if (who === 'steven') {
-                p.eliminate();
+            if (failed(who)) {
+                return who;
             }
 
-            let how = p.split([
+            if (who === 'steven') {
+                return p.eliminate();
+            }
+
+            let how = p.split<string>([
                 () => p.consume({ tokens: 'happily', used: true}, 'happily'),
                 () => p.consume('sadly', 'sadly'),
                 () => 'neutrally'
             ]);
 
+            if (failed(how)) {
+                return how;
+            }
+
             p.submit();
+            if (p.failure) {
+                return p.failure;
+            }
 
             return `Looked at ${who} ${how}`;
         }
@@ -137,15 +148,21 @@ describe('parser', () => {
             p.consume('it was all a', () => {
                 let meaning = p.split(things.map(([noun, meaning]) => () => p.consume(noun, meaning)));
 
+                if (failed(meaning)) {
+                    return meaning;
+                }
                 // We want to retroactively eliminate the "fish" sense of the word "fluke".
                 if (meaning === 'fish') {
-                    p.eliminate();
+                    return p.eliminate();
 
                     // (In practice, we might be better served filtering it out of the things passed
                     //  to p.split() above, but the point is, if we haven't factored our parser fragments
                     //  in that way, we don't have to refactor the whole thing.)
                 }
                 p.submit();
+                if (p.failure) {
+                    return p.failure;
+                }
                 return meaning;
             }));
 

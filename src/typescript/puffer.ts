@@ -105,7 +105,7 @@ export function gate_puffer<W extends World>(cond: (world: W, old_world?: boolea
         handle_command: (cb) => {
             return (world, parser) => {
                 if (!cond(world)) {
-                    parser.eliminate();
+                    return parser.eliminate();
                 }
                 return cb(world, parser);
             };

@@ -507,25 +507,86 @@ Puffers({
 
     handle_command: (world, parser) => {
             if (!world.has_volunteered || world.end) {
-                parser.eliminate();
+                return parser.eliminate();
             }
 
-            parser.consume('How are you, Sam?');
-            parser.submit();
-
-            return update(world,
-                { end: true },
-                message_updater(`
-                    <div class="interp">
-                        VENIENCE WORLD
-                    </div>
-                    A work of <span class="blue">interactive fiction</span>
-                    <br/>
-                    by <div class="interp-inline">Daniel Spitz</div>
-                    <br/><br/>
-                    Thank you for playing the demo!`));
+            return parser.consume('How are you, Sam?',
+                () => parser.submit(
+                    () => update(world,
+                        { end: true },
+                        message_updater(`
+                            <div class="interp">
+                                VENIENCE WORLD
+                            </div>
+                            A work of <span class="blue">interactive fiction</span>
+                            <br/>
+                            by <div class="interp-inline">Daniel Spitz</div>
+                            <br/><br/>
+                            Thank you for playing the demo!`))));
     }
 });
+
+import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, is_simulated } from '../../supervenience';
+import {find_index} from '../../interpretation';
+import {update_thread_maker} from '../../world';
+
+Puffers({
+    handle_command: (world, parser) => {
+        if (is_simulated(world)) {
+            return parser.eliminate();
+        }
+
+        if (world.end) {
+            return parser.eliminate();
+        }
+
+        function goal_met(w: VenienceWorld): boolean {
+            return w.end;
+        }
+
+        let goals: NarrativeGoal<VenienceWorld>[] = [
+            w => !!w.has_chill,
+            w => !!w.has_recognized_something_wrong,
+            w => !!w.is_curious_about_history,
+            w => !!w.has_admitted_negligence,
+            w => !!w.has_unpacked_culpability,
+            w => !!w.has_volunteered,
+            goal_met
+        ]
+
+        let space: NarrativeDimension<VenienceWorld>[] = [
+            w => {
+                if (w.owner !== 'Metaphor') {
+                    return false;
+                }
+
+                let g = find_index(w, w.current_interpretation!)!.gist;
+
+                return g === null ? null :
+                included(g.name, ['your impression of Sam', 'your impression of your history with Sam'])
+                ? g.name
+                : null;
+            },
+            w => w.has_considered,
+            w => w.has_acquired,
+            w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
+        ];
+
+        let spec: FutureSearchSpec<Venience> = {
+            thread_maker,
+            goals,
+            space
+        };
+
+        parser.consume('beat_the_game', () => parser.submit());
+        if (parser.failure) {
+            return parser.failure;
+        }
+
+        return search_future(spec, world).result!;
+
+    }
+})
 
 
 export interface VenienceWorld extends World, Venience {}
@@ -561,5 +622,7 @@ const venience_world_spec = make_puffer_world_spec(initial_venience_world, Puffe
 export function new_venience_world() {
     return world_driver(venience_world_spec);
 }
+
+const thread_maker = update_thread_maker(venience_world_spec);
 
 

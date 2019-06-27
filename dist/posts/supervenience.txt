@@ -1,0 +1,26 @@
+Today I made some tangible progress implementing "supervenience" as a core mechanic in the Venience World engine.
+
+The route I have chosen to supervenience is via "compound actions"- in-game actions that are actually sequences of other actions.
+
+Inform 7 games have the ability to do this for certain basic cases. For instance, if you GO NORTH through a door to which you already have the key, the engine will take care of:
+
+    unlocking the door for you first,
+    then opening the door,
+    then proceeding north through the door,
+
+so you don't need to do all of that explicitly. This functionality is limited by default, but it is extensible: http://inform7.com/book/WI_7_4.html. However, it's not particularly easy to extend. It requires explicit rules to be specified for what to implicitly try doing before attempting the action in the player's command.
+
+As an example of where Inform's functionality is limited, consider again the case in which you wish to GO NORTH through a locked door, but now you *don't have the key yet*. The key is off in some other room. An author would have their work cut out for them hand-coding the rules for:
+
+    navigating the player to the room with the key,
+    then taking it,
+    then navigating back to the room with the door,
+    then unlocking the door,
+    then opening the door,
+    then proceeding north through the door.
+
+If the author were to change around the layout of rooms in the game world later, they would have to remember to hop back into these rules and update the navigation logic, all so that this convenience action continued to work.
+
+If the author decides to write or use a navigation or path-finding extension (https://i7el.herokuapp.com/extensions/approaches-by-emily-short) for Inform, the struggle is still not over. If their game contains any custom mechanics that are required during the trip to the room with the key (for instance, perhaps the key is on a different floor of the building, accessible via elevator http://inform7.com/book/RB_8_2.html), they must manually add rules for dealing with these mechanics to the navigation logic.
+
+Hadean Lands by Andrew Plotkin (https://hadeanlands.com/) introduced a major innovation in this area, referred to as the Goal System. It 

@@ -3,6 +3,7 @@ import { random_choice } from '../text_tools';
 import { appender, update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
 import { interpretation_updater } from '../interpretation';
+import { failed, ConsumeResult } from '../parser';
 
 export interface BirdWorld extends World {}
 
@@ -14,30 +15,29 @@ export interface BirdWorld extends Location {}
 
 let LocationPuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
-        parser.consume('go');
+        return parser.consume('go', () => {
+            let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
 
-        let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
-
-        let dir = parser.split(
-            (['up', 'down'] as const).map(dir =>
-                () => parser.consume({
-                    tokens: `${dir}_stairs`,
-                    locked: is_locked[dir],
-                    labels: {option: true}
-                }, dir)
-            )
-        );
-
-        parser.submit();
-
-        let new_pos = !world.is_in_heaven;
-        let loc = new_pos ? 'in Heaven' : 'standing around on the ground';
-        
-        return update(world, {
-            message: {
-                consequence: appender(`You are currently ${loc}.`)
-            },
-            is_in_heaven: new_pos
+            return parser.split(
+                (['up', 'down'] as const).map(dir =>
+                    () => parser.consume({
+                        tokens: `${dir}_stairs`,
+                        locked: is_locked[dir],
+                        labels: {option: true}
+                    }, dir)
+                ),
+                (dir) => parser.submit(() => { 
+                    let new_pos = !world.is_in_heaven;
+                    let loc = new_pos ? 'in Heaven' : 'standing around on the ground';
+                    
+                    return update(world, {
+                        message: {
+                            consequence: appender(`You are currently ${loc}.`)
+                        },
+                        is_in_heaven: new_pos
+                    });
+                })
+            );   
         });
     },
 
@@ -62,11 +62,17 @@ export interface BirdWorld extends Zarathustra {}
 let ZarathustraPuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
         if (!world.is_in_heaven) {
-            parser.eliminate();
+            return parser.eliminate();
+        }
+        parser.consume("mispronounce zarathustra's name");
+        if (parser.failure) {
+            return parser.failure;
         }
 
-        parser.consume("mispronounce zarathustra's name");
         parser.submit();
+        if (parser.failure) {
+            return parser.failure;
+        }
 
         let utterance_options = [
             'Zammersretter',
@@ -145,17 +151,27 @@ export interface BirdWorld extends Roles {}
 let RolePuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
         if (world.is_in_heaven) {
-            parser.eliminate();
+            return parser.eliminate();
         }
 
         parser.consume('be');
+        if (parser.failure) {
+            return parser.failure;
+        }
 
         let choice = parser.split(
             roles.map((r, i) =>
                 () => parser.consume(`${r.replace(/ /g, '_')}`, i))
         );
 
+        if (failed(choice)) {
+            return choice;
+        }
+
         parser.submit();
+        if (parser.failure) {
+            return parser.failure;
+        }
 
         return update(world, {
             role: qualities[choice],

@@ -1,6 +1,6 @@
 import { find_historical, interpretation_updater } from "../../interpretation";
 import { MessageUpdateSpec, message_updater } from "../../message";
-import { ConsumeSpec, ParserThread } from "../../parser";
+import { ConsumeSpec, ParserThread, failed } from "../../parser";
 import { Puffer } from "../../puffer";
 import { capitalize } from '../../text_tools';
 import { update, Updater } from "../../utils";
@@ -68,8 +68,10 @@ function make_abstraction(spec: Abstraction): Puffer<Venience> {
                     return parser.eliminate();
                 }
 
-                parser.consume(['notes about', spec.name_cmd]);
-                parser.submit();
+                parser.consume(['notes about', spec.name_cmd], () => parser.submit());
+                if (parser.failure) {
+                    return parser.failure;
+                }
 
                 let msg: MessageUpdateSpec = {
                     description: ['<div class="interp">'+spec.description+'</div>']
@@ -145,11 +147,14 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                 world,
                 () => {
                     if (!any_abstractions(world)) {
-                        parser.eliminate();
+                        return parser.eliminate();
                     }
 
-                    parser.consume('notes');
-                    parser.submit();
+                    parser.consume('notes', () => parser.submit());
+
+                    if (parser.failure) {
+                        return parser.failure;
+                    }
 
                     let abstractions = get_abstractions(world);
 
@@ -171,7 +176,7 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
         },
         2: (world, parser) => {
             if (!any_abstractions(world)) {
-                parser.eliminate();
+                return parser.eliminate();
             }
 
             if (world.current_interpretation === null) {
@@ -193,13 +198,17 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                     if (i_world.gist === null) {
                         continue;
                     }
-                    threads.push(() => {
-                        parser.consume(['contemplate', i_world.gist!.cmd]);
-                        return parser.submit(i_world);
-                    });
+                    threads.push(() => 
+                        parser.consume(['contemplate', i_world.gist!.cmd],
+                            () => parser.submit(i_world))
+                    );
                 }
 
                 let interp_world = parser.split(threads);
+                if (failed(interp_world)) {
+                    return interp_world;
+                }
+
                 const index = interp_world.index;
                 
                 let descriptions: string[] = [];
@@ -237,8 +246,11 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                     }),
                 );
             } else {
-                parser.consume('end_contemplation');
-                parser.submit();
+                parser.consume('end_contemplation', () => parser.submit());
+                if (parser.failure) {
+                    return parser.failure;
+                }
+
 
                 return update(world,
                     metaphor_lock.release,
@@ -288,7 +300,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
         let interpretted_world = find_historical(world, w => w.index === world.current_interpretation)!;
 
         if (!spec.can_recognize(world, interpretted_world)){
-            parser.eliminate();
+            return parser.eliminate();
         }
 
         let threads: ParserThread<Venience>[] = [];
@@ -313,13 +325,17 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
 
                 threads.push(() => {
                     let already_solved = spec.solved(world);
-                    parser.consume({
-                        tokens: abs.get_cmd(action.get_cmd(spec.phrase)),
-                        used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
-                        labels: { interp: true, filler: true }
-                    });
-                    parser.submit();
-                    
+                    parser.consume(
+                        {
+                            tokens: abs.get_cmd(action.get_cmd(spec.phrase)),
+                            used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
+                            labels: { interp: true, filler: true }
+                        },
+                        () => parser.submit());
+                    if (parser.failure) {
+                        return parser.failure;
+                    }
+
                     world = spec.handle_action(qual_action, world);
 
                     world = update(world,

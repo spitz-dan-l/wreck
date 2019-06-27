@@ -35,7 +35,7 @@ export function narrative_fsa_builder
     function make_transitioner(world: PW, transitions: Transitions, debug: boolean=false) {
         return (parser: Parser) => {
             if (transitions === undefined || Object.keys(transitions).length === 0) {
-                parser.eliminate();
+                return parser.eliminate();
             }
             if (debug) {
                 debugger;
@@ -44,7 +44,13 @@ export function narrative_fsa_builder
             return parser.split(
                 Object.entries(transitions).map(([destination, consume_spec]) => () => {
                     parser.consume(<ConsumeSpec>consume_spec);
+                    if (parser.failure) {
+                        return parser.failure;
+                    }
                     parser.submit();
+                    if (parser.failure) {
+                        return parser.failure;
+                    }
                     return transition_to(world, <StateID>destination);
                 })
             );
@@ -120,7 +126,7 @@ export function narrative_fsa_builder
         let base_puffer: Puffer<W> = {
             handle_command: (world, parser) => {
                 if (get_state_id(world) !== spec.id) {
-                    parser.eliminate();
+                    return parser.eliminate();
                 }
 
                 let threads: ParserThread<PW>[] = [];
@@ -153,7 +159,7 @@ export function narrative_fsa_builder
 
             handle_command: (cb, stage) => (world, parser) => {
                 if (cb === undefined || get_state_id(world) !== spec.id) {
-                    parser.eliminate();
+                    return parser.eliminate();
                 }
                 return cb!(world, parser);
             },

@@ -11,7 +11,7 @@ import { deep_equal, included, array_last, drop_keys } from '../typescript/utils
 
 
 
-describe.only('supervenience birdworld', () => {
+describe('supervenience birdworld', () => {
     it('beats birdworld', () => {
         
         let {initial_result, thread_maker} = new_bird_world();
@@ -96,6 +96,6 @@ describe.only('supervenience narrascope', () => {
             space
         };
         search_future(spec, initial_result.world);
-    })
+    });
 
 });

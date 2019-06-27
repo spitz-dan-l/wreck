@@ -27,25 +27,24 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
     return {
         handle_command: (world, parser) => {
             if (!spec.can_consider(world)) {
-                parser.eliminate();
+                return parser.eliminate();
             }
 
-            parser.consume({
+            return parser.consume({
                 tokens: ['consider', spec.cmd],
                 used: world.has_considered[spec.name]
-            });
-            parser.submit();
-
-            return update(world,
-                message_updater(spec.message),
-                {
-                    gist: {
-                        name: `your impression of ${spec.name}`,
-                        cmd: ['my_impression_of', spec.cmd]
-                    },
-                    has_considered: { [spec.name]: true } },
-                ...cond(!!spec.consider, () => spec.consider!)
-            );
+            }, () =>
+                parser.submit(
+                    () => update(world,
+                        message_updater(spec.message),
+                        {
+                            gist: {
+                                name: `your impression of ${spec.name}`,
+                                cmd: ['my_impression_of', spec.cmd]
+                            },
+                            has_considered: { [spec.name]: true } },
+                        ...cond(!!spec.consider, () => spec.consider!)
+                    )));
         },
         post: (world2, world1) => {
             if (spec.reconsider === undefined ||
@@ -81,11 +80,13 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
     return {
         handle_command: (world, parser) => {
             if (world.has_acquired[spec.abstraction] || !spec.could_remember(world)) {
-                parser.eliminate();
+                return parser.eliminate();
             }
 
-            parser.consume('remember_something');
-            parser.submit();
+            parser.consume('remember_something', () => parser.submit());
+            if (parser.failure) {
+                return parser.failure;
+            }
 
             let abstraction = AbstractionIndex.find(a => a.name === spec.abstraction)!;
 

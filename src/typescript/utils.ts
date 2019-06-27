@@ -334,3 +334,4 @@ export const statics =
 //   static isMember: string;
 //   // ...
 // }
+

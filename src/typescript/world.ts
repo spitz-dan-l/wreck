@@ -21,7 +21,7 @@
 */
 
 import { infer_message_labels, Message, INITIAL_MESSAGE, standard_render } from './message';
-import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows } from './parser';
+import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows, ConsumeResult, failed } from './parser';
 import { deep_equal, update, array_last } from './utils';
 import { Interpretations, pre_interp } from './interpretation';
 
@@ -35,7 +35,7 @@ export interface World {
 
 export type WorldUpdater<W extends World> = (world: W) => W;
 
-export type CommandHandler<W extends World> = (world: W, parser: Parser) => W;
+export type CommandHandler<W extends World> = (world: W, parser: Parser) => ConsumeResult<W>;
 
 export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
@@ -89,7 +89,7 @@ export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
     return (world: W) => make_update_thread(spec, world);
 }
 
-export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W & {parsing: undefined}>;
+export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W>;
 export function make_update_thread(spec: WorldSpec<World>, world: World) {
     let next_state = world;
 
@@ -99,7 +99,6 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
         message: INITIAL_MESSAGE,
         interpretations: pre_interp,
         parsing: () => undefined
-        // TODO: add empty parsing here?
     });
 
     if (spec.pre !== undefined) {
@@ -107,14 +106,16 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     }
 
     return function update_thread(parser: Parser) {
-        // First handle the command
-        let next_state1 = spec.handle_command(next_state, parser);
+        const next_state2 = spec.handle_command(next_state, parser);
+        if (failed(next_state2)) {
+            return next_state2;
+        }
         
         if (spec.post !== undefined) {
-            next_state1 = <World>spec.post(next_state1, world);
+            return <World>spec.post(next_state2, world);
+        } else {
+            return next_state2;
         }
-
-        return next_state1;
     }
 }
 
@@ -155,7 +156,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
 export type WorldDriver<W extends World> = {
     initial_result: CommandResult<W>,
     update: (world: W, command: RawInput) => CommandResult<W>,
-    thread_maker: (world: W) => ParserThread<W & { parsing: undefined }>,
+    thread_maker: (world: W) => ParserThread<W>,
     css_rules?: string[]
 }
 

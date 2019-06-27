@@ -2,6 +2,7 @@ import { random_choice } from '../text_tools';
 import { update } from '../utils';
 import { CommandHandler, get_initial_world, make_world_spec, World, world_driver, Narrator } from '../world';
 import { interpretation_updater } from '../interpretation';
+import { failed } from '../parser';
 
 interface BirdWorld extends World {
     readonly is_in_heaven: boolean
@@ -51,6 +52,9 @@ let handle_command: CommandHandler<BirdWorld> = (world, parser) => {
 
 let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     parser.consume({ tokens: 'go', labels: { keyword: true}});
+    if (parser.failure) {
+        return parser.failure;
+    }
 
     let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
 
@@ -65,7 +69,14 @@ let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
         )
     );
 
+    if (failed(dir)) {
+        return dir;
+    }
+
     parser.submit();
+    if (parser.failure) {
+        return parser.failure;
+    }
 
     return update(world, {
         message: {
@@ -77,11 +88,17 @@ let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 
 let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     if (!world.is_in_heaven) {
-        parser.eliminate();
+        return parser.eliminate();
     }
 
     parser.consume({ tokens: "mispronounce zarathustra's name", labels: {keyword: true}});
+    if (parser.failure) {
+        return parser.failure;
+    }
     parser.submit();
+    if (parser.failure) {
+        return parser.failure;
+    }
 
     let utterance_options = [
         'Zammersretter',
@@ -102,6 +119,9 @@ let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 
 let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     parser.consume({ tokens: 'be', labels: { keyword: true }});
+    if (parser.failure) {
+        return parser.failure;
+    }
 
     let roles: string[] = [
         'the One Who Gazes Ahead',
@@ -133,8 +153,14 @@ let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
         roles.map((r, i) =>
             () => parser.consume({ tokens: `${r.replace(/ /g, '_')}`, labels: { option: true }}, qualities[i]))
     );
+    if (failed(quality)) {
+        return quality;
+    }
 
     parser.submit();
+    if (parser.failure) {
+        return parser.failure;
+    }
 
     return update(world, {
         message: {

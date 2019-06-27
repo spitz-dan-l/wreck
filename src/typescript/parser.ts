@@ -20,12 +20,15 @@
 
 */
 
-import { starts_with, tokenize } from './text_tools';
+import { starts_with, tokenize, split_tokens } from './text_tools';
 import { array_last, drop_keys } from './utils';
 
-class NoMatch {};
+class NoMatch {
+    kind: 'NoMatch' = 'NoMatch';
+};
 
 class ParseRestart {
+    kind: 'ParseRestart' = 'ParseRestart';
     constructor(public n_splits: number) {}
 };
 export class ParseError extends Error {};
@@ -327,6 +330,12 @@ export type ConsumeSpecOverrides = Omit<ConsumeSpecObj, 'tokens'>;
 
 interface ConsumeSpecArray extends Array<ConsumeSpec> {};
 
+export type ConsumeResult<T=void> = T | NoMatch | ParseRestart;
+
+export function failed<T>(result: ConsumeResult<T>): result is NoMatch | ParseRestart {
+    return (result instanceof NoMatch || result instanceof ParseRestart);
+}
+
 export class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
         this.input_stream = input_stream;
@@ -340,6 +349,8 @@ export class Parser {
     parse_result: TokenMatch[] = [];
 
     label_context: TokenLabels = {};
+
+    failure: NoMatch | ParseRestart | undefined = undefined;
 
     private _current_availability: TokenAvailability = 'Available'
     get current_availability(): TokenAvailability { return this._current_availability; }
@@ -364,19 +375,26 @@ export class Parser {
 
     _split_iter: Iterator<number>;
 
-    consume(spec: ConsumeSpec): void;
-    consume<T>(spec: ConsumeSpec, callback: ParserThread<T>): T;
-    consume<T>(spec: ConsumeSpec, result: T): T;
+    consume(spec: ConsumeSpec): ConsumeResult;
+    consume<T>(spec: ConsumeSpec, callback: ParserThread<T>): ConsumeResult<T>;
+    consume<T>(spec: ConsumeSpec, result: T): ConsumeResult<T>;
     consume(spec: ConsumeSpec, result?: any): any {
-        this._consume_spec(spec);
+        let status = this._consume_spec(spec);
+        if (failed(status)) {
+            return status;
+        }
+
         return call_or_return(this, result);
     }
 
-    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): void {
+    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): ConsumeResult {
         if (spec instanceof Array) {
             for (let s of spec) {
-                this._consume_spec(s, overrides);
+                if (failed(this._consume_spec(s, overrides))) {
+                    return this.failure;
+                }
             }
+            return;
         } else if (typeof spec === 'string') {
             return this._consume_string(spec, overrides);
         } else {
@@ -384,8 +402,8 @@ export class Parser {
         }
     }
 
-    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): void {
-        let toks = tokenize(spec)[0];
+    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): ConsumeResult {
+        let toks = split_tokens(spec)//tokenize(spec)[0];
             
         let labels: TokenLabels = { filler: true };
         let availability: TokenAvailability = 'Available';
@@ -405,16 +423,20 @@ export class Parser {
         }
         
         for (let t of toks) {
-            this._consume(t.split('_').map(t => ({
+            let status = this._consume(t.split('_').map(t => ({
                 kind: 'RawConsumeSpec',
                 token: t,
                 availability,
                 labels
             })));
+
+            if (failed(status)) {
+                return status;
+            }
         }
     }
 
-    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): void {
+    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): ConsumeResult {
         let spec_: ConsumeSpecObj = {...spec};
 
         if (overrides) {
@@ -446,26 +468,13 @@ export class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    private _consume(tokens: RawConsumeSpec[]) {
+    private _consume(tokens: RawConsumeSpec[]): ConsumeResult {
         if (!is_parse_result_valid(this.parse_result)) {
+            debugger;
             throw new ParseError('Tried to consume() on a done parser.');
         }
 
         tokens = tokens.map(t => this.clamp_availability(t));
-
-        // TODO: optimize for the NEVER_TOKEN case
-        // if (tokens.length === 1 && tokens[0].token === NEVER_TOKEN) {
-        //     this.parse_result.push(
-        //         ({
-        //             kind: 'TokenMatch',
-        //             status: 'ErrorMatch',
-        //             actual: this.input_stream[this.pos] || '',
-        //             expected: sanitize(tokens[0])
-        //         } as const));
-        //     // increment pos
-        //     this.pos = this.input_stream.length;
-        //     throw new NoMatch();
-        // }
 
         let partial = false;
         let error = false;
@@ -488,7 +497,6 @@ export class Parser {
             let input = this.input_stream[this.pos + i];
             if (spec_value === input) {
                 if (spec.availability === 'Locked') {
-                    // TODO: special case for typeahead = Locked
                     error = true;
                     break;
                 }
@@ -517,7 +525,9 @@ export class Parser {
             if (spec.token !== NEVER_TOKEN) {
                 return <RawConsumeSpec & { token: Token }>spec;
             }
-            return {...spec, token: ''};
+            let result = {...spec};
+            result.token = '';
+            return <RawConsumeSpec & { token: Token }>result;
         }
 
         if (partial) {
@@ -531,13 +541,12 @@ export class Parser {
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
-            throw new NoMatch();
+            this.failure = new NoMatch();
+            return this.failure;
         }
 
         if (error) {
-            // push all tokens as errors
-            this.parse_result.push(...tokens.map((t, j) =>
-                ({
+            this.parse_result.push(...tokens.map((t, j) => ({
                     kind: 'TokenMatch',
                     status: 'ErrorMatch',
                     actual: this.input_stream[this.pos + j] || '',
@@ -545,7 +554,8 @@ export class Parser {
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
-            throw new NoMatch();
+            this.failure = new NoMatch();
+            return this.failure;
         }
 
         // push all tokens as valid
@@ -560,11 +570,11 @@ export class Parser {
         this.pos += tokens.length;
     }
 
-    eliminate(): never {
+    eliminate(): NoMatch {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        return <never>this._consume([{
+        return <NoMatch>this._consume([{
             kind: 'RawConsumeSpec',
             token: NEVER_TOKEN,
             labels: { filler: true },
@@ -572,44 +582,47 @@ export class Parser {
         } as const]);
     }
 
-    submit(): void;
-    submit<T>(callback: ParserThread<T>): T;
-    submit<T>(result: T): T;
+    submit(): ConsumeResult;
+    submit<T>(callback: ParserThread<T>): ConsumeResult<T>;
+    submit<T>(result: T): ConsumeResult<T>;
     submit<T>(result?: any) {
-        this._consume([{
+        let status = this._consume([{
             kind: 'RawConsumeSpec',
             token: SUBMIT_TOKEN,
             labels: { filler: true },
             availability: 'Available'
         } as const]);
 
+        if (failed(status)) {
+            return status;
+        }
         return call_or_return(this, result);
     }
 
-    split<T>(subthreads: ParserThread<T>[]): T;
-    split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => R): R;
-    split(subthreads: ParserThread<any>[], callback?: any): any {
+    split<T>(subthreads: ParserThread<T>[]): ConsumeResult<T>;
+    split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => ConsumeResult<R>): ConsumeResult<R>;
+    split<T, R>(subthreads: ParserThread<T>[], callback?: (result: T, parser?: Parser) => ConsumeResult<R>):  ConsumeResult<R> {
+    // split(subthreads: ParserThread<any>[], callback?: any): any {
         if (subthreads.length === 0) {
             return this.eliminate(); // TODO: make sure this actually helps
         }
 
-        // console.time('call next');
         let {value: split_value, done} = this._split_iter.next();
-        // console.timeEnd('call next')
-
-        // console.time('unpack next');
-        // let {value: split_value, done} = zzz;
-        // console.timeEnd('unpack next');
 
         if (done) {
-            throw new ParseRestart(subthreads.length);
+            this.failure = new ParseRestart(subthreads.length);
+            return this.failure;
         }
         
         let st = subthreads[split_value];
         let result = st(this);
 
-        if (callback === undefined) {
+        if (failed(result)) {
             return result;
+        }
+
+        if (callback === undefined) {
+            return <any>result;
         }
 
         return callback(result, this);
@@ -649,24 +662,19 @@ export class Parser {
 
                 const p = new Parser(tokens, splits_to_take);
 
-                let result: T | NoMatch = new NoMatch();
+                let result: ConsumeResult<T> = new NoMatch();
                 n_iterations++;
-                try {
-                    result = t(p);
-                } catch (e) {
-                    if (e instanceof NoMatch) {
-                        result = e;
-                    } else if (e instanceof ParseRestart) {
-                        n_splits++;
-                        const new_splits: number[] = [];
-                        for (let i = 0; i < e.n_splits; i++) {
-                            new_splits.push(i);
-                        } 
-                        frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
-                        continue;
-                    } else {
-                        throw e;
+
+                result = t(p);
+
+                if (result instanceof ParseRestart) {
+                    n_splits++;
+                    const new_splits: number[] = [];
+                    for (let i = 0; i < result.n_splits; i++) {
+                        new_splits.push(i);
                     }
+                    frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    continue;
                 }
 
                 results.push(result);
@@ -722,14 +730,14 @@ export function raw(text: string, submit: boolean = true): RawInput {
     return { kind: 'RawInput', text, submit };
 }
 
-export type ParserThread<T> = (p: Parser) => T;
+export type ParserThread<T> = (p: Parser) => ConsumeResult<T>;
 
 // Helper to create a gated ParserThread. cond() is called, and if its condition is 
 // not met, the thread is eliminated, else it runs the parser thread, t.
 export function gate<Ret>(cond: () => boolean, t: ParserThread<Ret>): ParserThread<Ret> {
     return p => {
         if (!cond()) {
-            p.eliminate();
+            return p.eliminate();
         }
         return t(p);
     }
@@ -759,18 +767,13 @@ export function traverse_thread<T>(thread: ParserThread<T>) {
     let frontier: RawInput[] = [{kind: 'RawInput', text: '', submit: false}];
 
     while (frontier.length > 0) {
-        // console.timeEnd('traverse_thread_loop');
-        // console.time('traverse_thread_loop');
         let cmd = frontier.shift()!;
         let res = Parser.run_thread(cmd, thread);
-        // (console as any).timeLog('traverse_thread_loop', 'time to run the command')
         if (res.kind === 'Parsed') {
             result[cmd.text] = res;
-            // console.log('loop contains a full match');
             n_matches++;
         } else {
             n_partials++;
-            // console.log('loop contains a partial match');
         }
 
         let partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch')
@@ -798,7 +801,6 @@ export function traverse_thread<T>(thread: ParserThread<T>) {
             frontier.push(new_cmd);
         }
     }
-    // console.log(`Finished traversal with ${n_partials} passes over partial matches and ${n_matches} final matches.`);
     return result;
 }
 
