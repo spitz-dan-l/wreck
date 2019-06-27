@@ -758,7 +758,9 @@ Options
 
 */
 
-export function traverse_thread<T>(thread: ParserThread<T>) {
+export type PossibleConsumeSpec = RawConsumeSpec & {token: Token};
+
+export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (consume_spec: PossibleConsumeSpec[]) => boolean) {
     let n_partials = 0;
     let n_matches = 0;
 
@@ -781,6 +783,13 @@ export function traverse_thread<T>(thread: ParserThread<T>) {
 
         for (let k of Object.keys(grps)) {
             let grp = grps[k];
+
+            if (traverse_command !== undefined) {
+                let expected = grp[0].map(m => m!.expected);
+                if (!traverse_command(expected)) {
+                    continue;
+                }
+            }
 
             let new_cmd: RawInput = <RawInput>{
                 kind: 'RawInput',

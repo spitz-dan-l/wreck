@@ -526,7 +526,7 @@ Puffers({
     }
 });
 
-import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, is_simulated } from '../../supervenience';
+import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, is_simulated, CommandFilter } from '../../supervenience';
 import {find_index} from '../../interpretation';
 import {update_thread_maker} from '../../world';
 
@@ -572,10 +572,18 @@ Puffers({
             w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
         ];
 
+        let command_filter: CommandFilter<VenienceWorld> = (w, cmd) => {
+            if (cmd[0] && cmd[0].token === 'notes') {
+                return false;
+            }
+            return true;
+        }
+
         let spec: FutureSearchSpec<Venience> = {
             thread_maker,
             goals,
-            space
+            space,
+            command_filter
         };
 
         parser.consume('beat_the_game', () => parser.submit());
