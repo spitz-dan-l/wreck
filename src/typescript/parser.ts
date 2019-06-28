@@ -340,8 +340,13 @@ export class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
         this.input_stream = input_stream;
         
-        this._split_iter = splits_to_take[Symbol.iterator]();
+        this.split_iter = splits_to_take[Symbol.iterator]();
+        // this.splits_to_take = splits_to_take;
     }
+
+    private split_iter: Iterator<number>;
+    private splits_to_take: number[];
+    private current_split: number = 0;
 
     input_stream: Token[];
     pos: number = 0;
@@ -372,8 +377,6 @@ export class Parser {
             this.label_context = old_label_context;
         }
     }
-
-    _split_iter: Iterator<number>;
 
     consume(spec: ConsumeSpec): ConsumeResult;
     consume<T>(spec: ConsumeSpec, callback: ParserThread<T>): ConsumeResult<T>;
@@ -602,12 +605,11 @@ export class Parser {
     split<T>(subthreads: ParserThread<T>[]): ConsumeResult<T>;
     split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => ConsumeResult<R>): ConsumeResult<R>;
     split<T, R>(subthreads: ParserThread<T>[], callback?: (result: T, parser?: Parser) => ConsumeResult<R>):  ConsumeResult<R> {
-    // split(subthreads: ParserThread<any>[], callback?: any): any {
         if (subthreads.length === 0) {
-            return this.eliminate(); // TODO: make sure this actually helps
+            return this.eliminate();
         }
 
-        let {value: split_value, done} = this._split_iter.next();
+        let {value: split_value, done} = this.split_iter.next();
 
         if (done) {
             this.failure = new ParseRestart(subthreads.length);
