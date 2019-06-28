@@ -453,20 +453,6 @@ export class Parser {
 
         tokens = tokens.map(t => this.clamp_availability(t));
 
-        // TODO: optimize for the NEVER_TOKEN case
-        // if (tokens.length === 1 && tokens[0].token === NEVER_TOKEN) {
-        //     this.parse_result.push(
-        //         ({
-        //             kind: 'TokenMatch',
-        //             status: 'ErrorMatch',
-        //             actual: this.input_stream[this.pos] || '',
-        //             expected: sanitize(tokens[0])
-        //         } as const));
-        //     // increment pos
-        //     this.pos = this.input_stream.length;
-        //     throw new NoMatch();
-        // }
-
         let partial = false;
         let error = false;
         let i = 0
@@ -595,19 +581,15 @@ export class Parser {
             return this.eliminate(); // TODO: make sure this actually helps
         }
 
-        // console.time('call next');
         let {value: split_value, done} = this._split_iter.next();
-        // console.timeEnd('call next')
-
-        // console.time('unpack next');
-        // let {value: split_value, done} = zzz;
-        // console.timeEnd('unpack next');
-
+        
         if (done) {
             throw new ParseRestart(subthreads.length);
         }
         
         let st = subthreads[split_value];
+
+        // Could throw either NoMatch or ParseRestart
         let result = st(this);
 
         if (callback === undefined) {
