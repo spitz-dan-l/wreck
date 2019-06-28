@@ -23,11 +23,15 @@
 import { starts_with, tokenize, split_tokens } from './text_tools';
 import { array_last, drop_keys } from './utils';
 
-class NoMatch {};
+class NoMatch {
+    kind: 'NoMatch' = 'NoMatch';
+};
 
 class ParseRestart {
+    kind: 'ParseRestart' = 'ParseRestart';
     constructor(public n_splits: number) {}
 };
+
 export class ParseError extends Error {};
 
 export const SUBMIT_TOKEN = Symbol('SUBMIT');
@@ -51,18 +55,21 @@ export type TokenLabels = {
 
 export type RawConsumeSpec = {
     kind: 'RawConsumeSpec';
-    token: TaintedToken;
+    token: Token;
     availability: TokenAvailability;
     labels: TokenLabels;
 }
 
+export type TaintedRawConsumeSpec = Omit<RawConsumeSpec, 'token'> & {
+    token: TaintedToken;
+}
 
 export type MatchStatus = 'Match' | 'PartialMatch' | 'ErrorMatch';
 
 export type TokenMatch = {
     kind: 'TokenMatch',
     status: MatchStatus,
-    expected: RawConsumeSpec & { token: Token },
+    expected: RawConsumeSpec,
     actual: Token
 }
 
@@ -219,7 +226,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
         match_status = 'PartialMatch';
     } else {
         row = input_stream.map(tok => {
-            let expected: RawConsumeSpec & { token: Token } = {
+            let expected: RawConsumeSpec = {
                 kind: 'RawConsumeSpec',
                 token: tok,
                 availability: 'Available',
@@ -327,6 +334,14 @@ export type ConsumeSpecOverrides = Omit<ConsumeSpecObj, 'tokens'>;
 
 interface ConsumeSpecArray extends Array<ConsumeSpec> {};
 
+
+export type ParseValue<T> = T | NoMatch | ParseRestart;
+
+export function parse_failed<T>(result: ParseValue<T>): result is NoMatch | ParseRestart {
+    return (result instanceof NoMatch || result instanceof ParseRestart);
+}
+
+
 export class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
         this.input_stream = input_stream;
@@ -338,6 +353,8 @@ export class Parser {
     pos: number = 0;
 
     parse_result: TokenMatch[] = [];
+
+    // failure: NoMatch | ParseRestart | undefined = undefined;
 
     label_context: TokenLabels = {};
 
@@ -372,20 +389,36 @@ export class Parser {
         return call_or_return(this, result);
     }
 
-    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): void {
+    consume_fast(spec: ConsumeSpec): ParseValue<void>;
+    consume_fast<T>(spec: ConsumeSpec, callback: ParserThread<T>): ParseValue<T>;
+    consume_fast<T>(spec: ConsumeSpec, result: T): ParseValue<T>;
+    consume_fast(spec: ConsumeSpec, result?: any): any {
+        let status = this._consume_spec(spec, undefined, true);
+        if (parse_failed(status)) {
+            return status;
+        }
+        return call_or_return(this, result);
+    }
+
+    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides, _fast=false): ParseValue<void> {
         if (spec instanceof Array) {
             for (let s of spec) {
-                this._consume_spec(s, overrides);
+                const status = this._consume_spec(s, overrides, _fast);
+                if (_fast) {
+                    if (parse_failed(status)) {
+                        return status;
+                    }
+                }
             }
         } else if (typeof spec === 'string') {
-            return this._consume_string(spec, overrides);
+            return this._consume_string(spec, overrides, _fast);
         } else {
-            return this._consume_object(spec, overrides);
+            return this._consume_object(spec, overrides, _fast);
         }
     }
 
-    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): void {
-        let toks = split_tokens(spec);//tokenize(spec)[0];
+    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides, _fast=false): ParseValue<void> {
+        let toks = split_tokens(spec);
             
         let labels: TokenLabels = { filler: true };
         let availability: TokenAvailability = 'Available';
@@ -405,16 +438,22 @@ export class Parser {
         }
         
         for (let t of toks) {
-            this._consume(t.split('_').map(t => ({
+            let status = this._consume(t.split('_').map(t => ({
                 kind: 'RawConsumeSpec',
                 token: t,
                 availability,
                 labels
-            })));
+            })), _fast);
+
+            if (_fast) {
+                if (parse_failed(status)) {
+                    return status;
+                }
+            }
         }
     }
 
-    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): void {
+    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides, _fast=false): ParseValue<void> {
         let spec_: ConsumeSpecObj = {...spec};
 
         if (overrides) {
@@ -430,10 +469,10 @@ export class Parser {
             }
         }
 
-        return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'))
+        return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'), _fast);
     }
 
-    clamp_availability(spec: RawConsumeSpec) {
+    clamp_availability(spec: TaintedRawConsumeSpec) {
         if (availability_order[spec.availability] < availability_order[this.current_availability]) {
             return {...spec, availability: this.current_availability};
         } else if (availability_order[spec.availability] > availability_order[this.current_availability]) {
@@ -446,7 +485,11 @@ export class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    private _consume(tokens: RawConsumeSpec[]) {
+    private _consume_fast(tokens: TaintedRawConsumeSpec[]): ParseValue<void> {
+        return this._consume(tokens, true);
+    }
+
+    private _consume(tokens: TaintedRawConsumeSpec[], _fast=false) {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
@@ -499,13 +542,13 @@ export class Parser {
             break;
         }
 
-        function sanitize(spec: RawConsumeSpec): RawConsumeSpec & { token: Token } {
+        function sanitize(spec: TaintedRawConsumeSpec): RawConsumeSpec {
             if (spec.token !== NEVER_TOKEN) {
-                return <RawConsumeSpec & { token: Token }>spec;
+                return <RawConsumeSpec>spec;
             }
             let result = {...spec};
             result.token = '';
-            return <RawConsumeSpec & { token: Token }>result;
+            return <RawConsumeSpec>result;
         }
 
         if (partial) {
@@ -519,7 +562,11 @@ export class Parser {
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
-            throw new NoMatch();
+            if (_fast) {
+                return new NoMatch();
+            } else {
+                throw new NoMatch();
+            }
         }
 
         if (error) {
@@ -533,7 +580,11 @@ export class Parser {
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
-            throw new NoMatch();
+            if (_fast) {
+                return new NoMatch();
+            } else {
+                throw new NoMatch();
+            }
         }
 
         // push all tokens as valid
@@ -552,45 +603,94 @@ export class Parser {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        return <never>this._consume([{
+        return <never>this._eliminate(false);
+    }
+
+    eliminate_fast(): NoMatch {
+        /*
+            It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
+        */
+
+        return <NoMatch>this._eliminate(true);
+    }
+
+    _eliminate(_fast=false): any {
+        /*
+            It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
+        */
+        return this._consume([{
             kind: 'RawConsumeSpec',
             token: NEVER_TOKEN,
             labels: { filler: true },
             availability: 'Available'
-        } as const]);
+        } as const], _fast);
     }
+
 
     submit(): void;
     submit<T>(callback: ParserThread<T>): T;
     submit<T>(result: T): T;
     submit<T>(result?: any) {
-        this._consume([{
+        return this._submit(result, false);
+    }
+
+    submit_fast(): ParseValue<void>;
+    submit_fast<T>(callback: ParserThreadFast<T>): ParseValue<T>;
+    submit_fast<T>(result: T): ParseValue<T>;
+    submit_fast<T>(result?: any) {
+        return this._submit(result, true);
+    }
+
+    _submit<T>(result?: any, _fast=false): any {
+        let status = this._consume([{
             kind: 'RawConsumeSpec',
             token: SUBMIT_TOKEN,
             labels: { filler: true },
             availability: 'Available'
-        } as const]);
+        } as const], _fast);
+        if (parse_failed(status)) {
+            return status;
+        }
 
         return call_or_return(this, result);
     }
 
     split<T>(subthreads: ParserThread<T>[]): T;
     split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => R): R;
-    split(subthreads: ParserThread<any>[], callback?: any): any {
+    split(subthreads: ParserThreadFast<any>[], callback?: any): any {
+        return this._split(subthreads, callback, false);
+    }    
+
+    split_fast<T>(subthreads: ParserThreadFast<T>[]): ParseValue<T>;
+    split_fast<T, R>(subthreads: ParserThreadFast<T>[], callback: (result: T, parser?: Parser) => ParseValue<R>): ParseValue<R>;
+    split_fast(subthreads: ParserThreadFast<any>[], callback?: any): any {
+        return this._split(subthreads, callback, true);
+    }
+
+    _split(subthreads: ParserThreadFast<any>[], callback?: any, _fast=false): any {
         if (subthreads.length === 0) {
-            return this.eliminate(); // TODO: make sure this actually helps
+            return this.eliminate();
         }
 
         let {value: split_value, done} = this._split_iter.next();
         
         if (done) {
-            throw new ParseRestart(subthreads.length);
+            if (_fast) {
+                return new ParseRestart(subthreads.length);
+            } else {
+                throw new ParseRestart(subthreads.length);
+            }
         }
         
         let st = subthreads[split_value];
 
         // Could throw either NoMatch or ParseRestart
         let result = st(this);
+        if (_fast) {
+            if (parse_failed(result)) {
+                return result;
+            }
+        }
 
         if (callback === undefined) {
             return result;
@@ -600,99 +700,175 @@ export class Parser {
     }
 
     static run_thread<T>(raw: RawInput, t: ParserThread<T>): ParseResult<T> {
-        const [tokens, whitespace]: [Token[], string[]] = tokenize(raw.text);
-        if (raw.submit) {
-            tokens.push(SUBMIT_TOKEN);
-        }
+        const [tokens, whitespace] = convert_raw_input(raw);
+        const [results, parses] = match_input(tokens, t);
+        let parsing = build_parsing(raw, tokens, whitespace, parses);
 
-        // The core parsing algorithm
-        function match_input() {
-            let n_iterations = 0;
-            let n_splits = 0;
+        return wrap_result(results, parsing);
+    }
+
+    static run_thread_fast<T>(raw: RawInput, t: ParserThreadFast<T>): ParseResult<T> {
+        const [tokens, whitespace] = convert_raw_input(raw);
+        const [results, parses] = match_input_fast(tokens, t);
+        let parsing = build_parsing(raw, tokens, whitespace, parses);
+
+        return wrap_result(results, parsing);
+    }
+}
+
+function convert_raw_input(raw: RawInput): [Token[], string[]] {
+    const [tokens, whitespace]: [Token[], string[]] = tokenize(raw.text);
+    if (raw.submit) {
+        tokens.push(SUBMIT_TOKEN);
+    }
+    return [tokens, whitespace];
+}
+
+// The core parsing algorithm
+function match_input<T>(tokens: Token[], t: ParserThread<T>) {
+    let n_iterations = 0;
+    let n_splits = 0;
 
 
-            type Path = (number | Iterator<number>)[];
-            const frontier: Path[] = [[]];
-            const results: (T | NoMatch)[] = [];
-            const parse_results: TokenMatch[][] = [];
+    type Path = (number | Iterator<number>)[];
+    const frontier: Path[] = [[]];
+    const results: (T | NoMatch)[] = [];
+    const parse_results: TokenMatch[][] = [];
 
-            while (frontier.length > 0) {
-                const path = <Path>frontier.pop();
-                let splits_to_take;
-                if (path.length === 0) {
-                    splits_to_take = path;
-                } else {
-                    let n = (array_last(path) as Iterator<number>).next();
-                    if (n.done) {
-                        continue;
-                    } else {
-                        frontier.push(path);
-                    }
-                    splits_to_take = [...path.slice(0, -1), n.value];
-                }
-
-                const p = new Parser(tokens, splits_to_take);
-
-                let result: T | NoMatch = new NoMatch();
-                n_iterations++;
-                try {
-                    result = t(p);
-                } catch (e) {
-                    if (e instanceof NoMatch) {
-                        result = e;
-                    } else if (e instanceof ParseRestart) {
-                        n_splits++;
-                        const new_splits: number[] = [];
-                        for (let i = 0; i < e.n_splits; i++) {
-                            new_splits.push(i);
-                        } 
-                        frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
-                        continue;
-                    } else {
-                        throw e;
-                    }
-                }
-
-                results.push(result);
-                parse_results.push(p.parse_result);
-            }
-
-            return [results, parse_results] as const;
-        }
-
-        const [results, parses] = match_input();        
-
-        // Assembling the view object, data structures for building views of the parsed text
-        let view = compute_view(parses, tokens);
-
-        let parsing: Parsing = {
-            kind: 'Parsing',
-            view,
-            parses,
-            tokens,
-            whitespace,
-            raw
-        };
-
-        // Filter and find the single valid result to return
-        let valid_results = <T[]>results.filter(r => !(r instanceof NoMatch));
-
-        if (valid_results.length === 0) {
-            return {
-                kind: 'NotParsed',
-                parsing
-            }
-        } else if (valid_results.length > 1) {
-            throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
+    while (frontier.length > 0) {
+        const path = <Path>frontier.pop();
+        let splits_to_take;
+        if (path.length === 0) {
+            splits_to_take = path;
         } else {
-            let result = valid_results[0];
-            return {
-                kind: 'Parsed',
-                result: result,
-                parsing
-            };
-            
+            let n = (array_last(path) as Iterator<number>).next();
+            if (n.done) {
+                continue;
+            } else {
+                frontier.push(path);
+            }
+            splits_to_take = [...path.slice(0, -1), n.value];
         }
+
+        const p = new Parser(tokens, splits_to_take);
+
+        let result: T | NoMatch = new NoMatch();
+        n_iterations++;
+        try {
+            result = t(p);
+        } catch (e) {
+            if (e instanceof NoMatch) {
+                result = e;
+            } else if (e instanceof ParseRestart) {
+                n_splits++;
+                const new_splits: number[] = [];
+                for (let i = 0; i < e.n_splits; i++) {
+                    new_splits.push(i);
+                } 
+                frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                continue;
+            } else {
+                throw e;
+            }
+        }
+
+        results.push(result);
+        parse_results.push(p.parse_result);
+    }
+
+    return [results, parse_results] as const;
+}
+
+function match_input_fast<T>(tokens: Token[], t: ParserThreadFast<T>) {
+    let n_iterations = 0;
+    let n_splits = 0;
+
+
+    type Path = (number | Iterator<number>)[];
+    const frontier: Path[] = [[]];
+    const results: (T | NoMatch)[] = [];
+    const parse_results: TokenMatch[][] = [];
+
+    while (frontier.length > 0) {
+        const path = <Path>frontier.pop();
+        let splits_to_take;
+        if (path.length === 0) {
+            splits_to_take = path;
+        } else {
+            let n = (array_last(path) as Iterator<number>).next();
+            if (n.done) {
+                continue;
+            } else {
+                frontier.push(path);
+            }
+            splits_to_take = [...path.slice(0, -1), n.value];
+        }
+
+        const p = new Parser(tokens, splits_to_take);
+
+        let result: ParseValue<T> = new NoMatch();
+        n_iterations++;
+
+        try {
+            result = t(p);
+        } catch (e) {
+            if (parse_failed(e)) {
+                result = e;
+            } else {
+                throw e;
+            }
+        }
+
+        if (result instanceof ParseRestart) {
+            n_splits++;
+            const new_splits: number[] = [];
+            for (let i = 0; i < result.n_splits; i++) {
+                new_splits.push(i);
+            } 
+            frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+            continue;
+        }
+
+        results.push(result);
+        parse_results.push(p.parse_result);
+    }
+
+    return [results, parse_results] as const;
+}
+
+function build_parsing(raw: RawInput, tokens: Token[], whitespace: string[], parses: TokenMatch[][]) {
+    // Assembling the view object, data structures for building views of the parsed text
+    let view = compute_view(parses, tokens);
+    let parsing: Parsing = {
+        kind: 'Parsing',
+        view,
+        parses,
+        tokens,
+        whitespace,
+        raw
+    };
+    return parsing;
+}
+
+function wrap_result<T>(results: (T | NoMatch)[], parsing: Parsing): ParseResult<T> {
+    // Filter and find the single valid result to return
+    let valid_results = <T[]>results.filter(r => !(r instanceof NoMatch));
+
+    if (valid_results.length === 0) {
+        return {
+            kind: 'NotParsed',
+            parsing
+        }
+    } else if (valid_results.length > 1) {
+        throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
+    } else {
+        let result = valid_results[0];
+        return {
+            kind: 'Parsed',
+            result: result,
+            parsing
+        };
+        
     }
 }
 
@@ -707,17 +883,28 @@ export function raw(text: string, submit: boolean = true): RawInput {
 }
 
 export type ParserThread<T> = (p: Parser) => T;
+export type ParserThreadFast<T> = (p: Parser) => ParseValue<T>;
 
 // Helper to create a gated ParserThread. cond() is called, and if its condition is 
 // not met, the thread is eliminated, else it runs the parser thread, t.
 export function gate<Ret>(cond: () => boolean, t: ParserThread<Ret>): ParserThread<Ret> {
     return p => {
         if (!cond()) {
-            p.eliminate();
+            return p.eliminate();
         }
         return t(p);
     }
 }
+
+export function gate_fast<Ret>(cond: () => boolean, t: ParserThreadFast<Ret>): ParserThreadFast<Ret> {
+    return p => {
+        if (!cond()) {
+            return p.eliminate_fast();
+        }
+        return t(p);
+    }
+}
+
 
 
 // Helper to extract all possible valid inputs from a parser thread
@@ -734,9 +921,7 @@ Options
 
 */
 
-export type PossibleConsumeSpec = RawConsumeSpec & {token: Token};
-
-export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (consume_spec: PossibleConsumeSpec[]) => boolean) {
+export function traverse_thread<T>(thread: ParserThreadFast<T>, traverse_command?: (consume_spec: RawConsumeSpec[]) => boolean, _fast=false) {
     let n_partials = 0;
     let n_matches = 0;
 
@@ -746,7 +931,13 @@ export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (
 
     while (frontier.length > 0) {
         let cmd = frontier.shift()!;
-        let res = Parser.run_thread(cmd, thread);
+
+        let res: ParseResult<T>;
+        if (_fast) {
+            res = Parser.run_thread_fast(cmd, thread);
+        } else {
+            res = Parser.run_thread(cmd, <ParserThread<T>>thread);
+        }
         if (res.kind === 'Parsed') {
             result[cmd.text] = res;
             n_matches++;

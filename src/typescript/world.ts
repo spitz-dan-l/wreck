@@ -21,7 +21,7 @@
 */
 
 import { infer_message_labels, Message, INITIAL_MESSAGE, standard_render } from './message';
-import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows } from './parser';
+import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows, ParseValue, ParserThreadFast, parse_failed } from './parser';
 import { deep_equal, update, array_last } from './utils';
 import { Interpretations, pre_interp } from './interpretation';
 
@@ -36,6 +36,7 @@ export interface World {
 export type WorldUpdater<W extends World> = (world: W) => W;
 
 export type CommandHandler<W extends World> = (world: W, parser: Parser) => W;
+export type CommandHandlerFast<W extends World> = (world: W, parser: Parser) => ParseValue<W>;
 
 export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
@@ -59,24 +60,31 @@ export type WorldSpec<W extends World> = {
     // prepare the world for the command
     readonly pre?: WorldUpdater<W>,
 
-    // Should return a new world with world set to the new world's prev
-    readonly handle_command: CommandHandler<W>,
-
     // update the world after handling the command
     readonly post?: Narrator<W>,
 
     readonly css_rules?: string[]
-}
+} & (
+    {
+        // Should return a new world with world set to the new world's prev
+        readonly handle_command: CommandHandler<W>,
+        readonly handle_command_fast?: undefined
 
-export function make_world_spec<W extends World>(spec: {
-    initial_world: W,
-    pre?: WorldUpdater<W>,
-    handle_command: CommandHandler<W>,
-    post?: Narrator<W>,
-    css_rules?: string[]
-}): WorldSpec<W> {
+    } |
+    {
+                // Should return a new world with world set to the new world's prev
+        readonly handle_command?: undefined,
+        readonly handle_command_fast: CommandHandlerFast<W>
+    }
+)
+
+type WorldSpecFast<W extends World> = WorldSpec<W> & { handle_command: undefined };
+type WorldSpecSlow<W extends World> = WorldSpec<W> & { handle_command_fast: undefined };
+
+export function make_world_spec<W extends World>(spec: WorldSpec<W>): WorldSpec<W> {
     return <WorldSpec<W>>spec;
 }
+
 
 export type CommandResult<W extends World> = {
     kind: 'CommandResult',
@@ -85,11 +93,13 @@ export type CommandResult<W extends World> = {
     possible_world: W | null
 };
 
-export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
+
+export function update_thread_maker<W extends World>(spec: WorldSpec<W>): (w: W) => ParserThreadFast<W>;
+export function update_thread_maker<W extends World>(spec: any) {
     return (world: W) => make_update_thread(spec, world);
 }
 
-export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W & {parsing: undefined}>;
+export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThreadFast<W>;
 export function make_update_thread(spec: WorldSpec<World>, world: World) {
     let next_state = world;
 
@@ -108,8 +118,16 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
 
     return function update_thread(parser: Parser) {
         // First handle the command
-        let next_state1 = spec.handle_command(next_state, parser);
-        
+        let next_state1: World;
+        if (spec.handle_command !== undefined) {
+            next_state1 = spec.handle_command(next_state, parser);
+        } else {
+            let maybe_next_state1: ParseValue<World> = spec.handle_command_fast(next_state, parser);
+            if (parse_failed(maybe_next_state1)) {
+                return maybe_next_state1;
+            }
+            next_state1 = maybe_next_state1;
+        }    
         if (spec.post !== undefined) {
             next_state1 = <World>spec.post(next_state1, world);
         }
@@ -122,8 +140,12 @@ export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, com
 export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {
     let thread = make_update_thread(spec, world);
 
-    let result = Parser.run_thread(command, thread);
-
+    let result: ParseResult<World>;
+    if (spec.handle_command !== undefined) {
+        result = Parser.run_thread(command, <ParserThread<World>>thread);
+    } else {
+        result = Parser.run_thread_fast(command, thread);
+    }
     if (result.kind === 'NotParsed') {
         let possible_world: World | null = null;
         // TODO: Do a bunch more validation here to make sure we're good
@@ -155,7 +177,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
 export type WorldDriver<W extends World> = {
     initial_result: CommandResult<W>,
     update: (world: W, command: RawInput) => CommandResult<W>,
-    thread_maker: (world: W) => ParserThread<W & { parsing: undefined }>,
+    thread_maker: (world: W) => ParserThreadFast<W>,
     css_rules?: string[]
 }
 
