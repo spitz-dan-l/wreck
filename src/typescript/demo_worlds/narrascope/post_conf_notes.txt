@@ -159,6 +159,7 @@ Categories of work
 - Code restructuring
 
 Plan
-1. Supervenience initial experiment
+1. DONE Supervenience initial experiment
+2?. Find a coherent setup for Gists
 2. Animations overhaul - necessary for many downstream polish things
 3. Pick off smaller tasks from the remaining categories

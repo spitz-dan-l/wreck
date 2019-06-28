@@ -763,7 +763,7 @@ Options
 
 */
 
-export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (consume_spec: RawConsumeSpec[]) => boolean) {
+export function traverse_thread<T>(thread: ParserThread<T>, command_filter?: (consume_spec: RawConsumeSpec[]) => boolean) {
     let n_partials = 0;
     let n_matches = 0;
 
@@ -787,9 +787,9 @@ export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (
         for (let k of Object.keys(grps)) {
             let grp = grps[k];
 
-            if (traverse_command !== undefined) {
+            if (command_filter !== undefined) {
                 let expected = grp[0].map(m => m!.expected);
-                if (!traverse_command(expected)) {
+                if (!command_filter(expected)) {
                     continue;
                 }
             }

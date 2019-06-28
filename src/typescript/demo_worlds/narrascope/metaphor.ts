@@ -9,7 +9,7 @@ import { AbstractionID, ActionID, FacetID, global_lock, Owner, Puffers, Venience
 export interface Metaphors {
     gist: Gist | null,
 
-    current_interpretation: number | null;
+    readonly current_interpretation: number | null;
 
     has_acquired: {[K in AbstractionID]?: boolean};
 
@@ -173,7 +173,6 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
             }
 
             if (world.current_interpretation === null) {
-
                 // TODO: The actual index should be the most recent world
                 // in which certain important bits of state have changed
                 if (world.previous === null) {
@@ -197,10 +196,7 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                     );
                 }
 
-                let interp_world = parser.split(threads);
-                if (failed(interp_world)) {
-                    return interp_world;
-                }
+                return parser.split(threads, (interp_world) => {
 
                 const index = interp_world.index;
                 
@@ -237,20 +233,15 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                         action: [`You contemplate ${interp_world.gist!.name}. A sense of focus begins to permeate your mind.`],
                         description: descriptions
                     }),
-                );
+                )});
             } else {
-                parser.consume('end_contemplation', () => parser.submit());
-                if (parser.failure) {
-                    return parser.failure;
-                }
-
-
-                return update(world,
+                return parser.consume('end_contemplation', () => parser.submit(() =>
+                update(world,
                     metaphor_lock.release,
                     {
                         current_interpretation: null,
                         interpretations: {
-                            [world.current_interpretation]: {'interpretation-active': false}
+                            [world.current_interpretation!]: {'interpretation-active': false}
                         },
                         has_tried: () => ({}),
                         
@@ -258,7 +249,7 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                     message_updater({
                         action: [`Your mind returns to a less focused state.`]
                     }),
-                );
+                )));
             }
         }
     },
@@ -318,53 +309,52 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
 
                 threads.push(() => {
                     let already_solved = spec.solved(world);
-                    parser.consume(
-                        {
-                            tokens: abs.get_cmd(action.get_cmd(spec.phrase)),
-                            used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
-                            labels: { interp: true, filler: true }
-                        },
-                        () => parser.submit());
-                    if (parser.failure) {
-                        return parser.failure;
-                    }
+                    return (
+                        parser.consume(
+                            {
+                                tokens: abs.get_cmd(action.get_cmd(spec.phrase)),
+                                used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
+                                labels: { interp: true, filler: true }
+                            }, () =>
+                        parser.submit(() => {
 
-                    world = spec.handle_action(qual_action, world);
+                        world = spec.handle_action(qual_action, world);
 
-                    world = update(world,
-                        interpretation_updater(world, (w) =>
-                            w.index > world.current_interpretation! ? {
-                                [`descr-${abs.slug}-blink`]: Symbol('Once'),
-                                [`descr-${action.slug}-blink`]: Symbol('Once'),
-                                [`descr-${spec.slug}-blink`]: Symbol('Once')
-                            } : {}),
-                        { 
-                            interpretations: {
-                                [interpretted_world.index]: {
-                                    [`interp-${spec.slug}-blink`]: Symbol('Once')
-                                }
-                            },
-                            has_tried: { [action.name]: { [spec.name]: true }}
-                        });
-
-                    let solved = spec.solved(world)
-                    if (solved) {
-                        if (!already_solved) {
-                            return update(world,
-                                { interpretations: { [interpretted_world.index]: {
-                                    [`interp-${spec.slug}`]: true
-                                }}}
-                            );
-                        } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
-                            return update(world, {
-                                interpretations: { [interpretted_world.index]: {
-                                    [`interp-${spec.slug}-solved-blink`]: Symbol('Once')
-                                }}
+                        world = update(world,
+                            interpretation_updater(world, (w) =>
+                                w.index > world.current_interpretation! ? {
+                                    [`descr-${abs.slug}-blink`]: Symbol('Once'),
+                                    [`descr-${action.slug}-blink`]: Symbol('Once'),
+                                    [`descr-${spec.slug}-blink`]: Symbol('Once')
+                                } : {}),
+                            { 
+                                interpretations: {
+                                    [interpretted_world.index]: {
+                                        [`interp-${spec.slug}-blink`]: Symbol('Once')
+                                    }
+                                },
+                                has_tried: { [action.name]: { [spec.name]: true }}
                             });
+
+                        let solved = spec.solved(world)
+                        if (solved) {
+                            if (!already_solved) {
+                                return update(world,
+                                    { interpretations: { [interpretted_world.index]: {
+                                        [`interp-${spec.slug}`]: true
+                                    }}}
+                                );
+                            } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
+                                return update(world, {
+                                    interpretations: { [interpretted_world.index]: {
+                                        [`interp-${spec.slug}-solved-blink`]: Symbol('Once')
+                                    }}
+                                });
+                            }
                         }
-                    }
-                    return world;
-                
+                        return world;
+                    
+                    }))); 
                 });
             }
         }
