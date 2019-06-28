@@ -21,7 +21,7 @@
 */
 
 import { infer_message_labels, Message, INITIAL_MESSAGE, standard_render } from './message';
-import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows, ConsumeResult, failed } from './parser';
+import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows, ParseValue, failed } from './parser';
 import { deep_equal, update, array_last } from './utils';
 import { Interpretations, pre_interp } from './interpretation';
 
@@ -35,7 +35,7 @@ export interface World {
 
 export type WorldUpdater<W extends World> = (world: W) => W;
 
-export type CommandHandler<W extends World> = (world: W, parser: Parser) => ConsumeResult<W>;
+export type CommandHandler<W extends World> = (world: W, parser: Parser) => ParseValue<W>;
 
 export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 

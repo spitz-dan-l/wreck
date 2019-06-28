@@ -1,5 +1,5 @@
 import {World, WorldSpec, update_thread_maker} from './world';
-import { traverse_thread, ParserThread, PossibleConsumeSpec } from './parser';
+import { traverse_thread, ParserThread, RawConsumeSpec } from './parser';
 import { deep_equal, drop_keys } from './utils';
 import { find_historical } from './interpretation';
 
@@ -28,7 +28,7 @@ export type NarrativeDimension<W extends World> = (w: W) => any;
 export type NarrativeGoal<W extends World> = (w: W) => boolean;
 
 
-export type CommandFilter<W extends World> = (w: W, command: PossibleConsumeSpec[]) => boolean;
+export type CommandFilter<W extends World> = (w: W, command: RawConsumeSpec[]) => boolean;
 
 function get_score<W extends World>(w: W, goals: NarrativeGoal<W>[]) {
     return goals.map(g => g(w)).reduce((acc, goal_met) => acc + (goal_met ? 1 : 0), 0);

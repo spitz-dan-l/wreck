@@ -3,7 +3,7 @@ import { MessageUpdateSpec, message_updater } from "../../message";
 import { ConsumeSpec, ParserThread, failed } from "../../parser";
 import { Puffer } from "../../puffer";
 import { capitalize } from '../../text_tools';
-import { update, Updater } from "../../utils";
+import { update, Updater, let_ } from "../../utils";
 import { AbstractionID, ActionID, FacetID, global_lock, Owner, Puffers, Venience, Initializers } from "./prelude";
 
 export interface Metaphors {
@@ -63,32 +63,28 @@ function make_abstraction(spec: Abstraction): Puffer<Venience> {
     return null_lock.lock_puffer({
         handle_command: { 
             kind: 'Stages',
-            1: (world, parser) => {
-                if (!world.has_acquired[spec.name]) {
-                    return parser.eliminate();
-                }
-
-                parser.consume(['notes about', spec.name_cmd], () => parser.submit());
-                if (parser.failure) {
-                    return parser.failure;
-                }
+            1: ((world, parser) => 
+                !world.has_acquired[spec.name] ?
+                    parser.eliminate() :
+                
+                parser.consume(['notes about', spec.name_cmd], () => parser.submit(() => {
 
                 let msg: MessageUpdateSpec = {
                     description: ['<div class="interp">'+spec.description+'</div>']
                 };
 
                 if (spec.actions.length === 1) {
-                    let act = spec.actions[0];
-                    msg.description!.push(
+                    let_((act = spec.actions[0]) =>
+                    (<any>msg).description!.push(
                         `${capitalize(spec.name)} confers:`,
                         `<span class="descr-${act.slug}">${act.description}</span>`
-                    );
+                    ))
                 } else {
-                    msg.description!.push(
+                    (<any>msg).description!.push(
                         `<br/>Comprising ${spec.name} confers:`,
                         ...spec.actions.map(act =>
                             `<blockquote class="descr-${act.slug}">${act.description}</blockquote>`)
-                    );
+                    )
                 }
 
                 return update(world,
@@ -99,7 +95,8 @@ function make_abstraction(spec: Abstraction): Puffer<Venience> {
                             cmd: ['my_notes about', spec.name_cmd]
                         }
                     });
-        }},
+            })))
+        },
         css_rules: [
             `${spec.actions.map(a =>
                 `.history .would-add-descr-${a.slug}-blink .descr-${a.slug},\n`)
@@ -145,16 +142,11 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
         1: (world, parser) => {
             let list_consumer = null_lock.lock_parser_thread(
                 world,
-                () => {
-                    if (!any_abstractions(world)) {
-                        return parser.eliminate();
-                    }
+                (() => 
+                    !any_abstractions(world) ?
+                        parser.eliminate() :
 
-                    parser.consume('notes', () => parser.submit());
-
-                    if (parser.failure) {
-                        return parser.failure;
-                    }
+                    parser.consume('notes', () => parser.submit(() => {
 
                     let abstractions = get_abstractions(world);
 
@@ -171,7 +163,8 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                             }
                         }
                     )
-                });
+                })))
+            );
             return list_consumer(parser);
         },
         2: (world, parser) => {

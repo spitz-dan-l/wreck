@@ -335,3 +335,8 @@ export const statics =
 //   // ...
 // }
 
+export const let_ = <T>(f: (...args: any) => T) => f();
+
+
+
+

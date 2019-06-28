@@ -3,7 +3,7 @@ import { random_choice } from '../text_tools';
 import { appender, update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
 import { interpretation_updater } from '../interpretation';
-import { failed, ConsumeResult } from '../parser';
+import { failed, ParseValue } from '../parser';
 
 export interface BirdWorld extends World {}
 

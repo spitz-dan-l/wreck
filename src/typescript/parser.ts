@@ -54,18 +54,21 @@ export type TokenLabels = {
 
 export type RawConsumeSpec = {
     kind: 'RawConsumeSpec';
-    token: TaintedToken;
+    token: Token;
     availability: TokenAvailability;
     labels: TokenLabels;
 }
 
+export type TaintedRawConsumeSpec = Omit<RawConsumeSpec, 'token'> & {
+    token: TaintedToken;
+}
 
 export type MatchStatus = 'Match' | 'PartialMatch' | 'ErrorMatch';
 
 export type TokenMatch = {
     kind: 'TokenMatch',
     status: MatchStatus,
-    expected: RawConsumeSpec & { token: Token },
+    expected: RawConsumeSpec,
     actual: Token
 }
 
@@ -222,7 +225,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
         match_status = 'PartialMatch';
     } else {
         row = input_stream.map(tok => {
-            let expected: RawConsumeSpec & { token: Token } = {
+            let expected: RawConsumeSpec = {
                 kind: 'RawConsumeSpec',
                 token: tok,
                 availability: 'Available',
@@ -330,9 +333,9 @@ export type ConsumeSpecOverrides = Omit<ConsumeSpecObj, 'tokens'>;
 
 interface ConsumeSpecArray extends Array<ConsumeSpec> {};
 
-export type ConsumeResult<T=void> = T | NoMatch | ParseRestart;
+export type ParseValue<T> = T | NoMatch | ParseRestart;
 
-export function failed<T>(result: ConsumeResult<T>): result is NoMatch | ParseRestart {
+export function failed<T>(result: ParseValue<T>): result is NoMatch | ParseRestart {
     return (result instanceof NoMatch || result instanceof ParseRestart);
 }
 
@@ -378,9 +381,9 @@ export class Parser {
         }
     }
 
-    consume(spec: ConsumeSpec): ConsumeResult;
-    consume<T>(spec: ConsumeSpec, callback: ParserThread<T>): ConsumeResult<T>;
-    consume<T>(spec: ConsumeSpec, result: T): ConsumeResult<T>;
+    consume(spec: ConsumeSpec): ParseValue<void>;
+    consume<T>(spec: ConsumeSpec, callback: ParserThread<T>): ParseValue<T>;
+    consume<T>(spec: ConsumeSpec, result: T): ParseValue<T>;
     consume(spec: ConsumeSpec, result?: any): any {
         let status = this._consume_spec(spec);
         if (failed(status)) {
@@ -390,7 +393,7 @@ export class Parser {
         return call_or_return(this, result);
     }
 
-    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): ConsumeResult {
+    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): ParseValue<void> {
         if (spec instanceof Array) {
             for (let s of spec) {
                 if (failed(this._consume_spec(s, overrides))) {
@@ -405,7 +408,7 @@ export class Parser {
         }
     }
 
-    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): ConsumeResult {
+    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): ParseValue<void> {
         let toks = split_tokens(spec)//tokenize(spec)[0];
             
         let labels: TokenLabels = { filler: true };
@@ -439,7 +442,7 @@ export class Parser {
         }
     }
 
-    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): ConsumeResult {
+    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): ParseValue<void> {
         let spec_: ConsumeSpecObj = {...spec};
 
         if (overrides) {
@@ -458,7 +461,7 @@ export class Parser {
         return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'))
     }
 
-    clamp_availability(spec: RawConsumeSpec) {
+    clamp_availability(spec: TaintedRawConsumeSpec) {
         if (availability_order[spec.availability] < availability_order[this.current_availability]) {
             return {...spec, availability: this.current_availability};
         } else if (availability_order[spec.availability] > availability_order[this.current_availability]) {
@@ -471,7 +474,7 @@ export class Parser {
         It is expected that every ParserThread is wrapped in an exception handler for
         this case.
     */
-    private _consume(tokens: RawConsumeSpec[]): ConsumeResult {
+    private _consume(tokens: TaintedRawConsumeSpec[]): ParseValue<void> {
         if (!is_parse_result_valid(this.parse_result)) {
             debugger;
             throw new ParseError('Tried to consume() on a done parser.');
@@ -524,13 +527,13 @@ export class Parser {
             break;
         }
 
-        function sanitize(spec: RawConsumeSpec): RawConsumeSpec & { token: Token } {
+        function sanitize(spec: TaintedRawConsumeSpec): RawConsumeSpec {
             if (spec.token !== NEVER_TOKEN) {
-                return <RawConsumeSpec & { token: Token }>spec;
+                return <RawConsumeSpec>spec;
             }
             let result = {...spec};
             result.token = '';
-            return <RawConsumeSpec & { token: Token }>result;
+            return <RawConsumeSpec>result;
         }
 
         if (partial) {
@@ -585,9 +588,9 @@ export class Parser {
         } as const]);
     }
 
-    submit(): ConsumeResult;
-    submit<T>(callback: ParserThread<T>): ConsumeResult<T>;
-    submit<T>(result: T): ConsumeResult<T>;
+    submit(): ParseValue<void>;
+    submit<T>(callback: ParserThread<T>): ParseValue<T>;
+    submit<T>(result: T): ParseValue<T>;
     submit<T>(result?: any) {
         let status = this._consume([{
             kind: 'RawConsumeSpec',
@@ -602,9 +605,9 @@ export class Parser {
         return call_or_return(this, result);
     }
 
-    split<T>(subthreads: ParserThread<T>[]): ConsumeResult<T>;
-    split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => ConsumeResult<R>): ConsumeResult<R>;
-    split<T, R>(subthreads: ParserThread<T>[], callback?: (result: T, parser?: Parser) => ConsumeResult<R>):  ConsumeResult<R> {
+    split<T>(subthreads: ParserThread<T>[]): ParseValue<T>;
+    split<T, R>(subthreads: ParserThread<T>[], callback: (result: T, parser?: Parser) => ParseValue<R>): ParseValue<R>;
+    split<T, R>(subthreads: ParserThread<T>[], callback?: (result: T, parser?: Parser) => ParseValue<R>):  ParseValue<R> {
         if (subthreads.length === 0) {
             return this.eliminate();
         }
@@ -664,7 +667,7 @@ export class Parser {
 
                 const p = new Parser(tokens, splits_to_take);
 
-                let result: ConsumeResult<T> = new NoMatch();
+                let result: ParseValue<T> = new NoMatch();
                 n_iterations++;
 
                 result = t(p);
@@ -732,7 +735,7 @@ export function raw(text: string, submit: boolean = true): RawInput {
     return { kind: 'RawInput', text, submit };
 }
 
-export type ParserThread<T> = (p: Parser) => ConsumeResult<T>;
+export type ParserThread<T> = (p: Parser) => ParseValue<T>;
 
 // Helper to create a gated ParserThread. cond() is called, and if its condition is 
 // not met, the thread is eliminated, else it runs the parser thread, t.
@@ -760,9 +763,7 @@ Options
 
 */
 
-export type PossibleConsumeSpec = RawConsumeSpec & {token: Token};
-
-export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (consume_spec: PossibleConsumeSpec[]) => boolean) {
+export function traverse_thread<T>(thread: ParserThread<T>, traverse_command?: (consume_spec: RawConsumeSpec[]) => boolean) {
     let n_partials = 0;
     let n_matches = 0;
 
