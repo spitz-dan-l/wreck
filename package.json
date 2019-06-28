@@ -7,7 +7,8 @@
     "test": "tsc && mocha ./build/tests",
     "debug": "echo 'Remember to open chrome://inspect in a tab before running this.\n' && tsc && mocha --inspect-brk ./build/tests",
     "build": "webpack --progress --colors --mode production",
-    "build-dev": "webpack --progress --colors --mode development"
+    "build-dev": "webpack --progress --colors --mode development",
+    "preprocess": "node scripts/tsmorph_test.js"
   },
   "repository": {
     "type": "git",
@@ -32,6 +33,7 @@
     "babel-loader": "8.0.5",
     "babel-polyfill": "^6.23.0",
     "mocha": "^6.1.4",
+    "ts-morph": "^2.3.0",
     "ts-node": "^8.1.0",
     "typescript": "3.5",
     "webpack": "4.30.0",

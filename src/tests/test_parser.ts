@@ -153,6 +153,109 @@ describe('parser', () => {
 
         assert.equal((result as Parsed<string>).result, 'coincidence');
     });
+
+    function parse_failed(x: any) { return undefined }
+
+    it.only('Demo each form', () => {
+
+        // This is what imperative style looks like when the parser is
+        // implemented with exceptions for control flow
+        function imperative_style_with_exceptions(p: Parser) {
+            p.consume('look at'); // could throw NoMatch
+
+            let who = p.split([ // could throw Split or NoMatch
+                () => p.consume('me', 'me'),
+                () => p.consume('mewtwo', 'mewtwo'),
+                () => p.consume('steven', 'steven'),
+                () => p.consume('martha', 'martha')
+            ]);
+
+            if (who === 'steven') {
+                p.eliminate(); // throws NoMatch
+            }
+
+            let how = p.split([ // could throw Split or NoMatch
+                () => p.consume('happily', 'happily'),
+                () => p.consume('sadly', 'sadly'),
+                () => 'neutrally'
+            ]);
+
+            p.submit(); // could throw NoMatch
+
+            return `You looked at ${who} ${how}`;
+        }
+
+        function imperative_style_with_explicit_early_returns(p: Parser) {
+            let _ = p.consume('look at'); // could return NoMatch
+            if (parse_failed(_)) {
+                return _
+            }
+
+            let who = p.split([ // could return Split or NoMatch
+                () => p.consume('me', 'me'),
+                () => p.consume('mewtwo', 'mewtwo'),
+                () => p.consume('steven', 'steven'),
+                () => p.consume('martha', 'martha')
+            ]);
+            if (parse_failed(who)) {
+                return who;
+            }
+
+            if (who === 'steven') {
+                return p.eliminate(); // returns NoMatch
+            }
+
+            let how = p.split([ // could returns Split or NoMatch
+                () => p.consume('happily', 'happily'),
+                () => p.consume('sadly', 'sadly'),
+                () => 'neutrally'
+            ]);
+            if (parse_failed(how)) {
+                return how;
+            }
+
+            _ = p.submit(); // could return NoMatch
+            if (parse_failed(_)) {
+                return _;
+            }
+
+            return `You looked at ${who} ${how}`;
+        }
+
+
+        // This is what functional style looks like regardless of the implementation
+        const functional_style = ((p: Parser) =>
+            p.consume('look at', () =>
+            
+            p.split([
+                () => p.consume('me', 'me'),
+                () => p.consume('mewtwo', 'mewtwo'),
+                () => p.consume('steven', 'steven'),
+                () => p.consume('martha', 'martha')
+            ], (who) => 
+
+            who === 'steven'
+                ? p.eliminate() :
+
+            p.split([
+                () => p.consume('happily', 'happily'),
+                () => p.consume('sadly', 'sadly'),
+                () => 'neutrally'
+            ], (how) =>
+
+            p.submit(() =>
+
+            `You looked at ${who} ${how}`
+        )))));
+
+        let command = raw('look at me');
+
+        // Run them using
+        Parser.run_thread(command, imperative_style_with_exceptions);
+        Parser.run_thread(command, imperative_style_with_explicit_early_returns);
+        Parser.run_thread(command, functional_style);
+    })
+
 });
 
 
