@@ -411,12 +411,12 @@ export class Parser {
     private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): ParseValue<void> {
         let toks = split_tokens(spec)//tokenize(spec)[0];
             
-        let labels: TokenLabels = { filler: true };
+        let labels: TokenLabels = this.label_context; //{ filler: true };
         let availability: TokenAvailability = 'Available';
         
         if (overrides) {
             if (overrides.labels) {
-                labels = overrides.labels;
+                labels = {...labels, ...overrides.labels};
             }
             
             if (overrides.used) {
@@ -476,7 +476,6 @@ export class Parser {
     */
     private _consume(tokens: TaintedRawConsumeSpec[]): ParseValue<void> {
         if (!is_parse_result_valid(this.parse_result)) {
-            debugger;
             throw new ParseError('Tried to consume() on a done parser.');
         }
 
@@ -682,6 +681,12 @@ export class Parser {
                     continue;
                 }
 
+                if (!(result instanceof NoMatch) && (p.parse_result.length === 0 || array_last(p.parse_result)!.expected.token !== SUBMIT_TOKEN)) {
+                    let expected_command: string = p.parse_result.map(r => r.expected.token).join(' ');
+
+                    throw new ParseError("Command did not end in SUBMIT: " + expected_command);
+                }
+
                 results.push(result);
                 parse_results.push(p.parse_result);
             }
@@ -739,15 +744,11 @@ export type ParserThread<T> = (p: Parser) => ParseValue<T>;
 
 // Helper to create a gated ParserThread. cond() is called, and if its condition is 
 // not met, the thread is eliminated, else it runs the parser thread, t.
-export function gate<Ret>(cond: () => boolean, t: ParserThread<Ret>): ParserThread<Ret> {
-    return p => {
-        if (!cond()) {
-            return p.eliminate();
-        }
-        return t(p);
-    }
+export function gate<Ret>(cond: boolean, t: ParserThread<Ret>): ParserThread<Ret> {
+    return p => !cond
+        ? p.eliminate()
+        : t(p);
 }
-
 
 // Helper to extract all possible valid inputs from a parser thread
 /*

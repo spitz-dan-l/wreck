@@ -3,7 +3,7 @@ import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
 import { new_hex_world, Hex } from '../typescript/demo_worlds/hex_port';
 import { new_bird_world, BirdWorld } from '../typescript/demo_worlds/puffer_bird_world';
-import { VenienceWorld, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
+import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
 import { Gist } from '../typescript/demo_worlds/narrascope/metaphor';
 import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, CommandFilter } from '../typescript/supervenience';
 import { find_index } from '../typescript/interpretation';
@@ -11,8 +11,8 @@ import { deep_equal, included, array_last, drop_keys } from '../typescript/utils
 
 
 
-describe.only('supervenience birdworld', () => {
-    it('beats birdworld', () => {
+describe('supervenience birdworld', () => {
+    it.only('beats birdworld', () => {
         
         let {initial_result, thread_maker} = new_bird_world();
 
@@ -48,11 +48,11 @@ describe.only('supervenience birdworld', () => {
 describe.only('supervenience narrascope', () => {
     let {initial_result, thread_maker} = new_venience_world();
 
-    function goal_met(w: VenienceWorld): boolean {
+    function goal_met(w: Venience): boolean {
         return w.end;
     }
 
-    let goals: NarrativeGoal<VenienceWorld>[] = [
+    let goals: NarrativeGoal<Venience>[] = [
         w => !!w.has_chill,
         w => !!w.has_recognized_something_wrong,
         w => !!w.is_curious_about_history,
@@ -62,7 +62,7 @@ describe.only('supervenience narrascope', () => {
         goal_met
     ]
 
-    let space: NarrativeDimension<VenienceWorld>[] = [
+    let space: NarrativeDimension<Venience>[] = [
         w => {
             if (w.owner !== 'Metaphor') {
                 return false;
@@ -80,7 +80,7 @@ describe.only('supervenience narrascope', () => {
         w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
     ];
 
-    let command_filter: CommandFilter<VenienceWorld> = (w, cmd) => {
+    let command_filter: CommandFilter<Venience> = (w, cmd) => {
         if (cmd[0] && cmd[0].token === 'notes') {
             return false;
         }
@@ -88,7 +88,7 @@ describe.only('supervenience narrascope', () => {
     }
 
     it('beats narrascope demo using dimensions', () => {
-        let spec: FutureSearchSpec<VenienceWorld> = {
+        let spec: FutureSearchSpec<Venience> = {
             thread_maker,
             goals: [goal_met],
             space
@@ -97,7 +97,7 @@ describe.only('supervenience narrascope', () => {
     });
 
     it('beats narrascope demo using subgoals', () => {
-        let spec: FutureSearchSpec<VenienceWorld> = {
+        let spec: FutureSearchSpec<Venience> = {
             thread_maker,
             goals,
             space: [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations')],
@@ -107,7 +107,7 @@ describe.only('supervenience narrascope', () => {
     });
 
     it('beats narrascope demo using both', () => {
-        let spec: FutureSearchSpec<VenienceWorld> = {
+        let spec: FutureSearchSpec<Venience> = {
             thread_maker,
             goals,
             space
@@ -116,7 +116,7 @@ describe.only('supervenience narrascope', () => {
     });
 
     it('beats narrascope demo using both + command filtering', () => {
-        let spec: FutureSearchSpec<VenienceWorld> = {
+        let spec: FutureSearchSpec<Venience> = {
             thread_maker,
             goals,
             space,

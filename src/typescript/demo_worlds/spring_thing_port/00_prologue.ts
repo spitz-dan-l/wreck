@@ -403,7 +403,7 @@ ObserverMoments(
         });
 
         let open_consumer = gate(
-            () => world.has_perceived['alcove, envelope'] || false,
+            world.has_perceived['alcove, envelope'] || false,
             make_transitioner(world, {
                 'desk, opening the envelope': '*open the_envelope'
             }));
@@ -671,7 +671,7 @@ ObserverMoments(
         };
 
         let end_consumer = gate(
-            () => Object.entries(world.alcove_interp).every(([k, v]) => v),
+            Object.entries(world.alcove_interp).every(([k, v]) => v),
             make_transitioner(world, {
                 'alcove, ending interpretation': '*end_interpretation'
             }));

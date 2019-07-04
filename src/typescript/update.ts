@@ -110,6 +110,8 @@ export function update1<S, U extends S=S>(source: S, updater: Updater<U>): S {
 // to figure out the source and return types when doing type inference on calls to this function.
 export function update<S, U extends S=S>(source: S, updater: Updater<U>): S;
 export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S;
+// export function update<S, U extends S=S>(source: S, updater: Updater<U>): S;
+// export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S;
 export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S {
     return updaters.reduce(update1, source);
 }
@@ -117,17 +119,5 @@ export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): 
 export function update_any<S>(source: S, updater: any): S {
     return update(source, updater);
 }
-
-
-type AtLeastOne<T, U = {[K in keyof T]: Omit<T, Exclude<keyof T, K>> }> = U[keyof U];
-
-let xxx = {a: 'butt', b: { c: 4, d: [1,2,3]}};
-type XXX = typeof xxx;
-
-type ZZZ = AtLeastOne<XXX>;
-let zzz: ZZZ = { a: 'hgorse', b: { c: 5, d: []}};
-
-
-
 
 

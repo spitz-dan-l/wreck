@@ -102,3 +102,18 @@ export function find_historical<W extends World>(world: W, f: (w: W) => boolean)
 export function find_index<W extends World>(world: W, index: number) {
     return find_historical(world, w => w.index === index);
 }
+
+export function history_array<W extends World>(world: W) {
+    let w: W | null = world;
+    let result: W[] = [];
+    while (w != null) {
+        result.push(w);
+        w = w.previous;
+    }
+
+    return result;
+}
+
+
+
+

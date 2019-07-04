@@ -1,10 +1,13 @@
-import { find_historical, interpretation_updater } from "../../interpretation";
+import { find_historical, interpretation_updater, history_array } from "../../interpretation";
 import { MessageUpdateSpec, message_updater } from "../../message";
 import { ConsumeSpec, ParserThread, failed } from "../../parser";
 import { Puffer } from "../../puffer";
 import { capitalize } from '../../text_tools';
-import { update, Updater, let_ } from "../../utils";
-import { AbstractionID, ActionID, FacetID, global_lock, Owner, Puffers, Venience, Initializers } from "./prelude";
+import { update, Updater, let_, bound_method } from "../../utils";
+import { AbstractionID, ActionID, FacetID, Owner, Puffers, VeniencePuffer, Venience, resource_registry, lock_and_brand } from "./prelude";
+import { is_simulated, search_future, FutureSearchSpec } from '../../supervenience';
+import { StaticIndex } from '../../static_resources';
+
 
 export interface Metaphors {
     gist: Gist | null,
@@ -20,19 +23,23 @@ export interface Metaphors {
 declare module './prelude' {
     export interface Venience extends Metaphors {}
 
-    export interface initializers {
-        1: Metaphors
+    export interface StaticResources {
+        initial_world_metaphor: Metaphors;
+        abstraction_index: StaticIndex<Abstraction>;
+        facet_index: StaticIndex<FacetSpec>
     }
 }
 
-export const init_metaphors: Metaphors = {
+resource_registry.create('initial_world_metaphor', {
     gist: null,
     owner: null,
     current_interpretation: null,
 
     has_acquired: {},
     has_tried: {}
-}
+});
+
+const global_lock = resource_registry.get('global_lock', false);
 
 let null_lock = global_lock(null);
 let metaphor_lock = global_lock('Metaphor');
@@ -59,11 +66,11 @@ type Abstraction = {
     actions: Action[]
 }
 
-function make_abstraction(spec: Abstraction): Puffer<Venience> {
-    return null_lock.lock_puffer({
+function make_abstraction(spec: Abstraction): VeniencePuffer {
+    return {
         handle_command: { 
             kind: 'Stages',
-            1: ((world, parser) => 
+            3: ((world, parser) => 
                 !world.has_acquired[spec.name] ?
                     parser.eliminate() :
                 
@@ -90,10 +97,10 @@ function make_abstraction(spec: Abstraction): Puffer<Venience> {
                 return update(world,
                     message_updater(msg),
                     {
-                        gist: {
+                        gist: () => ({
                             name: `your notes about ${spec.name}`,
                             cmd: ['my_notes about', spec.name_cmd]
-                        }
+                        })
                     });
             })))
         },
@@ -107,24 +114,26 @@ function make_abstraction(spec: Abstraction): Puffer<Venience> {
                 animation-iteration-count: infinite, infinite !important;
             }`
         ]
-    });
+    };
 }
 
-export const AbstractionIndex: Abstraction[] = [];
+let abstraction_index = resource_registry.create('abstraction_index',
+    new StaticIndex([
+        function add_abstraction_to_puffers(abstraction: Abstraction) {
+            Puffers(make_abstraction(abstraction));
+            return abstraction;
+        }
+    ])
+).get();
 
-export function Abstractions(...abstractions: Abstraction[]) {
-    AbstractionIndex.push(...abstractions);
+export const Abstractions = bound_method(abstraction_index, 'add'); //abstraction_index.add.bind(abstraction_index);
 
-    Puffers(...<Puffer<Venience>[]>abstractions.map(make_abstraction));
-
-    // TODO: push puffers containining css rules for each abstraction
-}
 
 function get_abstractions(world: Venience) {
     let abstractions: Abstraction[] = [];
     Object.entries(world.has_acquired).forEach(([abs_id, on]) => {
         if (on) {
-            abstractions.push(AbstractionIndex.find(a => a.name === abs_id)!)
+            abstractions.push(abstraction_index.find(a => a.name === abs_id)!)
         }
     });
     return abstractions;
@@ -134,12 +143,12 @@ function any_abstractions(world: Venience) {
     return Object.entries(world.has_acquired).some(([abs, on]) => on);
 }
 
-let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
+let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
     pre: world => update(world, { gist: null }),    
 
     handle_command: {
         kind: 'Stages',
-        1: (world, parser) => {
+        3: (world, parser) => {
             let list_consumer = null_lock.lock_parser_thread(
                 world,
                 (() => 
@@ -179,63 +188,114 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
                     return parser.eliminate();
                 }
 
-                let threads: ParserThread<Venience>[] = [];
-                let w: Venience | null = world.previous;
-                let i = 0;
-                while (w !== null && i < 1) {
-                    const i_world: Venience = w; // gross way of having each thread capture a different world ref
-                    w = i_world.previous;
-                    i++;
+                let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== null);
 
-                    if (i_world.gist === null) {
-                        continue;
+                let gists: Gist[] = [];
+                for (let w of contemplatable_worlds) {
+                    if (gists.findIndex(g2 => w.gist!.name === g2.name) === -1) {
+                        gists.push(w.gist!);
                     }
-                    threads.push(() => 
-                        parser.consume(['contemplate', i_world.gist!.cmd],
-                            () => parser.submit(i_world))
-                    );
                 }
 
-                return parser.split(threads, (interp_world) => {
+                parser.label_context = { interp: true, filler: true };
 
-                const index = interp_world.index;
+                let immediate_world = contemplatable_worlds[0];
+                let direct_thread: ParserThread<Venience> = () => 
+                    parser.consume(['contemplate', immediate_world.gist!.cmd], () =>
+                    parser.submit(() => {
+
+                    const index = immediate_world.index;
                 
-                let descriptions: string[] = [];
+                    let descriptions: string[] = [];
 
-                for (let facet of FacetIndex) {
-                    if (!facet.can_recognize(world, interp_world)) {
-                        continue;
-                    }
-                    descriptions.push(`
-                        <blockquote class="descr-${facet.slug}">
-                            ${facet.description}
-                        </blockquote>
-                    `);
-                }
-                if (descriptions.length === 0) {
-                    descriptions.push('However, nothing about it seems particularly notable.');
-                } else {
-                    descriptions.unshift('You notice the following aspects:');
-                }
-
-                return update(world,
-                    w => metaphor_lock.lock(w, index),
-                    { 
-                        current_interpretation: index,
-                        interpretations: {
-                            [index]: {
-                                'interpretation-block': true,
-                                'interpretation-active': true
-                            }
+                    for (let facet of facet_index.all()) {
+                        if (!facet.can_recognize(world, immediate_world)) {
+                            continue;
                         }
-                    },
-                    message_updater({
-                        action: [`You contemplate ${interp_world.gist!.name}. A sense of focus begins to permeate your mind.`],
-                        description: descriptions
-                    }),
-                )});
+                        descriptions.push(`
+                            <blockquote class="descr-${facet.slug}">
+                                ${facet.description}
+                            </blockquote>
+                        `);
+                    }
+                    if (descriptions.length === 0) {
+                        descriptions.push('However, nothing about it seems particularly notable.');
+                    } else {
+                        descriptions.unshift('You notice the following aspects:');
+                    }
+
+                    return update(world,
+                        w => metaphor_lock.lock(w, index),
+                        { 
+                            current_interpretation: index,
+                            interpretations: {
+                                [index]: {
+                                    'interpretation-block': true,
+                                    'interpretation-active': true
+                                }
+                            },
+                            gist: () => ({
+                                name: `your contemplation of ${immediate_world.gist!.name}`,
+                                cmd: ['my_contemplation_of', immediate_world.gist!.cmd]
+                            })
+                        },
+                        message_updater({
+                            action: [`You contemplate ${immediate_world.gist!.name}. A sense of focus begins to permeate your mind.`],
+                            description: descriptions
+                        }),
+                    );
+                }));
+
+
+                /*
+                    Problem with memory about vs notes about. 
+
+                */
+                let indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
+                    if (is_simulated(world)) {
+                        return parser.eliminate();
+                    }
+                    if (g.name === immediate_world.gist!.name) {
+                        return parser.eliminate();
+                    }
+
+                    let future_search_spec = resource_registry.get('future_search_spec');
+                    const result = search_future(
+                        update(future_search_spec as FutureSearchSpec<Venience>, {
+                            goals: [w => !!w.gist && w.gist.name === `your contemplation of ${g.name.replace('memory of', 'notes about')}`],
+                            max_steps: 2,
+                            space: [w => w.gist && w.gist.name],
+                            search_id: `contemplate-${g.name}-${world.index}`
+                            // command_filter: () => (world, cmd) => {
+                            //     return cmd[0] && cmd[0].token !== 'remember'
+                            // },
+                        }),
+                        world);
+                    if (result.result === null) {
+                        // debugger;
+                        return parser.eliminate();
+                    }
+
+                    return parser.consume({
+                        tokens: ['contemplate', g!.cmd],
+                        labels: {interp: true, filler: true}}, () =>
+
+                        parser.submit(() => {
+                            return result.result!;
+                        }
+                    ));
+                });
+
+                if (indirect_threads.length === 0) {
+                    return direct_thread(parser);
+                }
+                return parser.split([direct_thread, ...indirect_threads]);
+
             } else {
-                return parser.consume('end_contemplation', () => parser.submit(() =>
+                return parser.consume({
+                    tokens: 'end_contemplation',
+                    labels: {interp: true, filler: true}
+                }, () => parser.submit(() =>
                 update(world,
                     metaphor_lock.release,
                     {
@@ -255,9 +315,7 @@ let InterpPuffer: Puffer<Venience> = metaphor_lock.lock_puffer({
     },
 });
 
-Initializers(() => {
-    Puffers(InterpPuffer as Puffer<Venience>);
-});
+Puffers(InterpPuffer as Puffer<Venience>);
 
 // FACETS
 
@@ -272,10 +330,16 @@ type FacetSpec = {
     handle_action: (action: [Abstraction, Action], world: Venience) => Venience
 };
 
-const FacetIndex: FacetSpec[] = [];
+const facet_index = resource_registry.create('facet_index',
+    new StaticIndex([
+        function add_facet_to_puffers(spec: FacetSpec) {
+            Puffers(make_facet(spec));
+            return spec;
+        }
+    ])
+).get();
 
-// function make_facet<W extends Venience>(spec: FacetSpec<W>): Puffer<W>;
-function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lock_puffer({
+function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('Metaphor', {
     handle_command: (world, parser) => {
         if (world.current_interpretation === null) {
             return parser.eliminate();
@@ -294,7 +358,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
                 continue;
             }
             
-            const abs = AbstractionIndex.find((a => a.name === k));
+            const abs = abstraction_index.find((a => a.name === k));
             if (abs === undefined) {
                 throw Error('Invalid abstraction name: '+k);
             }
@@ -429,8 +493,4 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return metaphor_lock.lo
     ]
 });}
 
-export function Facets(facet_spec: FacetSpec) {
-    FacetIndex.push(facet_spec);
-    Puffers(make_facet(facet_spec));
-}
-
+export const Facets = bound_method(facet_index, 'add');

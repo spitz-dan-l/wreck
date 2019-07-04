@@ -194,7 +194,7 @@ export function merge_objects<T extends {}>(arr: T[]): T {
 }
 
 // WARNING: this will break if obj has a property that is explicitly set to undefined!
-export function entries<K extends string, V>(obj: {[k in K]?: V}) {
+export function entries<K extends keyof any, V>(obj: {[k in K]?: V}) {
     return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
 }
 
@@ -217,6 +217,10 @@ export function from_entries<K extends keyof any, V>(entries: ReadonlyArray<read
     });
 
     return result;
+}
+
+export function map_values<K extends keyof any, V1, V2=V1>(f: (v: V1) => V2, obj: Partial<Record<K, V1>>): Record<K, V2> {
+    return from_entries(entries(obj).map(([k, v]) => [k, f(v)]))
 }
 
 // Helper for declaring values with tuple types.
@@ -338,5 +342,12 @@ export const statics =
 export const let_ = <T>(f: (...args: any) => T) => f();
 
 
+type method_properties<T extends {}> = {
+    [K in keyof T]: T[K] extends (...args: any) => any ? K : never
+}[keyof T];
+
+export function bound_method<T, K extends method_properties<T>>(instance: T, name: K): T[K] {
+    return (instance[name] as any as (...args: any) => any).bind(instance);
+}
 
 

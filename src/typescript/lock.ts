@@ -11,7 +11,15 @@ export type LockSpec<W extends World, Owner extends string> = {
     set_owner: (w: W, owner: Owner | null) => W
 }
 
-export function lock_builder<W extends World, Owner extends string>(spec: LockSpec<W, Owner>) {
+export type Lock<W extends World, Owner extends string> = {
+    lock(world: W, start_index?: number): W,
+    release(world: W): W,
+    lock_puffer(puffer: Puffer<W>): Puffer<W>,
+    owner(w: W): Owner | null,
+    lock_parser_thread<R>(world: W, thread: ParserThread<R>): ParserThread<R>
+}
+
+export function lock_builder<W extends World, Owner extends string>(spec: LockSpec<W, Owner>): (owner: Owner | null) => Lock<W, Owner> {
     return (owner: Owner | null) => {
         function has_permission(w: W) {
             let o = spec.owner(w);
@@ -42,7 +50,7 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
         }
 
         function lock_parser_thread<R>(world: W, thread: ParserThread<R>) {
-            return gate(() => has_permission(world), thread);
+            return gate(has_permission(world), thread);
         }
 
         return {

@@ -2,12 +2,10 @@ import { message_updater } from '../../message';
 import { make_puffer_world_spec, Puffer } from '../../puffer';
 import { included, update, cond } from '../../utils';
 import { get_initial_world, World, world_driver } from '../../world';
-import { Abstractions, Facets, init_metaphors } from './metaphor';
-import { global_lock, initialize, PufferIndex, Venience, Puffers } from './prelude';
+import { Abstractions, Facets } from './metaphor';
+import { Venience, Puffers, resource_registry } from './prelude';
 import { Memories, Topics } from './topic';
 
-
-export const null_lock = global_lock(null);
 
 interface PuzzleState {
     has_scrutinized_memory: {
@@ -24,11 +22,29 @@ interface PuzzleState {
 
 
 declare module './prelude' {
-    export interface Venience extends PuzzleState {
+    export interface Venience extends PuzzleState {}
+
+    export interface StaticResources {
+        initial_world_narrascope: PuzzleState
     }
 }
 
-initialize();
+resource_registry.create('initial_world_narrascope', {
+    has_chill: false,
+    has_recognized_something_wrong: false,
+    is_curious_about_history: false,
+    has_admitted_negligence: false,
+    has_unpacked_culpability: false,
+    has_volunteered: false,
+    end: false,
+
+    has_scrutinized_memory: {
+        1: false,
+        2: false,
+        3: false,
+        4: false
+    }
+});
 
 Abstractions({
     name: 'the attentive mode',
@@ -495,9 +511,11 @@ Facets({
     }
 });
 
+let global_lock = resource_registry.get('global_lock', false);
 let outro_lock = global_lock('Outro');
 
 Puffers({
+    role_brand: true,
     pre: world => {
         if (world.has_volunteered) {
             return update(world, w => outro_lock.lock(w));
@@ -526,106 +544,89 @@ Puffers({
     }
 });
 
-import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, is_simulated, CommandFilter } from '../../supervenience';
+import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, is_simulated, CommandFilter, real_world } from '../../supervenience';
 import {find_index} from '../../interpretation';
 import {update_thread_maker} from '../../world';
 
-Puffers({
-    handle_command: (world, parser) => {
-        if (is_simulated(world)) {
-            return parser.eliminate();
-        }
+// Puffers({
+//     handle_command: { kind: 'Stages',
+//         4: ((world, parser) => {
+//             if (is_simulated(world)) {
+//                 return parser.eliminate();
+//             }
 
-        if (world.end) {
-            return parser.eliminate();
-        }
+//             if (world.end) {
+//                 return parser.eliminate();
+//             }
 
-        function goal_met(w: VenienceWorld): boolean {
-            return w.end;
-        }
+//             function goal_met(w: Venience): boolean {
+//                 return w.end;
+//             }
 
-        let goals: NarrativeGoal<VenienceWorld>[] = [
-            w => !!w.has_chill,
-            w => !!w.has_recognized_something_wrong,
-            w => !!w.is_curious_about_history,
-            w => !!w.has_admitted_negligence,
-            w => !!w.has_unpacked_culpability,
-            w => !!w.has_volunteered,
-            goal_met
-        ]
+//             let goals: NarrativeGoal<Venience>[] = [
+//                 w => !!w.has_chill,
+//                 w => !!w.has_recognized_something_wrong,
+//                 w => !!w.is_curious_about_history,
+//                 w => !!w.has_admitted_negligence,
+//                 w => !!w.has_unpacked_culpability,
+//                 w => !!w.has_volunteered,
+//                 goal_met
+//             ]
 
-        let space: NarrativeDimension<VenienceWorld>[] = [
-            w => {
-                if (w.owner !== 'Metaphor') {
-                    return false;
-                }
+//             let space: NarrativeDimension<Venience>[] = [
+//                 w => {
+//                     if (w.owner !== 'Metaphor') {
+//                         return false;
+//                     }
 
-                let g = find_index(w, w.current_interpretation!)!.gist;
+//                     let g = find_index(w, w.current_interpretation!)!.gist;
 
-                return g === null ? null :
-                included(g.name, ['your impression of Sam', 'your impression of your history with Sam'])
-                ? g.name
-                : null;
-            },
-            w => w.has_considered,
-            w => w.has_acquired,
-            w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
-        ];
+//                     return g === null ? null :
+//                     included(g.name, ['your impression of Sam', 'your impression of your history with Sam'])
+//                     ? g.name
+//                     : null;
+//                 },
+//                 w => w.has_considered,
+//                 w => w.has_acquired,
+//                 w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
+//             ];
 
-        let command_filter: CommandFilter<VenienceWorld> = (w, cmd) => {
-            if (cmd[0] && cmd[0].token === 'notes') {
-                return false;
-            }
-            return true;
-        }
+//             let command_filter: CommandFilter<Venience> = (w, cmd) => {
+//                 if (cmd[0] && cmd[0].token === 'notes') {
+//                     return false;
+//                 }
+//                 return true;
+//             }
 
-        let spec: FutureSearchSpec<Venience> = {
-            thread_maker,
-            goals,
-            space,
-            command_filter
-        };
+//             let spec: FutureSearchSpec<Venience> = {
+//                 thread_maker,
+//                 goals,
+//                 space,
+//                 command_filter
+//             };
 
-        parser.consume('beat_the_game', () => parser.submit());
-        if (parser.failure) {
-            return parser.failure;
-        }
+//             return parser.consume('beat_the_game', () =>
+//                 parser.submit(() =>
+//                 search_future(spec, world).result!));
+//         })
+//     }
+// });
 
-        return search_future(spec, world).result!;
+export { Venience } from './prelude';
 
-    }
-})
-
-
-export interface VenienceWorld extends World, Venience {}
-
-const initial_venience_world: VenienceWorld = update({
-        ...get_initial_world<VenienceWorld>(),
-        ...init_metaphors,
-        owner: null,
-        gist: null,
-        has_acquired: {},
-        has_considered: {},
-        has_tried: {},
-        has_chill: false,
-        has_recognized_something_wrong: false,
-        is_curious_about_history: false,
-        has_admitted_negligence: false,
-        has_unpacked_culpability: false,
-        has_volunteered: false,
-        end: false,
-
-        has_scrutinized_memory: {
-            1: false,
-            2: false,
-            3: false,
-            4: false
-        }
+const initial_venience_world: Venience = update({
+        ...get_initial_world<Venience>(),
+        ...resource_registry.get('initial_world_prelude', false),
+        ...resource_registry.get('initial_world_metaphor', false),
+        ...resource_registry.get('initial_world_topic', false),
+        ...resource_registry.get('initial_world_narrascope', false)
     },
     message_updater('You and Sam are sitting together on the bus.')
 );
 
-const venience_world_spec = make_puffer_world_spec(initial_venience_world, PufferIndex);
+
+const puffer_index = resource_registry.get('puffer_index', false);
+const venience_world_spec = make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
 
 export function new_venience_world() {
     return world_driver(venience_world_spec);
@@ -633,4 +634,13 @@ export function new_venience_world() {
 
 const thread_maker = update_thread_maker(venience_world_spec);
 
+declare module './prelude' {
+    export interface StaticResources {
+        future_search_spec: Partial<FutureSearchSpec<Venience>>,
+        someones_butt: boolean
+    }
+}
 
+resource_registry.create('future_search_spec', { thread_maker });
+
+resource_registry.seal();

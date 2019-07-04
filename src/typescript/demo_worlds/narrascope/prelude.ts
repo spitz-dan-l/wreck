@@ -1,7 +1,9 @@
-import { lock_builder } from '../../lock';
+import { lock_builder, Lock } from '../../lock';
 import { Puffer } from '../../puffer';
-import { update } from '../../utils';
+import { update, entries, bound_method } from '../../utils';
 import { World, get_initial_world } from '../../world';
+import { FutureSearchSpec } from '../../supervenience';
+import {ResourcesFor, StaticResourceRegistry, StaticResource, StaticIndex} from '../../static_resources';
 
 export type TopicID =
     'Sam' |
@@ -42,38 +44,54 @@ export interface Venience extends World {
     owner: Owner | null;
 }
 
-
-export const global_lock = lock_builder<Venience, Owner>({
-    owner: (w) => w.owner,
-    set_owner: (w, owner) => update(w, { owner} )
-});
-
-export const PufferIndex: Puffer<Venience>[] = [];
-
-export function Puffers(...puffers: Puffer<Venience>[]) {
-    PufferIndex.push(...puffers)
+export interface VeniencePuffer extends Puffer<Venience> {
+    role_brand?: true;
 }
 
-const initializers: (() => void)[] = [];
-export function Initializers(initializer: () => void) {
-    initializers.push(initializer);
+// SETUP STATIC RESOURCES
+export interface StaticResources {};
+export const resource_registry = new StaticResourceRegistry<StaticResources>();
+
+
+// Create some basic resources:
+// initial world values
+// global lock
+// puffer index
+
+export interface StaticResources {
+    initial_world_prelude: Pick<Venience, 'owner'>;
+    puffer_index: StaticIndex<VeniencePuffer>;
+    global_lock: (o: Owner | null) => Lock<Venience, Owner>;
+};
+
+resource_registry.create('initial_world_prelude',
+    {owner: null});
+
+
+const global_lock = resource_registry.create('global_lock',
+    lock_builder<Venience, Owner>({
+        owner: (w) => w.owner,
+        set_owner: (w, owner) => update(w, { owner} )
+    })
+).get();
+
+const puffer_index = resource_registry.create('puffer_index',
+    new StaticIndex([
+        function ensure_lock(puffer) {
+            if (puffer.role_brand === undefined) {
+                return lock_and_brand(null, puffer);
+            }
+            return puffer;
+        }
+    ])
+).get();
+
+export const Puffers = bound_method(puffer_index, 'add');
+
+export function lock_and_brand(owner: Owner | null, puffer: VeniencePuffer) {
+    return update<VeniencePuffer>(puffer,
+        global_lock(owner).lock_puffer,
+        { role_brand: true }
+    )
 }
 
-export function initialize() {
-    for (let i of initializers) {
-        i();
-    }
-}
-
-// interface VenienceWorld extends Venience, World {};
-
-// //TODO set up a registry of partial initial worlds
-// export interface initializers extends Array<any> {
-//     0: World
-// }
-
-// type inits = initializers[0 | 1];
-
-// declare let xxx: initializers;
-
-// xxx[0]

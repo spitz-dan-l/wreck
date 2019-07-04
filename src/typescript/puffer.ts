@@ -73,7 +73,8 @@ export function normalize_puffer<W extends World>(puffer: Puffer<W>): PufferNorm
         pre: normalize_stages(puffer.pre),
         handle_command: normalize_stages(puffer.handle_command),
         post: normalize_stages(puffer.post),
-        css_rules: puffer.css_rules || []
+        css_rules: puffer.css_rules || [],
+        ...drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules')
     }
 }
 
@@ -88,7 +89,8 @@ export function map_puffer<T extends World>(mapper: PufferMapper<T>, puffer: Puf
         pre: mapper.pre ? map_stages(mapper.pre, norm_puffer.pre) : norm_puffer.pre,
         handle_command: mapper.handle_command ? map_stages(mapper.handle_command, norm_puffer.handle_command) : norm_puffer.handle_command,
         post: mapper.post ? map_stages(mapper.post, norm_puffer.post) : norm_puffer.post,
-        css_rules: norm_puffer.css_rules
+        css_rules: norm_puffer.css_rules,
+        ...drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules')
     }
 }
 

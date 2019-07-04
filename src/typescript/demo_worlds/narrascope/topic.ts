@@ -1,10 +1,11 @@
-import { TopicID, AbstractionID, ActionID, FacetID, global_lock, Owner, Puffers, Venience } from "./prelude";
+import { TopicID, AbstractionID, ActionID, FacetID, Owner, Puffers, Venience, resource_registry } from "./prelude";
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
 import { message_updater, MessageUpdateSpec } from '../../message';
-import { Gist, AbstractionIndex } from './metaphor';
-import { update, cond } from '../../utils';
+import { Gist } from './metaphor';
+import { update, cond, bound_method } from '../../utils';
 import { find_historical } from '../../interpretation';
+import { StaticIndex } from '../../static_resources';
 
 export interface Topics {
     has_considered: { [K in TopicID]?: boolean }
@@ -12,7 +13,17 @@ export interface Topics {
 
 declare module './prelude' {
     export interface Venience extends Topics {}
+
+    export interface StaticResources {
+        initial_world_topic: Topics;
+        topic_index: StaticIndex<TopicSpec>;
+        memory_index: StaticIndex<MemorySpec>;
+    }
 }
+
+resource_registry.create('initial_world_topic', {
+    has_considered: {}
+});
 
 export type TopicSpec = {
     name: TopicID,
@@ -60,21 +71,24 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
     }
 }
 
-const null_lock = global_lock(null);
+const topic_index = resource_registry.create('topic_index',
+    new StaticIndex([
+        function add_topic_to_puffers(spec) {
+            Puffers(make_topic(spec));
+            return spec;
+        }
+    ])
+).get();
 
-export const TopicIndex: TopicSpec[] = [];
-export function Topics(...specs: TopicSpec[]) {
-    TopicIndex.push(...specs);
-    Puffers(...specs
-        .map(make_topic)
-        .map(null_lock.lock_puffer));
-}
+export const Topics = bound_method(topic_index, 'add');
 
 
 export type MemorySpec = {
     abstraction: AbstractionID,
     could_remember: (w: Venience) => boolean,
 }
+
+const abstraction_index = resource_registry.get('abstraction_index', false);
 
 export function make_memory(spec: MemorySpec): Puffer<Venience> {
     return {
@@ -83,12 +97,14 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
                 return parser.eliminate();
             }
 
-            parser.consume('remember_something', () => parser.submit());
+            let result = parser.consume('remember_something', () => parser.submit());
             if (parser.failure) {
                 return parser.failure;
             }
 
-            let abstraction = AbstractionIndex.find(a => a.name === spec.abstraction)!;
+            // console.time('look up abstractions');
+            let abstraction = abstraction_index.find(a => a.name === spec.abstraction)!;
+            // console.timeEnd('look up abstractions');
 
             return update(world,
                 {
@@ -122,28 +138,14 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
     }
 }
 
-export const MemoryIndex: MemorySpec[] = [];
-export function Memories(...specs: MemorySpec[]) {
-    MemoryIndex.push(...specs);
-    Puffers(...specs
-        .map(make_memory)
-        .map(null_lock.lock_puffer));
-}
+const memory_index = resource_registry.create('memory_index',
+    new StaticIndex([
+        function add_memory_to_puffers(spec) {
+            Puffers(make_memory(spec));
+            return spec;
+        }
+    ])
+).get();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export const Memories = bound_method(memory_index, 'add');
 

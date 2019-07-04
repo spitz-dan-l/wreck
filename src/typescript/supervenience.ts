@@ -1,7 +1,11 @@
 import {World, WorldSpec, update_thread_maker} from './world';
-import { traverse_thread, ParserThread, RawConsumeSpec } from './parser';
+import { traverse_thread, ParserThread, RawConsumeSpec, Parser, gate } from './parser';
 import { deep_equal, drop_keys } from './utils';
 import { find_historical } from './interpretation';
+
+/*
+    TODO: find a way to cache searches
+*/
 
 /*
     Take a world and return some projection of it that is somehow descriptive
@@ -15,6 +19,10 @@ import { find_historical } from './interpretation';
     it is skipped.
 */
 export type NarrativeDimension<W extends World> = (w: W) => any;
+
+function default_narrative_space<W extends World>(): NarrativeDimension<W>[] {
+    return [w => drop_keys(w, 'previous', 'index', 'parsing')];
+}
 
 /*
     Take a world and return whether some narratively-relevant goal state has been
@@ -35,9 +43,10 @@ function get_score<W extends World>(w: W, goals: NarrativeGoal<W>[]) {
 }
 
 export type FutureSearchSpec<W extends World> = {
+    search_id?: string,
     thread_maker: (w: W) => ParserThread<W>,
     goals: NarrativeGoal<W>[],
-    space: NarrativeDimension<W>[],
+    space?: NarrativeDimension<W>[],
     give_up_after?: number,
     max_steps?: number,
     command_filter?: CommandFilter<W>
@@ -47,6 +56,10 @@ export const worlds_under_search: Set<World> = new Set();
 
 export function is_simulated<W extends World>(world: W) {
     return find_historical(world, w => worlds_under_search.has(w)) !== null;
+}
+
+export function real_world<W extends World>(world: World, thread: ParserThread<W>) {
+    return gate(is_simulated(world), thread);
 }
 
 export type FutureSearchStats = {
@@ -71,7 +84,7 @@ export type FutureSearchResult<W extends World> = {
 
 // do a breadth-first search of possible futures for some goal state
 export function search_future<W extends World>(spec: FutureSearchSpec<W>, world: W): FutureSearchResult<W>
- {
+{
     if (is_simulated(world)) {
         // A future search for this world's timeline is already running.
         // Recursive future searches are most likely too inefficient to allow, so
@@ -84,14 +97,22 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
             result: null,
             stats: null
         };
-        // throw new Error('Tried to search the future while searching the future');
     }
-
+    if (spec.search_id !== undefined) {
+        let cached_result = lookup_cache<W>(spec.search_id, world);
+        if (cached_result !== undefined) {
+            return cached_result
+        }
+    }
     try {
+        function cache(result: FutureSearchResult<W>) {
+            return cache_search_result(spec, world, result);
+        }
+
         worlds_under_search.add(world);
     
         if (spec.space === undefined) {
-            spec.space = [w => drop_keys(w, 'previous', 'index', 'parsing')];
+             spec = {...spec, space: default_narrative_space()};
         }
 
         type Entry = [W, any[], number];
@@ -99,7 +120,7 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
         let n_skipped = 0;
         const visited: Entry[] = [[
             world,
-            spec.space.map(dim => dim(world)),
+            spec.space!.map(dim => dim(world)),
             get_score(world, spec.goals)
         ]];
         let i = 0;
@@ -118,26 +139,26 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
             const next_index = visited.length - 1 - i;
 
             if (next_index < 0) {
-                return {
+                // Failed future world search, goal is unreachable
+                // (If max_steps was set in the spec, it could be due to no solution being available in max_steps)
+                return cache({
                     kind: 'FutureSearchResult',
                     status: 'Unreachable',
                     result: null,
                     stats: make_stats()
-                };
-                // throw new Error('Failed future world search, goal is unreachable');
+                });
             }
 
             const [w, pos, score] = visited[next_index];
 
             if (score === spec.goals.length) {
                 let n_turns = w.index - world.index;
-                // console.log(`Future search reached goal in ${i} iterations and ${n_turns} turns. ${visited.length} states were considered, and ${n_skipped} states were skipped.`);
-                return {
+                return cache({
                     kind: 'FutureSearchResult',
                     status: 'Found',
                     result: w,
                     stats: make_stats(n_turns)
-                };
+                });
             }
 
             if (spec.max_steps !== undefined && w.index - world.index >= spec.max_steps) {
@@ -157,13 +178,11 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
             }
             for (let parse_result of neighbor_states) {
                 const dest = {...parse_result.result, parsing: parse_result.parsing};
-                const dest_pos = spec.space.map(dim => dim(dest));
+                const dest_pos = spec.space!.map(dim => dim(dest));
                 const dest_score = get_score(dest, spec.goals);
                 
                 if (dest_score > score) {
                     // skip ahead to only search from this node now
-                    // console.log(`met a subgoal, skipping ${visited.length - 1 - i} states.`)
-                    
                     visited.unshift([dest, dest_pos, dest_score]);
                     n_skipped += visited.length - 1 - i;
                     i = visited.length - 1;
@@ -181,15 +200,106 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
             i++;
         }
 
-        return {
+        return cache({
             kind: 'FutureSearchResult',
             status: 'Timeout',
             result: null,
             stats: make_stats()
-        }
-        // throw new Error('Failed future world search after '+i+' iterations');
+        });
 
     } finally {
         worlds_under_search.delete(world);
     }
 }
+
+const cache_size = 100;
+
+type CacheEntry<W extends World> = {
+    kind: 'CacheEntry',
+    spec: FutureSearchSpec<W>,
+    results: {
+        world: W, position: any[], result: FutureSearchResult<W>
+    }[]
+}
+const cached_searches: { [K in string]?: CacheEntry<any> } = {};
+
+function cache_search_result<W extends World>(search_spec: FutureSearchSpec<W>, world: W, search_result: FutureSearchResult<W>) {
+    if (search_spec.search_id === undefined) {
+        return search_result;
+    }
+
+    let entry: CacheEntry<W>;
+    if (cached_searches[search_spec.search_id] !== undefined) {
+        entry = cached_searches[search_spec.search_id]!;
+    } else {
+        entry = {
+            kind: 'CacheEntry',
+            spec: search_spec,
+            results: []
+        };
+    }
+
+    let position = get_position(search_spec, world);
+    let match = find_in_entry(entry, position);
+
+    if (match === undefined) {
+        entry.results.push({ world, position, result: search_result });
+        if (cached_searches[search_spec.search_id] === undefined) {
+            cached_searches[search_spec.search_id] = entry;
+        }
+    }
+
+    let search_ids = Object.keys(cached_searches);
+    if (search_ids.length > cache_size) {
+        for (let sid of search_ids.slice(0, search_ids.length - cache_size)) {
+            delete cached_searches[sid];
+        }
+    }
+
+    return search_result;
+}
+
+function find_in_entry<W extends World>(entry: CacheEntry<W>, world_position: any[]) {
+    for (let result of entry.results) {
+        if (deep_equal(world_position, result.position)) {
+            return result;
+        }
+    }
+    return undefined;
+}
+
+function lookup_cache<W extends World>(search_id: string, world: W): FutureSearchResult<W> | undefined {
+    let entry = cached_searches[search_id];
+
+    if (entry === undefined) {
+        return undefined;
+    }
+
+    let match = find_in_entry(entry, get_position(entry.spec, world));
+
+    if (match === undefined) {
+        return undefined;
+    }
+
+    return match[1];
+}
+
+
+
+function get_position<W extends World>(spec: FutureSearchSpec<W>, world: W): any[] {
+    let space: NarrativeDimension<W>[];
+    if (spec.space === undefined) {
+        space = default_narrative_space();
+    } else {
+        space = spec.space;
+    }
+
+    return space.map(d => d(world));
+}
+
+
+
+
+
+
+
