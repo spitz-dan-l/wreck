@@ -7,7 +7,7 @@ import { update, Updater, let_, bound_method } from "../../utils";
 import { AbstractionID, ActionID, FacetID, Owner, Puffers, VeniencePuffer, Venience, resource_registry, lock_and_brand } from "./prelude";
 import { is_simulated, search_future, FutureSearchSpec } from '../../supervenience';
 import { StaticIndex } from '../../static_resources';
-
+import { Gist, Gists, gist } from '../../gist';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -44,10 +44,10 @@ const global_lock = resource_registry.get('global_lock', false);
 let null_lock = global_lock(null);
 let metaphor_lock = global_lock('Metaphor');
 
-export type Gist = {
-    cmd: ConsumeSpec,
-    name: string
-}
+// export type Gist = {
+//     cmd: ConsumeSpec,
+//     name: string
+// }
 
 type Action = {
     name: ActionID, // e.g. the direction of gravity
@@ -66,6 +66,22 @@ type Abstraction = {
     actions: Action[]
 }
 
+declare module '../../gist' {
+    export interface GistSpecs {
+        notes: { abstraction: Gist };
+        'the attentive mode': null;
+        'the scrutinizing mode': null;
+        'the hammer': null;
+        'the volunteer': null;
+    }
+}
+
+Gists({
+    tag: 'notes',
+    text: ({abstraction}) => `your notes about ${abstraction}`,
+    command: ({abstraction}) => ['my_notes about', abstraction]
+})
+
 function make_abstraction(spec: Abstraction): VeniencePuffer {
     return {
         handle_command: { 
@@ -81,26 +97,23 @@ function make_abstraction(spec: Abstraction): VeniencePuffer {
                 };
 
                 if (spec.actions.length === 1) {
-                    let_((act = spec.actions[0]) =>
-                    (<any>msg).description!.push(
+                    let act = spec.actions[0];
+                    msg.description!.push(
                         `${capitalize(spec.name)} confers:`,
                         `<span class="descr-${act.slug}">${act.description}</span>`
-                    ))
+                    );
                 } else {
-                    (<any>msg).description!.push(
+                    msg.description!.push(
                         `<br/>Comprising ${spec.name} confers:`,
                         ...spec.actions.map(act =>
                             `<blockquote class="descr-${act.slug}">${act.description}</blockquote>`)
-                    )
+                    );
                 }
 
                 return update(world,
                     message_updater(msg),
                     {
-                        gist: () => ({
-                            name: `your notes about ${spec.name}`,
-                            cmd: ['my_notes about', spec.name_cmd]
-                        })
+                        gist: () => gist('notes', { abstraction: gist(spec.name) })
                     });
             })))
         },
@@ -126,7 +139,7 @@ let abstraction_index = resource_registry.create('abstraction_index',
     ])
 ).get();
 
-export const Abstractions = bound_method(abstraction_index, 'add'); //abstraction_index.add.bind(abstraction_index);
+export const Abstractions = bound_method(abstraction_index, 'add');
 
 
 function get_abstractions(world: Venience) {
@@ -249,7 +262,6 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
 
                 /*
                     Problem with memory about vs notes about. 
-
                 */
                 let indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
                     if (is_simulated(world)) {
@@ -266,13 +278,9 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                             max_steps: 2,
                             space: [w => w.gist && w.gist.name],
                             search_id: `contemplate-${g.name}-${world.index}`
-                            // command_filter: () => (world, cmd) => {
-                            //     return cmd[0] && cmd[0].token !== 'remember'
-                            // },
                         }),
                         world);
                     if (result.result === null) {
-                        // debugger;
                         return parser.eliminate();
                     }
 

@@ -118,7 +118,7 @@ Code restructuring/enhancements
     - Used vs Available should not have to be hand-coded for each type of command
             (see Supervenience proposal above)
     - Simplify and unify some of the accrued abstractions. Action/Abstraction distinction seems questionable
-    - Standardize how to build up static functions/data to be used by various puffers
+    - DONE Standardize how to build up static functions/data to be used by various puffers
         - General case could support:
             - indexes of particular types of objects. E.g. an index of facets, an index of abstractions, etc.
                 - Sometimes you don't ever need to refer directly to the index because you just map each element to a puffer that closes over its element.
@@ -160,6 +160,7 @@ Categories of work
 
 Plan
 1. DONE Supervenience initial experiment
+    1.a DONE Short searches that happen every turn work quickly enough
 2?. Find a coherent setup for Gists
 2. Animations overhaul - necessary for many downstream polish things
 3. Pick off smaller tasks from the remaining categories
