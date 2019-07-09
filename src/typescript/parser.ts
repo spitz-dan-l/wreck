@@ -582,7 +582,7 @@ export class Parser {
         return <NoMatch>this._consume([{
             kind: 'RawConsumeSpec',
             token: NEVER_TOKEN,
-            labels: { filler: true },
+            labels: {},
             availability: 'Available'
         } as const]);
     }
@@ -594,7 +594,7 @@ export class Parser {
         let status = this._consume([{
             kind: 'RawConsumeSpec',
             token: SUBMIT_TOKEN,
-            labels: { filler: true },
+            labels: {},
             availability: 'Available'
         } as const]);
 

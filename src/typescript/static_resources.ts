@@ -105,7 +105,7 @@ export class StaticResourceRegistry<T extends {}> {
 type Finalizer<T> = (obj: T) => T;
 
 export class StaticIndex<Obj> {
-    private index: Obj[] = [];
+    public index: Obj[] = [];
     
     finalizers: Finalizer<Obj>[];
 
@@ -133,9 +133,6 @@ export class StaticIndex<Obj> {
             throw new Error('Tried to add an element after the index was sealed.');
         }
         
-        if (this.finalizers === undefined) {
-            debugger;
-        }
         t = this.finalizers.reduce((acc, f) => f(acc), t);
 
         this.index.push(t);

@@ -4,15 +4,15 @@ import 'mocha';
 import { new_hex_world, Hex } from '../typescript/demo_worlds/hex_port';
 import { new_bird_world, BirdWorld } from '../typescript/demo_worlds/puffer_bird_world';
 import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
-import { Gist } from '../typescript/demo_worlds/narrascope/metaphor';
 import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, CommandFilter } from '../typescript/supervenience';
 import { find_index } from '../typescript/interpretation';
 import { deep_equal, included, array_last, drop_keys } from '../typescript/utils';
+import { gist_matches, GistPattern } from '../typescript/gist';
 
-
+const simulator_id = 'playtester';
 
 describe('supervenience birdworld', () => {
-    it.only('beats birdworld', () => {
+    it('beats birdworld', () => {
         
         let {initial_result, thread_maker} = new_bird_world();
 
@@ -27,6 +27,7 @@ describe('supervenience birdworld', () => {
         ];
 
         let search_spec: FutureSearchSpec<BirdWorld> = {
+            simulator_id,
             thread_maker,
             goals: [goal_met],
             space,
@@ -45,7 +46,7 @@ describe('supervenience birdworld', () => {
     });
 });
 
-describe.only('supervenience narrascope', () => {
+describe('supervenience narrascope', () => {
     let {initial_result, thread_maker} = new_venience_world();
 
     function goal_met(w: Venience): boolean {
@@ -62,6 +63,16 @@ describe.only('supervenience narrascope', () => {
         goal_met
     ]
 
+
+    const gist_pat: GistPattern = {
+        tag: 'impression',
+        children: {
+            subject: [
+                { tag: 'Sam'},
+                { tag: 'your history with Sam' }
+            ]
+        }
+    }
     let space: NarrativeDimension<Venience>[] = [
         w => {
             if (w.owner !== 'Metaphor') {
@@ -70,10 +81,13 @@ describe.only('supervenience narrascope', () => {
 
             let g = find_index(w, w.current_interpretation!)!.gist;
 
-            return g === null ? null :
-            included(g.name, ['your impression of Sam', 'your impression of your history with Sam'])
-            ? g.name
-            : null;
+            if (g === null) {
+                return null;
+            }
+            if (gist_matches(g, gist_pat)) {
+                return g;
+            }
+            return null;
         },
         w => w.has_considered,
         w => w.has_acquired,
@@ -89,6 +103,7 @@ describe.only('supervenience narrascope', () => {
 
     it('beats narrascope demo using dimensions', () => {
         let spec: FutureSearchSpec<Venience> = {
+            simulator_id,
             thread_maker,
             goals: [goal_met],
             space
@@ -98,6 +113,7 @@ describe.only('supervenience narrascope', () => {
 
     it('beats narrascope demo using subgoals', () => {
         let spec: FutureSearchSpec<Venience> = {
+            simulator_id,
             thread_maker,
             goals,
             space: [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations')],
@@ -108,6 +124,7 @@ describe.only('supervenience narrascope', () => {
 
     it('beats narrascope demo using both', () => {
         let spec: FutureSearchSpec<Venience> = {
+            simulator_id,
             thread_maker,
             goals,
             space
@@ -117,6 +134,7 @@ describe.only('supervenience narrascope', () => {
 
     it('beats narrascope demo using both + command filtering', () => {
         let spec: FutureSearchSpec<Venience> = {
+            simulator_id,
             thread_maker,
             goals,
             space,

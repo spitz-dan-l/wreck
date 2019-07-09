@@ -3,14 +3,14 @@ import 'mocha';
 import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread, failed } from '../typescript/parser';
 import { array_last } from '../typescript/utils';
 
-
-
-
 describe('parser', () => {
     it('should do a thing', () => {
         
         function main_thread(p: Parser) {
             p.consume('look');
+            if (p.failure) {
+                return p.failure;
+            }
 
             let who = p.split([
                 () => p.consume('at me', 'me'),
@@ -90,7 +90,7 @@ describe('parser', () => {
                     "availability": "Available",
                     "kind": "RawConsumeSpec",
                     "labels": {
-                        "filler": true
+                        
                     },
                     "token": "didn't"
                 },
@@ -116,7 +116,6 @@ describe('parser', () => {
                     "availability": "Available",
                     "kind": "RawConsumeSpec",
                     "labels": {
-                        "filler": true
                     },
                     "token": SUBMIT_TOKEN
                 },

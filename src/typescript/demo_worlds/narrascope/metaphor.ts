@@ -1,13 +1,13 @@
-import { find_historical, interpretation_updater, history_array } from "../../interpretation";
+import { Gist, gist, Gists, gists_equal, gist_renderer_index, render_gist_command, render_gist_text, gist_to_string } from '../../gist';
+import { find_historical, history_array, interpretation_updater, find_index } from "../../interpretation";
 import { MessageUpdateSpec, message_updater } from "../../message";
-import { ConsumeSpec, ParserThread, failed } from "../../parser";
+import { ConsumeSpec, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
-import { capitalize } from '../../text_tools';
-import { update, Updater, let_, bound_method } from "../../utils";
-import { AbstractionID, ActionID, FacetID, Owner, Puffers, VeniencePuffer, Venience, resource_registry, lock_and_brand } from "./prelude";
-import { is_simulated, search_future, FutureSearchSpec } from '../../supervenience';
 import { StaticIndex } from '../../static_resources';
-import { Gist, Gists, gist } from '../../gist';
+import { FutureSearchSpec, is_simulated, search_future } from '../../supervenience';
+import { capitalize } from '../../text_tools';
+import { bound_method, update, Updater } from "../../utils";
+import { AbstractionID, ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer } from "./prelude";
 
 export interface Metaphors {
     gist: Gist | null,
@@ -26,7 +26,8 @@ declare module './prelude' {
     export interface StaticResources {
         initial_world_metaphor: Metaphors;
         abstraction_index: StaticIndex<Abstraction>;
-        facet_index: StaticIndex<FacetSpec>
+        facet_index: StaticIndex<FacetSpec>;
+        gist_renderer_index: typeof gist_renderer_index;
     }
 }
 
@@ -39,15 +40,12 @@ resource_registry.create('initial_world_metaphor', {
     has_tried: {}
 });
 
+resource_registry.create('gist_renderer_index', gist_renderer_index);
+
 const global_lock = resource_registry.get('global_lock', false);
 
 let null_lock = global_lock(null);
 let metaphor_lock = global_lock('Metaphor');
-
-// export type Gist = {
-//     cmd: ConsumeSpec,
-//     name: string
-// }
 
 type Action = {
     name: ActionID, // e.g. the direction of gravity
@@ -66,21 +64,28 @@ type Abstraction = {
     actions: Action[]
 }
 
+type AbstractionGists = { [K in AbstractionID]: undefined }
+
 declare module '../../gist' {
-    export interface GistSpecs {
-        notes: { abstraction: Gist };
-        'the attentive mode': null;
-        'the scrutinizing mode': null;
-        'the hammer': null;
-        'the volunteer': null;
+    export interface GistSpecs extends AbstractionGists {
+        notes: undefined;
+        'notes about': { abstraction: Gist<AbstractionID> };
+        contemplation: { subject: Gist };
     }
 }
 
 Gists({
     tag: 'notes',
+    text: () => 'your notes',
+    command: () => 'my_notes'
+});
+
+Gists({
+    tag: 'notes about',
     text: ({abstraction}) => `your notes about ${abstraction}`,
     command: ({abstraction}) => ['my_notes about', abstraction]
-})
+});
+
 
 function make_abstraction(spec: Abstraction): VeniencePuffer {
     return {
@@ -113,7 +118,7 @@ function make_abstraction(spec: Abstraction): VeniencePuffer {
                 return update(world,
                     message_updater(msg),
                     {
-                        gist: () => gist('notes', { abstraction: gist(spec.name) })
+                        gist: () => gist('notes about', { abstraction: gist(spec.name) })
                     });
             })))
         },
@@ -178,12 +183,7 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                                 ...abstractions.map(a => `<blockquote class="descr-${a.slug}">${capitalize(a.name)}</blockquote>`)
                             ]
                         }),
-                        {
-                            gist: {
-                                name: 'your notes',
-                                cmd: 'my_notes'
-                            }
-                        }
+                        { gist: () => gist('notes') }
                     )
                 })))
             );
@@ -195,26 +195,25 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
             }
 
             if (world.current_interpretation === null) {
-                // TODO: The actual index should be the most recent world
-                // in which certain important bits of state have changed
                 if (world.previous === null) {
                     return parser.eliminate();
                 }
 
-                let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== null);
+                let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== null && w.gist.tag !== 'contemplation');
 
                 let gists: Gist[] = [];
                 for (let w of contemplatable_worlds) {
-                    if (gists.findIndex(g2 => w.gist!.name === g2.name) === -1) {
+                    if (gists.findIndex(g2 => gists_equal(w.gist!, g2)) === -1) {
                         gists.push(w.gist!);
                     }
                 }
 
                 parser.label_context = { interp: true, filler: true };
 
-                let immediate_world = contemplatable_worlds[0];
-                let direct_thread: ParserThread<Venience> = () => 
-                    parser.consume(['contemplate', immediate_world.gist!.cmd], () =>
+                const immediate_world = contemplatable_worlds[0];
+
+                const direct_thread: ParserThread<Venience> = () => 
+                    parser.consume(['contemplate', render_gist_command(immediate_world.gist!)], () =>
                     parser.submit(() => {
 
                     const index = immediate_world.index;
@@ -247,57 +246,80 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                                     'interpretation-active': true
                                 }
                             },
-                            gist: () => ({
-                                name: `your contemplation of ${immediate_world.gist!.name}`,
-                                cmd: ['my_contemplation_of', immediate_world.gist!.cmd]
-                            })
+                            gist: () => gist('contemplation', {subject: immediate_world.gist!})
                         },
                         message_updater({
-                            action: [`You contemplate ${immediate_world.gist!.name}. A sense of focus begins to permeate your mind.`],
+                            action: [`You contemplate ${render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.`],
                             description: descriptions
                         }),
                     );
                 }));
 
-
-                /*
-                    Problem with memory about vs notes about. 
-                */
-                let indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
-                    if (is_simulated(world)) {
-                        return parser.eliminate();
-                    }
-                    if (g.name === immediate_world.gist!.name) {
-                        return parser.eliminate();
-                    }
-
-                    let future_search_spec = resource_registry.get('future_search_spec');
-                    const result = search_future(
-                        update(future_search_spec as FutureSearchSpec<Venience>, {
-                            goals: [w => !!w.gist && w.gist.name === `your contemplation of ${g.name.replace('memory of', 'notes about')}`],
-                            max_steps: 2,
-                            space: [w => w.gist && w.gist.name],
-                            search_id: `contemplate-${g.name}-${world.index}`
-                        }),
-                        world);
-                    if (result.result === null) {
-                        return parser.eliminate();
-                    }
-
-                    return parser.consume({
-                        tokens: ['contemplate', g!.cmd],
-                        labels: {interp: true, filler: true}}, () =>
-
-                        parser.submit(() => {
-                            return result.result!;
-                        }
-                    ));
-                });
-
-                if (indirect_threads.length === 0) {
+                const indirect_simulator = 'indirect_contemplation';
+                
+                if (gists.length === 1 || is_simulated(indirect_simulator, world)) {
                     return direct_thread(parser);
                 }
-                return parser.split([direct_thread, ...indirect_threads]);
+
+                const future_search_spec = resource_registry.get('future_search_spec');
+
+                const indirect_thread: ParserThread<Venience> = (() =>
+                    parser.consume({
+                        tokens: 'contemplate',
+                        labels: {interp: true, filler: true}
+                    }, () => {
+
+                    const future_search_spec = resource_registry.get('future_search_spec');
+                    const indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
+                        const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
+
+                        if (gists_equal(g, immediate_world.gist!)) {
+                            return parser.eliminate();
+                        }
+
+                        const target_gist = gist('contemplation', {
+                            subject: update(g, {
+                                tag: t => t === 'memory' ? 'notes about' : t
+                            })
+                        });
+
+                        const result = search_future(
+                            update(future_search_spec as FutureSearchSpec<Venience>, {
+                                goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
+                                max_steps: 2,
+                                space: [w => w.gist && gist_to_string(w.gist)],
+                                search_id: indirect_search_id,
+                                simulator_id: indirect_simulator,
+                                command_filter: () => (w, cmd) => {
+                                    let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
+
+                                    if (w.gist && gists_equal(w.gist, target_gist.children.subject)) {
+                                        return would_contemplate;
+                                    }
+                                    return !would_contemplate;
+                                }
+                            }),
+                            world);
+                        if (result.result === null) {
+                            return parser.eliminate();
+                        }
+
+                        return parser.consume({
+                            tokens: render_gist_command(g),
+                            labels: {interp: true, filler: true}}, () =>
+
+                            parser.submit(() => {
+                                return result.result!;
+                            }
+                        ));
+                    });
+
+                    return parser.split(indirect_threads);
+                }
+                ));
+
+                const result = parser.split([direct_thread, indirect_thread]);
+                return result
 
             } else {
                 return parser.consume({
@@ -353,7 +375,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
             return parser.eliminate();
         }
 
-        let interpretted_world = find_historical(world, w => w.index === world.current_interpretation)!;
+        let interpretted_world = find_index(world, world.current_interpretation)!;
 
         if (!spec.can_recognize(world, interpretted_world)){
             return parser.eliminate();
@@ -377,7 +399,6 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                 if (!spec.can_apply(qual_action)) {
                     continue;
                 }
-                // TODO: disable certain actions
 
                 threads.push(() => {
                     let already_solved = spec.solved(world);

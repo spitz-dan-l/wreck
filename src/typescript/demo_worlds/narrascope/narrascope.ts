@@ -5,6 +5,7 @@ import { get_initial_world, World, world_driver } from '../../world';
 import { Abstractions, Facets } from './metaphor';
 import { Venience, Puffers, resource_registry } from './prelude';
 import { Memories, Topics } from './topic';
+import { includes_tag, gists_equal, gist, gist_renderer_index, Gists } from '../../gist';
 
 
 interface PuzzleState {
@@ -72,7 +73,7 @@ Abstractions({
 });
 
 function about_attentive(w: Venience) {
-    return w.gist !== null && w.gist.name.endsWith('the attentive mode');
+    return w.gist !== null && includes_tag('the attentive mode', w.gist);
 }
 
 Facets({
@@ -95,7 +96,7 @@ Facets({
 });
 
 function about_scrutinizing(w: Venience) {
-    return w.gist !== null && w.gist.name.endsWith('the scrutinizing mode');
+    return w.gist !== null && includes_tag('the scrutinizing mode', w.gist);
 }
 
 Facets({
@@ -118,7 +119,7 @@ Facets({
 });
 
 function about_hammer(w: Venience) {
-    return w.gist !== null && w.gist.name.endsWith('the hammer');
+    return w.gist !== null && includes_tag('the hammer', w.gist);
 }
 
 Facets({
@@ -141,7 +142,7 @@ Facets({
 });
 
 function about_volunteer(w: Venience) {
-    return w.gist !== null && w.gist.name.endsWith('the volunteer');
+    return w.gist !== null && includes_tag('the volunteer', w.gist);
 }
 
 Facets({
@@ -238,9 +239,10 @@ Memories({
     could_remember: world => !!world.has_considered['your notebook']
 });
 
+const abtsm = gist('impression', { subject: gist('Sam') });
 // Big old hack but it'll do for now
 function about_sam(world: Venience) {
-    return world.gist !== null && world.gist.name === 'your impression of Sam';
+    return world.gist !== null && gists_equal(world.gist, abtsm);
 }
 
 Facets({
@@ -412,9 +414,14 @@ Topics({
     }
 });
 
+Gists({
+    tag: 'your history with Sam',
+    text: () => 'your history with Sam',
+    command: () => 'my_history_with_sam'
+});
 
 function is_about_history(w: Venience) {
-    return w.gist !== null && w.gist.name === 'your impression of your history with Sam';
+    return w.gist !== null && gists_equal(w.gist, gist('impression', { subject: gist('your history with Sam')}));
 }
 
 Facets({
@@ -544,7 +551,7 @@ Puffers({
     }
 });
 
-import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, is_simulated, CommandFilter, real_world } from '../../supervenience';
+import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, is_simulated, CommandFilter } from '../../supervenience';
 import {find_index} from '../../interpretation';
 import {update_thread_maker} from '../../world';
 
@@ -644,3 +651,4 @@ declare module './prelude' {
 resource_registry.create('future_search_spec', { thread_maker });
 
 resource_registry.seal();
+

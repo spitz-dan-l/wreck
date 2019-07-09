@@ -4,10 +4,6 @@ import { deep_equal, drop_keys } from './utils';
 import { find_historical } from './interpretation';
 
 /*
-    TODO: find a way to cache searches
-*/
-
-/*
     Take a world and return some projection of it that is somehow descriptive
     of a single narrative dimension.
     
@@ -44,22 +40,13 @@ function get_score<W extends World>(w: W, goals: NarrativeGoal<W>[]) {
 
 export type FutureSearchSpec<W extends World> = {
     search_id?: string,
+    simulator_id: string,
     thread_maker: (w: W) => ParserThread<W>,
     goals: NarrativeGoal<W>[],
     space?: NarrativeDimension<W>[],
     give_up_after?: number,
     max_steps?: number,
     command_filter?: CommandFilter<W>
-}
-
-export const worlds_under_search: Set<World> = new Set();
-
-export function is_simulated<W extends World>(world: W) {
-    return find_historical(world, w => worlds_under_search.has(w)) !== null;
-}
-
-export function real_world<W extends World>(world: World, thread: ParserThread<W>) {
-    return gate(is_simulated(world), thread);
 }
 
 export type FutureSearchStats = {
@@ -85,7 +72,7 @@ export type FutureSearchResult<W extends World> = {
 // do a breadth-first search of possible futures for some goal state
 export function search_future<W extends World>(spec: FutureSearchSpec<W>, world: W): FutureSearchResult<W>
 {
-    if (is_simulated(world)) {
+    if (is_simulated(spec.simulator_id, world)) {
         // A future search for this world's timeline is already running.
         // Recursive future searches are most likely too inefficient to allow, so
         // we return null in this case, indicating to the caller who would have
@@ -108,8 +95,7 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
         function cache(result: FutureSearchResult<W>) {
             return cache_search_result(spec, world, result);
         }
-
-        worlds_under_search.add(world);
+        begin_search(spec.simulator_id, world);
     
         if (spec.space === undefined) {
              spec = {...spec, space: default_narrative_space()};
@@ -208,7 +194,37 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
         });
 
     } finally {
-        worlds_under_search.delete(world);
+        end_search(spec.simulator_id, world);
+    }
+}
+
+const active_simulators: { [K: string]: Set<World> } = {};
+
+export function is_simulated<W extends World>(simulator_id: string, world: W) {
+    if (!(simulator_id in active_simulators)) {
+        return false;
+    }
+
+    const entry = active_simulators[simulator_id];
+    return find_historical(world, w => entry.has(w)) !== null;
+}
+
+function begin_search<W extends World>(simulator_id: string, world: W) {
+    let entry: Set<World>;
+    if (simulator_id in active_simulators) {
+        entry = active_simulators[simulator_id];
+    } else {
+        entry = active_simulators[simulator_id] = new Set();
+    }
+    entry.add(world);
+}
+
+function end_search<W extends World>(simulator_id: string, world: W) {
+    let entry = active_simulators[simulator_id];
+    entry.delete(world);
+
+    if (entry.size === 0) {
+        delete active_simulators[simulator_id];
     }
 }
 
@@ -229,10 +245,10 @@ function cache_search_result<W extends World>(search_spec: FutureSearchSpec<W>, 
     }
 
     let entry: CacheEntry<W>;
-    if (cached_searches[search_spec.search_id] !== undefined) {
+    if (search_spec.search_id in cached_searches) {
         entry = cached_searches[search_spec.search_id]!;
     } else {
-        entry = {
+        entry = cached_searches[search_spec.search_id] = {
             kind: 'CacheEntry',
             spec: search_spec,
             results: []
@@ -281,10 +297,8 @@ function lookup_cache<W extends World>(search_id: string, world: W): FutureSearc
         return undefined;
     }
 
-    return match[1];
+    return match.result;
 }
-
-
 
 function get_position<W extends World>(spec: FutureSearchSpec<W>, world: W): any[] {
     let space: NarrativeDimension<W>[];
