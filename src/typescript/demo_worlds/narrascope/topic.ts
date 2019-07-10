@@ -40,6 +40,7 @@ declare module '../../gist' {
     export interface GistSpecs extends TopicGists {
         'memory': { abstraction: Gist<AbstractionID> };        
         'impression': { subject: Gist<TopicID> };
+        // 'ass': 15;
     }
 }
 

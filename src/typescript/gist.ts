@@ -15,11 +15,18 @@ import { deep_equal } from './utils';
 
 export interface GistSpecs {}
 
-type ValidateGistSpecs<T extends Record<string, any>> = {
+type Validate<T extends Record<string, any>> = {
     [K in keyof T]: T[K] extends GistChildren<T> ? T[K] : never
-}
+};
 
-type ValidatedGistSpecs = ValidateGistSpecs<GistSpecs>
+type ValidatedSpecs = Validate<GistSpecs>;
+
+type InvalidSpecs = {
+    [K in keyof GistSpecs]: ValidatedSpecs[K] extends never ? K : never
+}[keyof GistSpecs];
+
+/* This will produce an error only if GistSpecs is invalid. */ const InvalidSpecs: never = <InvalidSpecs><unknown>null;
+
 
 export type Gist<Tag extends keyof GistSpecs=keyof GistSpecs> = GistVerbose<GistSpecs, Tag>;
 
@@ -56,8 +63,8 @@ export function render_gist_text(gist: Gist): string {
     } else {
 
     let sub_text: any = {};
-    for (let [k, v] of Object.entries(gist.children)) {
-        sub_text[k] = render_gist_text(v);
+    for (const k in gist.children) {
+        sub_text[k] = render_gist_text(gist.children[k]);
     }
     return spec.text(sub_text);
 }
@@ -77,8 +84,8 @@ export function render_gist_command(gist: Gist): ConsumeSpec {
         return spec.command({});
     }
 
-    for (let [k, v] of Object.entries(gist.children)) {
-        sub_commands[k] = render_gist_command(v);
+    for (const k in gist.children) {
+        sub_commands[k] = render_gist_command(gist.children[k]);
     }
     return spec.command(sub_commands);
 }
@@ -193,7 +200,7 @@ export function gist_matches(gist: Gist, pattern: GistPattern) {
         return false;
     }
 
-    for (const k in pattern.children) {
+    for (const k in pattern.children as {}) {
         if (!gist_matches(gist.children[k], pattern.children[k])) {
             return false;
         }
@@ -201,7 +208,7 @@ export function gist_matches(gist: Gist, pattern: GistPattern) {
     return true;
 }
 
-
+// TODO: includes subpattern
 
 
 
