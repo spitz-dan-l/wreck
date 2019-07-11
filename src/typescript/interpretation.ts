@@ -1,5 +1,6 @@
 import { World } from './world';
 import {deep_equal, update, Updater, empty} from './utils';
+import { GistStructure } from './gist';
 
 
 export type InterpretationLabel = string;
@@ -7,12 +8,6 @@ export type InterpretationLabel = string;
 export type InterpretationType = boolean | symbol;
 export type LocalInterpretations = { [K in InterpretationLabel]: InterpretationType }
 export type Interpretations = { [k: number]: LocalInterpretations };
-
-let x: Updater<Interpretations> = {
-    [0]: {
-        horse: Symbol()
-    }
-}
 
 export function interpretation_of(world: World, interps: Interpretations) {
     return interps[world.index];
@@ -41,27 +36,6 @@ export function pre_interp(interps: Interpretations): Interpretations {
 
     return update(interps, u);
 }
-
-// export function map_interpretations<W extends World>(world: W, f: (w: W, prev_interp?: LocalInterpretations) => LocalInterpretations) {
-//     let hist_world: W | null = world;
-//     let u: Updater<Interpretations> = {};
-    
-//     while (hist_world !== null) {
-//         let old_interp = world.interpretations[hist_world.index];
-//         let new_interp = f(hist_world, old_interp);
-        
-//         if (!deep_equal(new_interp, old_interp)) {
-//             u[hist_world.index] = () => new_interp;
-//         }
-
-//         hist_world = hist_world.previous;
-//     }
-
-//     if (empty(u)) {
-//         return world.interpretations;
-//     }
-//     return update(world.interpretations, u);
-// }
 
 export function interpretation_updater<W extends World>(world: W, f: (w: W) => Updater<LocalInterpretations>) {
     return { interpretations: (prev_interps: Interpretations) => {

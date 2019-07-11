@@ -14,10 +14,17 @@ import { new_venience_world } from './demo_worlds/narrascope/narrascope';
 console.time('world_build');
 let {initial_result, update, css_rules} = new_venience_world();//new_hex_world();//new_bird_world();
 
-// for (let i = 0; i < 3; i++) {
-//     result = updater(result.world, raw('go up stairs'));
-//     result = updater(result.world, raw('go down stairs'));
-// }
+// Ability to start from a specific point in the demo:
+
+const START_SOLVED = 0;
+
+import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
+import { raw } from './parser';
+
+const starting_world = find_world_at(initial_result.world, START_SOLVED);
+initial_result = update(starting_world.result!, raw('', false));
+
+
 console.timeEnd('world_build');
 
 
