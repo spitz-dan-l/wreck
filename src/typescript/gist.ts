@@ -1,22 +1,21 @@
 import { ConsumeSpec } from './parser';
 import { StaticIndex } from './static_resources';
-import { deep_equal } from './utils';
-
 
 /*
     Use Cases
         - composable topics, e.g. my impression of sam, my contemplation of my impression of sam
         - ability to query for subgists, so ie. "does it mention sam?"
-
-    For gists, consider using a StaticIndex of GistSpecs
-    the GistSpec would contain the functions about how to compose Gist trees into text phrases or commands
+        - TODO ability to splice text in to messages in structured way
+        - TODO ability to adjust interpretation classes with a function
+    For gists, consider using a StaticIndex of GistRenderers
+    the GistRenderer would contain the functions about how to transform Gist trees into text phrases or commands
 */
 
 
 export interface GistSpecs {}
 
 type Validate<T extends Record<string, any>> = {
-    [K in keyof T]: T[K] extends GistChildren<T> ? T[K] : never
+    [K in keyof T]: T[K] extends GistChildren ? T[K] : never
 };
 
 type ValidatedSpecs = Validate<GistSpecs>;
@@ -27,19 +26,18 @@ type InvalidSpecs = {
 
 /* This will produce an error only if GistSpecs is invalid. */ const InvalidSpecs: never = <InvalidSpecs><unknown>null;
 
+export type GistStructure = {
+    tag: string,
+    children?: Record<string | number, GistStructure>
+}
 
-export type Gist<Tag extends keyof GistSpecs=keyof GistSpecs> = GistVerbose<GistSpecs, Tag>;
+export type Gist<Tag extends keyof GistSpecs=keyof GistSpecs> = {
+    tag: Tag,
+    children: GistChildren & GistSpecs[Tag]
+}
 
-export type GistVerbose<
-    Specs,
-    Tag extends keyof Specs
-> =
-{
-    tag: Tag
-    children: GistChildren<Specs> & Specs[Tag]
-};
+type GistChildren = undefined | Record<string | number, Gist>;
 
-type GistChildren<Specs> = undefined | Record<string | number, GistVerbose<Specs, keyof Specs>>;
 
 export type GistRenderer<Tag extends keyof GistSpecs=keyof GistSpecs> = {
     tag: Tag,
@@ -97,8 +95,8 @@ export function Gists<Tag extends keyof GistSpecs=keyof GistSpecs>(renderer: Gis
 
 type NoChildren<X, Y> = undefined extends X ? Y : never;
 
-export function gist<Tag extends keyof GistSpecs>(tag: NoChildren<GistSpecs[Tag], Tag>): GistVerbose<GistSpecs, Tag>;
-export function gist<Tag extends keyof GistSpecs>(tag: Tag, children: GistSpecs[Tag]): GistVerbose<GistSpecs, Tag>;
+export function gist<Tag extends keyof GistSpecs>(tag: NoChildren<GistSpecs[Tag], Tag>): Gist<Tag>//GistVerbose<GistSpecs, Tag>;
+export function gist<Tag extends keyof GistSpecs>(tag: Tag, children: GistSpecs[Tag]): Gist<Tag>//GistVerbose<GistSpecs, Tag>;
 export function gist<Tag extends keyof GistSpecs>(tag: Tag, children?: GistSpecs[Tag]) {
     return {
         tag,

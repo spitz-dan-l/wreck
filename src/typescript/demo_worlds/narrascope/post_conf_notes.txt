@@ -36,10 +36,10 @@ Three major core additions:
                 - Similarly, you'd need a way to constrain the search to "atomic" commands only- else you could have cases where the search never terminates. A label on command options for this could be an easy way to implement it
 
         List of use cases
-            - Supervenience/goal-oriented commands
+            - DONE Supervenience/goal-oriented commands
             - Automatic Used/Available logic
             - assisted "prompt" generation
-            - Testing
+            - DONE Testing
 
         Risks:
             This risks being computationally expensive to the point of lagging, and potentially a lot of work to implement.
@@ -139,6 +139,8 @@ Code restructuring/enhancements
         - But separation of concerns is dead now... Could just be acceptable.
     - DONE Generalize Stages to support non-function types
     - Find ways to optimize parser performance. Becomes necessary as we try to implement supervenience and generally add more options
+        - DONE Use an explicit return type instead of exceptions
+            - Yep this definitely helps, cuts time by about 50%.
         - Convert consume_() logic to wasm
             - May not actually fix the real problem which seems like it might be the use of exceptions
         - Convert parser threads to generators
@@ -147,6 +149,9 @@ Code restructuring/enhancements
         - distribute splits across web workers
             - Unconvinced the added overhead would be worth it
             - Would require logical restructuring of Parser.run_thread and parser.split
+        - see whether async/await is any good for speed
+    - Gists inside of interpretations & messages
+    - Quick way to start a game played up to a specific point in the UI.
 
 Categories of work
 
@@ -161,6 +166,7 @@ Categories of work
 Plan
 1. DONE Supervenience initial experiment
     1.a DONE Short searches that happen every turn work quickly enough
-2?. Find a coherent setup for Gists
-2. Animations overhaul - necessary for many downstream polish things
-3. Pick off smaller tasks from the remaining categories
+        - Had to implement search caching to make this efficient
+2. DONE Find a coherent setup for Gists
+3. Animations overhaul - necessary for many downstream polish things
+4. Pick off smaller tasks from the remaining categories

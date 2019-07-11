@@ -633,7 +633,7 @@ const initial_venience_world: Venience = update({
 
 
 const puffer_index = resource_registry.get('puffer_index', false);
-const venience_world_spec = make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
+export const venience_world_spec = make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
 
 export function new_venience_world() {
     return world_driver(venience_world_spec);
