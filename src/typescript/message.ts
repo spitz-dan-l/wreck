@@ -93,7 +93,7 @@ standard_render = function(world: World, labels: LocalInterpretations = {}, poss
         .filter(x => x.length > 0)
         .map(x => x.map(f => Mustache.render(f,
             Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val}), <LocalInterpretations>{})
-        )).join(' '))
+        )).join('<br/>'))
         .join('<br/>');
 }
 
@@ -119,3 +119,14 @@ export let infer_message_labels = (m: Message): LocalInterpretations =>
     merge_objects(
         (['action', 'consequence', 'description', 'prompt'] as const)
             .flatMap(prop => m[prop].map(infer_fragment_labels)));
+
+
+
+
+
+
+
+
+
+
+

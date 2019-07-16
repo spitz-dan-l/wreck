@@ -250,7 +250,7 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                         },
                         message_updater({
                             action: [`You contemplate ${render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.`],
-                            description: descriptions
+                            description: [descriptions.join('')]
                         }),
                     );
                 }));

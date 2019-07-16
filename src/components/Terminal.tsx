@@ -1,13 +1,15 @@
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
-import { array_last, update, deep_equal, empty } from '../typescript/utils';
+import { array_last, update, deep_equal, empty, key_union } from '../typescript/utils';
 import { keys } from '../typescript/keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token, TypeaheadOption, TokenMatch, TokenAvailability } from '../typescript/parser';
 import { CommandResult, World } from "../typescript/world";
-import { Interpretations } from '../typescript/interpretation';
+import { Interpretations, interpretation_changes, history_array } from '../typescript/interpretation';
 import { standard_render } from '../typescript/message';
 import { OutputText, ParsedText } from './Text';
+import { animate } from './animation';
 
+// STATE, ACTIONS, REDUCERS
 
 type AppState = {
   command_result: CommandResult<World>,
@@ -17,21 +19,24 @@ type AppState = {
 }
 
 type AppAction =
-  RawInput |
+  { kind: 'ChangeText', text: string } |
   { kind: 'SelectTypeahead', index: number } |
   { kind: 'SelectRelativeTypeahead', direction: 'up' | 'down' } |
   { kind: 'SelectUndo' } |
   { kind: 'ToggleUndoSelected' } |
-  { kind: 'Submit' } |
-  { kind: 'Undo' };
+  { kind: 'Submit' };
 
 // "reducer" function which returns updated state according to the
 // "kind" of the action passed to it
 // TODO look up whether there are methods for factoring reducers better
 function app_reducer(state: AppState, action: AppAction): AppState {
   switch (action.kind) {
-    case 'RawInput': {
-      let new_result = state.updater(state.command_result.world!, action);
+    case 'ChangeText': {
+      let new_result = state.updater(state.command_result.world!, {
+        kind: 'RawInput',
+        text: action.text,
+        submit: false
+      });
       return update(state, {
         command_result: () => new_result,
         typeahead_index: new_result.parsing.view.typeahead_grid.length > 0 ? 0 : -1
@@ -47,6 +52,7 @@ function app_reducer(state: AppState, action: AppAction): AppState {
     case 'SelectUndo':
       return update(state, { undo_selected: true });
     case 'ToggleUndoSelected': {
+      // Question here of whether this elimination logic should actually be in the view
       if (state.command_result.world.previous === null) {
         return state;
       }
@@ -68,9 +74,6 @@ function app_reducer(state: AppState, action: AppAction): AppState {
           undo_selected: false
         });
       }
-    }
-    case 'Undo': {
-      return undo(state);
     }
   }
   throw new Error('should no get here');
@@ -109,7 +112,6 @@ function select_relative_typeahead(state: AppState, direction: 'up' | 'down') {
   }
 
   return update(state, { typeahead_index: new_index! });
-  
 }
 
 function submit_typeahead(state: AppState) {
@@ -150,6 +152,8 @@ function submit_typeahead(state: AppState) {
     typeahead_index: new_result.parsing.view.typeahead_grid.length > 0 ? 0 : -1
   });
 }
+
+// VIEW LOGIC
 
 function scroll_down() {
   let bottom = document.querySelector('.typeahead .footer')!;
@@ -233,7 +237,7 @@ export const UndoButton: React.FunctionComponent<UndoProps> = ({world, undo_sele
   return (
     <div className={get_undo_class()}
          onMouseOver={() => dispatch({kind: 'SelectUndo'})}
-         onClick={() => dispatch({kind: 'Undo'})}
+         onClick={() => { dispatch({kind: 'SelectUndo'}); dispatch({kind: 'Submit'}); }}
          style={{}}
     >
       {String.fromCharCode(10226)} Undo
@@ -246,9 +250,8 @@ export const Prompt: React.FunctionComponent<{parsing: Parsing}> = (props) => {
   
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     dispatch({
-      kind: 'RawInput',
-      text: event.currentTarget.value,
-      submit: false
+      kind: 'ChangeText',
+      text: event.currentTarget.value
     });
   }
 
@@ -384,14 +387,28 @@ type HistoryProps = {
 }
 
 export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world}) => {
-  let worlds: World[] = [];
+  let [previous_world, set_previous_world] = React.useState(world);
 
-  // unroll all the historical worlds
-  let w: World | null = world;
-  while (w !== null) {
-    worlds.unshift(w);
-    w = w.previous;
-  }
+  let index_changes = interpretation_changes(world, previous_world);
+
+  let elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }> = React.useRef({});
+
+  React.useLayoutEffect(() => {
+    if (Object.keys(index_changes).length === 0) {
+      return;
+    }
+
+    let p = Promise.all(Object.entries(index_changes).map(([i, changes]) =>
+      animate(elt_index.current[i as unknown as number], changes)));
+    
+    p.then(() => {
+      scroll_down();
+    });
+
+    set_previous_world(world);
+  }, [world]);
+
+  let worlds: World[] = history_array(world).reverse();
 
   return <div className="history">
     { worlds.map(w => {
@@ -402,6 +419,7 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
         possible_labels = possible_world.interpretations[w.index];
       }
       return <HistoryElt
+               elt_index={elt_index}
                key={w.index}
                world={w}
                labels={labels}
@@ -415,154 +433,41 @@ type HistoryEltProps = {
   world: World,
   labels: Interpretations[number],
   possible_labels: Interpretations[number] | undefined,
+  elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }>
 }
-const HistoryElt: React.FunctionComponent<HistoryEltProps> = React.memo(
-  ({world, labels, possible_labels}) => {
-    // We are doing a bad thing in this function and modifying labels and possible_labels
-    // so we just copy them up front to maintain referential transparency
-    labels = {...labels};
-    if (possible_labels !== undefined) {
-      possible_labels = {...possible_labels};
-    }
-    function key_union(a: {}, b: {}) {
-      return [...new Set([...Object.keys(a), ...Object.keys(b)]).values()];
-    }
+const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, possible_labels, elt_index}) => {
+  // We are doing a bad thing in this function and modifying labels and possible_labels
+  // so we just copy them up front to maintain referential transparency
+  labels = {...labels};
+  if (possible_labels !== undefined) {
+    possible_labels = {...possible_labels};
+  }
 
-    let ref = React.useRef<HTMLDivElement>() as React.MutableRefObject<HTMLDivElement>;
-    
-    let adding_labels: string[] = [];
-    let removing_labels: string[] = [];
+  let ref = React.useCallback((node: HTMLDivElement) => {
+    elt_index.current[world.index] = node
+  }, []);
 
-    let classes = {...labels};
-
-    let [previous_labels, set_previous_labels] = React.useState(labels);
-    let [creating, set_creating] = React.useState(true); 
-
-
-    for (let l of key_union(labels, previous_labels || {})) {
-      if (previous_labels !== undefined) {
-        if (labels[l] &&
-             (!previous_labels[l] ||               // previous doesn't have it on, or
-              labels[l] !== previous_labels[l])) { // previous or current is a blink/symbol
-          adding_labels.push(l);
-        } else if (!labels[l] && previous_labels[l] === true) {
-          removing_labels.push(l);
-        }
-      } else if (labels[l]) {
-        adding_labels.push(l);
+  let classes = {...labels};
+  
+  if (possible_labels !== undefined) {
+    for (let l of key_union(labels, possible_labels)) {
+      if (possible_labels[l] &&
+            (!labels[l] ||
+             possible_labels[l] !== labels[l])) {
+        classes[`would-add-${l}`] = true;
+      } else if (!possible_labels[l] && labels[l] === true) {
+        classes[`would-remove-${l}`] = true;
       }
     }
-    
-    React.useLayoutEffect(
-      () => {
-        if (world.index === 1 && (!empty(adding_labels) || !empty(removing_labels))) {
-          // debugger;
-        }
-        let msg = 'animating world '+world.index;
-        animate(ref, creating, adding_labels, removing_labels, msg);
-        if (creating) {
-          set_creating(false);
-        }
-        if (!deep_equal(labels, previous_labels)) {
-          set_previous_labels(labels);
-        }
-      },
-      // TODO: find a way to bring back this dupe checker
-      // [adding_labels.join(' '), removing_labels.join(' ')]
-      // Object.keys(world.local_interpretations).map(l => adding_labels.includes(l) ? 1 : removing_labels.includes(l) ? -1 : 0)
-    );
-
-    
-    if (possible_labels !== undefined) {
-      for (let l of key_union(labels, possible_labels)) {
-        if (possible_labels[l] &&
-              (!labels[l] ||
-               possible_labels[l] !== labels[l])) {
-          classes[`would-add-${l}`] = true;
-        } else if (!possible_labels[l] && labels[l] === true) {
-          classes[`would-remove-${l}`] = true;
-        }
-      }
-    }
-    let className = Object.entries(classes).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
-    let rendering= standard_render(world, labels, possible_labels);
-
-    return <div ref={ref} className={className}>
-      { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
-      <OutputText rendering={rendering} />
-    </div>;
-  },
-);
-
-function animate(ref: React.MutableRefObject<HTMLDivElement>, creating: boolean, adding_classes: string[], removing_classes: string[], msg?: string) {
-  if (!creating && adding_classes.length === 0 && removing_classes.length === 0) {
-    return;
   }
-  // console.log(msg);
-  function walkElt(elt, f: (e: HTMLElement) => void){
-    let children = elt.children;
-    for (let i = 0; i < children.length; i++) {
-      let child = children.item(i);
-      walkElt(child, f)
-    }
-    f(elt)
-  }
+  let className = Object.entries(classes).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
+  let rendering= standard_render(world, labels, possible_labels);
 
-  let comp_elt = ref.current;
+  return <div ref={ref} className={className}>
+    { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
+    <OutputText rendering={rendering} />
+  </div>;
+};
 
-  if (creating) {
-    comp_elt.classList.add('animation-new')
-  }
 
-  // Momentarily apply the animation-pre-compute class
-  // to accurately measure the target maxHeight
-  // and check for the custom --is-collapsing property
-  // (This is basically an abomination and I am sorry.)
-  comp_elt.classList.add('animation-pre-compute');
-  
-  walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
-  
-  comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing')) || 0 as any;
 
-  comp_elt.classList.remove('animation-pre-compute');
-
-  
-  let edit_classes = [
-    ...adding_classes.map(c => 'adding-' + c),
-    ...removing_classes.map(c => 'removing-' + c)
-  ]
-  comp_elt.classList.add('animation-start', ...edit_classes);
-
-  
-  // If --is-collapsing was set by the animation-pre-compute class,
-  // then apply the maxHeight update at the end of this animation frame
-  // rather than the beginning of the next one.
-  // I have no idea why this works/is necessary, but it does/is.
-  if (comp_elt.dataset.isCollapsing == 1 as any) {
-    walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
-  }
-    
-  requestAnimationFrame(() => {
-    // If --is-collapsing wasn't set in the animation-pre-compute class,
-    // then apply the maxHeight update now.
-    // Websites technology keyboard mouse.
-    if (comp_elt.dataset.isCollapsing != 1 as any) {
-      walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
-    }
-    
-    comp_elt.classList.add('animation-active');
-
-    setTimeout(() => {
-      comp_elt.classList.remove(
-        'animation-new',
-        'animation-start',
-        'animation-active',
-        ...edit_classes);
-
-      walkElt(comp_elt, (e) => e.style.maxHeight = ''); //null);
-
-      scroll_down();
-    }, 700)
-    
-  });
-}

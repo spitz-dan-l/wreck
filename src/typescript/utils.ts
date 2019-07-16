@@ -223,6 +223,10 @@ export function map_values<K extends keyof any, V1, V2=V1>(f: (v: V1) => V2, obj
     return from_entries(entries(obj).map(([k, v]) => [k, f(v)]))
 }
 
+export function key_union(a: {}, b: {}) {
+  return [...new Set([...Object.keys(a), ...Object.keys(b)]).values()];
+}
+
 // Helper for declaring values with tuple types.
 // "as const" would nearly make this unnecessary but @babel/preset-typescript 3.7.7 doesn't parse as const
 
@@ -351,3 +355,31 @@ export function bound_method<T, K extends method_properties<T>>(instance: T, nam
 }
 
 
+type Maybe<T> = T | null;
+
+let div = (a: number, b: number) => {
+    let result = a / b;
+    return new Promise<number>((resolve, reject) => {
+        if (result === NaN) {
+            reject();
+        } else {
+            resolve(result);
+        }
+    })
+
+    
+}
+
+async function buh() {
+    return await div(1, 0);
+}
+
+function wrap<T>(f: Promise<T>): Maybe<T> {
+    let result: T | null = null;
+
+    Promise.resolve(f.then(r => {
+        result = r;
+    }));
+
+    return result;
+}

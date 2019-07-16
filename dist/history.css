@@ -45,12 +45,12 @@
     animation: none !important;
 }
 
-.history .animation-new.animation-start .output-text {
+.history .adding-animation-new.animation-start .output-text {
     opacity: 0.01;
     max-height: 0px;
 }
 
-.history .animation-new.animation-start.animation-active .output-text {
+.history .adding-animation-new.animation-start.animation-active .output-text {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;

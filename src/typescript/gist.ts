@@ -162,14 +162,15 @@ export function includes_tag<Tag extends keyof GistSpecs>(tag: Tag, gist: Gist) 
     return false;
 }
 
+
+export type GistPattern<Tag extends keyof GistSpecs=keyof GistSpecs> = GistPatternSingle<Tag> | GistPatternUnion<Tag> | undefined;
+
+type GistPatternUnion<Tag extends keyof GistSpecs=keyof GistSpecs> = GistPatternSingle<Tag>[];
+
 type GistPatternSingle<Tag extends keyof GistSpecs=keyof GistSpecs> = {
     tag: Tag,
     children?: ChildrenPattern<Tag, GistSpecs[Tag]>
 }
-
-type GistPatternUnion<Tag extends keyof GistSpecs=keyof GistSpecs> = GistPatternSingle<Tag>[];
-
-export type GistPattern<Tag extends keyof GistSpecs=keyof GistSpecs> = GistPatternSingle<Tag> | GistPatternUnion<Tag> | undefined;
 
 type ChildrenPattern<Tag extends keyof GistSpecs, Children extends GistSpecs[Tag]> = 
     Children extends undefined ? undefined :

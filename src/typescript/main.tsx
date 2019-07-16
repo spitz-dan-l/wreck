@@ -16,7 +16,7 @@ let {initial_result, update, css_rules} = new_venience_world();//new_hex_world()
 
 // Ability to start from a specific point in the demo:
 
-const START_SOLVED = 0;
+const START_SOLVED = 2;
 
 import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
 import { raw } from './parser';
@@ -41,24 +41,3 @@ if (css_rules !== undefined) {
 ReactDom.render(<App typeahead_index={0} undo_selected={false} command_result={initial_result} updater={update} />, document.getElementById('terminal'));
 // ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');
-
-// import {Terminal} from "../components/Terminal";
-
-// import {WorldDriver} from "../typescript/commands";
-
-// import {VenienceWorld, VenienceWorldState} from '../typescript/venience/venience_world';
-
-// let start: VenienceWorldState = {};
-
-// // start.experiences = ['grass, asking 2'];
-// //start.experiences = ['alcove, entering the forest']; 
-// // start.experiences = ['woods, ending interpretation'];
-// // start.experiences = ['bed, sitting up 2'];
-// // start.experiences = ['woods, crossing the boundary 2'];
-// // start.experiences = ['woods, clearing'];
-// // start.has_regarded = {'tangle, 3': true};
-// // start.has_understood = {'tangle, 3': true};
-
-// let world_driver = new WorldDriver(new VenienceWorld(start))
-
-// ReactDom.render(<Terminal world_driver={world_driver} />, document.getElementById('terminal'));
