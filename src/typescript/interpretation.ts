@@ -1,7 +1,3 @@
-import { key_union } from '../typescript/utils';
-import { empty, update, Updater } from './utils';
-import { World } from './world';
-
 /*
     Integrating interpretations and gists...
 
@@ -125,24 +121,60 @@ TODO
     separate from css classes
 - add input prompt/disable normal user inputs
 
-
-
 */
-
+import { key_union } from '../typescript/utils';
+import { empty, update, ObjectUpdater, Updater } from './utils';
+import { World } from './world';
 
 export type InterpretationLabel = string;
 
 // TODO: when saving/loading, all symbols must be converted to true.
-// export type InterpretationType = {
-//     kind: 'Interpretation',
-//     value: boolean | symbol,
-//     stage?: number,
-//     gist?: GistStructure
-// } 
+export type InterpretationValue = boolean | symbol;
 
-export type InterpretationType = boolean | symbol;
+export type Interpretation = {
+    kind: 'Interpretation',
+    value: InterpretationValue,
+    stage?: number
+} 
+export type LocalInterpretations = Record<InterpretationLabel, Interpretation>;
 
-export type LocalInterpretations = { [K in InterpretationLabel]: InterpretationType }
+export type LocalInterpretationSpec = Record<InterpretationLabel, InterpretationValue | Interpretation>;
+
+export function make_local_interps(spec: LocalInterpretationSpec): LocalInterpretations {
+    let result: LocalInterpretations = {};
+    for (const [label, value] of Object.entries(spec)) {
+        if (typeof value !== 'object') {
+            const value2: Interpretation = {
+                kind: 'Interpretation',
+                value
+            };
+            result[label] = value2;
+        } else {
+            result[label] = value;
+        }
+    }
+
+    return result;
+}
+
+export function interps(spec: Record<number, LocalInterpretationSpec>): Interpretations {
+    let result: Interpretations = {};
+
+    for (const [index, local_spec] of Object.entries(spec)) {
+        result[index] = make_local_interps(local_spec);
+    }
+
+    return result;
+}
+
+export function label_value(local_interps: LocalInterpretations, label: InterpretationLabel): boolean | symbol {
+    if (local_interps[label] === undefined) {
+        return false;
+    }
+    return local_interps[label].value;
+}
+
+// export type LocalInterpretations = { [K in InterpretationLabel]: InterpretationType }
 export type Interpretations = { [k: number]: LocalInterpretations };
 
 export function interpretation_of(world: World, interps: Interpretations) {
@@ -160,8 +192,8 @@ export function self_interpretation<W extends World>(world: W, updater: Updater<
 export function pre_interp(interps: Interpretations): Interpretations {
     let u: Updater<Interpretations> = {};
     for (let [index, interp] of Object.entries(interps)) {
-        for (let [label, val] of Object.entries(interp)) {
-            if (typeof val === 'symbol') {
+        for (let [label, {value}] of Object.entries(interp)) {
+            if (typeof value === 'symbol') {
                 if (u[index] === undefined) {
                     u[index] = {};
                 }
@@ -177,14 +209,13 @@ export function pre_interp(interps: Interpretations): Interpretations {
     return update(interps, u);
 }
 
-export function interpretation_updater<W extends World>(world: W, f: (w: W) => Updater<LocalInterpretations>) {
+export function interpretation_updater<W extends World>(world: W, f: (w: W) => LocalInterpretationSpec) {
     return { interpretations: (prev_interps: Interpretations) => {
         let hist_world: W | null = world;
         let u: Updater<Interpretations> = {};
         
         while (hist_world !== null) {
-            let old_interp = prev_interps[hist_world.index];
-            let uu = f(hist_world);
+            let uu = make_local_interps(f(hist_world));
             
             if (!empty(uu)) {
                 u[hist_world.index] = uu;
@@ -260,14 +291,14 @@ export function interpretation_changes(world2: World, world1: World) {
                 continue;
             }
             for (const label of key_union(interps2, interps1)) {
-                if (interps2[label] !== interps1[label] &&
-                    (interps2[label] || interps1[label])) {
-                    add_change(i, label, interps2[label] ? 'Adding' : 'Removing');
+                if (label_value(interps2, label) !== label_value(interps1, label) &&
+                    (label_value(interps2, label) || label_value(interps1, label))) {
+                    add_change(i, label, label_value(interps2, label) ? 'Adding' : 'Removing');
                 }
             }
         } else {
             for (const label of Object.keys(interps2)) {
-                if (interps2[label]) {
+                if (label_value(interps2, label)) {
                     add_change(i, label, 'Adding');
                 }
             }

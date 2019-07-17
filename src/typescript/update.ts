@@ -62,7 +62,7 @@ type NotFunction<T> = T extends (...args: any) => any ? never : T;
 
 type Primitive = undefined | null | boolean | string | number | symbol;
 
-type ObjectUpdater<T> = {
+export type ObjectUpdater<T> = {
     [K in keyof T]?: Updater<T[K]>
 }
 

@@ -1,4 +1,4 @@
-export {Updater, update, update_any} from './update';
+export {ObjectUpdater, Updater, update, update_any} from './update';
 
 export type Point2 = [number, number];
 

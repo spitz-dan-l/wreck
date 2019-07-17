@@ -146,7 +146,7 @@ export function animate(comp_elt: HTMLDivElement, changes: InterpretationChanges
 
       setTimeout(() => {
         comp_elt.classList.remove(
-          'animation-new',
+          // 'animation-new',
           'animation-start',
           'animation-active',
           ...edit_classes);

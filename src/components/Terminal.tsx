@@ -4,7 +4,7 @@ import { array_last, update, deep_equal, empty, key_union } from '../typescript/
 import { keys } from '../typescript/keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token, TypeaheadOption, TokenMatch, TokenAvailability } from '../typescript/parser';
 import { CommandResult, World } from "../typescript/world";
-import { Interpretations, interpretation_changes, history_array } from '../typescript/interpretation';
+import { Interpretations, interpretation_changes, history_array, LocalInterpretations } from '../typescript/interpretation';
 import { standard_render } from '../typescript/message';
 import { OutputText, ParsedText } from './Text';
 import { animate } from './animation';
@@ -15,6 +15,7 @@ type AppState = {
   command_result: CommandResult<World>,
   typeahead_index: number,
   undo_selected: boolean,
+  animation_stage: number | undefined,
   updater: (world: World, command: RawInput) => CommandResult<World>
 }
 
@@ -24,12 +25,22 @@ type AppAction =
   { kind: 'SelectRelativeTypeahead', direction: 'up' | 'down' } |
   { kind: 'SelectUndo' } |
   { kind: 'ToggleUndoSelected' } |
-  { kind: 'Submit' };
+  { kind: 'Submit' } |
+  { kind: 'UpdateAnimationStage', animation_stage: number | undefined };
 
 // "reducer" function which returns updated state according to the
 // "kind" of the action passed to it
 // TODO look up whether there are methods for factoring reducers better
 function app_reducer(state: AppState, action: AppAction): AppState {
+  if (state.animation_stage !== undefined) {
+    if (action.kind === 'UpdateAnimationStage') {
+      return update(state, {
+        animation_stage: action.animation_stage
+      });
+    }
+    return state;
+  }
+
   switch (action.kind) {
     case 'ChangeText': {
       let new_result = state.updater(state.command_result.world!, {
@@ -169,6 +180,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
   let current_world = state.command_result.world!;
   let current_parsing = state.command_result.parsing;
   let possible_world = state.command_result.possible_world;
+  let animation_stage = state.animation_stage;
 
   function handleKeyDown(event: KeyboardEvent) {
     let input_elt = document.querySelector('input')!;
@@ -209,7 +221,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
   return <AppDispatch.Provider value={dispatch}>
     <div>
-      <History world={current_world} possible_world={possible_world} />
+      <History world={current_world} possible_world={possible_world} animation_stage={animation_stage} />
       <Prompt parsing={current_parsing} />
       <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} undo_selected={state.undo_selected} />
       <UndoButton world={current_world} undo_selected={state.undo_selected} />
@@ -383,10 +395,11 @@ const Lock: React.FunctionComponent = (props) => {
 
 type HistoryProps = {
   world: World,
-  possible_world: World | null
+  possible_world: World | null,
+  animation_stage: number | undefined
 }
 
-export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world}) => {
+export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world, animation_stage}) => {
   let [previous_world, set_previous_world] = React.useState(world);
 
   let index_changes = interpretation_changes(world, previous_world);
@@ -397,11 +410,12 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
     if (Object.keys(index_changes).length === 0) {
       return;
     }
+    let p = Promise.resolve();
 
-    let p = Promise.all(Object.entries(index_changes).map(([i, changes]) =>
+    let ps = Promise.all(Object.entries(index_changes).map(([i, changes]) =>
       animate(elt_index.current[i as unknown as number], changes)));
     
-    p.then(() => {
+    ps.then(() => {
       scroll_down();
     });
 
@@ -424,18 +438,24 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
                world={w}
                labels={labels}
                possible_labels={possible_labels}
+               animation_stage={animation_stage}
              />;
     }) }
   </div>
 };
 
+import { merge_stages, is_stages } from '../typescript/stages';
+import {map_values} from '../typescript/utils';
+import {label_value} from '../typescript/interpretation';
+
 type HistoryEltProps = {
   world: World,
   labels: Interpretations[number],
   possible_labels: Interpretations[number] | undefined,
+  animation_stage: number | undefined,
   elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }>
 }
-const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, possible_labels, elt_index}) => {
+const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, possible_labels, animation_stage, elt_index}) => {
   // We are doing a bad thing in this function and modifying labels and possible_labels
   // so we just copy them up front to maintain referential transparency
   labels = {...labels};
@@ -447,21 +467,25 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, po
     elt_index.current[world.index] = node
   }, []);
 
-  let classes = {...labels};
+  let classes = map_values((v) => v.value, labels);
   
   if (possible_labels !== undefined) {
     for (let l of key_union(labels, possible_labels)) {
-      if (possible_labels[l] &&
-            (!labels[l] ||
-             possible_labels[l] !== labels[l])) {
+      if (label_value(possible_labels, l) &&
+            (!label_value(labels, l) ||
+             label_value(possible_labels, l) !== label_value(labels, l))) {
         classes[`would-add-${l}`] = true;
-      } else if (!possible_labels[l] && labels[l] === true) {
+      } else if (!label_value(possible_labels, l) && label_value(labels, l) === true) {
         classes[`would-remove-${l}`] = true;
       }
     }
   }
   let className = Object.entries(classes).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
-  let rendering= standard_render(world, labels, possible_labels);
+  
+  let visible_labels =  merge_stages<LocalInterpretations>(labels, (x, y) => ({...x, ...y}), {}, animation_stage);
+  let all_possible_labels = merge_stages<LocalInterpretations>(possible_labels || {}, (x, y) => ({...x, ...y}), {});
+
+  let rendering= standard_render(world, visible_labels, all_possible_labels);
 
   return <div ref={ref} className={className}>
     { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }

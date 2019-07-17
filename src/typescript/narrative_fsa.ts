@@ -1,7 +1,8 @@
-import { interpretation_updater, LocalInterpretations } from './interpretation';
+import { interpretation_updater, LocalInterpretations, LocalInterpretationSpec } from './interpretation';
 import { MessageUpdateSpec, message_updater } from './message';
 import { ConsumeSpec, Parser, ParserThread } from './parser';
-import { knit_puffers, map_puffer, MaybeStages, normalize_stages, Puffer, PufferMapper, Stages, stage_keys } from './puffer';
+import { knit_puffers, map_puffer, Puffer, PufferMapper } from './puffer';
+import { MaybeStages, normalize_stages, Stages, stage_keys } from './stages';
 import { update, Updater } from './utils';
 import { Narrator, World } from './world';
 
@@ -12,7 +13,7 @@ export function narrative_fsa_builder
     transition_to: (w: W, state: StateID) => W
 ) {
     type Transitions = Partial<Record<StateID, ConsumeSpec>>;//{ [K in StateID]: ConsumeSpec };
-    type Interpretations = Partial<Record<StateID, LocalInterpretations>>;
+    type Interpretations = Partial<Record<StateID, LocalInterpretationSpec>>;
 
     type PWUpdate<W> = (world: W) => W;
 

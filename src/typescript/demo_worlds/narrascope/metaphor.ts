@@ -1,5 +1,5 @@
 import { Gist, gist, Gists, gists_equal, gist_renderer_index, render_gist_command, render_gist_text, gist_to_string } from '../../gist';
-import { find_historical, history_array, interpretation_updater, find_index } from "../../interpretation";
+import { find_historical, history_array, interpretation_updater, find_index, interps } from "../../interpretation";
 import { MessageUpdateSpec, message_updater } from "../../message";
 import { ConsumeSpec, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
@@ -240,12 +240,12 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                         w => metaphor_lock.lock(w, index),
                         { 
                             current_interpretation: index,
-                            interpretations: {
+                            interpretations: interps({
                                 [index]: {
                                     'interpretation-block': true,
                                     'interpretation-active': true
                                 }
-                            },
+                            }),
                             gist: () => gist('contemplation', {subject: immediate_world.gist!})
                         },
                         message_updater({
@@ -330,9 +330,9 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                     metaphor_lock.release,
                     {
                         current_interpretation: null,
-                        interpretations: {
+                        interpretations: interps({
                             [world.current_interpretation!]: {'interpretation-active': false}
-                        },
+                        }),
                         has_tried: () => ({}),
                         
                     },
@@ -421,11 +421,11 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                                     [`descr-${spec.slug}-blink`]: Symbol('Once')
                                 } : {}),
                             { 
-                                interpretations: {
+                                interpretations: interps({
                                     [interpretted_world.index]: {
                                         [`interp-${spec.slug}-blink`]: Symbol('Once')
                                     }
-                                },
+                                }),
                                 has_tried: { [action.name]: { [spec.name]: true }}
                             });
 
@@ -433,15 +433,15 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                         if (solved) {
                             if (!already_solved) {
                                 return update(world,
-                                    { interpretations: { [interpretted_world.index]: {
+                                    { interpretations: interps({ [interpretted_world.index]: {
                                         [`interp-${spec.slug}`]: true
-                                    }}}
+                                    }})}
                                 );
                             } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
                                 return update(world, {
-                                    interpretations: { [interpretted_world.index]: {
+                                    interpretations: interps({ [interpretted_world.index]: {
                                         [`interp-${spec.slug}-solved-blink`]: Symbol('Once')
-                                    }}
+                                    }})
                                 });
                             }
                         }
@@ -470,9 +470,9 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
 
         if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
             updates.push(
-                { interpretations: { [world2.index]: {
+                { interpretations: interps({ [world2.index]: {
                     [`interp-${spec.slug}`]: true
-                }}}
+                }})}
             );
         }
         return update(world2, ...updates);

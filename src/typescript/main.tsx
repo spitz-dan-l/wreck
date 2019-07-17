@@ -16,7 +16,7 @@ let {initial_result, update, css_rules} = new_venience_world();//new_hex_world()
 
 // Ability to start from a specific point in the demo:
 
-const START_SOLVED = 2;
+const START_SOLVED = 0;
 
 import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
 import { raw } from './parser';
@@ -38,6 +38,12 @@ if (css_rules !== undefined) {
     }
 }
 
-ReactDom.render(<App typeahead_index={0} undo_selected={false} command_result={initial_result} updater={update} />, document.getElementById('terminal'));
+ReactDom.render(<App
+    typeahead_index={0}
+    undo_selected={false}
+    command_result={initial_result}
+    updater={update}
+    animation_stage={undefined}
+/>, document.getElementById('terminal'));
 // ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');

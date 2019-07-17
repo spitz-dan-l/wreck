@@ -4,7 +4,7 @@ import { Parser, ParserThread, gate, ConsumeSpec } from '../../parser';
 import { make_puffer_world_spec, Puffer } from '../../puffer';
 import { update, Updater, entries, cond } from '../../utils';
 import { get_initial_world, World, world_driver } from '../../world';
-import { LocalInterpretations, find_historical, self_interpretation } from '../../interpretation';
+import { LocalInterpretations, find_historical, self_interpretation, interps } from '../../interpretation';
 
 /*
     TODO
@@ -157,12 +157,12 @@ let InterpPuffer: Puffer<Venience> = {
                 let index = world.previous && world.previous.index;
                 let new_interps: Updater<Venience> = {};
                 if (index !== null) {
-                    new_interps = { interpretations: {
+                    new_interps = { interpretations: interps({
                         [index]: {
                             'interpretation-block': true,
                             'interpretation-active': true
                         }
-                    }};
+                    })};
                 }
                 return update(world,
                     { current_interpretation: index },
@@ -174,9 +174,9 @@ let InterpPuffer: Puffer<Venience> = {
 
                 return update(world, {
                     current_interpretation: null,
-                    interpretations: {
+                    interpretations: interps({
                         [world.current_interpretation]: {'interpretation-active': false}
-                    }
+                    })
                 });
             }
         }
@@ -587,9 +587,9 @@ let dread_facet = make_facet({
             //correct
             if (used) {
                 return update(world, {
-                    interpretations: { [interp_world.index]: {
+                    interpretations: interps({ [interp_world.index]: {
                         [`interp-alcove-gravity-blink`]: Symbol('Once')
-                    }}
+                    }})
                 });
             } else {
                 return update(world, {
@@ -657,9 +657,9 @@ ObserverMoments(
 
                 if (used) {
                     return update(world, {
-                        interpretations: { [box_index]: {
+                        interpretations: interps({ [box_index]: {
                             [`interp-alcove-${k}-blink`]: Symbol('Once')
-                        }}
+                        }})
                     });
                 } else {
                     return update(world, {
@@ -685,12 +685,12 @@ ObserverMoments(
     here: (world) => {
         let box = find_box(world)!;
         if (world.index === box.index) {
-            return update(world, { interpretations: {
+            return update(world, { interpretations: interps({
                 [world.index]: {
                     'interpretation-block': true,
                     'interpretation-active': true
                 }
-            }});
+            })});
         }
         return update(world, {
             interpretations: { [box.index]: Object.fromEntries(

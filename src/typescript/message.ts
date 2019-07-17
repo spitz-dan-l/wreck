@@ -86,8 +86,7 @@ export let message_updater = (spec: MessageUpdateSpec) => ({
 
 export type Renderer = (world: World, labels?: LocalInterpretations, possible_labels?: LocalInterpretations) => string;
 
-export let standard_render: Renderer;
-standard_render = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
+export let standard_render: Renderer = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
     return (['action', 'consequence', 'description', 'prompt'] as const)
         .map(f => world.message[f])
         .filter(x => x.length > 0)

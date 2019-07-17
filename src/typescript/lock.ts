@@ -40,7 +40,7 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
                     if (w.index < start_index!) {
                         return { unfocused: true };
                     }
-                    return {};
+                    return { unfocused: false };
                 }));
         }
 

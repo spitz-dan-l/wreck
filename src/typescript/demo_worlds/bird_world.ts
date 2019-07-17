@@ -1,7 +1,7 @@
 import { random_choice } from '../text_tools';
 import { update } from '../utils';
 import { CommandHandler, get_initial_world, make_world_spec, World, world_driver, Narrator } from '../world';
-import { interpretation_updater } from '../interpretation';
+import { interpretation_updater, interps } from '../interpretation';
 import { failed } from '../parser';
 
 interface BirdWorld extends World {
@@ -18,7 +18,7 @@ let initial_world: BirdWorld = {
         description: [],
         prompt: []
     },
-    interpretations: { 0: {happy: true} }
+    interpretations: interps({ 0: {happy: true} })
 };
 
 export const bird_world_spec = () => make_world_spec({
