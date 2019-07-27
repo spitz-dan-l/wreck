@@ -102,12 +102,40 @@ TODO
 */
 
 import {World} from '../typescript/world';
-import {InterpretationChanges} from '../typescript/interpretation';
-import {key_union} from '../typescript/utils';
+import {IndexChanges, interpretation_changes, InterpretationChanges} from '../typescript/interpretation';
+import {key_union, update} from '../typescript/utils';
 import * as React from 'react';
+import {Stages, stage_keys} from '../typescript/stages';
 
+export type AnimationState = {
+  changes: InterpretationChanges,
+  current_stage: number | undefined
+}
 
-export function animate(comp_elt: HTMLDivElement, changes: InterpretationChanges) {
+export const empty_animation_state: AnimationState = {
+  changes: { label_changes: { kind: 'Stages' }, new_frames: {} },
+  current_stage: undefined
+};
+
+export function new_animation_state(new_world: World, old_world: World): AnimationState {
+  // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
+  let changes = interpretation_changes(new_world, old_world);
+  let stages = stage_keys(changes.label_changes);
+  let current_stage: number | undefined = stage_keys(changes.label_changes)[0];
+  return { changes, current_stage };
+}
+
+export function is_animating(a: AnimationState) {
+  return a.current_stage !== undefined;
+}
+
+export function advance_animation(state: AnimationState) {
+  let stages = stage_keys(state.changes.label_changes)
+  let next_stage = stages[stages.indexOf(state.current_stage!) + 1];
+  return update(state, { current_stage: next_stage });
+}
+
+export function animate(comp_elt: HTMLDivElement, changes: IndexChanges) {
   return new Promise<void>((resolve) => {
     // Momentarily apply the animation-pre-compute class
     // to accurately measure the target maxHeight
@@ -152,14 +180,16 @@ export function animate(comp_elt: HTMLDivElement, changes: InterpretationChanges
           ...edit_classes);
 
         walkElt(comp_elt, (e) => e.style.maxHeight = '');
-
+        
+        if (changes['animation-new'] === 'Adding') {
+          scroll_down();
+        }
         resolve();
       }, 700)
       
     });
   });
 }
-
 
 function walkElt(elt, f: (e: HTMLElement) => void){
   let children = elt.children;
@@ -170,7 +200,10 @@ function walkElt(elt, f: (e: HTMLElement) => void){
   f(elt)
 }
 
-
+export function scroll_down() {
+  let bottom = document.querySelector('.typeahead .footer')!;
+  bottom.scrollIntoView({behavior: "smooth", block: "end", inline: "end"});
+}
 
 
 

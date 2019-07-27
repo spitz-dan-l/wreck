@@ -210,10 +210,15 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
 
                 parser.label_context = { interp: true, filler: true };
 
-                const immediate_world = contemplatable_worlds[0];
+                const immediate_world: Venience | null = (world.previous.gist !== null && world.previous.gist.tag !== 'contemplation') ?
+                    world.previous :
+                    null;
 
-                const direct_thread: ParserThread<Venience> = () => 
-                    parser.consume(['contemplate', render_gist_command(immediate_world.gist!)], () =>
+                const direct_thread: ParserThread<Venience> = () => {
+                    if (immediate_world === null) {
+                        return parser.eliminate();
+                    }
+                    return parser.consume(['contemplate', render_gist_command(immediate_world.gist!)], () =>
                     parser.submit(() => {
 
                     const index = immediate_world.index;
@@ -253,7 +258,7 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                             description: [descriptions.join('')]
                         }),
                     );
-                }));
+                }))};
 
                 const indirect_simulator = 'indirect_contemplation';
                 
@@ -273,7 +278,7 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                     const indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
                         const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
 
-                        if (gists_equal(g, immediate_world.gist!)) {
+                        if (immediate_world !== null && gists_equal(g, immediate_world.gist!)) {
                             return parser.eliminate();
                         }
 
@@ -299,19 +304,15 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                                     return !would_contemplate;
                                 }
                             }),
-                            world);
+                            world.previous!);
                         if (result.result === null) {
                             return parser.eliminate();
                         }
 
                         return parser.consume({
                             tokens: render_gist_command(g),
-                            labels: {interp: true, filler: true}}, () =>
-
-                            parser.submit(() => {
-                                return result.result!;
-                            }
-                        ));
+                            labels: {interp: true, filler: true}
+                        }, () => parser.submit(() => result.result!));
                     });
 
                     return parser.split(indirect_threads);
@@ -424,6 +425,13 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                                 interpretations: interps({
                                     [interpretted_world.index]: {
                                         [`interp-${spec.slug}-blink`]: Symbol('Once')
+                                    },
+                                    [world.index]: {
+                                        'animation-new': {
+                                            kind: 'Interpretation',
+                                            value: Symbol(),
+                                            stage: 1
+                                        }
                                     }
                                 }),
                                 has_tried: { [action.name]: { [spec.name]: true }}

@@ -122,9 +122,7 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
 export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;
 export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {
     let thread = make_update_thread(spec, world);
-
     let result = Parser.run_thread(command, thread);
-
     if (result.kind === 'NotParsed') {
         let possible_world: World | null = null;
         // TODO: Do a bunch more validation here to make sure we're good
@@ -143,7 +141,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
     let w: World = result.result;
 
     w = update(w, { parsing: () => result.parsing });
-
+    
     let next_parsing = apply_command(spec, w, raw('', false)).parsing;
     return {
         kind: 'CommandResult',

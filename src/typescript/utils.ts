@@ -219,8 +219,12 @@ export function from_entries<K extends keyof any, V>(entries: ReadonlyArray<read
     return result;
 }
 
-export function map_values<K extends keyof any, V1, V2=V1>(f: (v: V1) => V2, obj: Partial<Record<K, V1>>): Record<K, V2> {
-    return from_entries(entries(obj).map(([k, v]) => [k, f(v)]))
+export function map_values<K extends keyof any, V1, V2=V1>(obj: Partial<Record<K, V1>>, f: (v: V1) => V2): Record<K, V2> {
+    return from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
+}
+
+export function filter_values<K extends keyof any, V1>(obj: Partial<Record<K, V1>>, f: (v: V1) => boolean): Record<K, V1> {
+    return from_entries(entries(obj).filter(([k, v]) => f(v)));
 }
 
 export function key_union(a: {}, b: {}) {

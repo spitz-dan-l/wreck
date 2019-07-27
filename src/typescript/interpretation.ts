@@ -189,10 +189,11 @@ export function self_interpretation<W extends World>(world: W, updater: Updater<
     };
 }
 
+// TODO - set all interp stages to undefined
 export function pre_interp(interps: Interpretations): Interpretations {
     let u: Updater<Interpretations> = {};
     for (let [index, interp] of Object.entries(interps)) {
-        for (let [label, {value}] of Object.entries(interp)) {
+        for (let [label, {value, stage}] of Object.entries(interp)) {
             if (typeof value === 'symbol') {
                 if (u[index] === undefined) {
                     u[index] = {};
@@ -261,24 +262,57 @@ export function history_array<W extends World>(world: W) {
     return result;
 }
 
-export type InterpretationChanges = { [label: string]: 'Adding' | 'Removing' };
+import { Stages } from './stages';
 
-export function interpretation_changes(world2: World, world1: World) {
-    const changes_per_frame: { [index: number]: InterpretationChanges } = {};
+export type IndexChanges = { [label: string]: 'Adding' | 'Removing' };
 
-    function add_change(index: string, label: string, op: 'Adding' | 'Removing') {
-        let idx_changes = changes_per_frame[index as unknown as number];
-        if (idx_changes === undefined) {
-            idx_changes = changes_per_frame[index] = {};
+export type InterpretationChanges = {
+    label_changes: Stages<{ [index: number]: IndexChanges }>,
+    new_frames: { [index: number]: number }
+}
+
+
+export function interpretation_changes(world2: World, world1: World): InterpretationChanges {
+    const changes_per_stage: Stages<{ [index: number]: IndexChanges }> = {
+        kind: 'Stages'
+    };
+    const new_frames: { [index: number]: number } = {};
+
+    function add_change(stage: number, index: number, label: string, op: 'Adding' | 'Removing') {
+        /*
+            If the change is for a new index and the animation-new for it would happen after
+            the passed in stage, clamp the stage for this change to happen on the same stage
+            as the animation-new.
+        */
+        if (new_frames[index] !== undefined && new_frames[index] > stage) {
+            console.log(`Clamping an interpretation change for ${label}. Would have happened at ${stage}, now at ${new_frames[index]}. Op is ${op}`);
+            stage = new_frames[index];
+        }
+        
+        let stage_changes = changes_per_stage[stage];
+        if (stage_changes === undefined) {
+            stage_changes = changes_per_stage[stage] = {};
         }
 
-        idx_changes[label] = op; 
+        let idx_changes = stage_changes[index];
+        if (idx_changes === undefined) {
+            idx_changes = stage_changes[index] = {};
+        }
+
+        idx_changes[label] = op;
     }
 
-    // add the pseudo-label "_creating" for any additional frames
+    // add the pseudo-label "animation-new" for any additional frames
     let w2: World | null = world2;
     while (w2 !== null && w2.index > world1.index) {
-        changes_per_frame[w2.index] = { 'animation-new': 'Adding' };
+        let animation_new_stage = 0;
+        if (world2.interpretations[w2.index] &&
+            world2.interpretations[w2.index]['animation-new'] &&
+            world2.interpretations[w2.index]['animation-new'].stage !== undefined) {
+            animation_new_stage = world2.interpretations[w2.index]['animation-new'].stage!;
+        }
+        new_frames[w2.index] = animation_new_stage;
+        add_change(animation_new_stage, w2.index, 'animation-new', 'Adding');
         w2 = w2.previous;
     }
 
@@ -292,20 +326,23 @@ export function interpretation_changes(world2: World, world1: World) {
             }
             for (const label of key_union(interps2, interps1)) {
                 if (label_value(interps2, label) !== label_value(interps1, label) &&
-                    (label_value(interps2, label) || label_value(interps1, label))) {
-                    add_change(i, label, label_value(interps2, label) ? 'Adding' : 'Removing');
+                    (label_value(interps2, label) || label_value(interps1, label) === true)) {
+                    add_change(interps2[label].stage || 0, i as unknown as number, label, label_value(interps2, label) ? 'Adding' : 'Removing');
                 }
             }
         } else {
             for (const label of Object.keys(interps2)) {
                 if (label_value(interps2, label)) {
-                    add_change(i, label, 'Adding');
+                    add_change(interps2[label].stage || 0, i as unknown as number, label, 'Adding');
                 }
             }
         }
     }
 
-    return changes_per_frame;
+    return {
+        label_changes: changes_per_stage,
+        new_frames
+    };
 }
 
 

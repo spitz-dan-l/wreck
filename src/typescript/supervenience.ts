@@ -151,7 +151,7 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
                 i++;
                 continue;
             }
-
+            
             const transitions = traverse_thread(
                 spec.thread_maker(w), 
                 spec.command_filter !== undefined
@@ -310,10 +310,4 @@ function get_position<W extends World>(spec: FutureSearchSpec<W>, world: W): any
 
     return space.map(d => d(world));
 }
-
-
-
-
-
-
 

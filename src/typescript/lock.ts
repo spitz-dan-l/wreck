@@ -38,7 +38,11 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
             return <W>update(<World>spec.set_owner(world, owner),
                 interpretation_updater(world, w => {
                     if (w.index < start_index!) {
-                        return { unfocused: true };
+                        return { unfocused: {
+                            kind: 'Interpretation',
+                            value: true,
+                            stage: 0
+                        }};
                     }
                     return { unfocused: false };
                 }));
@@ -46,7 +50,11 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
 
         function release(world: W) {
             return <W>update(<World>spec.set_owner(world, null),
-                interpretation_updater(world, () => ({ unfocused: false })));
+                interpretation_updater(world, () => ({ unfocused: {
+                    kind: 'Interpretation',
+                    value: false,
+                    stage: 0
+                } })));
         }
 
         function lock_parser_thread<R>(world: W, thread: ParserThread<R>) {
