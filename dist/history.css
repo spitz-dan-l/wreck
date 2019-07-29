@@ -45,6 +45,10 @@
     animation: none !important;
 }
 
+.history .would-add-animation-new .output-text {
+    display: none;
+}
+
 .history .adding-animation-new.animation-start .output-text {
     opacity: 0.01;
     max-height: 0px;

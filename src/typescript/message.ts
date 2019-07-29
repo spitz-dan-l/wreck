@@ -1,7 +1,7 @@
 import * as Mustache from 'mustache';
 import { World } from './world';
 import { appender, update, Updater, merge_objects } from './utils';
-import { InterpretationLabel, LocalInterpretations } from './interpretation';
+import { InterpretationLabel, LocalInterpretations, label_value } from './interpretation';
 
 /*
     Message is comprised of (any of)
@@ -91,7 +91,7 @@ export let standard_render: Renderer = function(world: World, labels: LocalInter
         .map(f => world.message[f])
         .filter(x => x.length > 0)
         .map(x => x.map(f => Mustache.render(f,
-            Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val}), <LocalInterpretations>{})
+            Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val.value}), <LocalInterpretations>{})
         )).join('<br/>'))
         .join('<br/>');
 }
@@ -104,7 +104,7 @@ export function infer_fragment_labels(f: Fragment): LocalInterpretations {
                 switch (token[0]) {
                     case '#':
                     case '^':
-                        return {[token[1]]: false, ...extract_labels(token[4])};
+                        return {[token[1] as string]: {kind: 'Interpretation', value: false}, ...extract_labels(token[4])};
                     default:
                         return {};
                 }
@@ -118,14 +118,3 @@ export let infer_message_labels = (m: Message): LocalInterpretations =>
     merge_objects(
         (['action', 'consequence', 'description', 'prompt'] as const)
             .flatMap(prop => m[prop].map(infer_fragment_labels)));
-
-
-
-
-
-
-
-
-
-
-

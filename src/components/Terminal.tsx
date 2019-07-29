@@ -1,12 +1,13 @@
 import * as React from 'react';
-import { history_array, Interpretations, interpretation_changes, label_value } from '../typescript/interpretation';
+import { history_array, Interpretations, InterpretationValue, label_value } from '../typescript/interpretation';
 import { keys } from '../typescript/keyboard_tools';
 import { standard_render } from '../typescript/message';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token, TokenAvailability, TokenMatch, TypeaheadOption } from '../typescript/parser';
-import { array_last, filter_values, key_union, map_values, update } from '../typescript/utils';
+import { array_last, entries, filter_values, key_union, map_values, update } from '../typescript/utils';
 import { CommandResult, World } from "../typescript/world";
-import { advance_animation, animate, AnimationState, is_animating, scroll_down, empty_animation_state } from './animation';
+import { advance_animation, animate, AnimationState, empty_animation_state, new_animation_state, scroll_down } from './animation';
 import { OutputText, ParsedText } from './Text';
+import { checkPropTypes } from 'prop-types';
 
 // STATE, ACTIONS, REDUCERS
 
@@ -32,14 +33,13 @@ type AppAction =
 // "kind" of the action passed to it
 // TODO look up whether there are methods for factoring reducers better
 function app_reducer(state: AppState, action: AppAction): AppState {
-  if (is_animating(state.animation_state)) {
-    if (action.kind === 'AdvanceAnimation') {
-      return update(state, { animation_state: advance_animation });
-    }
+  if (state.animation_state.lock_input && action.kind !== 'AdvanceAnimation') {
     return state;
   }
 
   switch (action.kind) {
+    case 'AdvanceAnimation':
+      return update(state, { animation_state: advance_animation });
     case 'ChangeText': {
       let new_result = state.updater(state.command_result.world!, {
         kind: 'RawInput',
@@ -89,10 +89,10 @@ function app_reducer(state: AppState, action: AppAction): AppState {
       }
     }
   }
+  debugger;
   throw new Error('should no get here');
 }
 
-import {new_animation_state} from './animation';
 function update_animation_state(new_state: AppState, old_state: AppState): AppState {
   if (new_state.command_result.world.index > old_state.command_result.world.index) {
     return update(new_state, {
@@ -230,7 +230,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
   return <AppDispatch.Provider value={dispatch}>
     <div>
       <History world={current_world} possible_world={possible_world} animation_state={animation_state} />
-      <Prompt parsing={current_parsing} />
+      <Prompt parsing={current_parsing} locked={animation_state.lock_input} />
       <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} undo_selected={state.undo_selected} />
       <UndoButton world={current_world} undo_selected={state.undo_selected} />
     </div>
@@ -264,7 +264,7 @@ export const UndoButton: React.FunctionComponent<UndoProps> = ({world, undo_sele
     </div>);
 }
 
-export const Prompt: React.FunctionComponent<{parsing: Parsing}> = (props) => {
+export const Prompt: React.FunctionComponent<{parsing: Parsing, locked: boolean}> = (props) => {
   const dispatch = React.useContext(AppDispatch);
   const input_elt = React.useRef<HTMLInputElement>() as React.MutableRefObject<HTMLInputElement>;
   
@@ -283,19 +283,15 @@ export const Prompt: React.FunctionComponent<{parsing: Parsing}> = (props) => {
     />
     <span>
       <ParsedText parsing={props.parsing} />
-      <Cursor />
-      {props.children}
+      <Cursor locked={props.locked} /> 
     </span>
   </div>
 }
 
-const Cursor = (props) => {
-  return (
-    <span className="blinking-cursor">
-      {String.fromCharCode(9608)}
-    </span>
-  );
-};
+const Cursor: React.FunctionComponent<{locked: boolean}> = ({locked}) =>
+    <span className={locked ? '' : "blinking-cursor"}>
+      {String.fromCharCode(locked ? 8943 : 9608)}
+    </span>;
 
 type TypeaheadProps = {
   parsing: Parsing,
@@ -434,10 +430,10 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
   let worlds: World[] = history_array(world).reverse();
 
   let result = worlds
-    .filter(w =>
-      animation_stage === undefined ||
-      !(w.index in animation_state.changes.new_frames) ||           
-      animation_state.changes.new_frames[w.index] <= animation_stage)
+    // .filter(w =>
+    //   animation_stage === undefined ||
+    //   !(w.index in animation_state.changes.new_frames) ||           
+    //   animation_state.changes.new_frames[w.index] <= animation_stage)
     .map(w => {
   let labels = world.interpretations[w.index] || {};
 
@@ -451,7 +447,7 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
           world={w}
           labels={labels}
           possible_labels={possible_labels}
-          animation_stage={animation_stage}
+          animation_state={animation_state}
         />;
   });
 
@@ -464,31 +460,42 @@ type HistoryEltProps = {
   world: World,
   labels: Interpretations[number],
   possible_labels: Interpretations[number] | undefined,
-  animation_stage: number | undefined,
+  animation_state: AnimationState,
   elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }>
 }
-const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, possible_labels, animation_stage, elt_index}) => {
+const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, possible_labels, animation_state, elt_index}) => {
   let ref = React.useCallback((node: HTMLDivElement) => {
     elt_index.current[world.index] = node;
   }, []);
 
-  let filtered_interps = filter_values(labels, (v) => animation_stage === undefined || ((v.stage || 0) <= animation_stage));
-  let classes = map_values(filtered_interps, v => v.value);
+  let animation_stage = animation_state.current_stage;
+  
+  let class_labels: { [label: string]: boolean };
+  if (animation_stage === undefined) {
+    class_labels = map_values(filter_values(labels, v => typeof(v.value) !== 'symbol'), v => v.value as boolean);
+  } else {
+    class_labels = animation_state.changes.base_state[world.index][animation_stage];
+  }
 
   if (possible_labels !== undefined) {
     for (let l of key_union(labels, possible_labels)) {
       if (label_value(possible_labels, l) &&
             (!label_value(labels, l) ||
              label_value(possible_labels, l) !== label_value(labels, l))) {
-        classes[`would-add-${l}`] = true;
+        class_labels[`would-add-${l}`] = true;
       } else if (!label_value(possible_labels, l) && label_value(labels, l) === true) {
-        classes[`would-remove-${l}`] = true;
+        class_labels[`would-remove-${l}`] = true;
       }
     }
   }
-  let className = Object.entries(classes).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
+
+  let className = Object.entries(class_labels).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
   
-  let rendering= standard_render(world, filtered_interps, possible_labels);
+  let rendering= standard_render(
+    world,
+    map_values(class_labels, v => ({ kind: 'Interpretation', value: v })),
+    possible_labels
+  );
 
   return <div ref={ref} className={className}>
     { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
