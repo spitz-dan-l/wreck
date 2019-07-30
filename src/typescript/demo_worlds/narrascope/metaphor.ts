@@ -8,6 +8,7 @@ import { FutureSearchSpec, is_simulated, search_future } from '../../supervenien
 import { capitalize } from '../../text_tools';
 import { bound_method, update, Updater } from "../../utils";
 import { AbstractionID, ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer } from "./prelude";
+import { get_thread_maker } from './supervenience_spec';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -266,15 +267,11 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                     return direct_thread(parser);
                 }
 
-                const future_search_spec = resource_registry.get('future_search_spec');
-
                 const indirect_thread: ParserThread<Venience> = (() =>
                     parser.consume({
                         tokens: 'contemplate',
                         labels: {interp: true, filler: true}
                     }, () => {
-
-                    const future_search_spec = resource_registry.get('future_search_spec');
                     const indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
                         const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
 
@@ -288,14 +285,14 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                             })
                         });
 
-                        const result = search_future(
-                            update(future_search_spec as FutureSearchSpec<Venience>, {
+                        const result = search_future({
+                                thread_maker: get_thread_maker(),
                                 goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
                                 max_steps: 2,
                                 space: [w => w.gist && gist_to_string(w.gist)],
                                 search_id: indirect_search_id,
                                 simulator_id: indirect_simulator,
-                                command_filter: () => (w, cmd) => {
+                                command_filter: (w, cmd) => {
                                     let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
 
                                     if (w.gist && gists_equal(w.gist, target_gist.children.subject)) {
@@ -303,11 +300,14 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                                     }
                                     return !would_contemplate;
                                 }
-                            }),
+                            },
                             world.previous!);
                         if (result.result === null) {
                             return parser.eliminate();
                         }
+
+                        
+                        
 
                         return parser.consume({
                             tokens: render_gist_command(g),

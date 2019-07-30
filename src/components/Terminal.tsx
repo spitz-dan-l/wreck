@@ -429,26 +429,21 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
 
   let worlds: World[] = history_array(world).reverse();
 
-  let result = worlds
-    // .filter(w =>
-    //   animation_stage === undefined ||
-    //   !(w.index in animation_state.changes.new_frames) ||           
-    //   animation_state.changes.new_frames[w.index] <= animation_stage)
-    .map(w => {
-  let labels = world.interpretations[w.index] || {};
+  let result = worlds.map(w => {
+    let labels = world.interpretations[w.index] || {};
 
-  let possible_labels: Interpretations[number] | undefined = undefined;
-  if (possible_world !== null) {
-    possible_labels = possible_world.interpretations[w.index];
-  }
-  return <HistoryElt
-          elt_index={elt_index}
-          key={w.index}
-          world={w}
-          labels={labels}
-          possible_labels={possible_labels}
-          animation_state={animation_state}
-        />;
+    let possible_labels: Interpretations[number] | undefined = undefined;
+    if (possible_world !== null) {
+      possible_labels = possible_world.interpretations[w.index];
+    }
+    return <HistoryElt
+            elt_index={elt_index}
+            key={w.index}
+            world={w}
+            labels={labels}
+            possible_labels={possible_labels}
+            animation_state={animation_state}
+          />;
   });
 
   return <div className="history">
@@ -474,7 +469,14 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, po
   if (animation_stage === undefined) {
     class_labels = map_values(filter_values(labels, v => typeof(v.value) !== 'symbol'), v => v.value as boolean);
   } else {
-    class_labels = animation_state.changes.base_state[world.index][animation_stage];
+    if (
+      animation_state.changes.base_state[world.index] &&
+      animation_state.changes.base_state[world.index][animation_stage]
+    ) {
+      class_labels = animation_state.changes.base_state[world.index][animation_stage];
+    } else {
+      class_labels = {};
+    }
   }
 
   if (possible_labels !== undefined) {

@@ -106,7 +106,7 @@ export function knit_puffers(puffers: Puffer<World>[]): PufferNormalForm<World> 
         for (let puffer of normalized) {
             stages[prop].push(...stage_keys(puffer[prop]));
         }
-        stages[prop] = [...new Set(stages[prop]).values()].sort();
+        stages[prop] = [...new Set(stages[prop]).values()].sort((a,b)=>a-b);
     }
 
     function iterate<Prop extends 'pre' | 'handle_command' | 'post'>(prop: Prop, combine: (cbs: PufferSpec<World>[Prop][]) => PufferSpec<World>[Prop]) {
@@ -162,7 +162,7 @@ export function bake_puffers(puffers: Puffer<World>[]): PufferSpec<World> {
         for (let puffer of normalized) {
             all_stages[prop].push(...stage_keys(puffer[prop]));
         }
-        all_stages[prop] = [...new Set(all_stages[prop]).values()].sort();
+        all_stages[prop] = [...new Set(all_stages[prop]).values()].sort((a,b)=>a-b);
     }
 
     function iterate<Prop extends 'pre' | 'handle_command' | 'post'>(prop: Prop, combine: (cbs: PufferSpec<World>[Prop][]) => PufferSpec<World>[Prop]) {

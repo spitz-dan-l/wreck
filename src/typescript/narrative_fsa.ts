@@ -69,7 +69,7 @@ export function narrative_fsa_builder
         stages.push(...stage_keys(exit));
         stages.push(...stage_keys(here));
 
-        stages = [...new Set(stages)].sort();
+        stages = [...new Set(stages)].sort((a,b)=>a-b);
 
         let post: Stages<Narrator<W>> = {kind: 'Stages'};
 

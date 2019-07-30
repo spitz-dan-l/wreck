@@ -142,10 +142,6 @@ export function set_eq(arr1: any[], arr2: any[]) {
     return arr1.every(x => arr2.includes(x)) && arr2.every(x => arr1.includes(x));
 }
 
-export function sorted<X>(arr: X[]): X[] {
-    return [...arr].sort();
-}
-
 // Helper for building lists with optional elements
 export function cond<R>(c: boolean, r: () => R) {
     if (c) {

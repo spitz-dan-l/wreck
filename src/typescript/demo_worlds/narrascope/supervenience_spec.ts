@@ -2,7 +2,7 @@ import { GistPattern, gist_matches } from '../../gist';
 import { find_index } from '../../interpretation';
 import { CommandFilter, FutureSearchSpec, NarrativeDimension, NarrativeGoal, search_future } from '../../supervenience';
 import { update_thread_maker } from '../../world';
-import { Venience, venience_world_spec } from './narrascope';
+import { Venience, resource_registry } from './prelude';
 
 export const goals: NarrativeGoal<Venience>[] = [
     w => !!w.has_chill,
@@ -51,22 +51,23 @@ export const command_filter: CommandFilter<Venience> = (w, cmd) => {
     return true;
 }
 
-export const thread_maker = update_thread_maker(venience_world_spec);
-
-const spec = {
-    thread_maker,
-    goals,
-    space,
-    command_filter
-};
-
-export function make_search_spec(simulator_id: string, search_id?: string): FutureSearchSpec<Venience> {
-    return {...spec, simulator_id, search_id};
+export function get_thread_maker() {
+    const venience_world_spec = resource_registry.get('venience_world_spec');
+    return update_thread_maker(venience_world_spec);
 }
 
 export function find_world_at(world: Venience, goals_met: number) {
-    let spec = make_search_spec('playtester', 'reach-subgoal-'+goals_met);
-
+    const thread_maker = get_thread_maker();
+    
+    let spec = {
+        thread_maker,
+        goals,
+        space,
+        command_filter,
+        simulator_id: 'playtester',
+        search_id: 'reach-subgoal-'+goals_met
+    };
+    
     spec.goals = spec.goals.slice(0, goals_met);
 
     return search_future(spec, world);

@@ -18,7 +18,7 @@ export function normalize_stages<T>(x?: MaybeStages<T>): Stages<T> {
 }
 
 export function stage_keys(x: Stages<any>): number[] {
-    return Object.keys(x).filter(s => s !== 'kind').map(s => parseInt(s)).sort();
+    return Object.keys(x).filter(s => s !== 'kind').map(s => parseInt(s)).sort((a,b) => a - b);
 }
 
 export function stage_entries<X>(x: Stages<X>): [number, X][] {

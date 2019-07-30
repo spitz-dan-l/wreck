@@ -310,4 +310,3 @@ function get_position<W extends World>(spec: FutureSearchSpec<W>, world: W): any
 
     return space.map(d => d(world));
 }
-

@@ -41,7 +41,7 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
                         return { unfocused: {
                             kind: 'Interpretation',
                             value: true,
-                            stage: -1
+                            stage: 0
                         }};
                     }
                     return { unfocused: false };
@@ -53,7 +53,7 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
                 interpretation_updater(world, () => ({ unfocused: {
                     kind: 'Interpretation',
                     value: false,
-                    stage: 1
+                    stage: 0
                 } })));
         }
 

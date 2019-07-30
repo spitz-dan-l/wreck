@@ -104,9 +104,23 @@
 }
 
 .history .would-add-interpretation-block .output-text {
-    animation-name: would-interpret !important;
+    outline: solid 2px #00000000;
+    outline-offset: 0.4em;
+    animation-name: would-add-interpretation-block !important;
     animation-duration: 2s !important;
     animation-iteration-count: infinite !important;
+}
+
+@keyframes would-add-interpretation-block {
+  0% {
+    outline-color: #00000000;
+  }
+  50% {
+    outline-color: ivory;
+  }
+  100 {
+    outline-color: #00000000;
+  }
 }
 
 @keyframes would-interpret {

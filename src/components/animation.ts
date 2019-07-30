@@ -24,7 +24,7 @@
         in either the world model or just the UI model. Then the UI will have access to
             - which history elements are appearing
             - which are changing their interps and in what way
-        By knowing this up-front, we can determine what order to animate things in.    
+        By knowing this up-front, we can determine what order to animate things in.
             - Handle the case of non-compound commands first, because it already exists
 
         Do some experiments to find better factorings of the actual animation logic
@@ -105,6 +105,7 @@ import { label_value, LocalInterpretations, InterpretationValue } from '../types
 import { Stages, stage_keys } from '../typescript/stages';
 import { key_union, update } from '../typescript/utils';
 import { World } from '../typescript/world';
+import { normalize_whitespace } from '../typescript/text_tools';
 
 export type AnimationState = {
   changes: InterpretationChanges,
@@ -142,9 +143,9 @@ export function animate(comp_elt: HTMLDivElement, changes: IndexChanges) {
     // and check for the custom --is-collapsing property
     // (This is basically an abomination and I am sorry.)
     comp_elt.classList.add('animation-pre-compute');
-    
+
     walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
-    
+
     comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing')) || 0 as any;
 
     comp_elt.classList.remove('animation-pre-compute');
@@ -163,7 +164,7 @@ export function animate(comp_elt: HTMLDivElement, changes: IndexChanges) {
     if (comp_elt.dataset.isCollapsing == 1 as any) {
       walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
     }
-      
+
     requestAnimationFrame(() => {
       // If --is-collapsing wasn't set in the animation-pre-compute class,
       // then apply the maxHeight update now.
@@ -171,7 +172,7 @@ export function animate(comp_elt: HTMLDivElement, changes: IndexChanges) {
       if (comp_elt.dataset.isCollapsing != 1 as any) {
         walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
       }
-      
+
       comp_elt.classList.add('animation-active');
 
       setTimeout(() => {
@@ -181,7 +182,7 @@ export function animate(comp_elt: HTMLDivElement, changes: IndexChanges) {
           ...edit_classes);
 
         walkElt(comp_elt, (e) => e.style.maxHeight = '');
-        
+
         if (changes['animation-new'] === 'Adding') {
           scroll_down();
           // function post_scroll(e) {
@@ -193,7 +194,7 @@ export function animate(comp_elt: HTMLDivElement, changes: IndexChanges) {
         }
         resolve();
       }, 700)
-      
+
     });
   });
 }
@@ -220,13 +221,19 @@ export type InterpretationChanges = {
     base_state: { [index: number]: Stages<{ [label: string]: boolean }> }
 }
 
+/*
+    TODO
+    adopt a consistent iteration style (for in, for of Object.entries, ...)
+    somehow organize/shorten this...
+*/
 export function interpretation_changes(world2: World, world1: World): InterpretationChanges {
     const changes_per_stage: Stages<{ [index: number]: IndexChanges }> = {
         kind: 'Stages'
     };
     const new_frames: { [index: number]: number } = {};
     const base_state: { [index: number]: Stages<{ [label: string]: boolean }> } = {};
-
+    
+    let max_stage = 0;
     function add_change(stage: number, index: number, label: string, op: 'Adding' | 'Removing') {
         /*
             If the change is for a new history elt and the animation-new for it would happen after
@@ -237,7 +244,7 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
             console.log(`Clamping an interpretation change for ${label}. Would have happened at ${stage}, now at ${new_frames[index]}. Op is ${op}`);
             stage = new_frames[index];
         }
-        
+
         let stage_changes = changes_per_stage[stage];
         if (stage_changes === undefined) {
             stage_changes = changes_per_stage[stage] = {};
@@ -249,6 +256,10 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
         }
 
         idx_changes[label] = op;
+
+        if (stage > max_stage) {
+            max_stage = stage;
+        }
     }
 
     function add_base_state(index: number, stage: number, label: string, value: boolean) {
@@ -266,82 +277,99 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
     }
 
     // add the pseudo-label "animation-new" for any additional frames
+    const new_worlds: World[] = [];
     let w2: World | null = world2;
     while (w2 !== null && w2.index > world1.index) {
-        let animation_new_stage = 0;
-        if (world2.interpretations[w2.index] &&
-            world2.interpretations[w2.index]['animation-new'] &&
-            world2.interpretations[w2.index]['animation-new'].stage !== undefined) {
-            animation_new_stage = world2.interpretations[w2.index]['animation-new'].stage!;
-        }
-        new_frames[w2.index] = animation_new_stage;
-        add_change(animation_new_stage, w2.index, 'animation-new', 'Adding');
+        new_worlds.unshift(w2);
         w2 = w2.previous;
     }
 
-    // perform the actual diff across frames.
-    for (const i in world2.interpretations) {
-        const interps2 = world2.interpretations[i];
-        if (i in world1.interpretations) {
-            const interps1 = world1.interpretations[i];
-            if (interps2 === interps1) {
-                continue;
-            }
-            for (const label of key_union(interps2, interps1)) {
-                if (label_value(interps2, label) !== label_value(interps1, label) &&
-                    (label_value(interps2, label) || label_value(interps1, label) === true)) {
-                    add_change(interps2[label].stage || 0, i as unknown as number, label, label_value(interps2, label) ? 'Adding' : 'Removing');
+    let stage_offset = 0;
+    for (let w2 of new_worlds) {
+        const w1 = w2.previous!;
+        const new_stages = new Set<number>();
+
+        let animation_new_stage = 0;
+        if (w2.interpretations[w2.index] &&
+            w2.interpretations[w2.index]['animation-new'] &&
+            w2.interpretations[w2.index]['animation-new'].stage !== undefined) {
+            animation_new_stage = w2.interpretations[w2.index]['animation-new'].stage!;
+        }
+        new_frames[w2.index] = animation_new_stage + stage_offset;
+        add_change(animation_new_stage + stage_offset, w2.index, 'animation-new', 'Adding');
+        new_stages.add(animation_new_stage + stage_offset);
+
+        // perform the actual diff across frames.
+        for (const i in w2.interpretations) {
+            const interps2 = w2.interpretations[i];
+            if (i in w1.interpretations) {
+                const interps1 = w1.interpretations[i];
+                if (interps2 === interps1) {
+                    continue;
                 }
-            }
-        } else {
-            for (const label of Object.keys(interps2)) {
-                if (label_value(interps2, label)) {
-                    add_change(interps2[label].stage || 0, i as unknown as number, label, 'Adding');
+                for (const label of key_union(interps2, interps1)) {
+                    if (label_value(interps2, label) !== label_value(interps1, label) &&
+                        (label_value(interps2, label) || label_value(interps1, label) === true)) {
+                        const s = (interps2[label].stage || 0) + stage_offset;
+                        add_change(s, i as unknown as number, label, label_value(interps2, label) ? 'Adding' : 'Removing');
+                        new_stages.add(s);
+                    }
+                }
+            } else {
+                for (const label of Object.keys(interps2)) {
+                    if (label_value(interps2, label)) {
+                        const s = (interps2[label].stage || 0) + stage_offset;
+                        add_change(s, i as unknown as number, label, 'Adding');
+                        new_stages.add(s);
+                    }
                 }
             }
         }
+
+        const new_stages2 = [...new_stages.values()].sort((a,b) => a-b);
+
+        for (let i = 0; i < new_stages2.length; i++) {
+            const new_stage = new_stages2[i];
+            for (const ind in w1.interpretations) {
+                const index = ind as unknown as number;
+                for (const label in w1.interpretations[index]) {
+                    const value = w1.interpretations[index][label];
+                    add_base_state(index, new_stage, label, !!value.value);
+                }
+            }
+
+            let idx_changes = changes_per_stage[new_stage];
+            for (let [index, changes] of Object.entries(idx_changes)) {
+                for (let [label, op] of Object.entries(changes)) {
+                    if (label === 'animation-new') {
+                        continue;
+                    }
+                    // backfill with would-add/would-remove
+                    const would_class = `would-${op === 'Adding' ? 'add' : 'remove'}-${label}`;
+                    for (let j = 0; j < i; j++) {
+                        const prev_stage = new_stages2[j];
+                        add_base_state(index as unknown as number, prev_stage, would_class, true);
+                    }
+                    // frontfill with the new value
+                    const new_value = label_value(w2.interpretations[index as unknown as number], label);
+                    for (let j = i; j < new_stages2.length; j++) {
+                        const updated_stage = new_stages2[j];
+                        add_base_state(index as unknown as number, updated_stage, label, !!new_value);
+                    }
+                }
+            }
+        }
+
+        stage_offset = max_stage + 1;
     }
 
     const stages = stage_keys(changes_per_stage);
-
-    // set the label values for the previous world
-    for (const index in world1.interpretations) {
-      for (const label in world1.interpretations[index]) {
-        const value = world1.interpretations[index][label];
-        for (const s of stages) {
-          add_base_state(index as unknown as number, s, label, value.value == true);
+    for (const [index, stage] of Object.entries(new_frames)) {
+        let stage_idx = stages.indexOf(stage);
+        for (let i = 0; i < stage_idx; i++) {
+            let s = stages[i];
+            add_base_state(index as unknown as number, s, 'would-add-animation-new', true);
         }
-      }
-    }
-
-    // update label values in sync with the changes
-    for (let i = 0; i < stages.length; i++) {
-      const s_i = stages[i];
-      for (const index in changes_per_stage[s_i]) {
-        for (const label in changes_per_stage[s_i][index as unknown as number]) {
-          const op = changes_per_stage[s_i][index as unknown as number][label];
-          const label_value: boolean = op === 'Adding' ? true : false;
-          for (let j = i; j < stages.length; j++) {
-            const s_j = stages[j];
-            add_base_state(index as unknown as number, s_j, label, label_value);
-          }
-        }
-      }
-    }
-
-    // backfill would-X classes for before each change
-    for (let i = stages.length - 1; i >= 0; i--) {
-      const s_i = stages[i];
-      for (const index in changes_per_stage[s_i]) {
-        for (const label in changes_per_stage[s_i][index as unknown as number]) {
-          const op = changes_per_stage[s_i][index as unknown as number][label];
-          const would_class: string = `would-${op === 'Adding' ? 'add' : 'remove'}-${label}`;
-          for (let j = i - 1; j >= 0; j--) {
-            const s_j = stages[j];
-            add_base_state(index as unknown as number, s_j, would_class, true);
-          }
-        }
-      }
     }
 
     return {
@@ -350,24 +378,3 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
         base_state
     };
 }
-
-
-
-
-
-
-/*
-  TODOs
-  When deciding classes on each history elt, don't apply in stages
-  if it's not actually changing according to the animation state
-
-  Show the command text for new elements even if the animation-new for them is
-  at a later stage
-
-  Maintain the would-add classes up until the stage when the label is actually added/removed
-    (This actually helps solve the problem above)
-  
-  Disappear the cursor while input is locked
-
-  Only lock input for stages before the last stage
-*/
