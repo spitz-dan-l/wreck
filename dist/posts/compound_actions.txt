@@ -47,3 +47,18 @@ UI changes
 - Sub actions will be somehow displayed as children of the parent action.
     Could be indented below parent
     Could be enclosed in a bounding box with the parent parsing as heading
+
+
+Under the current display scheme, it feels awkward to repeat yourself when the compound
+action is the "first doing X" kind.
+
+A possible way to address this is to have the parent command be the full command,
+and the sub commands use pronouns or otherwise are able to shorten their expression because of the "context block" we are in.
+
+Doing this properly would involve:
+    representing lexical context in each world, or inheriting context from your parent.
+    you'd probably want some way to maintain control inside of contexts so that the player could actually type out the pronouns themselves sometimes.
+
+    There'd be this weird coupling of lexical context with an overall purpose/goal of your parent command. TBH that seems like a potentially good thing though.
+
+Going to work on refactoring abstractions/facets before getting into this.

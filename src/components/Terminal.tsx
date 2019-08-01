@@ -504,8 +504,8 @@ const CompoundHistoryElt: React.FunctionComponent<HistoryEltProps & {world: Comp
 }
 
 const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index}) => {
-  const labels = current_interpretations[world.index];
-  const possible_labels = possible_interpretations[world.index];
+  const labels = current_interpretations[world.index] || {};
+  const possible_labels = possible_interpretations[world.index] || {};
 
   let ref = React.useCallback((node: HTMLDivElement) => {
     elt_index.current[world.index] = node;
