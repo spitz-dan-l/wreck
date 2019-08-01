@@ -158,7 +158,6 @@ Categories of work
 - Major core additions
     - Supervenience
     - Animations
-    - Composable gists as part of the Message type
 - Numerous player-feedback-based changes
 - New features
 - Code restructuring
@@ -168,5 +167,20 @@ Plan
     1.a DONE Short searches that happen every turn work quickly enough
         - Had to implement search caching to make this efficient
 2. DONE Find a coherent setup for Gists
-3. Animations overhaul - necessary for many downstream polish things
+3. DONE Animations overhaul - necessary for many downstream polish things
+    - Did not really overhaul, animations are still done the same way, but they can be
+      ordered/staged now.
 4. Pick off smaller tasks from the remaining categories
+    - DONE Formalized Static Resource management
+
+Next things...
+
+- Improve/reduce abstraction load of Abstractions/Actions/Facets
+- Experiment with continuation prompt between animation stages
+    - Some icon that tells the user to press something, that can be relocated next to
+      a thing of interest
+    - Hitting the prompt earlier skips through the animation (might be too hard to do)
+- Allow inputs during the final animation stage
+    Hard because the useLayoutEffect hook needs to recognize that it doesn't
+    need to reapply the animation just because something was typed
+- Work out the display and concepts behind compound actions.

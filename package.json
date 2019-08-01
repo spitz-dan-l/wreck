@@ -47,7 +47,8 @@
     "lens.ts": "^0.5.1",
     "mustache": "^3.0.1",
     "react": "16.8.6",
-    "react-dom": "16.8.6"
+    "react-dom": "16.8.6",
+    "ts-toolbelt": "^3.1.2"
   },
   "resolutions": {
     "terser": "3.14.1"

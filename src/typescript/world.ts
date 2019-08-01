@@ -23,7 +23,7 @@
 import { infer_message_labels, Message, INITIAL_MESSAGE, standard_render } from './message';
 import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows, ParseValue, failed } from './parser';
 import { deep_equal, update, array_last } from './utils';
-import { Interpretations, pre_interp } from './interpretation';
+import { Interpretations, pre_interp, group_compound_worlds } from './interpretation';
 
 export interface World {
     readonly message: Message,
@@ -31,6 +31,8 @@ export interface World {
     readonly previous: this | null,
     readonly index: number,
     readonly interpretations: Interpretations,
+    readonly parent: this | null,
+    readonly child: this | null
 }
 
 export type WorldUpdater<W extends World> = (world: W) => W;
@@ -46,6 +48,8 @@ const INITIAL_WORLD: World = {
     previous: null,
     index: 0,
     interpretations: {},
+    parent: null,
+    child: null
 };
 
 // Helper to return INITIAL_WORLD constant as any kind of W type.
@@ -96,9 +100,11 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     next_state = update(next_state, {
         previous: _ => world,
         index: _ => _ + 1,
-        message: INITIAL_MESSAGE,
+        message: () => INITIAL_MESSAGE,
         interpretations: pre_interp,
-        parsing: () => undefined
+        parsing: () => undefined,
+        parent: () => null,
+        child: () => null
     });
 
     if (spec.pre !== undefined) {
@@ -106,18 +112,20 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     }
 
     return function update_thread(parser: Parser) {
-        const next_state2 = spec.handle_command(next_state, parser);
+        let next_state2 = spec.handle_command(next_state, parser);
         if (failed(next_state2)) {
             return next_state2;
         }
         
         if (spec.post !== undefined) {
-            return <World>spec.post(next_state2, world);
-        } else {
-            return next_state2;
+            next_state2 = <World>spec.post(next_state2, world);
         }
+
+        return next_state2;
     }
 }
+
+import {O} from 'ts-toolbelt';
 
 export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;
 export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {
@@ -137,10 +145,20 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
         };
     }
 
-    // todo: add the successful parsing to the world
     let w: World = result.result;
 
     w = update(w, { parsing: () => result.parsing });
+
+    // If this is a compound action, assign it as the parent to the children,
+    // and return the last child instead of the parent.
+    if (w.child !== null) {
+        let c = w.child;
+        while (c.index >= w.index) {
+            (c as O.Writable<World, 'parent'>).parent = w;
+            c = c.previous!;
+        }
+        w = w.child;
+    }
     
     let next_parsing = apply_command(spec, w, raw('', false)).parsing;
     return {

@@ -17,7 +17,7 @@ import { find_historical } from './interpretation';
 export type NarrativeDimension<W extends World> = (w: W) => any;
 
 function default_narrative_space<W extends World>(): NarrativeDimension<W>[] {
-    return [w => drop_keys(w, 'previous', 'index', 'parsing')];
+    return [w => drop_keys(w, 'previous', 'index', 'parsing', 'parent', 'child')];
 }
 
 /*

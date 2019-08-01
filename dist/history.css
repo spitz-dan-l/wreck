@@ -3,6 +3,12 @@
     display: block;
 }
 
+.history .compound .children {
+    margin-top: 1em;
+    margin-inline-start: 1em;
+    margin-inline-end: 0em;
+}
+
 .history .output-text {
     white-space: normal;
     margin-top: 1em;

@@ -116,7 +116,7 @@ describe('supervenience narrascope', () => {
             simulator_id,
             thread_maker,
             goals,
-            space: [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations')],
+            space: [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations', 'parent', 'child')],
             command_filter
         };
         search_future(spec, initial_result.world);

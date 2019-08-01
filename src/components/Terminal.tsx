@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { history_array, Interpretations, InterpretationValue, label_value } from '../typescript/interpretation';
+import { history_array, Interpretations, InterpretationValue, label_value, group_compound_worlds, MaybeCompoundWorld, CompoundWorld, is_compound_world } from '../typescript/interpretation';
 import { keys } from '../typescript/keyboard_tools';
 import { standard_render } from '../typescript/message';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token, TokenAvailability, TokenMatch, TypeaheadOption } from '../typescript/parser';
@@ -8,6 +8,7 @@ import { CommandResult, World } from "../typescript/world";
 import { advance_animation, animate, AnimationState, empty_animation_state, new_animation_state, scroll_down } from './animation';
 import { OutputText, ParsedText } from './Text';
 import { checkPropTypes } from 'prop-types';
+import { C } from 'ts-toolbelt';
 
 // STATE, ACTIONS, REDUCERS
 
@@ -85,6 +86,7 @@ function app_reducer(state: AppState, action: AppAction): AppState {
             undo_selected: false
           });
         }
+
         return update_animation_state(result, state);
       }
     }
@@ -103,9 +105,17 @@ function update_animation_state(new_state: AppState, old_state: AppState): AppSt
 }
 
 function undo(state: AppState) {
+  // find the beginning of the current (possibly-compound) world
+  let w = state.command_result.world;
+  while (w.parent !== null) {
+    w = w.parent;
+  }
+  
   let prev_command_result = state.updater(
-      state.command_result.world.previous!,
-      update(state.command_result.world.parsing!.raw, { submit: false })
+      w.previous!,
+      update(w.parsing!.raw, { submit: false })
+      // state.command_result.world.previous!,
+      // update(state.command_result.world.parsing!.raw, { submit: false })
     );
     return update(state, {
       command_result: () => prev_command_result,
@@ -404,10 +414,14 @@ type HistoryProps = {
   animation_state: AnimationState
 }
 
+type AnimationMap = {
+  [index: number]: HTMLDivElement
+}
+
 export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world, animation_state}) => {
   let dispatch = React.useContext(AppDispatch);
 
-  let elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }> = React.useRef({});
+  let elt_index: React.MutableRefObject<AnimationMap> = React.useRef({});
 
   const animation_stage = animation_state.current_stage;
   
@@ -415,7 +429,7 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
     if (animation_stage === undefined) {
       return;
     }
-  
+    
     let current_changes = animation_state.changes.label_changes[animation_stage];
 
     let ps = Promise.all(Object.entries(current_changes).map(([i, changes]) =>
@@ -427,22 +441,17 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
     });
   });
 
-  let worlds: World[] = history_array(world).reverse();
+  let worlds: MaybeCompoundWorld<World>[] = group_compound_worlds(world); //history_array(world).reverse();
 
   let result = worlds.map(w => {
-    let labels = world.interpretations[w.index] || {};
-
-    let possible_labels: Interpretations[number] | undefined = undefined;
-    if (possible_world !== null) {
-      possible_labels = possible_world.interpretations[w.index];
-    }
+    
     return <HistoryElt
-            elt_index={elt_index}
-            key={w.index}
+            key={is_compound_world(w) ? w.root.index : w.index}
             world={w}
-            labels={labels}
-            possible_labels={possible_labels}
+            current_interpretations={world.interpretations}
+            possible_interpretations={possible_world === null ? {} : possible_world.interpretations}
             animation_state={animation_state}
+            elt_index={elt_index}
           />;
   });
 
@@ -452,13 +461,52 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
 };
 
 type HistoryEltProps = {
-  world: World,
-  labels: Interpretations[number],
-  possible_labels: Interpretations[number] | undefined,
+  world: MaybeCompoundWorld<World>,
+  current_interpretations: Interpretations,
+  possible_interpretations: Interpretations,
   animation_state: AnimationState,
   elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }>
 }
-const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, possible_labels, animation_state, elt_index}) => {
+const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index}) => {
+  if (is_compound_world(world)) {
+    return <CompoundHistoryElt
+      world={world}
+      current_interpretations={current_interpretations}
+      possible_interpretations={possible_interpretations}
+      animation_state={animation_state}
+      elt_index={elt_index}
+    />
+  } else {
+    return <AtomicHistoryElt
+      world={world}
+      current_interpretations={current_interpretations}
+      possible_interpretations={possible_interpretations}
+      animation_state={animation_state}
+      elt_index={elt_index}
+    />
+  }
+};
+
+const CompoundHistoryElt: React.FunctionComponent<HistoryEltProps & {world: CompoundWorld<World>}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index}) => {
+  return <div className="compound">
+    { world.root.parsing !== undefined ? <ParsedText parsing={world.root.parsing} /> : '' }
+    <div className="children">
+      { world.children.map(w => <HistoryElt
+          key={is_compound_world(w) ? w.root.index : w.index}
+          world={w}
+          current_interpretations={current_interpretations}
+          possible_interpretations={possible_interpretations}
+          animation_state={animation_state}
+          elt_index={elt_index}
+        />) }
+    </div>
+  </div>;
+}
+
+const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index}) => {
+  const labels = current_interpretations[world.index];
+  const possible_labels = possible_interpretations[world.index];
+
   let ref = React.useCallback((node: HTMLDivElement) => {
     elt_index.current[world.index] = node;
   }, []);
@@ -503,7 +551,4 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, labels, po
     { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
     <OutputText rendering={rendering} />
   </div>;
-};
-
-
-
+}

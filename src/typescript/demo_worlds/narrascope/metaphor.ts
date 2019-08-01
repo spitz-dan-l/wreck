@@ -312,7 +312,9 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                         return parser.consume({
                             tokens: render_gist_command(g),
                             labels: {interp: true, filler: true}
-                        }, () => parser.submit(() => result.result!));
+                        }, () =>
+                        parser.submit(() =>
+                        update(world, { child: () => result.result! })));
                     });
 
                     return parser.split(indirect_threads);

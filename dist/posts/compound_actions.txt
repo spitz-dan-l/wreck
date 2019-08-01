@@ -1,0 +1,49 @@
+Compound Actions
+
+Motivation
+- Convenience. Turn a rote sequence of commands into a single one, saving time and effort
+    - But do it in a systematic, reassuring way. The player *could* always execute the rote commands themself. This means the implicit unpacking of actions never secretly does something the player can't themself already do.
+- Exposition/Coherence of narrative. In real life we switch levels all the time when discussing and thinking about what we're doing.
+- Goal-oriented commands
+- Mechanics around *how* a thing happens, rather than *whether* it happens.
+Opportunities to talk about processes involved behind executing on an intention
+
+Problems
+How to refer to a compound action?
+    There is presumably some phrase which refers to the whole thing
+    That phrase could be
+        - A higher-level, goal-oriented command
+        - The last command in the sequence of sub actions.
+            This is the (First unlocking the door...) pattern.
+
+How to structure sub actions as belonging to a single containing action, while still preserving the linked-list structure of the game?
+
+Something like:
+    When you run a compound action, the parsing for the command which generated it is added to each of the resulting sub-actions.
+
+    Alternatives to this:
+
+    Assign the entire world that originated the compound action to the sub actions,
+    rather than just the parsing.
+        Potentially gets you additional info about the action as a whole, a meta-level message.
+    
+    Assign a parsing plus a message, not a whole world.
+
+    Invert this:
+        The "containing world" gains a reference to the head of the collection of sub actions. Worlds considered sub-actions are truncated at the world with index equal to the containing world's previous.
+
+        The command application machinery knows to check for this case. If the world returned from post() has a "child" set, then take the run of the children and assign to them a "parent" world - the containing world. Then return the last child instead of the parent.
+
+        This would maintain the single line of atomic history events, but allow the grouping under possibly-nested compound actions to be preserved. You could then display it in various different ways
+
+    Is the bit where you return the child instead of the parent really that important?
+        If you don't do that then all the logic that looks back through history becomes more complicated, even if it doesn't care about what compound action a given atomic action was part of.
+        The UI logic has to accomodate the nested world list
+
+
+
+UI changes
+- When undoing, you can undo either the most recent atomic or compound action.
+- Sub actions will be somehow displayed as children of the parent action.
+    Could be indented below parent
+    Could be enclosed in a bounding box with the parent parsing as heading
