@@ -239,7 +239,7 @@ export const App: React.FunctionComponent<AppState> = (initial_state) => {
 
   return <AppDispatch.Provider value={dispatch}>
     <div>
-      <History world={current_world} possible_world={possible_world} animation_state={animation_state} />
+      <History world={current_world} possible_world={possible_world} animation_state={animation_state} undo_selected={state.undo_selected} />
       <Prompt parsing={current_parsing} locked={animation_state.lock_input} />
       <Typeahead parsing={current_parsing} typeahead_index={state.typeahead_index} undo_selected={state.undo_selected} />
       <UndoButton world={current_world} undo_selected={state.undo_selected} />
@@ -411,14 +411,15 @@ const Lock: React.FunctionComponent = (props) => {
 type HistoryProps = {
   world: World,
   possible_world: World | null,
-  animation_state: AnimationState
+  animation_state: AnimationState,
+  undo_selected: boolean
 }
 
 type AnimationMap = {
   [index: number]: HTMLDivElement
 }
 
-export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world, animation_state}) => {
+export const History: React.FunctionComponent<HistoryProps> = ({world, possible_world, animation_state, undo_selected}) => {
   let dispatch = React.useContext(AppDispatch);
 
   let elt_index: React.MutableRefObject<AnimationMap> = React.useRef({});
@@ -443,7 +444,7 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
 
   let worlds: MaybeCompoundWorld<World>[] = group_compound_worlds(world); //history_array(world).reverse();
 
-  let result = worlds.map(w => {
+  let result = worlds.map((w, i) => {
     
     return <HistoryElt
             key={is_compound_world(w) ? w.root.index : w.index}
@@ -452,6 +453,8 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
             possible_interpretations={possible_world === null ? {} : possible_world.interpretations}
             animation_state={animation_state}
             elt_index={elt_index}
+            undo_selected={undo_selected}
+            would_undo={i === worlds.length - 1}
           />;
   });
 
@@ -465,9 +468,11 @@ type HistoryEltProps = {
   current_interpretations: Interpretations,
   possible_interpretations: Interpretations,
   animation_state: AnimationState,
-  elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }>
+  elt_index: React.MutableRefObject<{ [index: number]: HTMLDivElement }>,
+  undo_selected: boolean,
+  would_undo: boolean
 }
-const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index}) => {
+const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index, undo_selected, would_undo}) => {
   if (is_compound_world(world)) {
     return <CompoundHistoryElt
       world={world}
@@ -475,6 +480,8 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, current_in
       possible_interpretations={possible_interpretations}
       animation_state={animation_state}
       elt_index={elt_index}
+      undo_selected={undo_selected}
+      would_undo={would_undo}
     />
   } else {
     return <AtomicHistoryElt
@@ -483,11 +490,14 @@ const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, current_in
       possible_interpretations={possible_interpretations}
       animation_state={animation_state}
       elt_index={elt_index}
+      undo_selected={undo_selected}
+      would_undo={would_undo}
+
     />
   }
 };
 
-const CompoundHistoryElt: React.FunctionComponent<HistoryEltProps & {world: CompoundWorld<World>}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index}) => {
+const CompoundHistoryElt: React.FunctionComponent<HistoryEltProps & {world: CompoundWorld<World>}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index, undo_selected, would_undo}) => {
   return <div className="compound">
     { world.root.parsing !== undefined ? <ParsedText parsing={world.root.parsing} /> : '' }
     <div className="children">
@@ -498,12 +508,14 @@ const CompoundHistoryElt: React.FunctionComponent<HistoryEltProps & {world: Comp
           possible_interpretations={possible_interpretations}
           animation_state={animation_state}
           elt_index={elt_index}
+          undo_selected={undo_selected}
+          would_undo={would_undo}    
         />) }
     </div>
   </div>;
 }
 
-const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index}) => {
+const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index, undo_selected, would_undo}) => {
   const labels = current_interpretations[world.index] || {};
   const possible_labels = possible_interpretations[world.index] || {};
 
@@ -537,6 +549,10 @@ const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}
         class_labels[`would-remove-${l}`] = true;
       }
     }
+  }
+
+  if (undo_selected && would_undo) {
+    class_labels['would-add-forgotten'] = true;
   }
 
   let className = Object.entries(class_labels).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
