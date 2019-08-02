@@ -1,4 +1,4 @@
-import { TopicID, AbstractionID, ActionID, FacetID, Owner, Puffers, Venience, resource_registry } from "./prelude";
+import { TopicID, ActionID, FacetID, Owner, Puffers, Venience, resource_registry } from "./prelude";
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
 import { message_updater, MessageUpdateSpec } from '../../message';
@@ -38,7 +38,7 @@ type TopicGists = { [K in TopicID]: undefined };
 
 declare module '../../gist' {
     export interface GistSpecs extends TopicGists {
-        'memory': { abstraction: Gist<AbstractionID> };        
+        'memory': { action: Gist<ActionID> };        
         'impression': { subject: Gist<TopicID> };
         // 'butt': 15;
     }
@@ -106,16 +106,16 @@ export const Topics = bound_method(topic_index, 'add');
 
 
 export type MemorySpec = {
-    abstraction: AbstractionID,
+    action: ActionID,
     could_remember: (w: Venience) => boolean,
 }
 
-const abstraction_index = resource_registry.get('abstraction_index', false);
+const action_index = resource_registry.get('action_index', false);
 
 export function make_memory(spec: MemorySpec): Puffer<Venience> {
     return {
         handle_command: (world, parser) => {
-            if (world.has_acquired[spec.abstraction] || !spec.could_remember(world)) {
+            if (world.has_acquired[spec.action] || !spec.could_remember(world)) {
                 return parser.eliminate();
             }
 
@@ -124,19 +124,17 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
                 return parser.failure;
             }
 
-            // console.time('look up abstractions');
-            let abstraction = abstraction_index.find(a => a.name === spec.abstraction)!;
-            // console.timeEnd('look up abstractions');
+            let action = action_index.find(a => a.name === spec.action)!;
 
             return update(world,
                 {
-                    has_acquired: { [spec.abstraction]: true },
-                    gist: () => gist('memory', { abstraction: gist(abstraction.name)})
+                    has_acquired: { [spec.action]: true },
+                    gist: () => gist('memory', { action: gist(action.name)})
                 },
                 message_updater(`
                     You close your eyes, and hear Katya's voice:
                     <div class="interp">
-                        ${abstraction.description}
+                        ${action.description}
                     </div>
                     You write this down in your <strong>notes</strong>.`
                 ));
@@ -162,8 +160,8 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
 
 Gists({
     tag: 'memory',
-    text: ({abstraction}) => `your memory of ${abstraction}`,
-    command: ({abstraction}) => ['my_memory of', abstraction]
+    text: ({action}) => `your memory of ${action}`,
+    command: ({action}) => ['my_memory of', action]
 });
 
 const memory_index = resource_registry.create('memory_index',

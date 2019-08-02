@@ -4,7 +4,7 @@ import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
 import { cond, included, update } from '../../utils';
 import { get_initial_world, WorldSpec, world_driver } from '../../world';
-import { Abstractions, Facets } from './metaphor';
+import { Actions, Facets } from './metaphor';
 import { Puffers, resource_registry, Venience } from './prelude';
 import { find_world_at } from './supervenience_spec';
 import { Memories, Topics } from './topic';

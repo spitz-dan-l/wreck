@@ -11,11 +11,11 @@ export type TopicID =
     'your notebook' |
     'your history with Sam';
 
-export type AbstractionID =
-    'the attentive mode' |
-    'the scrutinizing mode' |
-    'the hammer' |
-    'the volunteer';
+// export type AbstractionID =
+//     'the attentive mode' |
+//     'the scrutinizing mode' |
+//     'the hammer' |
+//     'the volunteer';
 
 export type ActionID =
     'attend' |

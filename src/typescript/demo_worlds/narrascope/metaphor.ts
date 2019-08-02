@@ -7,7 +7,7 @@ import { StaticIndex } from '../../static_resources';
 import { FutureSearchSpec, is_simulated, search_future } from '../../supervenience';
 import { capitalize } from '../../text_tools';
 import { bound_method, update, Updater } from "../../utils";
-import { AbstractionID, ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer } from "./prelude";
+import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
 
 export interface Metaphors {
@@ -15,7 +15,7 @@ export interface Metaphors {
 
     readonly current_interpretation: number | null;
 
-    has_acquired: {[K in AbstractionID]?: boolean};
+    has_acquired: {[K in ActionID]?: boolean};
 
     has_tried: {[K in ActionID]?: {[K2 in FacetID]?: boolean}};
     owner: Owner | null;
@@ -26,7 +26,7 @@ declare module './prelude' {
 
     export interface StaticResources {
         initial_world_metaphor: Metaphors;
-        abstraction_index: StaticIndex<Abstraction>;
+        action_index: StaticIndex<Action>;
         facet_index: StaticIndex<FacetSpec>;
         gist_renderer_index: typeof gist_renderer_index;
     }
@@ -50,27 +50,28 @@ let metaphor_lock = global_lock('Metaphor');
 
 type Action = {
     name: ActionID, // e.g. the direction of gravity
+    name_cmd: ConsumeSpec,
     description: string,
     slug: string,
     get_wrong_msg: (facet_phrase: string) => MessageUpdateSpec, // e.g. judging the direction of gravity
     get_cmd: (facet_phrase: ConsumeSpec) => ConsumeSpec
 }
 
-type Abstraction = {
-    name: AbstractionID, // e.g. "the mountain",
-    name_cmd: ConsumeSpec,
-    description: string,
-    slug: string,
-    get_cmd: (action_phrase: ConsumeSpec) => ConsumeSpec,
-    actions: Action[]
-}
+// type Abstraction = {
+//     name: AbstractionID, // e.g. "the mountain",
+//     name_cmd: ConsumeSpec,
+//     description: string,
+//     slug: string,
+//     get_cmd: (action_phrase: ConsumeSpec) => ConsumeSpec,
+//     actions: Action[]
+// }
 
-type AbstractionGists = { [K in AbstractionID]: undefined }
+type ActionGists = { [K in ActionID]: undefined }
 
 declare module '../../gist' {
-    export interface GistSpecs extends AbstractionGists {
+    export interface GistSpecs extends ActionGists {
         notes: undefined;
-        'notes about': { abstraction: Gist<AbstractionID> };
+        'notes about': { action: Gist<ActionID> };
         contemplation: { subject: Gist };
     }
 }
@@ -83,12 +84,12 @@ Gists({
 
 Gists({
     tag: 'notes about',
-    text: ({abstraction}) => `your notes about ${abstraction}`,
-    command: ({abstraction}) => ['my_notes about', abstraction]
+    text: ({action}) => `your notes about ${action}`,
+    command: ({action}) => ['my_notes about', action]
 });
 
 
-function make_abstraction(spec: Abstraction): VeniencePuffer {
+function make_action(spec: Action): VeniencePuffer {
     return {
         handle_command: { 
             kind: 'Stages',
@@ -102,32 +103,20 @@ function make_abstraction(spec: Abstraction): VeniencePuffer {
                     description: ['<div class="interp">'+spec.description+'</div>']
                 };
 
-                if (spec.actions.length === 1) {
-                    let act = spec.actions[0];
-                    msg.description!.push(
-                        `${capitalize(spec.name)} confers:`,
-                        `<span class="descr-${act.slug}">${act.description}</span>`
-                    );
-                } else {
-                    msg.description!.push(
-                        `<br/>Comprising ${spec.name} confers:`,
-                        ...spec.actions.map(act =>
-                            `<blockquote class="descr-${act.slug}">${act.description}</blockquote>`)
-                    );
-                }
+                msg.description!.push(
+                    `${capitalize(spec.name)} confers:`,
+                    `<span class="descr-${spec.slug}">${spec.description}</span>`
+                );
 
                 return update(world,
                     message_updater(msg),
                     {
-                        gist: () => gist('notes about', { abstraction: gist(spec.name) })
+                        gist: () => gist('notes about', { action: gist(spec.name) })
                     });
             })))
         },
         css_rules: [
-            `${spec.actions.map(a =>
-                `.history .would-add-descr-${a.slug}-blink .descr-${a.slug},\n`)
-                .join('')}
-            .history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
+            `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
                 animation-name: interpreting, would-cite !important;
                 animation-duration: 2s, 2s !important;
                 animation-iteration-count: infinite, infinite !important;
@@ -136,30 +125,30 @@ function make_abstraction(spec: Abstraction): VeniencePuffer {
     };
 }
 
-let abstraction_index = resource_registry.create('abstraction_index',
+let action_index = resource_registry.create('action_index',
     new StaticIndex([
-        function add_abstraction_to_puffers(abstraction: Abstraction) {
-            Puffers(make_abstraction(abstraction));
-            return abstraction;
+        function add_abstraction_to_puffers(action: Action) {
+            Puffers(make_action(action));
+            return action;
         }
     ])
 ).get();
 
-export const Abstractions = bound_method(abstraction_index, 'add');
+export const Actions = bound_method(action_index, 'add');
 
 
-function get_abstractions(world: Venience) {
-    let abstractions: Abstraction[] = [];
-    Object.entries(world.has_acquired).forEach(([abs_id, on]) => {
+function get_actions(world: Venience) {
+    let actions: Action[] = [];
+    Object.entries(world.has_acquired).forEach(([act_id, on]) => {
         if (on) {
-            abstractions.push(abstraction_index.find(a => a.name === abs_id)!)
+            actions.push(action_index.find(a => a.name === act_id)!)
         }
     });
-    return abstractions;
+    return actions;
 }
 
-function any_abstractions(world: Venience) {
-    return Object.entries(world.has_acquired).some(([abs, on]) => on);
+function any_actions(world: Venience) {
+    return Object.entries(world.has_acquired).some(([act, on]) => on);
 }
 
 let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
@@ -171,12 +160,12 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
             let list_consumer = null_lock.lock_parser_thread(
                 world,
                 (() => 
-                    !any_abstractions(world) ?
+                    !any_actions(world) ?
                         parser.eliminate() :
 
                     parser.consume('notes', () => parser.submit(() => {
 
-                    let abstractions = get_abstractions(world);
+                    let abstractions = get_actions(world);
 
                     return update(world,
                         message_updater({
@@ -191,7 +180,7 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
             return list_consumer(parser);
         },
         2: (world, parser) => {
-            if (!any_abstractions(world)) {
+            if (!any_actions(world)) {
                 return parser.eliminate();
             }
 
@@ -306,9 +295,6 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                             return parser.eliminate();
                         }
 
-                        
-                        
-
                         return parser.consume({
                             tokens: render_gist_command(g),
                             labels: {interp: true, filler: true}
@@ -358,9 +344,9 @@ type FacetSpec = {
     phrase: ConsumeSpec,
     description: string,
     can_recognize: (current_world: Venience, interpretted_world: Venience) => boolean,
-    can_apply: (action: [Abstraction, Action]) => boolean,
+    can_apply: (action: Action) => boolean,
     solved: (world: Venience) => boolean | symbol,
-    handle_action: (action: [Abstraction, Action], world: Venience) => Venience
+    handle_action: (action: Action, world: Venience) => Venience
 };
 
 const facet_index = resource_registry.create('facet_index',
@@ -391,75 +377,70 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                 continue;
             }
             
-            const abs = abstraction_index.find((a => a.name === k));
-            if (abs === undefined) {
+            const action = action_index.find((a => a.name === k));
+            if (action === undefined) {
                 throw Error('Invalid abstraction name: '+k);
             }
             
-            for (let action of abs.actions) {
-                let qual_action: [Abstraction, Action] = [abs, action];
-                
-                if (!spec.can_apply(qual_action)) {
-                    continue;
-                }
-
-                threads.push(() => {
-                    let already_solved = spec.solved(world);
-                    return (
-                        parser.consume(
-                            {
-                                tokens: abs.get_cmd(action.get_cmd(spec.phrase)),
-                                used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
-                                labels: { interp: true, filler: true }
-                            }, () =>
-                        parser.submit(() => {
-
-                        world = spec.handle_action(qual_action, world);
-
-                        world = update(world,
-                            interpretation_updater(world, (w) =>
-                                w.index > world.current_interpretation! ? {
-                                    [`descr-${abs.slug}-blink`]: Symbol('Once'),
-                                    [`descr-${action.slug}-blink`]: Symbol('Once'),
-                                    [`descr-${spec.slug}-blink`]: Symbol('Once')
-                                } : {}),
-                            { 
-                                interpretations: interps({
-                                    [interpretted_world.index]: {
-                                        [`interp-${spec.slug}-blink`]: Symbol('Once')
-                                    },
-                                    [world.index]: {
-                                        'animation-new': {
-                                            kind: 'Interpretation',
-                                            value: Symbol(),
-                                            stage: 1
-                                        }
-                                    }
-                                }),
-                                has_tried: { [action.name]: { [spec.name]: true }}
-                            });
-
-                        let solved = spec.solved(world)
-                        if (solved) {
-                            if (!already_solved) {
-                                return update(world,
-                                    { interpretations: interps({ [interpretted_world.index]: {
-                                        [`interp-${spec.slug}`]: true
-                                    }})}
-                                );
-                            } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
-                                return update(world, {
-                                    interpretations: interps({ [interpretted_world.index]: {
-                                        [`interp-${spec.slug}-solved-blink`]: Symbol('Once')
-                                    }})
-                                });
-                            }
-                        }
-                        return world;
-                    
-                    }))); 
-                });
+            if (!spec.can_apply(action)) {
+                continue;
             }
+
+            threads.push(() => {
+                let already_solved = spec.solved(world);
+                return (
+                    parser.consume(
+                        {
+                            tokens: action.get_cmd(action.get_cmd(spec.phrase)),
+                            used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
+                            labels: { interp: true, filler: true }
+                        }, () =>
+                    parser.submit(() => {
+
+                    world = spec.handle_action(action, world);
+
+                    world = update(world,
+                        interpretation_updater(world, (w) =>
+                            w.index > world.current_interpretation! ? {
+                                [`descr-${action.slug}-blink`]: Symbol('Once'),
+                                [`descr-${spec.slug}-blink`]: Symbol('Once')
+                            } : {}),
+                        { 
+                            interpretations: interps({
+                                [interpretted_world.index]: {
+                                    [`interp-${spec.slug}-blink`]: Symbol('Once')
+                                },
+                                [world.index]: {
+                                    'animation-new': {
+                                        kind: 'Interpretation',
+                                        value: Symbol(),
+                                        stage: 1
+                                    }
+                                }
+                            }),
+                            has_tried: { [action.name]: { [spec.name]: true }}
+                        });
+
+                    let solved = spec.solved(world)
+                    if (solved) {
+                        if (!already_solved) {
+                            return update(world,
+                                { interpretations: interps({ [interpretted_world.index]: {
+                                    [`interp-${spec.slug}`]: true
+                                }})}
+                            );
+                        } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
+                            return update(world, {
+                                interpretations: interps({ [interpretted_world.index]: {
+                                    [`interp-${spec.slug}-solved-blink`]: Symbol('Once')
+                                }})
+                            });
+                        }
+                    }
+                    return world;
+                
+                }))); 
+            });
         }
         return parser.split(threads);
     },
