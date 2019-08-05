@@ -310,3 +310,12 @@ function get_position<W extends World>(spec: FutureSearchSpec<W>, world: W): any
 
     return space.map(d => d(world));
 }
+
+/*
+    TODO
+    For the narrative dimensions, each narrative dimension can be paired with a command filter.
+
+    This would be useful for fully automating the bright/dim text logic.
+
+    A command is bright if it participates in a shortest path to advancing in a narrative dimension
+*/

@@ -1,0 +1,101 @@
+Abstraction Refactor
+
+Current abstraction system is a bit messy.
+
+Abstractions can contain multiple actions, but in the demo they each only contain 1, with the same name.
+
+Facets and Topics are different things, but maybe they shouldn't be.
+
+Topics are only accessed via Consider, at the top level.
+Facets are only accessed via Actions, while contemplating a Topic.
+
+Topics can contain multiple Facets.
+Revealing a Facet involves revealing previously invisible text in the body of a Topic.
+
+Facets can nest. E.g. once you have hammered against your friendship, you can scrutinize your culpability.
+
+You can only contemplate a Topic, not a Facet.
+
+As soon as you contemplate a Topic, all available Facets of it get listed, and then highlighted when you would do a particular action on it.
+
+No equivalent list text for Topics- they are just available as typeahead options and that has not been an issue with the demo.
+
+Do I really want to couple Facets with Contemplation? Seems plausible that I would.
+
+Attend-to and Consider could be merged?
+
+You can attend to any Facet. Facets can be top-level.
+
+If a Facet is nested, you can only attend to it via the parent Facet it belongs to. But Supervenience makes this easy.
+
+- Sam
+    - Sam's presence
+    - Sam's demeanor
+    - Friendship with Sam
+
+- History with Sam
+    - growing apart
+        - culpability
+
+- Myself
+- Notebook
+- (Notes)
+
+
+attend to sam
+scrutinize sam's demeanor
+
+Consider - Top level observables
+Contemplate - Top level observables
+
+Attend to - applies to observables
+Scrutinize - applies to observables
+Hammer - applies to assertions/facts (not all observables)
+Volunteer - applies to moral states (?)
+
+Idea: Merge Scrutinize w Contemplate, and Attend-to w Consider.
+
+When contemplating, you get a list of facets.
+When scrutinizing, you get revealed details, usually inline, and a narrative of PC's reaction to the revelation.
+
+Difference is mechanical but not really meaningful.
+
+So, when scrutinizing, we can have all three happen:
+    - Reveal details inline,
+    - Reveal PC reactions to the details
+    - List child facets
+
+What about "end contemplation" though?
+Another thing that contemplating does is focus on that one thing, dims out other bits of UI, limits commands to related things until you end contemplation.
+
+This would be awkward, if scrutinizing also forced you down a level so you couldn't easily switch to scrutinizing other things at the same level.
+
+Ok, how about still merging Consider and Attend to, but keeping Scrutinize and Contemplate separate?
+
+In defense of distinguishing top-level topics from deeper ones.
+Our inner structures are ultimately built from external states of affairs.
+
+Our minds have limited working memory. We pick places to put borders around things, and there are pros and cons to where we put the borders. Putting a border is like "moving to a separate top-level topic", e.g. "sam" vs "my history with sam".
+
+Ok, another factoring:
+
+Consider stays for top-level topics.
+"Contemplate" gets renamed by "attend to".
+    Old "attend to" just gets dropped.
+    The "Something is wrong" revealed text expands as soon as you attend to sam for the first time. In general, just attending to something can trigger some facets.
+
+    "attend to" isn't really meta enough. "Contemplate" is used to refer to one meta level up, so instead of doing it for sam you are doing it for "my impression of sam".
+
+    That's actually maybe fine. Just attending to the thing seems fine for all the uses of
+    contemplate used in the demo. Potentially could have another action or way of perceiving especially meta qualities.
+
+    The "Something is wrong" reveal seems a bit off though.
+
+    It can work as its own facet?
+
+    The revealing part still feels a bit weird but maybe that is okay...
+
+    Outside the demo you won't always have direct access to the attentive mode, and just attending to a thing could be revelatory.
+
+    Or, some kind of default-available action when attending to things?
+        Try just the auto-notice first, then re-evaluate.

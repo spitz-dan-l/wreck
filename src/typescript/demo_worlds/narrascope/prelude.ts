@@ -19,7 +19,7 @@ export type TopicID =
 
 export type ActionID =
     'attend' |
-    'scrutinize' |
+    'scrutiny' |
     'hammer' |
     'volunteer';
 

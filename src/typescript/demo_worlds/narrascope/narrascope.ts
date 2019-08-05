@@ -278,6 +278,15 @@ Facets({
     }
 });
 
+Actions({
+    name: 'scrutiny',
+    name_cmd: 'scrutiny',
+    description: "The ability to unpack details and look beyond your initial assumptions.",
+    slug: 'scrutiny',
+    get_cmd: (facet) => ['scrutinize', facet],
+    get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains unresolved.`
+})
+
 Abstractions({
     name: 'the scrutinizing mode',
     name_cmd: 'the_scrutinizing_mode',

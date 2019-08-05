@@ -73,7 +73,6 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
         post: (world2, world1) => {
             if (spec.reconsider === undefined ||
                 world2.gist && gists_equal(world2.gist, gist('impression', { subject: gist(spec.name) }) ) ||
-                // world2.gist && world2.gist.name === `your impression of ${spec.name}` ||
                 !spec.reconsider(world2, world1)) {
                 return world2;
             }
