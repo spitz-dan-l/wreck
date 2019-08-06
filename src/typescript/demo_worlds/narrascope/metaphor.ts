@@ -1,23 +1,24 @@
-import { Gist, gist, Gists, gists_equal, gist_renderer_index, render_gist_command, render_gist_text, gist_to_string } from '../../gist';
-import { find_historical, history_array, interpretation_updater, find_index, interps } from "../../interpretation";
+import { Gist, gist, Gists, gists_equal, gist_to_string, render_gist_command, render_gist_text } from '../../gist';
+import { find_historical, find_index, history_array, interpretation_updater, interps } from "../../interpretation";
 import { MessageUpdateSpec, message_updater } from "../../message";
 import { ConsumeSpec, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
 import { StaticIndex } from '../../static_resources';
-import { FutureSearchSpec, is_simulated, search_future } from '../../supervenience';
+import { is_simulated, search_future } from '../../supervenience';
 import { capitalize } from '../../text_tools';
-import { bound_method, update, Updater } from "../../utils";
+import { bound_method, update, Updater, map } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
+import { string } from 'prop-types';
 
 export interface Metaphors {
     gist: Gist | null,
 
     readonly current_interpretation: number | null;
 
-    has_acquired: {[K in ActionID]?: boolean};
+    has_acquired: Map<ActionID, boolean>;
 
-    has_tried: {[K in ActionID]?: {[K2 in FacetID]?: boolean}};
+    has_tried: Map<ActionID, Map<FacetID, boolean>>;
     owner: Owner | null;
 }
 
@@ -28,7 +29,6 @@ declare module './prelude' {
         initial_world_metaphor: Metaphors;
         action_index: StaticIndex<Action>;
         facet_index: StaticIndex<FacetSpec>;
-        gist_renderer_index: typeof gist_renderer_index;
     }
 }
 
@@ -37,11 +37,9 @@ resource_registry.create('initial_world_metaphor', {
     owner: null,
     current_interpretation: null,
 
-    has_acquired: {},
-    has_tried: {}
+    has_acquired: new Map(),
+    has_tried: new Map()
 });
-
-resource_registry.create('gist_renderer_index', gist_renderer_index);
 
 const global_lock = resource_registry.get('global_lock', false);
 
@@ -70,51 +68,36 @@ type ActionGists = { [K in ActionID]: undefined }
 
 declare module '../../gist' {
     export interface GistSpecs extends ActionGists {
-        notes: undefined;
-        'notes about': { action: Gist<ActionID> };
         contemplation: { subject: Gist };
     }
 }
 
-Gists({
-    tag: 'notes',
-    text: () => 'your notes',
-    command: () => 'my_notes'
-});
-
-Gists({
-    tag: 'notes about',
-    text: ({action}) => `your notes about ${action}`,
-    command: ({action}) => ['my_notes about', action]
-});
-
-
 function make_action(spec: Action): VeniencePuffer {
     return {
-        handle_command: { 
-            kind: 'Stages',
-            3: ((world, parser) => 
-                !world.has_acquired[spec.name] ?
-                    parser.eliminate() :
+        // handle_command: { 
+        //     kind: 'Stages',
+        //     3: ((world, parser) => 
+        //         !world.has_acquired[spec.name] ?
+        //             parser.eliminate() :
                 
-                parser.consume(['notes about', spec.name_cmd], () => parser.submit(() => {
+        //         parser.consume(['notes about', spec.name_cmd], () => parser.submit(() => {
 
-                let msg: MessageUpdateSpec = {
-                    description: ['<div class="interp">'+spec.description+'</div>']
-                };
+        //         let msg: MessageUpdateSpec = {
+        //             description: ['<div class="interp">'+spec.description+'</div>']
+        //         };
 
-                msg.description!.push(
-                    `${capitalize(spec.name)} confers:`,
-                    `<span class="descr-${spec.slug}">${spec.description}</span>`
-                );
+        //         msg.description!.push(
+        //             `${capitalize(spec.name)} confers:`,
+        //             `<span class="descr-${spec.slug}">${spec.description}</span>`
+        //         );
 
-                return update(world,
-                    message_updater(msg),
-                    {
-                        gist: () => gist('notes about', { action: gist(spec.name) })
-                    });
-            })))
-        },
+        //         return update(world,
+        //             message_updater(msg),
+        //             {
+        //                 gist: () => gist('notes about', { action: gist(spec.name) })
+        //             });
+        //     })))
+        // },
         css_rules: [
             `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
                 animation-name: interpreting, would-cite !important;
@@ -139,16 +122,16 @@ export const Actions = bound_method(action_index, 'add');
 
 function get_actions(world: Venience) {
     let actions: Action[] = [];
-    Object.entries(world.has_acquired).forEach(([act_id, on]) => {
+    for (let [act_id, on] of world.has_acquired) {
         if (on) {
             actions.push(action_index.find(a => a.name === act_id)!)
         }
-    });
+    }
     return actions;
 }
 
 function any_actions(world: Venience) {
-    return Object.entries(world.has_acquired).some(([act, on]) => on);
+    return [...world.has_acquired].some(([act, on]) => on);
 }
 
 let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
@@ -156,29 +139,29 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
 
     handle_command: {
         kind: 'Stages',
-        3: (world, parser) => {
-            let list_consumer = null_lock.lock_parser_thread(
-                world,
-                (() => 
-                    !any_actions(world) ?
-                        parser.eliminate() :
+        // 3: (world, parser) => {
+        //     let list_consumer = null_lock.lock_parser_thread(
+        //         world,
+        //         (() => 
+        //             !any_actions(world) ?
+        //                 parser.eliminate() :
 
-                    parser.consume('notes', () => parser.submit(() => {
+        //             parser.consume('notes', () => parser.submit(() => {
 
-                    let abstractions = get_actions(world);
+        //             let abstractions = get_actions(world);
 
-                    return update(world,
-                        message_updater({
-                            description: ['You have written down notes about:',
-                                ...abstractions.map(a => `<blockquote class="descr-${a.slug}">${capitalize(a.name)}</blockquote>`)
-                            ]
-                        }),
-                        { gist: () => gist('notes') }
-                    )
-                })))
-            );
-            return list_consumer(parser);
-        },
+        //             return update(world,
+        //                 message_updater({
+        //                     description: ['You have written down notes about:',
+        //                         ...abstractions.map(a => `<blockquote class="descr-${a.slug}">${capitalize(a.name)}</blockquote>`)
+        //                     ]
+        //                 }),
+        //                 { gist: () => gist('notes') }
+        //             )
+        //         })))
+        //     );
+        //     return list_consumer(parser);
+        // },
         2: (world, parser) => {
             if (!any_actions(world)) {
                 return parser.eliminate();
@@ -322,7 +305,7 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                         interpretations: interps({
                             [world.current_interpretation!]: {'interpretation-active': false}
                         }),
-                        has_tried: () => ({}),
+                        has_tried: () => new Map(),
                         
                     },
                     message_updater({
@@ -372,7 +355,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
 
         let threads: ParserThread<Venience>[] = [];
 
-        for (let [k, on] of Object.entries(world.has_acquired)) {
+        for (let [k, on] of world.has_acquired) {
             if (!on) {
                 continue;
             }
@@ -391,8 +374,8 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                 return (
                     parser.consume(
                         {
-                            tokens: action.get_cmd(action.get_cmd(spec.phrase)),
-                            used: !!already_solved || (world.has_tried[action.name] && world.has_tried[action.name]![spec.name]),
+                            tokens: action.get_cmd(spec.phrase),
+                            used: !!already_solved || (world.has_tried.has(action.name) && world.has_tried.get(action.name)![spec.name]),
                             labels: { interp: true, filler: true }
                         }, () =>
                     parser.submit(() => {
@@ -418,7 +401,21 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                                     }
                                 }
                             }),
-                            has_tried: { [action.name]: { [spec.name]: true }}
+                            has_tried: map([action.name, map([spec.name, true])])
+                            // _ => {
+                            //     let result = new Map([..._]);
+                            //     let x = result.get(action.name);
+
+                            //     if (x === undefined) {
+                            //         x = new Map<FacetID, boolean>();
+                            //         result.set(action.name, x);
+                            //     } else {
+                            //         x = new Map([...x]);
+                            //     }
+                            //     x.set(spec.name, true);
+
+                            //     return result;
+                            // }
                         });
 
                     let solved = spec.solved(world)

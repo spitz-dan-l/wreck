@@ -20,10 +20,11 @@
 
 */
 
-import { infer_message_labels, Message, INITIAL_MESSAGE, standard_render } from './message';
-import { Parser, Parsing, ParserThread, raw, RawInput, ParseResult, group_rows, ParseValue, failed } from './parser';
-import { deep_equal, update, array_last } from './utils';
-import { Interpretations, pre_interp, group_compound_worlds } from './interpretation';
+import { O } from 'ts-toolbelt';
+import { Interpretations, pre_interp } from './interpretation';
+import { INITIAL_MESSAGE, Message } from './message';
+import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
+import { update } from './utils';
 
 export interface World {
     readonly message: Message,
@@ -125,7 +126,6 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     }
 }
 
-import {O} from 'ts-toolbelt';
 
 export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;
 export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {

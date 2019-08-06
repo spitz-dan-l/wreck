@@ -108,7 +108,8 @@ describe('supervenience narrascope', () => {
             goals: [goal_met],
             space
         };
-        search_future(spec, initial_result.world);
+        let result = search_future(spec, initial_result.world);
+        assert.equal(result.status, 'Found');
     });
 
     it('beats narrascope demo using subgoals', () => {
@@ -119,7 +120,8 @@ describe('supervenience narrascope', () => {
             space: [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations', 'parent', 'child')],
             command_filter
         };
-        search_future(spec, initial_result.world);
+        let result = search_future(spec, initial_result.world);
+        assert.equal(result.status, 'Found');
     });
 
     it('beats narrascope demo using both', () => {
@@ -129,7 +131,8 @@ describe('supervenience narrascope', () => {
             goals,
             space
         };
-        search_future(spec, initial_result.world);
+        let result = search_future(spec, initial_result.world);
+        assert.equal(result.status, 'Found');
     });
 
     it('beats narrascope demo using both + command filtering', () => {
@@ -140,7 +143,8 @@ describe('supervenience narrascope', () => {
             space,
             command_filter
         };
-        search_future(spec, initial_result.world);
+        let result = search_future(spec, initial_result.world);
+        assert.equal(result.status, 'Found');
     });
 
 });

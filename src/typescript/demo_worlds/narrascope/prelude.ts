@@ -4,6 +4,7 @@ import { update, entries, bound_method } from '../../utils';
 import { World, get_initial_world } from '../../world';
 import { FutureSearchSpec } from '../../supervenience';
 import {ResourcesFor, StaticResourceRegistry, StaticResource, StaticIndex} from '../../static_resources';
+import { GistRenderer, gist_renderer_index } from '../../gist';
 
 export type TopicID =
     'Sam' |
@@ -62,6 +63,7 @@ export interface StaticResources {
     initial_world_prelude: Pick<Venience, 'owner'>;
     puffer_index: StaticIndex<VeniencePuffer>;
     global_lock: (o: Owner | null) => Lock<Venience, Owner>;
+    gist_renderer_index: StaticIndex<GistRenderer>;
 };
 
 resource_registry.create('initial_world_prelude',
@@ -85,6 +87,8 @@ const puffer_index = resource_registry.create('puffer_index',
         }
     ])
 ).get();
+
+resource_registry.create('gist_renderer_index', gist_renderer_index);
 
 export const Puffers = bound_method(puffer_index, 'add');
 

@@ -192,6 +192,9 @@ export function self_interpretation<W extends World>(world: W, updater: Updater<
 // TODO - set all interp stages to undefined
 export function pre_interp(interps: Interpretations): Interpretations {
     let u: Updater<Interpretations> = {};
+    if (!interps) {
+        debugger;
+    }
     for (let [index, interp] of Object.entries(interps)) {
         for (let [label, {value, stage}] of Object.entries(interp)) {
             if (typeof value === 'symbol') {

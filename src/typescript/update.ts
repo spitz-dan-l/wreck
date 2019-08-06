@@ -52,7 +52,7 @@ export type Updater<T> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
     [T] extends [(...args: any) => any] ? (x: T) => T :
-        ((T extends Primitive | any[] | Set<any> ? T :
+        ((T extends Primitive | any[] | Set<any> | Map<any, any> ? T :
             T extends object ? ObjectUpdater<T> :
                 never) |
          ((x: T) => T));
@@ -67,6 +67,7 @@ export type ObjectUpdater<T> = {
 }
 
 import {F} from 'ts-toolbelt';
+import { P } from 'ts-toolbelt/out/types/src/Object/_api';
 
 // The second generic type parameter is a hack to prevent typescript from using the contents of updater
 // to figure out the source and return types when doing type inference on calls to this function.
@@ -79,8 +80,27 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
     // if updater is a non-traversible value
     // check for all types we don't intend to recursively traverse.
     // this means all (non-function) primitives, and arrays
-    if ( !(updater instanceof Object) || updater instanceof Array || updater instanceof Set ) {
+    if ( !(updater instanceof Object) || updater instanceof Array || updater instanceof Set) {
         return <S>updater;
+    }
+
+    if (updater instanceof Map){
+        let result: Map<any, any>;
+        if (source instanceof Map) {
+            result = new Map([...source]);
+        } else {
+            result = new Map();
+        }
+
+        for (let [k, v] of updater) {
+            if (v === undefined) {
+                result.delete(k);
+            } else {
+                result.set(k, update(result.get(k), v))
+            }
+        }
+
+        return <S><unknown>result;
     }
 
     // updater is an Object, traverse each key/value and update recursively.
@@ -112,61 +132,9 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
 // to figure out the source and return types when doing type inference on calls to this function.
 export function update<S>(source: S, updater: F.NoInfer<Updater<S>>): S;
 export function update<S>(source: S, ...updaters: F.NoInfer<Updater<S>>[]): S;
-// export function update<S, U extends S=S>(source: S, updater: Updater<U>): S;
-// export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S;
 export function update<S>(source: S, ...updaters: F.NoInfer<Updater<S>>[]): S {
     return updaters.reduce(update1, source);
 }
-
-// // The second generic type parameter is a hack to prevent typescript from using the contents of updater
-// // to figure out the source and return types when doing type inference on calls to this function.
-// export function update1<S, U extends S=S>(source: S, updater: Updater<U>): S {
-//     // if updater is a function, call it and return the result
-//     if (updater instanceof Function) {
-//         return <S>(<Function> updater)(source);
-//     }
-
-//     // if updater is a non-traversible value
-//     // check for all types we don't intend to recursively traverse.
-//     // this means all (non-function) primitives, and arrays
-//     if ( !(updater instanceof Object) || updater instanceof Array || updater instanceof Set ) {
-//         return <S>updater;
-//     }
-
-//     // updater is an Object, traverse each key/value and update recursively.
-//     // note: if you are just trying to set to a deeply-nested object with no traversal,
-//     // you can achieve this by passing a function returning your desired object.
-//     if (updater instanceof Object) {
-//         let result: Partial<S>;
-//         if (source instanceof Object) {
-//             result = {...source};
-//         } else {
-//             result = {};
-//         }
-        
-//         for (let [n, v] of Object.entries(updater)) {
-//             if (v === undefined) {
-//                 delete result[n];
-//             } else {
-//                 result[n] = update(result[n], v);
-//             }
-//         }
-
-//         return <S>result;
-//     }
-
-//     throw Error('Should never get here');
-// }
-
-// // The second generic type parameter is a hack to prevent typescript from using the contents of updater
-// // to figure out the source and return types when doing type inference on calls to this function.
-// export function update<S, U extends S=S>(source: S, updater: Updater<U>): S;
-// export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S;
-// // export function update<S, U extends S=S>(source: S, updater: Updater<U>): S;
-// // export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S;
-// export function update<S, U extends S=S>(source: S, ...updaters: Updater<U>[]): S {
-//     return updaters.reduce(update1, source);
-// }
 
 export function update_any<S>(source: S, updater: any): S {
     return update(source, updater);

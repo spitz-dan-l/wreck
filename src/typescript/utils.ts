@@ -227,16 +227,29 @@ export function key_union(a: {}, b: {}) {
   return [...new Set([...Object.keys(a), ...Object.keys(b)]).values()];
 }
 
+// Map helpers
+export function map<K, V>(...args: [K, V][]) {
+    return new Map(args);
+}
+
+export function copy_map<K, V>(m: Map<K, V>) {
+    return new Map(m.entries());
+}
+
+export function map_updater<K, V>(x: [K, V][]) {
+    return (m: Map<K, V>) => new Map([...m, ...x]);
+}
+
 // Helper for declaring values with tuple types.
 // "as const" would nearly make this unnecessary but @babel/preset-typescript 3.7.7 doesn't parse as const
 
-type AsConstPrimitive = undefined | null | boolean | string | number | symbol | ((...args: any) => any);
+// type AsConstPrimitive = undefined | null | boolean | string | number | symbol | ((...args: any) => any);
 
-export function tuple<T extends AsConstPrimitive[] & {0: unknown}>(...t: T): T;
-export function tuple<T extends unknown[] & {0: any}>(...t: T): T; 
-export function tuple<T extends any[] & {0: any}>(...t: T): T {
-    return t
-}
+// export function tuple<T extends AsConstPrimitive[] & {0: unknown}>(...t: T): T;
+// export function tuple<T extends unknown[] & {0: any}>(...t: T): T; 
+// export function tuple<T extends any[] & {0: any}>(...t: T): T {
+//     return t
+// }
 
 // Mapped Type helper //
 // export type Omit<T, K extends keyof any, X extends keyof T = Exclude<keyof T, K>> = {
@@ -315,11 +328,8 @@ type UnboxIntersection<T> = T extends { 0: infer U } ? U : never;
 export type IntersectTupleTypes<T extends { [k: number]: any }> = UnionToIntersection<TupleTypes<T>>;
 export type IntersectBoxedTupleTypes<T extends { [k: number]: any }> = UnboxIntersection<UnionToIntersection<BoxedTupleTypes<T>>>;
 
-
-// This is really dumb
-import _deep_equal from 'deep-equal';
-export let deep_equal = _deep_equal
-
+import lodash from 'lodash'
+export const deep_equal = lodash.isEqual;
 
 
 export {lens} from 'lens.ts';

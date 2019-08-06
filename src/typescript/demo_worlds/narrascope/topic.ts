@@ -1,11 +1,12 @@
-import { TopicID, ActionID, FacetID, Owner, Puffers, Venience, resource_registry } from "./prelude";
+import { gist, Gists, gists_equal } from '../../gist';
+import { find_historical } from '../../interpretation';
+import { MessageUpdateSpec, message_updater } from '../../message';
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
-import { message_updater, MessageUpdateSpec } from '../../message';
-import { gist, Gists, render_gist_text, render_gist_command, gists_equal } from '../../gist';
-import { update, cond, bound_method, } from '../../utils';
-import { find_historical } from '../../interpretation';
 import { StaticIndex } from '../../static_resources';
+import { capitalize } from "../../text_tools";
+import { bound_method, cond, update, map_updater, map } from '../../utils';
+import { ActionID, Puffers, resource_registry, TopicID, Venience } from "./prelude";
 
 export interface Topics {
     has_considered: { [K in TopicID]?: boolean }
@@ -40,7 +41,6 @@ declare module '../../gist' {
     export interface GistSpecs extends TopicGists {
         'memory': { action: Gist<ActionID> };        
         'impression': { subject: Gist<TopicID> };
-        // 'butt': 15;
     }
 }
 
@@ -107,6 +107,8 @@ export const Topics = bound_method(topic_index, 'add');
 export type MemorySpec = {
     action: ActionID,
     could_remember: (w: Venience) => boolean,
+    description: string,
+
 }
 
 const action_index = resource_registry.get('action_index', false);
@@ -114,7 +116,7 @@ const action_index = resource_registry.get('action_index', false);
 export function make_memory(spec: MemorySpec): Puffer<Venience> {
     return {
         handle_command: (world, parser) => {
-            if (world.has_acquired[spec.action] || !spec.could_remember(world)) {
+            if (world.has_acquired.get(spec.action) || !spec.could_remember(world)) {
                 return parser.eliminate();
             }
 
@@ -127,14 +129,18 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
 
             return update(world,
                 {
-                    has_acquired: { [spec.action]: true },
+                    has_acquired: map([spec.action, true]),
                     gist: () => gist('memory', { action: gist(action.name)})
                 },
                 message_updater(`
                     You close your eyes, and hear Katya's voice:
                     <div class="interp">
-                        ${action.description}
+                        ${spec.description}
                     </div>
+                    ${capitalize(spec.action)} confers:
+                    <blockquote>
+                        ${action.description}
+                    </blockquote>
                     You write this down in your <strong>notes</strong>.`
                 ));
         },
@@ -173,4 +179,3 @@ const memory_index = resource_registry.create('memory_index',
 ).get();
 
 export const Memories = bound_method(memory_index, 'add');
-

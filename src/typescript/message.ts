@@ -1,6 +1,6 @@
-import * as Mustache from 'mustache';
+import Handlebars from 'handlebars';
 import { World } from './world';
-import { appender, update, Updater, merge_objects } from './utils';
+import { appender, update, Updater, merge_objects, drop_keys, map_values } from './utils';
 import { InterpretationLabel, LocalInterpretations, label_value } from './interpretation';
 
 /*
@@ -76,45 +76,26 @@ export let message_updater = (spec: MessageUpdateSpec) => ({
     }
 });
 
-/*
-    TODO: standard_render is actually a react component, not a function returning string
-
-    - This is where we do fancy book guy stuff.
-        - Detect diffs from previous renderings using state.
-        - Use effects to animate the differences ala book guy.
-*/
-
 export type Renderer = (world: World, labels?: LocalInterpretations, possible_labels?: LocalInterpretations) => string;
 
+// export let standard_render2: Renderer = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
+//     return (['action', 'consequence', 'description', 'prompt'] as const)
+//         .map(f => world.message[f])
+//         .filter(x => x.length > 0)
+//         .map(x => x.map(f => Mustache.render(f,
+//             Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val.value}), <LocalInterpretations>{})
+//         )).join('<br/>'))
+//         .join('<br/>');
+// }
+
 export let standard_render: Renderer = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
-    return (['action', 'consequence', 'description', 'prompt'] as const)
+    const template = (['action', 'consequence', 'description', 'prompt'] as const)
         .map(f => world.message[f])
         .filter(x => x.length > 0)
-        .map(x => x.map(f => Mustache.render(f,
-            Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val.value}), <LocalInterpretations>{})
-        )).join('<br/>'))
+        .map(x => x.join('<br/>'))
         .join('<br/>');
+    return Handlebars.compile(template)({
+        ...map_values(labels, i => !!i.value),
+        '@world': world,
+    });
 }
-
-// find interp labels inside any message fragments
-export function infer_fragment_labels(f: Fragment): LocalInterpretations {
-    let extract_labels = (tokens: any[]): LocalInterpretations =>
-        merge_objects(
-            tokens.map((token): LocalInterpretations => {
-                switch (token[0]) {
-                    case '#':
-                    case '^':
-                        return {[token[1] as string]: {kind: 'Interpretation', value: false}, ...extract_labels(token[4])};
-                    default:
-                        return {};
-                }
-            }))
-    let parsed = Mustache.parse(f);
-
-    return extract_labels(parsed);
-}
-
-export let infer_message_labels = (m: Message): LocalInterpretations =>
-    merge_objects(
-        (['action', 'consequence', 'description', 'prompt'] as const)
-            .flatMap(prop => m[prop].map(infer_fragment_labels)));
