@@ -2,12 +2,13 @@ import { gist, Gists, gists_equal, includes_tag } from '../../gist';
 import { message_updater } from '../../message';
 import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
-import { cond, included, update, map_updater, map } from '../../utils';
+import { cond, included, update, map } from '../../utils';
 import { get_initial_world, WorldSpec, world_driver } from '../../world';
 import { Actions, Facets } from './metaphor';
 import { Puffers, resource_registry, Venience } from './prelude';
 import { find_world_at } from './supervenience_spec';
-import { Memories, Topics } from './topic';
+import { Topics } from './topic';
+import { Memories } from './memory';
 import {add_to_notes} from './notes';
 
 
@@ -30,10 +31,7 @@ declare module './prelude' {
     }
 }
 
-
-const my_butt = add_to_notes;
-
-resource_registry.create('initial_world_narrascope', {
+resource_registry.initialize('initial_world_narrascope', {
     has_chill: false,
     has_recognized_something_wrong: false,
     is_curious_about_history: false,
@@ -42,12 +40,13 @@ resource_registry.create('initial_world_narrascope', {
     has_volunteered: false,
     end: false,
 
-    has_scrutinized_memory: new Map()
+    has_scrutinized_memory: map()
 });
 
 Actions({
-    name: 'attend' as const,
-    name_cmd: 'attention',
+    name: 'to attend',
+    noun: 'attention',
+    noun_cmd: 'attention',
     description: "The ability to attend to particular facets of one's perception.",
     slug: 'attend',
     get_cmd: (facet) => ['attend_to', facet],
@@ -55,7 +54,7 @@ Actions({
 });
 
 Memories({
-    action: 'attend',
+    action: 'to attend',
     could_remember: world => !!world.has_considered['your notebook'],
     description: `
     <div class="memory-1">
@@ -68,33 +67,8 @@ Memories({
     </div>`,
 });
 
-// Abstractions({
-//     name: 'the attentive mode',
-//     name_cmd: 'the_attentive_mode',
-//     slug: 'attentive-mode',
-//     description: `
-//     <div class="memory-1">
-//         "Wake up, my dear. Attend to the world around you."
-//         <blockquote class="interp-memory-1">
-//             Katya took you to the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
-//             <br/>
-//             There was to be little time to relax or sleep in; astronomers are busy folk.
-//         </blockquote>
-//     </div>`,
-//     get_cmd: (action) => action,
-//     actions: [
-//         {
-//             name: 'attend' as const,
-//             description: "The ability to attend to particular facets of one's perception.",
-//             slug: 'attend',
-//             get_cmd: (facet) => ['attend_to', facet],
-//             get_wrong_msg: (facet) => `Merely paying more attention to ${facet} does not seem to be enough.`
-//         }
-//     ]
-// });
-
 function about_attentive(w: Venience) {
-    return w.gist !== null && includes_tag('attend', w.gist);
+    return w.gist !== null && includes_tag('to attend', w.gist);
 }
 
 Facets({
@@ -103,11 +77,11 @@ Facets({
     slug: 'memory-1',
     phrase: 'the_memory',
     can_recognize: (w2, w1) =>
-        about_attentive(w1) && !!w2.has_acquired.get('attend'),
-    can_apply: (action) => action.name === 'scrutiny',
+        about_attentive(w1) && !!w2.has_acquired.get('to attend'),
+    can_apply: (action) => true/*action.name === 'to scrutinize'*/,
     solved: w => w.has_scrutinized_memory.get(1) || false,
     handle_action: (action, world) => {
-        if (action.name === 'scrutiny') {
+        if (action.name === 'to scrutinize') {
             return update(world, 
                 { has_scrutinized_memory: map([1, Symbol()])},
             );
@@ -117,7 +91,7 @@ Facets({
 });
 
 function about_scrutinizing(w: Venience) {
-    return w.gist !== null && includes_tag('scrutiny', w.gist);
+    return w.gist !== null && includes_tag('to scrutinize', w.gist);
 }
 
 Facets({
@@ -126,11 +100,11 @@ Facets({
     slug: 'memory-2',
     phrase: 'the_memory',
     can_recognize: (w2, w1) =>
-        about_scrutinizing(w1) && !!w2.has_acquired.get('scrutiny'),
-    can_apply: (action) => action.name === 'scrutiny',
+        about_scrutinizing(w1) && !!w2.has_acquired.get('to scrutinize'),
+    can_apply: (action) => action.name === 'to scrutinize',
     solved: w => w.has_scrutinized_memory.get(2) || false,
     handle_action: (action, world) => {
-        if (action.name === 'scrutiny') {
+        if (action.name === 'to scrutinize') {
             return update(world, 
                 { has_scrutinized_memory: map([2, Symbol()])},
             );
@@ -140,7 +114,7 @@ Facets({
 });
 
 function about_hammer(w: Venience) {
-    return w.gist !== null && includes_tag('hammer', w.gist);
+    return w.gist !== null && includes_tag('to hammer', w.gist);
 }
 
 Facets({
@@ -149,11 +123,11 @@ Facets({
     slug: 'memory-3',
     phrase: 'the_memory',
     can_recognize: (w2, w1) =>
-        about_hammer(w1) && !!w2.has_acquired.get('hammer'),
-    can_apply: (action) => action.name === 'scrutiny',
+        about_hammer(w1) && !!w2.has_acquired.get('to hammer'),
+    can_apply: (action) => action.name === 'to scrutinize',
     solved: w => w.has_scrutinized_memory.get(3) || false,
     handle_action: (action, world) => {
-        if (action.name === 'scrutiny') {
+        if (action.name === 'to scrutinize') {
             return update(world, 
                 { has_scrutinized_memory:  map([3, Symbol()])},
             );
@@ -163,7 +137,7 @@ Facets({
 });
 
 function about_volunteer(w: Venience) {
-    return w.gist !== null && includes_tag('volunteer', w.gist);
+    return w.gist !== null && includes_tag('to volunteer', w.gist);
 }
 
 Facets({
@@ -172,11 +146,11 @@ Facets({
     slug: 'memory-4',
     phrase: 'the_memory',
     can_recognize: (w2, w1) =>
-        about_volunteer(w1) && !!w2.has_acquired.get('volunteer'),
-    can_apply: (action) => action.name === 'scrutiny',
+        about_volunteer(w1) && !!w2.has_acquired.get('to volunteer'),
+    can_apply: (action) => action.name === 'to scrutinize',
     solved: w => w.has_scrutinized_memory.get(4) || false,
     handle_action: (action, world) => {
-        if (action.name === 'scrutiny') {
+        if (action.name === 'to scrutinize') {
             return update(world, 
                 { has_scrutinized_memory: map([4, Symbol()])},
             );
@@ -213,19 +187,19 @@ Topics({
         </div>
     </div>`,
     reconsider: (w2, w1) => {
-        if (w2.has_acquired.get('attend') && !w2.has_chill) {
+        if (w2.has_acquired.get('to attend') && !w2.has_chill) {
             return true;
         }
 
-        if (w2.has_acquired.get('scrutiny') && !w2.has_recognized_something_wrong) {
+        if (w2.has_acquired.get('to scrutinize') && !w2.has_recognized_something_wrong) {
             return true;
         }
 
-        if (w2.has_acquired.get('hammer') && !w2.is_curious_about_history) {
+        if (w2.has_acquired.get('to hammer') && !w2.is_curious_about_history) {
             return true;
         }
 
-        if (w2.has_acquired.get('volunteer') && !w2.has_volunteered) {
+        if (w2.has_acquired.get('to volunteer') && !w2.has_volunteered) {
             return true;
         }
         return false;
@@ -267,11 +241,11 @@ Facets({
     slug: 'sam',
     phrase: 'sam',
     can_recognize: (w2, w1) =>
-        about_sam(w1) && !!w2.has_acquired.get('attend'),
-    can_apply: (action) => action.name === 'attend',
+        about_sam(w1) && !!w2.has_acquired.get('to attend'),
+    can_apply: (action) => true/*action.name === 'to attend'*/,
     solved: w => w.has_chill,
     handle_action: (action, world) => {
-        if (action.name === 'attend') {
+        if (action.name === 'to attend') {
             return update(world, 
                 { has_chill: Symbol() },    
                 message_updater({
@@ -284,7 +258,7 @@ Facets({
             );
         } else {
             // TODO: replace generic wrong msg with hint asking for more specifity
-            if (action.name === 'scrutiny') {
+            if (action.name === 'to scrutinize') {
                 return update(world, message_updater("You'll need to be more specific about what to scrutinize."))
             }
             return update(world, message_updater(action.get_wrong_msg('sam')));
@@ -293,8 +267,9 @@ Facets({
 });
 
 Actions({
-    name: 'scrutiny',
-    name_cmd: 'scrutiny',
+    name: 'to scrutinize',
+    noun: 'scrunity',
+    noun_cmd: 'scrutiny',
     description: "The ability to unpack details and look beyond your initial assumptions.",
     slug: 'scrutiny',
     get_cmd: (facet) => ['scrutinize', facet],
@@ -302,7 +277,7 @@ Actions({
 })
 
 Memories({
-    action: 'scrutiny',
+    action: 'to scrutinize',
     could_remember: world => !!world.has_chill,
     description: `
     <div class="memory-2">
@@ -313,47 +288,24 @@ Memories({
     </div>`
 });
 
-// Abstractions({
-//     name: 'the scrutinizing mode',
-//     name_cmd: 'the_scrutinizing_mode',
-//     slug: 'scrutinizing-mode',
-//     description: `
-//     <div class="memory-2">
-//         "Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance."
-//         <blockquote class="interp-memory-2">
-//             She mentioned this while making a point about the intricacies of the <a target="_blank" href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">Observer Effect</a>.
-//         </blockquote>
-//     </div>`,
-//     get_cmd: (action) => action,
-//     actions: [
-//         {
-//             name: 'scrutinize' as const,
-//             description: "The ability to unpack details and look beyond your initial assumptions.",
-//             slug: 'scrutinize',
-//             get_cmd: (facet) => ['scrutinize', facet],
-//             get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains concerning.`
-//         }
-//     ]
-// });
-
 Facets({
     name: "Sam's demeanor",
     description: "Sam's demeanor",
     slug: 'sam-demeanor',
     phrase: "sam's_demeanor",
     can_recognize: (w2, w1) =>
-        about_sam(w1) && !!w2.has_acquired.get('scrutiny'),
-    can_apply: (action) => action.name === 'scrutiny',
+        about_sam(w1) && !!w2.has_acquired.get('to scrutinize'),
+    can_apply: (action) => true/*action.name === 'to scrutinize'*/,
     solved: w => w.has_recognized_something_wrong,
     handle_action: (action, world) => {
-        if (action.name === 'scrutiny') {
+        if (action.name === 'to scrutinize') {
             return update(world,
                 { has_recognized_something_wrong: Symbol() },
                 message_updater(`
                     You are struck by the alarming incongruence of his demeanor.
                     <br/>
                     The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.`));
-        } else if (action.name === 'attend') {
+        } else if (action.name === 'to attend') {
             return update(world,
                 message_updater(`You notice nothing new about his demeanor.`));
         } else {
@@ -363,8 +315,9 @@ Facets({
 });
 
 Actions({
-    name: 'hammer' as const,
-    name_cmd: 'the_hammer',
+    name: 'to hammer',
+    noun: 'the hammer',
+    noun_cmd: 'the_hammer',
     description: "The act of dismantling one's own previously-held beliefs.",
     slug: 'to-hammer',
     get_cmd: (facet) => ['hammer_against the_foundations_of', facet],
@@ -372,7 +325,7 @@ Actions({
 });
 
 Memories({
-    action: 'hammer',
+    action: 'to hammer',
     could_remember: world => !!world.has_recognized_something_wrong,
     description: `
         <div class="memory-3">
@@ -385,37 +338,6 @@ Memories({
         </div>`
 });
 
-
-// Abstractions({
-//     name: 'the hammer',
-//     name_cmd: 'the_hammer',
-//     slug: 'hammer',
-//     description: `
-//         <div class="memory-3">
-//             "Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble."
-//             <blockquote class="interp-memory-3">
-//                 She always pushed you.
-//                 </br>
-//                 Katya was always one to revel in the overturning of wrong ideas.
-//             </blockquote>
-//         </div>`,
-//     get_cmd: (action) => action,
-//     actions: [
-//         {
-//             name: 'hammer' as const,
-//             description: "The act of dismantling one's own previously-held beliefs.",
-//             slug: 'to-hammer',
-//             get_cmd: (facet) => ['hammer_against the_foundations_of', facet],
-//             get_wrong_msg: (facet) => `You find yourself unable to shake ${facet}, despite your efforts.`
-//         }
-//     ]
-// });
-
-// Memories({
-//     abstraction: 'the hammer',
-//     could_remember: world => !!world.has_recognized_something_wrong
-// });
-
 Facets({
     name: 'your friendship with Sam',
     slug: 'friendship-sam',
@@ -423,11 +345,11 @@ Facets({
     description: 'Your friendship with Sam.',
 
     can_recognize: (w2, w1) =>
-        about_sam(w1) && !!w2.has_acquired.get('hammer'),
-    can_apply: (action) => included(action.name, ['hammer']),
+        about_sam(w1) && !!w2.has_acquired.get('to hammer'),
+    can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
     solved: w => w.is_curious_about_history,
     handle_action: (action, world) => {
-        if (action.name === 'hammer') {
+        if (action.name === 'to hammer') {
             return update(world,
                 message_updater({
                     action: [`You ask yourself a hard question: <i>Is Sam really your friend?</i>`],
@@ -487,10 +409,10 @@ Facets({
     description: 'Your drifting apart.',
 
     can_recognize: (w2, w1) => is_about_history(w1),
-    can_apply: (action) => included(action.name, ['hammer']),
+    can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
     solved: w => w.has_admitted_negligence,
     handle_action: (action, world) => {
-        if (action.name === 'hammer') {
+        if (action.name === 'to hammer') {
             return update(world,
                 { has_admitted_negligence: Symbol() },
                 message_updater(`
@@ -509,10 +431,10 @@ Facets({
     description: 'Your culpability.',
 
     can_recognize: (w2, w1) => is_about_history(w1) && !!w2.has_admitted_negligence,
-    can_apply: (action) => included(action.name, ['scrutiny']),
+    can_apply: (action) => true/*included(action.name, ['to scrutinize'])*/,
     solved: w => w.has_unpacked_culpability,
     handle_action: (action, world) => {
-        if (action.name === 'scrutiny') {
+        if (action.name === 'to scrutinize') {
             return update(world,
                 { has_unpacked_culpability: Symbol() },
                 message_updater(`
@@ -527,8 +449,9 @@ Facets({
 });
 
 Actions({
-    name: 'volunteer' as const,
-    name_cmd: 'the_volunteer',
+    name: 'to volunteer',
+    noun: 'the volunteer',
+    noun_cmd: 'the_volunteer',
     description: "The offering of an active intervention in the world, to change it for the better.",
     slug: 'volunteer',
     get_cmd: (facet) => ['volunteer to_foster', facet],
@@ -536,7 +459,7 @@ Actions({
 })
 
 Memories({
-    action: 'volunteer',
+    action: 'to volunteer',
     could_remember: world => !!world.has_unpacked_culpability,
     description: `
     <div class="memory-4">
@@ -547,40 +470,17 @@ Memories({
     </div>`
 });
 
-// Abstractions({
-//     name: 'the volunteer',
-//     name_cmd: 'the_volunteer',
-//     slug: 'volunteer',
-//     description: `
-//     <div class="memory-4">
-//         "Do more than merely receive and respond, my dear. We must participate, as best as we can. We must volunteer ourselves to the world."
-//         <blockquote class="interp-memory-4">
-//             This is one of the last things she said to you, before she left.
-//         </blockquote>
-//     </div>`,
-//     get_cmd: (action) => action,
-//     actions: [
-//         {
-//             name: 'volunteer' as const,
-//             description: "The offering of an active intervention in the world, to change it for the better.",
-//             slug: 'volunteer',
-//             get_cmd: (facet) => ['volunteer to_foster', facet],
-//             get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains concerning.`
-//         }
-//     ]
-// })
-
 Facets({
     name: 'the old affinity',
     slug: 'affinity',
     phrase: 'the_old_affinity',
     description: 'The old affinity you once had for each other.',
 
-    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('volunteer'),
-    can_apply: (action) => included(action.name, ['volunteer']),
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to volunteer'),
+    can_apply: (action) => true/*included(action.name, ['to volunteer'])*/,
     solved: w => w.has_volunteered,
     handle_action: (action, world) => {
-        if (action.name === 'volunteer') {
+        if (action.name === 'to volunteer') {
             return update(world,
                 { has_volunteered: Symbol(), },
                 message_updater(`
@@ -657,7 +557,6 @@ const initial_venience_world: Venience = update({
     message_updater('You and Sam are sitting together on the bus.')
 );
 
-
 const puffer_index = resource_registry.get('puffer_index', false);
 export const venience_world_spec = make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
 
@@ -671,6 +570,6 @@ declare module './prelude' {
     }
 }
 
-resource_registry.create('venience_world_spec', venience_world_spec);
+resource_registry.initialize('venience_world_spec', venience_world_spec);
 resource_registry.seal();
 

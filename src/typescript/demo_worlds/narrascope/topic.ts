@@ -1,30 +1,14 @@
 import { gist, Gists, gists_equal } from '../../gist';
-import { find_historical } from '../../interpretation';
 import { MessageUpdateSpec, message_updater } from '../../message';
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
-import { StaticIndex } from '../../static_resources';
-import { capitalize } from "../../text_tools";
-import { bound_method, cond, update, map_updater, map } from '../../utils';
-import { ActionID, Puffers, resource_registry, TopicID, Venience } from "./prelude";
+import { StaticIndex, StaticResourceRegistry } from '../../static_resources';
+import { bound_method, cond, update } from '../../utils';
+import { ActionID, Puffers, resource_registry, TopicID, Venience, StaticTopicIDs } from "./prelude";
 
 export interface Topics {
     has_considered: { [K in TopicID]?: boolean }
 }
-
-declare module './prelude' {
-    export interface Venience extends Topics {}
-
-    export interface StaticResources {
-        initial_world_topic: Topics;
-        topic_index: StaticIndex<TopicSpec>;
-        memory_index: StaticIndex<MemorySpec>;
-    }
-}
-
-resource_registry.create('initial_world_topic', {
-    has_considered: {}
-});
 
 export type TopicSpec = {
     name: TopicID,
@@ -35,11 +19,23 @@ export type TopicSpec = {
     reconsider?: (w2: Venience, w1: Venience) => boolean
 }
 
+declare module './prelude' {
+    export interface Venience extends Topics {}
+
+    export interface StaticResources {
+        initial_world_topic: Topics;
+        topic_index: StaticResourceRegistry<Record<TopicID, TopicSpec>>;
+    }
+}
+
+resource_registry.initialize('initial_world_topic', {
+    has_considered: {}
+});
+
 type TopicGists = { [K in TopicID]: undefined };
 
 declare module '../../gist' {
     export interface GistSpecs extends TopicGists {
-        'memory': { action: Gist<ActionID> };        
         'impression': { subject: Gist<TopicID> };
     }
 }
@@ -84,8 +80,8 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
     }
 }
 
-const topic_index = resource_registry.create('topic_index',
-    new StaticIndex([
+const topic_index = resource_registry.initialize('topic_index',
+    new StaticResourceRegistry(StaticTopicIDs, [
         function add_topic_to_puffers(spec) {
             Puffers(make_topic(spec));
             return spec;
@@ -99,83 +95,6 @@ const topic_index = resource_registry.create('topic_index',
             return spec;
         }
     ])
-).get();
+);
 
-export const Topics = bound_method(topic_index, 'add');
-
-
-export type MemorySpec = {
-    action: ActionID,
-    could_remember: (w: Venience) => boolean,
-    description: string,
-
-}
-
-const action_index = resource_registry.get('action_index', false);
-
-export function make_memory(spec: MemorySpec): Puffer<Venience> {
-    return {
-        handle_command: (world, parser) => {
-            if (world.has_acquired.get(spec.action) || !spec.could_remember(world)) {
-                return parser.eliminate();
-            }
-
-            let result = parser.consume('remember_something', () => parser.submit());
-            if (parser.failure) {
-                return parser.failure;
-            }
-
-            let action = action_index.find(a => a.name === spec.action)!;
-
-            return update(world,
-                {
-                    has_acquired: map([spec.action, true]),
-                    gist: () => gist('memory', { action: gist(action.name)})
-                },
-                message_updater(`
-                    You close your eyes, and hear Katya's voice:
-                    <div class="interp">
-                        ${spec.description}
-                    </div>
-                    ${capitalize(spec.action)} confers:
-                    <blockquote>
-                        ${action.description}
-                    </blockquote>
-                    You write this down in your <strong>notes</strong>.`
-                ));
-        },
-        post: (world2, world1) => {
-            // weird workaround for when you get locked out. seems to work *shrugs*
-            if (!spec.could_remember(world2)) {
-                return world2;
-            }
-
-            world1 = find_historical(world1, w => w.owner === null)!;
-
-            if (!spec.could_remember(world1) &&
-                world2.message.prompt.length === 0) {
-                return update(world2, message_updater({
-                    prompt: ['You feel as though you might <strong>remember something...</strong>']
-                }));
-            }
-            return world2;
-        }
-    }
-}
-
-Gists({
-    tag: 'memory',
-    text: ({action}) => `your memory of ${action}`,
-    command: ({action}) => ['my_memory of', action]
-});
-
-const memory_index = resource_registry.create('memory_index',
-    new StaticIndex([
-        function add_memory_to_puffers(spec) {
-            Puffers(make_memory(spec));
-            return spec;
-        }
-    ])
-).get();
-
-export const Memories = bound_method(memory_index, 'add');
+export const Topics = (spec: TopicSpec) => topic_index.initialize(spec.name, spec);

@@ -14,7 +14,8 @@
         "experimentalDecorators": true,
         "extendedDiagnostics": true,
         "skipDefaultLibCheck": true,
-        "strictNullChecks": true
+        "strictNullChecks": true,
+        "strictBindCallApply": false
     },
     "include": [
         "./src/tests",

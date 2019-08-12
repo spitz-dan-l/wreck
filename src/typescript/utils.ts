@@ -190,7 +190,7 @@ export function merge_objects<T extends {}>(arr: T[]): T {
 }
 
 // WARNING: this will break if obj has a property that is explicitly set to undefined!
-export function entries<K extends keyof any, V>(obj: {[k in K]?: V}) {
+export function entries<K extends keyof any, V>(obj: {[k in K]?: V}): [K, V][] {
     return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
 }
 
@@ -215,9 +215,27 @@ export function from_entries<K extends keyof any, V>(entries: ReadonlyArray<read
     return result;
 }
 
-export function map_values<K extends keyof any, V1, V2=V1>(obj: Partial<Record<K, V1>>, f: (v: V1) => V2): Record<K, V2> {
-    return from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
+export function construct_from_keys<O extends { [K in keyof any]: any}>(keys: readonly (keyof O)[], f: <K extends keyof O>(k: K) => O[K]): O {
+    const result: O = <O>{};
+
+    for (let k of keys) {
+        result[k] = f(k)
+    }
+    return result;
 }
+
+export function map_values<V1 extends { [K in keyof any]: any }, V2 extends { [K in keyof V1]: any }=V1>(obj: V1, f: <K extends keyof V1>(v: V1[K]) => V2[K]): V2 {
+    return <V2>from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
+}
+
+
+// export function map_values<K extends keyof any, V1 extends { [k in K]: any }, V2 extends { [k in K]: any }=V1>(obj: V1, f: <k extends K>(v: V1[k]) => V2[k]): V2 {
+//     return from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
+// }
+
+// export function map_values<K extends keyof any, V1, V2=V1>(obj: Partial<Record<K, V1>>, f: (v: V1) => V2): Record<K, V2> {
+//     return from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
+// }
 
 export function filter_values<K extends keyof any, V1>(obj: Partial<Record<K, V1>>, f: (v: V1) => boolean): Record<K, V1> {
     return from_entries(entries(obj).filter(([k, v]) => f(v)));
@@ -329,6 +347,7 @@ export type IntersectTupleTypes<T extends { [k: number]: any }> = UnionToInterse
 export type IntersectBoxedTupleTypes<T extends { [k: number]: any }> = UnboxIntersection<UnionToIntersection<BoxedTupleTypes<T>>>;
 
 import lodash from 'lodash'
+import { number } from 'prop-types';
 export const deep_equal = lodash.isEqual;
 
 
@@ -355,15 +374,15 @@ export const statics =
 
 export const let_ = <T>(f: (...args: any) => T) => f();
 
+import {A, F} from 'ts-toolbelt'
 
-type method_properties<T extends {}> = {
+type MethodProperties<T extends {}> = {
     [K in keyof T]: T[K] extends (...args: any) => any ? K : never
 }[keyof T];
 
-export function bound_method<T, K extends method_properties<T>>(instance: T, name: K): T[K] {
-    return (instance[name] as any as (...args: any) => any).bind(instance);
+export function bound_method<T, K extends MethodProperties<T>>(instance: T, name: K): T[K] {
+    return (instance[name] as unknown as F.Function).bind(instance) as unknown as T[K];
 }
-
 
 type Maybe<T> = T | null;
 

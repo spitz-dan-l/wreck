@@ -59,17 +59,19 @@ export function get_initial_world<W extends World>(): Pick<W, keyof World> {
 }
 
 export type WorldSpec<W extends World> = {
+    // starting world state
     readonly initial_world: W,
 
     // prepare the world for the command
     readonly pre?: WorldUpdater<W>,
 
-    // Should return a new world with world set to the new world's prev
+    // handle the command (including failing if the command is invalid)
     readonly handle_command: CommandHandler<W>,
 
     // update the world after handling the command
     readonly post?: Narrator<W>,
 
+    // Any css rules used to display this world
     readonly css_rules?: string[]
 }
 

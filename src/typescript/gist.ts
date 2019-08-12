@@ -104,6 +104,10 @@ export function gist<Tag extends keyof GistSpecs>(tag: Tag, children?: GistSpecs
     }
 }
 
+export function has_tag<Tag extends keyof GistSpecs>(gist: Gist, tag: Tag): gist is Gist<Tag> {
+    return gist.tag === tag;
+}
+
 export function gist_to_string(gist: Gist): string {
     let result = gist.tag;
 
@@ -136,6 +140,10 @@ export function gists_equal(gist1: Gist, gist2: Gist): boolean {
     }
 
     for (const k in gist1.children) {
+        if (!(k in gist2.children!)) {
+            debugger;
+            return false;
+        }
         if (!gists_equal(gist1.children[k], gist2.children![k])) {
             return false;
         }

@@ -1,4 +1,4 @@
-import { map_values } from './utils';
+import { map_values, from_entries, construct_from_keys } from './utils';
 
 export class StaticResource<ValueType> {
     kind: 'StaticResource';
@@ -39,17 +39,35 @@ export class StaticResource<ValueType> {
     }
 }
 
+export type StaticNameIndex = readonly string[] & { readonly 0: string };
+
+export type NameOf<N extends StaticNameIndex> = N[number];
+
+import {U, A, T} from 'ts-toolbelt';
+
+type ReadOnly<T> = {
+    +readonly [K in keyof T]: T[K]
+}
+export type StaticNameIndexFor<T extends {}> = Readonly<U.TupleOf<keyof T>>;
+
 export type ResourcesFor<T> = {
     [K in keyof T]?: StaticResource<T[K]>
 }
 
 export class StaticResourceRegistry<T extends {}> {
-    kind: 'StaticResourceRegistry';
+    readonly kind: 'StaticResourceRegistry';
 
     sealed = false;
-    resources: ResourcesFor<T> = {};
+    readonly resources: ResourcesFor<T> = {};
+    
+    constructor(static_name_index: StaticNameIndexFor<T>, mappers?: (<K extends keyof T>(x: T[K]) => T[K])[]);
+    constructor(readonly static_name_index: readonly (keyof T)[], readonly mappers: (<K extends keyof T>(x: T[K]) => T[K])[]=[]) {
+        for (let name of static_name_index) {
+            this.create(name);
+        }
+    }
 
-    create<K extends keyof T>(name: K, value?: T[K]): StaticResource<T[K]> {
+    private create<K extends keyof T>(name: K, value?: T[K]): StaticResource<T[K]> {
         if (this.sealed) {
             throw new Error('Tried to create new resources on a sealed registry.');
         }
@@ -62,6 +80,20 @@ export class StaticResourceRegistry<T extends {}> {
         return resource;
     }
 
+    initialize<K extends keyof T>(name: K, value: T[K]): T[K] {
+        if (this.sealed) {
+            throw new Error('Tried to create new resources on a sealed registry.');
+        }
+
+        if (!(name in this.resources)) {
+            throw new Error('Tried to initialize uncreated resource: '+name);
+        }
+        let resource = this.get_resource(name);
+        let processed = this.mappers.reduce((acc, f) => f(acc), value);
+        resource.initialize(processed);//value);
+        return processed;//value;
+    }
+
     seal() {
         if (this.sealed) {
             throw new Error('Tried to reseal resource registry.');
@@ -70,7 +102,7 @@ export class StaticResourceRegistry<T extends {}> {
 
         Object.values(this.resources).forEach((r: StaticResource<any>) => {
             let value = r.get();
-            if ((value instanceof StaticIndex) && !value.sealed) {
+            if ((value instanceof StaticResourceRegistry || value instanceof StaticIndex) && !value.sealed) {
                 value.seal();
             }
         });
@@ -99,6 +131,14 @@ export class StaticResourceRegistry<T extends {}> {
             throw new Error('Tried to get unrecognized resource: '+name);
         }
         return (this.resources[name] as StaticResource<T[K]>)
+    }
+
+    all(assert_sealed=true): T {
+        if (assert_sealed && !this.sealed) {
+            throw new Error('Tried to get all resources before the registry was sealed.');
+        }
+
+        return construct_from_keys(this.static_name_index, name => this.get(name, assert_sealed));
     }
 }
 
@@ -160,4 +200,3 @@ export class StaticIndex<Obj> {
         this.sealed = true;
     }
 }
-

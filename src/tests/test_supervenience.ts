@@ -112,7 +112,7 @@ describe('supervenience narrascope', () => {
         assert.equal(result.status, 'Found');
     });
 
-    it('beats narrascope demo using subgoals', () => {
+    it.skip('beats narrascope demo using subgoals', () => {
         let spec: FutureSearchSpec<Venience> = {
             simulator_id,
             thread_maker,
