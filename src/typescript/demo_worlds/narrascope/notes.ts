@@ -1,14 +1,12 @@
-import { Gists, render_gist_text, Gist, gist, render_gist_command } from '../../gist';
-import { resource_registry, Venience, NoteID, Puffers, StaticNoteIDs } from './prelude';
-import {} from './metaphor';
-import { update } from '../../update';
-import { appender, map, bound_method } from '../../utils';
-import { message_updater, MessageUpdateSpec, Fragment } from '../../message';
-import { find_index } from '../../interpretation';
-import Handlebars from 'handlebars';
-import { StaticIndex, StaticResourceRegistry } from '../../static_resources';
+import { gist, Gists, render_gist_command, render_gist_text } from '../../gist';
+import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
+import { StaticMap } from '../../static_resources';
 import { capitalize } from '../../text_tools';
+import { update } from '../../update';
+import { map } from '../../utils';
+import { } from './metaphor';
+import { NoteID, Puffers, resource_registry, StaticNoteIDs, Venience } from './prelude';
 
 type NoteGists = { [K in NoteID]: undefined };
 
@@ -46,7 +44,7 @@ declare module './prelude' {
 
     export interface StaticResources {
         initial_world_notes: Notes;
-        note_index: StaticResourceRegistry<Record<NoteID, NoteEntry>>;
+        note_index: StaticMap<Record<NoteID, NoteEntry>>;
     }
 }
 
@@ -55,11 +53,7 @@ resource_registry.initialize('initial_world_notes', {
     has_read: map()
 });
 
-const note_index = resource_registry.initialize('note_index', new StaticResourceRegistry(StaticNoteIDs)) //new StaticIndex()).get();
-
-Handlebars.registerHelper('index_matches', (world: Venience, target: number, options) => {
-    return world.index === target
-});
+const note_index = resource_registry.initialize('note_index', new StaticMap(StaticNoteIDs));
 
 export function add_to_notes(world: Venience, note_id: NoteID) {
     const entry = note_index.get(note_id)

@@ -66,7 +66,7 @@ export let message_updater = (spec: MessageUpdateSpec) => ({
         }
 
         let updater: Updater<Message> = {};
-        for (let prop of ['action', 'consequence', 'description', 'prompt', 'css_rules'] as const) {
+        for (let prop of ['action', 'consequence', 'description', 'prompt'] as const) {
             if (spec[prop] !== undefined && spec[prop]!.length > 0) {
                 updater[prop] = appender(...spec[prop]!);
             }
@@ -78,24 +78,21 @@ export let message_updater = (spec: MessageUpdateSpec) => ({
 
 export type Renderer = (world: World, labels?: LocalInterpretations, possible_labels?: LocalInterpretations) => string;
 
-// export let standard_render2: Renderer = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
-//     return (['action', 'consequence', 'description', 'prompt'] as const)
-//         .map(f => world.message[f])
-//         .filter(x => x.length > 0)
-//         .map(x => x.map(f => Mustache.render(f,
-//             Object.entries(labels).reduce((obj, [lab, val]) => ({...obj, [lab]: val.value}), <LocalInterpretations>{})
-//         )).join('<br/>'))
-//         .join('<br/>');
-// }
-
-export let standard_render: Renderer = function(world: World, labels: LocalInterpretations = {}, possible_labels: LocalInterpretations = {}): string {
+export let render_message: Renderer = function(world: World, labels: LocalInterpretations = {}): string {
     const template = (['action', 'consequence', 'description', 'prompt'] as const)
         .map(f => world.message[f])
         .filter(x => x.length > 0)
         .map(x => x.join('<br/>'))
         .join('<br/>');
-    return Handlebars.compile(template)({
-        ...map_values(labels, i => !!i.value),
-        '@world': world,
-    });
+    return Handlebars.compile(template)(
+        map_values(labels, i => !!i.value),
+        { data: { world: world } },
+    );
+}
+
+export const register_helper = (name: string, fn: Handlebars.HelperDelegate) => {
+    if (name in Handlebars.helpers) {
+        throw new Error('Tried to register helper with duplicate name: ' + name);
+    }
+    return Handlebars.registerHelper(name, fn);
 }

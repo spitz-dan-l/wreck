@@ -2,12 +2,12 @@ import { gist, Gists, gists_equal } from '../../gist';
 import { MessageUpdateSpec, message_updater } from '../../message';
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
-import { StaticIndex, StaticResourceRegistry } from '../../static_resources';
-import { bound_method, cond, update } from '../../utils';
+import { StaticIndex, StaticMap } from '../../static_resources';
+import { bound_method, cond, update, map } from '../../utils';
 import { ActionID, Puffers, resource_registry, TopicID, Venience, StaticTopicIDs } from "./prelude";
 
 export interface Topics {
-    has_considered: { [K in TopicID]?: boolean }
+    has_considered: Map<TopicID, boolean>;
 }
 
 export type TopicSpec = {
@@ -24,12 +24,12 @@ declare module './prelude' {
 
     export interface StaticResources {
         initial_world_topic: Topics;
-        topic_index: StaticResourceRegistry<Record<TopicID, TopicSpec>>;
+        topic_index: StaticMap<Record<TopicID, TopicSpec>>;
     }
 }
 
 resource_registry.initialize('initial_world_topic', {
-    has_considered: {}
+    has_considered: map()
 });
 
 type TopicGists = { [K in TopicID]: undefined };
@@ -55,14 +55,15 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
 
             return parser.consume({
                 tokens: ['consider', spec.cmd],
-                used: world.has_considered[spec.name]
+                used: world.has_considered.get(spec.name)
             }, () =>
                 parser.submit(
                     () => update(world,
                         message_updater(spec.message),
                         {
                             gist: () => gist('impression', { subject: gist(spec.name)}),
-                            has_considered: { [spec.name]: true } },
+                            has_considered: map( [spec.name, true] )
+                        },
                         ...cond(!!spec.consider, () => spec.consider!)
                     )));
         },
@@ -74,14 +75,14 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
             }
 
             return update(world2, {
-                has_considered: { [spec.name]: false }
+                has_considered: map( [spec.name, false] )
             })
         }
     }
 }
 
 const topic_index = resource_registry.initialize('topic_index',
-    new StaticResourceRegistry(StaticTopicIDs, [
+    new StaticMap(StaticTopicIDs, [
         function add_topic_to_puffers(spec) {
             Puffers(make_topic(spec));
             return spec;

@@ -3,7 +3,7 @@ import { find_historical, find_index, history_array, interpretation_updater, int
 import { MessageUpdateSpec, message_updater } from "../../message";
 import { ConsumeSpec, ParserThread, Parser } from "../../parser";
 import { Puffer } from "../../puffer";
-import { StaticIndex, StaticResourceRegistry } from '../../static_resources';
+import { StaticIndex, StaticMap } from '../../static_resources';
 import { is_simulated, search_future } from '../../supervenience';
 import { bound_method, map, update, Updater } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer, StaticActionIDs, StaticFacetIDs } from "./prelude";
@@ -25,8 +25,8 @@ declare module './prelude' {
 
     export interface StaticResources {
         initial_world_metaphor: Metaphors;
-        action_index: StaticResourceRegistry<Record<ActionID, Action>>;
-        facet_index: StaticResourceRegistry<Record<FacetID, FacetSpec>>;
+        action_index: StaticMap<Record<ActionID, Action>>;
+        facet_index: StaticMap<Record<FacetID, FacetSpec>>;
     }
 }
 
@@ -35,8 +35,8 @@ resource_registry.initialize('initial_world_metaphor', {
     owner: null,
     current_interpretation: null,
 
-    has_acquired: new Map(),
-    has_tried: new Map()
+    has_acquired: map(),
+    has_tried: map()
 });
 
 const global_lock = resource_registry.get('global_lock', false);
@@ -44,7 +44,7 @@ const global_lock = resource_registry.get('global_lock', false);
 let null_lock = global_lock(null);
 let metaphor_lock = global_lock('Metaphor');
 
-type Action = {
+export type Action = {
     name: ActionID,
     noun: string,
     noun_cmd: ConsumeSpec,
@@ -75,8 +75,8 @@ function make_action(spec: Action): VeniencePuffer {
 }
 
 let action_index = resource_registry.initialize('action_index',
-    new StaticResourceRegistry(StaticActionIDs, [
-        function add_abstraction_to_puffers(action: Action) {
+    new StaticMap(StaticActionIDs, [
+        function add_action_to_puffers(action: Action) {
             Puffers(make_action(action));
             Gists({
                 tag: action.name,
@@ -163,7 +163,7 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
     return world;
 };
 
-const make_action_applicator = (world: Venience, facet_id: FacetID, action_id: ActionID) => (parser: Parser) => {
+export const make_action_applicator = (world: Venience, facet_id: FacetID, action_id: ActionID) => (parser: Parser) => {
         if (!world.has_acquired.get(action_id)) {
             return parser.eliminate();
         }
@@ -186,7 +186,7 @@ const make_action_applicator = (world: Venience, facet_id: FacetID, action_id: A
         return (
             parser.consume(
                 {
-                    tokens: action.get_cmd(facet.phrase),
+                    tokens: action.get_cmd(facet.noun_phrase_cmd),
                     used: !!already_solved || (world.has_tried.has(action.name) && world.has_tried.get(action.name)![facet.name]),
                     labels: { interp: true, filler: true }
                 }, () =>
@@ -197,7 +197,8 @@ const make_action_applicator = (world: Venience, facet_id: FacetID, action_id: A
 
 }
 
-let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
+// Begin and end contemplations
+Puffers(lock_and_brand('Metaphor', {
     pre: world => update(world, { gist: null }),    
 
     handle_command: {
@@ -244,7 +245,7 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
                         }
                         descriptions.push(`
                             <blockquote class="descr-${facet.slug}">
-                                ${facet.description}
+                                ${facet.noun_phrase}
                             </blockquote>
                         `);
                     }
@@ -353,33 +354,44 @@ let InterpPuffer: Puffer<Venience> = lock_and_brand('Metaphor', {
             }
         }
     },
-});
-
-Puffers(InterpPuffer as Puffer<Venience>);
+}));
 
 // FACETS
 
 type FacetSpec = {
     name: FacetID, // e.g. "the sense of dread"
     slug: string,
-    phrase: ConsumeSpec,
-    description: string,
+    noun_phrase: string,
+    noun_phrase_cmd: ConsumeSpec,
+
+    // assuming the facet's content occurs in the message of the world under interpretation,
+    // can the player recognize it as a facet?
     can_recognize: (current_world: Venience, interpretted_world: Venience) => boolean,
     can_apply: (action: Action) => boolean,
     solved: (world: Venience) => boolean | symbol,
-    handle_action: (action: Action, world: Venience) => Venience
+    handle_action: (action: Action, world: Venience) => Venience,
+
+    content?: string
 };
 
+import Handlebars from 'handlebars';
+
 const facet_index = resource_registry.initialize('facet_index',
-    new StaticResourceRegistry(StaticFacetIDs, [
+    new StaticMap(StaticFacetIDs, [
         function add_facet_to_puffers(spec: FacetSpec) {
             Puffers(make_facet(spec));
+            return spec;
+        },
+        function register_handlebars_partial(spec) {
+            if (spec.content !== undefined) {
+                Handlebars.registerPartial(spec.name, spec.content);
+            }
             return spec;
         }
     ])
 );
 
-function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('Metaphor', {
+const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaphor', {
     handle_command: (world, parser) => {
         if (world.current_interpretation === null) {
             return parser.eliminate();
@@ -387,7 +399,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
 
         let interpretted_world = find_index(world, world.current_interpretation)!;
 
-        if (!spec.can_recognize(world, interpretted_world)){
+        if ( !spec.can_recognize(world, interpretted_world)){
             return parser.eliminate();
         }
 
@@ -409,7 +421,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
                     prompt: [`
                     You notice an aspect that you hadn't before:
                     <blockquote class="descr-${spec.slug}">
-                        ${spec.description}
+                        ${spec.noun_phrase}
                     </blockquote>`]}));
             }
         }
@@ -466,6 +478,7 @@ function make_facet(spec: FacetSpec): Puffer<Venience> { return lock_and_brand('
             transition: background-color 700ms linear;
         }`
     ]
-});}
+});
 
-export const Facets = (spec: FacetSpec) => facet_index.initialize(spec.name, spec)
+export const Facets = (spec: FacetSpec) => facet_index.initialize(spec.name, spec);
+

@@ -4,7 +4,7 @@ import 'mocha';
 import { new_bird_world, bird_world_spec } from '../typescript/demo_worlds/bird_world';
 import { new_bird_world as new_puffer_bird_world, bird_world_spec as puffer_bird_world_spec } from '../typescript/demo_worlds/puffer_bird_world';
 import { raw, traverse_thread } from '../typescript/parser';
-import { standard_render } from '../typescript/message';
+import { render_message } from '../typescript/message';
 import { make_update_thread } from '../typescript/world';
 
 describe('world', () => {
@@ -12,13 +12,13 @@ describe('world', () => {
         
         let {initial_result: result, update} = new_bird_world();
 
-        assert.equal(standard_render(result.world), 'You are currently down.');
+        assert.equal(render_message(result.world), 'You are currently down.');
         // This world is a flip flop.
         result = update(result.world, raw('go down stairs')); // this will be invalid
         result = update(result.world, raw('go up stairs')); // this will be valid
         result = update(result.world, raw('go up stairs')); // this will be invalid
 
-        assert.equal(standard_render(result.world), 'You are currently up.');
+        assert.equal(render_message(result.world), 'You are currently up.');
         assert.equal(result.world.index, 1);
 
         console.time('walk_birdworld');
@@ -35,7 +35,7 @@ describe('world', () => {
         // debugger;
         result = update(result.world, raw('go down stairs')); // this will be invalid
         
-        assert.equal(standard_render(result.world), 'You wave bye to Zarathustra.<br/>You are currently standing around on the ground.');
+        assert.equal(render_message(result.world), 'You wave bye to Zarathustra.<br/>You are currently standing around on the ground.');
         assert.equal(result.world.index, 2);
 
         console.time('walk_puffer_birdworld');

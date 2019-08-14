@@ -1,5 +1,5 @@
 import { gist, Gists, gists_equal, includes_tag } from '../../gist';
-import { message_updater } from '../../message';
+import { message_updater, register_helper } from '../../message';
 import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
 import { cond, included, update, map } from '../../utils';
@@ -10,6 +10,7 @@ import { find_world_at } from './supervenience_spec';
 import { Topics } from './topic';
 import { Memories } from './memory';
 import {add_to_notes} from './notes';
+import Handlebars from 'handlebars';
 
 
 interface PuzzleState {
@@ -55,16 +56,9 @@ Actions({
 
 Memories({
     action: 'to attend',
-    could_remember: world => !!world.has_considered['your notebook'],
+    could_remember: world => !!world.has_considered.get('your notebook'),
     description: `
-    <div class="memory-1">
-        "Wake up, my dear. Attend to the world around you."
-        <blockquote class="interp-memory-1">
-            Katya took you to the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
-            <br/>
-            There was to be little time to relax or sleep in; astronomers are busy folk.
-        </blockquote>
-    </div>`,
+    {{> 'a memory 1'}}`
 });
 
 function about_attentive(w: Venience) {
@@ -73,9 +67,9 @@ function about_attentive(w: Venience) {
 
 Facets({
     name: 'a memory 1',
-    description: "A memory.",
+    noun_phrase: "A memory.",
     slug: 'memory-1',
-    phrase: 'the_memory',
+    noun_phrase_cmd: 'the_memory',
     can_recognize: (w2, w1) =>
         about_attentive(w1) && !!w2.has_acquired.get('to attend'),
     can_apply: (action) => true/*action.name === 'to scrutinize'*/,
@@ -83,11 +77,21 @@ Facets({
     handle_action: (action, world) => {
         if (action.name === 'to scrutinize') {
             return update(world, 
-                { has_scrutinized_memory: map([1, Symbol()])},
+                { has_scrutinized_memory: map( [1, Symbol()] )},
             );
         }
         return world;
-    }     
+    },
+
+    content: `
+    <div class="memory-1">
+        "Wake up, my dear. Attend to the world around you."
+        <blockquote class="interp-memory-1">
+            Katya took you to the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
+            <br/>
+            There was to be little time to relax or sleep in; astronomers are busy folk.
+        </blockquote>
+    </div>`
 });
 
 function about_scrutinizing(w: Venience) {
@@ -96,9 +100,9 @@ function about_scrutinizing(w: Venience) {
 
 Facets({
     name: 'a memory 2',
-    description: "A memory.",
+    noun_phrase: "A memory.",
     slug: 'memory-2',
-    phrase: 'the_memory',
+    noun_phrase_cmd: 'the_memory',
     can_recognize: (w2, w1) =>
         about_scrutinizing(w1) && !!w2.has_acquired.get('to scrutinize'),
     can_apply: (action) => action.name === 'to scrutinize',
@@ -119,9 +123,9 @@ function about_hammer(w: Venience) {
 
 Facets({
     name: 'a memory 3',
-    description: "A memory.",
+    noun_phrase: "A memory.",
     slug: 'memory-3',
-    phrase: 'the_memory',
+    noun_phrase_cmd: 'the_memory',
     can_recognize: (w2, w1) =>
         about_hammer(w1) && !!w2.has_acquired.get('to hammer'),
     can_apply: (action) => action.name === 'to scrutinize',
@@ -142,9 +146,9 @@ function about_volunteer(w: Venience) {
 
 Facets({
     name: 'a memory 4',
-    description: "A memory.",
+    noun_phrase: "A memory.",
     slug: 'memory-4',
-    phrase: 'the_memory',
+    noun_phrase_cmd: 'the_memory',
     can_recognize: (w2, w1) =>
         about_volunteer(w1) && !!w2.has_acquired.get('to volunteer'),
     can_apply: (action) => action.name === 'to scrutinize',
@@ -206,19 +210,27 @@ Topics({
     }
 });
 
+register_helper('has_considered_notebook', (world: Venience) => {
+    return world.has_considered.get('your notebook');
+});
+
 Topics({
     name: 'yourself',
     cmd: 'myself',
     can_consider: () => true,
     message: `You haven't entirely woken up.
     <br/>
-    A <strong>thick notebook</strong> sits at your lap.`,
+    {{#if (has_considered_notebook @world)}}
+        Your notebook sits in your lap.
+    {{else}}
+        A <strong>thick notebook</strong> sits in your lap.
+    {{/if}}`,
 });
 
 Topics({
     name: 'your notebook',
     cmd: 'my_notebook',
-    can_consider: (world) => !!world.has_considered['yourself'],
+    can_consider: (world) => !!world.has_considered.get('yourself'),
     message: {
         description: [`
             You keep it with you at all times.
@@ -237,9 +249,9 @@ function about_sam(world: Venience) {
 
 Facets({
     name: 'Sam',
-    description: "Sam's presence by your side.",
+    noun_phrase: "Sam's presence by your side.",
     slug: 'sam',
-    phrase: 'sam',
+    noun_phrase_cmd: 'sam',
     can_recognize: (w2, w1) =>
         about_sam(w1) && !!w2.has_acquired.get('to attend'),
     can_apply: (action) => true/*action.name === 'to attend'*/,
@@ -290,9 +302,9 @@ Memories({
 
 Facets({
     name: "Sam's demeanor",
-    description: "Sam's demeanor",
+    noun_phrase: "Sam's demeanor",
     slug: 'sam-demeanor',
-    phrase: "sam's_demeanor",
+    noun_phrase_cmd: "sam's_demeanor",
     can_recognize: (w2, w1) =>
         about_sam(w1) && !!w2.has_acquired.get('to scrutinize'),
     can_apply: (action) => true/*action.name === 'to scrutinize'*/,
@@ -341,8 +353,8 @@ Memories({
 Facets({
     name: 'your friendship with Sam',
     slug: 'friendship-sam',
-    phrase: 'my_friendship_with_sam',
-    description: 'Your friendship with Sam.',
+    noun_phrase_cmd: 'my_friendship_with_sam',
+    noun_phrase: 'Your friendship with Sam.',
 
     can_recognize: (w2, w1) =>
         about_sam(w1) && !!w2.has_acquired.get('to hammer'),
@@ -405,8 +417,8 @@ function is_about_history(w: Venience) {
 Facets({
     name: 'your drifting apart',
     slug: 'falling-out',
-    phrase: 'our_drifting_apart',
-    description: 'Your drifting apart.',
+    noun_phrase_cmd: 'our_drifting_apart',
+    noun_phrase: 'Your drifting apart.',
 
     can_recognize: (w2, w1) => is_about_history(w1),
     can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
@@ -427,8 +439,8 @@ Facets({
 Facets({
     name: 'your culpability',
     slug: 'culpability',
-    phrase: 'my_culpability',
-    description: 'Your culpability.',
+    noun_phrase_cmd: 'my_culpability',
+    noun_phrase: 'Your culpability.',
 
     can_recognize: (w2, w1) => is_about_history(w1) && !!w2.has_admitted_negligence,
     can_apply: (action) => true/*included(action.name, ['to scrutinize'])*/,
@@ -473,8 +485,8 @@ Memories({
 Facets({
     name: 'the old affinity',
     slug: 'affinity',
-    phrase: 'the_old_affinity',
-    description: 'The old affinity you once had for each other.',
+    noun_phrase_cmd: 'the_old_affinity',
+    noun_phrase: 'The old affinity you once had for each other.',
 
     can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to volunteer'),
     can_apply: (action) => true/*included(action.name, ['to volunteer'])*/,

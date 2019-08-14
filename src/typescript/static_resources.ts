@@ -43,25 +43,25 @@ export type StaticNameIndex = readonly string[] & { readonly 0: string };
 
 export type NameOf<N extends StaticNameIndex> = N[number];
 
-import {U, A, T} from 'ts-toolbelt';
+import {U} from 'ts-toolbelt';
 
-type ReadOnly<T> = {
-    +readonly [K in keyof T]: T[K]
-}
 export type StaticNameIndexFor<T extends {}> = Readonly<U.TupleOf<keyof T>>;
 
 export type ResourcesFor<T> = {
-    [K in keyof T]?: StaticResource<T[K]>
+    [K in keyof T]: StaticResource<T[K]>
 }
 
-export class StaticResourceRegistry<T extends {}> {
-    readonly kind: 'StaticResourceRegistry';
+export type Mapper<T> = <K extends keyof T>(x: T[K]) => T[K];
+
+export class StaticMap<T extends {}> {
+    kind: 'StaticResourceRegistry';
 
     sealed = false;
-    readonly resources: ResourcesFor<T> = {};
+    resources: ResourcesFor<T>;
     
-    constructor(static_name_index: StaticNameIndexFor<T>, mappers?: (<K extends keyof T>(x: T[K]) => T[K])[]);
-    constructor(readonly static_name_index: readonly (keyof T)[], readonly mappers: (<K extends keyof T>(x: T[K]) => T[K])[]=[]) {
+    constructor(static_name_index: StaticNameIndexFor<T>, mappers?: Mapper<T>[]);
+    constructor(readonly static_name_index: readonly (keyof T)[], readonly mappers: Mapper<T>[]=[]) {
+        this.resources = {} as ResourcesFor<T>;
         for (let name of static_name_index) {
             this.create(name);
         }
@@ -78,6 +78,24 @@ export class StaticResourceRegistry<T extends {}> {
         let resource = new StaticResource(<string>name, value);
         this.resources[name] = resource;
         return resource;
+    }
+
+    register_mapper(mapper: Mapper<T>) {
+        if (this.sealed) {
+            throw new Error('Tried to register a mapper after the map was sealed.');
+        }
+
+        for (const name of this.static_name_index) {
+            const resource = this.resources[name]
+            if (!resource.initialized) {
+                continue;
+            }
+
+            const value = resource.get();
+            resource.value = mapper(value);
+        }
+
+        this.mappers.push(mapper);
     }
 
     initialize<K extends keyof T>(name: K, value: T[K]): T[K] {
@@ -102,7 +120,7 @@ export class StaticResourceRegistry<T extends {}> {
 
         Object.values(this.resources).forEach((r: StaticResource<any>) => {
             let value = r.get();
-            if ((value instanceof StaticResourceRegistry || value instanceof StaticIndex) && !value.sealed) {
+            if ((value instanceof StaticMap || value instanceof StaticIndex) && !value.sealed) {
                 value.seal();
             }
         });
@@ -142,51 +160,44 @@ export class StaticResourceRegistry<T extends {}> {
     }
 }
 
-type Finalizer<T> = (obj: T) => T;
+type ValueMapper<T> = (obj: T) => T;
 
-export class StaticIndex<Obj> {
-    public index: Obj[] = [];
+export class StaticIndex<T> {
+    index: T[] = [];
     
-    finalizers: Finalizer<Obj>[];
-
     sealed = false;
 
-    constructor(finalizers?: Finalizer<Obj>[]) {
-        if (finalizers !== undefined) {
-            this.finalizers = finalizers;
-        } else {
-            this.finalizers = [];
-        }
+    constructor(readonly mappers: ValueMapper<T>[]=[]) {
     }
 
-    register_finalizer(finalizer: Finalizer<Obj>) {
+    register_mapper(mapper: ValueMapper<T>) {
         if (this.sealed) {
-            throw new Error('Tried to register a finalizer after the index was sealed.');
+            throw new Error('Tried to register a mapper after the index was sealed.');
         }
 
-        this.index = this.index.map(finalizer);
-        this.finalizers.push(finalizer);
-    }    
+        this.index = this.index.map(mapper);
+        this.mappers.push(mapper);
+    }
 
-    add(t: Obj): Obj {
+    add(t: T): T {
         if (this.sealed) {
             throw new Error('Tried to add an element after the index was sealed.');
         }
         
-        t = this.finalizers.reduce((acc, f) => f(acc), t);
+        t = this.mappers.reduce((acc, f) => f(acc), t);
 
         this.index.push(t);
         return t;
     }
 
-    find(f: (obj: Obj) => boolean, assert_sealed=true): Obj | undefined {
+    find(f: (obj: T) => boolean, assert_sealed=true): T | undefined {
         if (assert_sealed && !this.sealed) {
             throw new Error('Tried to look up the index before it was sealed.');
         }
         return this.index.find(f);
     }
 
-    all(assert_sealed=true): Obj[] {
+    all(assert_sealed=true): T[] {
         if (assert_sealed && !this.sealed) {
             throw new Error('Tried to look up the index before it was sealed.');
         }

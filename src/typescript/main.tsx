@@ -17,7 +17,7 @@ let {initial_result, update, css_rules} = new_venience_world();//new_hex_world()
 
 // Ability to start from a specific point in the demo:
 
-const START_SOLVED = 1;
+const START_SOLVED = 0;
 
 import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
 import { raw } from './parser';

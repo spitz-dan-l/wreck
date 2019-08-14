@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { history_array, Interpretations, InterpretationValue, label_value, group_compound_worlds, MaybeCompoundWorld, CompoundWorld, is_compound_world } from '../typescript/interpretation';
 import { keys } from '../typescript/keyboard_tools';
-import { standard_render } from '../typescript/message';
+import { render_message } from '../typescript/message';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token, TokenAvailability, TokenMatch, TypeaheadOption } from '../typescript/parser';
 import { array_last, entries, filter_values, key_union, map_values, update } from '../typescript/utils';
 import { CommandResult, World } from "../typescript/world";
@@ -557,7 +557,7 @@ const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}
 
   let className = Object.entries(class_labels).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
   
-  let rendering= standard_render(
+  let rendering= render_message(
     world,
     map_values(class_labels, v => ({ kind: 'Interpretation', value: v })),
     possible_labels

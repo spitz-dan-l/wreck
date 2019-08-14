@@ -3,7 +3,7 @@ import { Puffer } from '../../puffer';
 import { update, entries, bound_method, merge_objects } from '../../utils';
 import { World, get_initial_world } from '../../world';
 import { FutureSearchSpec } from '../../supervenience';
-import {ResourcesFor, StaticResourceRegistry, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../static_resources';
+import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../static_resources';
 import { GistRenderer, gist_renderer_index } from '../../gist';
 
 export const StaticTopicIDs = [
@@ -71,7 +71,7 @@ const static_resource_names: StaticNameIndexFor<StaticResources> = [
     'venience_world_spec'
 ]
 
-export const resource_registry = new StaticResourceRegistry<StaticResources>(static_resource_names);
+export const resource_registry = new StaticMap<StaticResources>(static_resource_names);
 
 
 // Create some basic resources:
