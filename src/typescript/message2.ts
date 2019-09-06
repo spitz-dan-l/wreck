@@ -3,6 +3,7 @@ import { World } from './world';
 import { appender, update, Updater, merge_objects, drop_keys, map_values } from './utils';
 import { InterpretationLabel, LocalInterpretations, label_value } from './interpretation';
 import { Gist } from './gist';
+import { Stages } from './stages';
 
 /*
     Message is comprised of (any of)
@@ -25,24 +26,38 @@ import { Gist } from './gist';
 
 */
 
-// A Fragment is any string. If it is a Mustache template, it will have the current
-// interpretation tags used to render it for display.
-export type Fragment = string;
+export type TextInfo = {
+    gist?: Gist,
+    static_effects?: Record<string, boolean>,
+    dynamic_effects?: Record<string, boolean>
+};
 
-export type Message = {
-    kind: 'Message',
+export type Text = {
+    kind: 'Text',
     action: Fragment[],
     consequence: Fragment[],
     description: Fragment[],
-    prompt: Fragment[]
+    prompt: Fragment[],
+    info: TextInfo
+
 };
 
-export const INITIAL_MESSAGE: Message = {
-    kind: 'Message',
+export type Fragment = {
+    kind: 'Fragment',
+    text: string,
+    children: Fragment[],
+    info: TextInfo
+};
+
+export type History = Stages<Text>;
+
+export const INITIAL_TEXT: Text = {
+    kind: 'Text',
     action: [],
     consequence: [],
     description: [],
-    prompt: []
+    prompt: [],
+    info: {}
 };
 
 export type MessageUpdateSpec =
@@ -58,24 +73,24 @@ function is_fragment(spec: MessageUpdateSpec): spec is Fragment {
     return typeof spec === 'string';
 }
 
-export let message_updater = (spec: MessageUpdateSpec) => ({
-    message: (orig_message: Message) => {
-        if (is_fragment(spec)) {
-            return update(orig_message, {
-                consequence: appender(spec)
-            });
-        }
+// export let message_updater = (spec: MessageUpdateSpec) => ({
+//     message: (orig_message: Message) => {
+//         if (is_fragment(spec)) {
+//             return update(orig_message, {
+//                 consequence: appender(spec)
+//             });
+//         }
 
-        let updater: Updater<Message> = {};
-        for (let prop of ['action', 'consequence', 'description', 'prompt'] as const) {
-            if (spec[prop] !== undefined && spec[prop]!.length > 0) {
-                updater[prop] = appender(...spec[prop]!);
-            }
-        }
+//         let updater: Updater<Message> = {};
+//         for (let prop of ['action', 'consequence', 'description', 'prompt'] as const) {
+//             if (spec[prop] !== undefined && spec[prop]!.length > 0) {
+//                 updater[prop] = appender(...spec[prop]!);
+//             }
+//         }
 
-        return update(orig_message, updater);
-    }
-});
+//         return update(orig_message, updater);
+//     }
+// });
 
 export type Renderer = (world: World, labels?: LocalInterpretations, possible_labels?: LocalInterpretations) => string;
 

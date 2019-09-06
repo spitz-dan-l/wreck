@@ -2,7 +2,7 @@ import { interpretation_updater, LocalInterpretations, LocalInterpretationSpec }
 import { MessageUpdateSpec, message_updater } from './message';
 import { ConsumeSpec, Parser, ParserThread } from './parser';
 import { knit_puffers, map_puffer, Puffer, PufferMapper } from './puffer';
-import { MaybeStages, normalize_stages, Stages, stage_keys } from './stages';
+import { MaybeStages, normalize_stages, Stages, stage_keys, stages } from './stages';
 import { update, Updater } from './utils';
 import { Narrator, World } from './world';
 
@@ -64,17 +64,17 @@ export function narrative_fsa_builder
         let exit = normalize_stages(spec.exit);
         let here = normalize_stages(spec.here);
 
-        let stages: number[] = [0];
-        stages.push(...stage_keys(enter));
-        stages.push(...stage_keys(exit));
-        stages.push(...stage_keys(here));
+        let stage_levels: number[] = [0];
+        stage_levels.push(...stage_keys(enter));
+        stage_levels.push(...stage_keys(exit));
+        stage_levels.push(...stage_keys(here));
 
-        stages = [...new Set(stages)].sort((a,b)=>a-b);
+        stage_levels = [...new Set(stage_levels)].sort((a,b)=>a-b);
 
-        let post: Stages<Narrator<W>> = {kind: 'Stages'};
+        let post: Stages<Narrator<W>> = stages();
 
-        for (let stage of stages) {
-            post[stage] = (world_2, world_1) => {
+        for (let stage of stage_levels) {
+            post.set(stage, (world_2, world_1) => {
                 if (spec.debug) {
                     debugger;
                 }
@@ -118,7 +118,7 @@ export function narrative_fsa_builder
                 }
 
                 return world_2;
-            }
+            });
         }
 
         // The base_puffer interprets the declarative transitions

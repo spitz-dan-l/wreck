@@ -5,6 +5,7 @@ import { make_puffer_world_spec, Puffer } from '../../puffer';
 import { update, Updater, entries, cond } from '../../utils';
 import { get_initial_world, World, world_driver } from '../../world';
 import { LocalInterpretations, find_historical, self_interpretation, interps } from '../../interpretation';
+import { stages } from '../../stages';
 
 /*
     TODO
@@ -95,9 +96,8 @@ type FacetSpec = {
 
 function make_facet(spec: FacetSpec): Puffer<Venience> {
     return {
-        handle_command: {
-            kind: 'Stages',
-            0: (world, parser) => {
+        handle_command: stages(
+            [0, (world, parser) => {
                 if (world.current_interpretation === null) {
                     return parser.eliminate();
                 }
@@ -141,15 +141,14 @@ function make_facet(spec: FacetSpec): Puffer<Venience> {
                     }
                 }
                 return world;
-            }
-        }
+            }]
+        )
     }
 }
 
 let InterpPuffer: Puffer<Venience> = {
-    handle_command: {
-        kind: 'Stages',
-        2: (world, parser) => {
+    handle_command: stages(
+        [2, (world, parser) => {
             if (world.current_interpretation === null) {
                 parser.consume('begin_interpretation');
                 parser.submit();
@@ -179,8 +178,8 @@ let InterpPuffer: Puffer<Venience> = {
                     })
                 });
             }
-        }
-    }
+        }]
+    )
 };
 
 let transition_to = (w: Venience, node: ObserverMomentID) => update(w, { node });

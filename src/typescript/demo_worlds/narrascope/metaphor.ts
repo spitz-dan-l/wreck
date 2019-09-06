@@ -8,6 +8,8 @@ import { is_simulated, search_future } from '../../supervenience';
 import { bound_method, map, update, Updater } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer, StaticActionIDs, StaticFacetIDs } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
+import Handlebars from 'handlebars';
+import { stages } from '../../stages';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -201,9 +203,8 @@ export const make_action_applicator = (world: Venience, facet_id: FacetID, actio
 Puffers(lock_and_brand('Metaphor', {
     pre: world => update(world, { gist: null }),    
 
-    handle_command: {
-        kind: 'Stages',
-        2: (world, parser) => {
+    handle_command: stages(
+        [2, (world, parser) => {
             if (!any_actions(world)) {
                 return parser.eliminate();
             }
@@ -352,8 +353,8 @@ Puffers(lock_and_brand('Metaphor', {
                     }),
                 )));
             }
-        }
-    },
+        }]
+    ),
 }));
 
 // FACETS
@@ -373,8 +374,6 @@ type FacetSpec = {
 
     content?: string
 };
-
-import Handlebars from 'handlebars';
 
 const facet_index = resource_registry.initialize('facet_index',
     new StaticMap(StaticFacetIDs, [

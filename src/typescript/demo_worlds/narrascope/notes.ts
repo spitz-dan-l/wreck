@@ -7,6 +7,7 @@ import { update } from '../../update';
 import { map } from '../../utils';
 import { } from './metaphor';
 import { NoteID, Puffers, resource_registry, StaticNoteIDs, Venience } from './prelude';
+import { stages } from '../../stages';
 
 type NoteGists = { [K in NoteID]: undefined };
 
@@ -65,9 +66,8 @@ export function add_to_notes(world: Venience, note_id: NoteID) {
 }
 
 Puffers({
-    handle_command: {
-        kind: 'Stages',
-        3: (world, parser) => {
+    handle_command: stages(
+        [3, (world, parser) => {
             if (Object.values(note_index.all()).every(n => !world.has_written_down.get(n.note_id))) {
                 return parser.eliminate();
             }
@@ -113,8 +113,8 @@ Puffers({
             }
 
             return parser.split([list_thread, ...specific_threads]);
-        }
-    }
+        }]
+    )
 });
 
 export const Notes = (spec: NoteEntry) =>

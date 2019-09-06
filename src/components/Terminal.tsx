@@ -431,7 +431,7 @@ export const History: React.FunctionComponent<HistoryProps> = ({world, possible_
       return;
     }
     
-    let current_changes = animation_state.changes.label_changes[animation_stage];
+    let current_changes = animation_state.changes.label_changes.get(animation_stage)!;
 
     let ps = Promise.all(Object.entries(current_changes).map(([i, changes]) =>
       animate(elt_index.current[i as unknown as number], changes)
@@ -531,9 +531,9 @@ const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}
   } else {
     if (
       animation_state.changes.base_state[world.index] &&
-      animation_state.changes.base_state[world.index][animation_stage]
+      animation_state.changes.base_state[world.index].get(animation_stage)
     ) {
-      class_labels = animation_state.changes.base_state[world.index][animation_stage];
+      class_labels = animation_state.changes.base_state[world.index].get(animation_stage)!;
     } else {
       class_labels = {};
     }

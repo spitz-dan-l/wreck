@@ -102,7 +102,7 @@ TODO
 */
 
 import { label_value, LocalInterpretations, InterpretationValue } from '../typescript/interpretation';
-import { Stages, stage_keys } from '../typescript/stages';
+import { Stages, stage_keys, stages } from '../typescript/stages';
 import { key_union, update } from '../typescript/utils';
 import { World } from '../typescript/world';
 import { normalize_whitespace } from '../typescript/text_tools';
@@ -114,7 +114,7 @@ export type AnimationState = {
 }
 
 export const empty_animation_state: AnimationState = {
-  changes: { label_changes: { kind: 'Stages' }, new_frames: {}, base_state: {} },
+  changes: { label_changes: stages(), new_frames: {}, base_state: {} },
   current_stage: undefined,
   lock_input: false
 };
@@ -227,9 +227,7 @@ export type InterpretationChanges = {
     somehow organize/shorten this...
 */
 export function interpretation_changes(world2: World, world1: World): InterpretationChanges {
-    const changes_per_stage: Stages<{ [index: number]: IndexChanges }> = {
-        kind: 'Stages'
-    };
+    const changes_per_stage: Stages<{ [index: number]: IndexChanges }> = stages();
     const new_frames: { [index: number]: number } = {};
     const base_state: { [index: number]: Stages<{ [label: string]: boolean }> } = {};
     
@@ -245,9 +243,10 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
             stage = new_frames[index];
         }
 
-        let stage_changes = changes_per_stage[stage];
+        let stage_changes = changes_per_stage.get(stage);
         if (stage_changes === undefined) {
-            stage_changes = changes_per_stage[stage] = {};
+            stage_changes = {};
+            changes_per_stage.set(stage, stage_changes);
         }
 
         let idx_changes = stage_changes[index];
@@ -265,12 +264,13 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
     function add_base_state(index: number, stage: number, label: string, value: boolean) {
       let idx_base_state = base_state[index];
       if (idx_base_state === undefined) {
-        idx_base_state = base_state[index] = { kind: 'Stages' };
+        idx_base_state = base_state[index] = stages();
       }
 
-      let stage_base_state = idx_base_state[stage];
+      let stage_base_state = idx_base_state.get(stage);
       if (stage_base_state === undefined) {
-        stage_base_state = idx_base_state[stage] = {};
+        stage_base_state = {};
+        idx_base_state.set(stage, stage_base_state); 
       }
 
       stage_base_state[label] = value;
@@ -338,7 +338,7 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
                 }
             }
 
-            let idx_changes = changes_per_stage[new_stage];
+            let idx_changes = changes_per_stage.get(new_stage)!;
             for (let [index, changes] of Object.entries(idx_changes)) {
                 for (let [label, op] of Object.entries(changes)) {
                     if (label === 'animation-new') {
@@ -363,11 +363,11 @@ export function interpretation_changes(world2: World, world1: World): Interpreta
         stage_offset = max_stage + 1;
     }
 
-    const stages = stage_keys(changes_per_stage);
+    const stage_levels = stage_keys(changes_per_stage);
     for (const [index, stage] of Object.entries(new_frames)) {
-        let stage_idx = stages.indexOf(stage);
+        let stage_idx = stage_levels.indexOf(stage);
         for (let i = 0; i < stage_idx; i++) {
-            let s = stages[i];
+            let s = stage_levels[i];
             add_base_state(index as unknown as number, s, 'would-add-animation-new', true);
         }
     }

@@ -1,0 +1,114 @@
+Grand version of idea:
+    Text can be marked as participating in analogies/metaphors.
+
+    Simplest is single-element mappings.
+        E.g. a passage about hounding someone is mapped to "Dog"
+    
+    Multi-element mappings:
+        Passage about hounding someone - dog
+        Passage about someone offering help - hand that feeds it
+        Passage about spurning the gift - biting the hand that feeds it
+    
+    The form of the prototype may take one order, while
+    the occurrence in text may be slightly out of order,
+    or have holes in the middle.
+
+Need a robust way to mark passages as belonging to one
+or another part of the metaphor.
+
+Supervenience can help with that- group together sequential passages
+    Want it to be extended- group together non-consecutive passages, with holes
+
+Extend supervenience to allow the player to enter/exit into goal/outcome contexts
+E.g. "Contemplate" could trigger all actions beneath it to be indented
+
+This would change the semantics of nesting- currently parent worlds do not "occur" in any physical sense. But with this, "contemplate X" would presumably be a parent command, and the first child would not actually follow directly from the parent's previous state; instead the parent itself would be the first child's previous state.
+
+    A
+    B
+    Contemplate A
+        D
+        E
+
+Need to explore the visual experience of mapping text passages to metaphoric sources
+    Show the target and source text next to each other?
+    Use color to map like sections to each other?
+    Free to scroll up and down the page?
+    Use the mouse to select specific text to map?
+
+Base case
+    Metaphor X, contemplated elt A with facets a, b, c
+
+    > Consider A
+
+    (...a)
+    (...b)
+    (...c)
+
+    > contemplate A
+        > invoke X
+            > X is a
+
+
+Case with 3 facets:
+    Given a Metaphor X with facets x, y, z,
+    And a focused history element A (or set of them via parents) with facets a, b, c
+
+    > Do A
+
+    (...a)
+
+    ...
+
+    (...b)
+
+    (...c)
+
+    > contemplate A
+
+        > invoke X
+
+            X description 
+            
+            Facets:
+                - x
+                - y
+                - z
+
+            > x is a
+
+            > y is b
+
+            > z is c
+
+            > end invocation
+
+Puzzle Applications
+    - Niney-style puzzles. 
+        In order to be the one who gazes ahead, you must perform a partial mapping from the role to the situation.
+
+        > consider carl
+
+        Carl sits by the window, staring out at the swiftly moving countryside.
+
+        > contemplate carl
+
+            - carl is alone
+            - carl is silent
+            - carl is staring out at the countryside
+
+            > invoke the one who gazes ahead            
+                - steadfast
+                - calm
+                - present
+
+            > presence addresses carl's aloneness
+            > 
+
+    - Triggering insights via metaphoric similarities
+        - Realizing that you are in the tangle, by mapping the descriptors of the tangle to your own experiences of disorientation and frustration
+
+        This then opens up new actions you can take to get through the tangle. These actions are intentional in nature, rather than literal.
+
+    - Triggering memories via metaphoric similarities
+        This requires that the player has some partial information about a memory,

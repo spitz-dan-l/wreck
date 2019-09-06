@@ -5,6 +5,7 @@ import { make_puffer_world_spec, Puffer } from '../puffer';
 import { split_tokens } from '../text_tools';
 import { update, Updater } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
+import { stages } from '../stages';
 
 /*
     TODO:
@@ -168,9 +169,8 @@ ObserverMoments(
             Imagine you're Chitin Wastrel.
         </div>`,
     
-    handle_command: {
-        kind: 'Stages',
-        0: (world, parser) => {
+    handle_command: stages(
+        [0, (world, parser) => {
             let percepts = [
                 'myself',
                 'merfolk',
@@ -183,16 +183,16 @@ ObserverMoments(
             ];
 
             return make_perceiver(world, percepts)(parser);
-        },
+        }],
         // NOTE: the "1:"" here causes this handler's typeahead to appear *after* the options for the percepts.
-        1: (world, parser) => {
+        [1, (world, parser) => {
             if (!world.has_perceived['experiment']) {
                 return parser.eliminate();
             }
             
             return make_transitioner(world, {'operate_broadcaster': 'imagining 2'})(parser);
-        }
-    },
+        }]
+    ),
 },
 {
     id: 'imagining 2',

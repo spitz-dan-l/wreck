@@ -1,0 +1,97 @@
+One thing I'm starting to believe is that I know enough about text passages to make some assumptions about them. (So not just literal html with unenforced rules about css classes)
+    A unit of text is a paragraph.
+    Paragraphs can go in sequence, and be nested/indented
+    Particular paragraphs can be colored and highlighted interactively
+    Any particular paragraph can be identified programmatically by
+        Its world index, and an index into that world's message structure
+        A "gist" representing the meaning of its text in a structured way
+    
+    Retroactive expansion/revelation of new text may be easier to reason about if it can actually be dynamically added to the message structure, rather than forced into the original message text behind a gate
+
+    Interpretations are arguably serving multiple purposes in an awkward way:
+        - History-indexed retroactive state changes, which yield new text in old states
+        - static (non-animation) display/layout flags
+        - dynamic (animation) visual effects
+    
+    One proposed change:
+        Rather than flip history-indexed css class switches, You actually get to specify updated versions of the message structure:
+            Each of the four message categories gets a list of paragraphs.
+            Each paragraph has:
+                - a list of child paragraphs
+                - raw text
+                - a gist
+                - static display/layout flags
+                - dynamic effect flags (e.g. blink this paragraph once)
+        Then updates can
+            insert child paragraphs in old messages
+            apply visual effects (both static and dynamic) to specific paragraphs
+            look up specific paragraphs by gist and position
+
+        For animation though, it is necessary to group updates into stages. What does this look like?
+
+        When pushing updates, you can group them in stages at the highest level. No stages means everything is stage 0.
+
+        This means there is no longer an explicit data structure for saving state (as opposed to view/effects) about past worlds. This will have to instead be done on a case-by-case basis.
+
+        Need to also allow for static and dynamic effects applying to whole messages, or whole lists of paragraphs, or paragraphs and their children
+            E.g. a bounding box, expanding animation, background color
+
+            Could we just write the css rules in such a way that if a parent has a given class, all its children are also affected? Then it would be a flag-specific behavior and no need to represent in this model.
+        
+        Still automatically detect when certain effects need to run by looking at diff? Or should that be the responsibility of the update spec now?
+            Could prepopulate the updates for each new world to have e.g. the animation-new effect.
+        
+        Specifying the message for the current world, should it just be added to this big data structure or is it saved somewhere else?
+
+        In the pre of each new world, the messages struct should be normalized:
+            - All stages merged, the stage numbers erased
+
+            Perhaps you have two world attributes?
+                - view
+                - view_updates
+
+                view is implicitly not updated, but instead set at the start of apply_command.
+
+                All changes in view_updates. One annoying thing there is that there isn't a good way to query for "view as of all changes in this frame so far"
+                    I mean, you can just have a function that figures it out given the two pieces and returns it?
+        
+        Seems awkward to only have per-paragraph gists, rather than whole-message.
+            Can have one message-level gist too?
+        
+        Does it make sense to make "message" itself a special kind of "paragraph"?
+
+        It also needs its own visual effects, its own gist.
+            The difference is that rather than have a generic list of children, it has 4 named lists.
+        
+        For a message with a single paragraph, would the gist/effects for the paragraph ever need to be different from those of the overall message? (No.)
+
+        How about:
+            Overall message is a tree that you push paragraphs into.
+
+            You can attach gists both to specific paragraphs, and to nodes in the tree?
+
+            It feels like it *does* make some sense to distinguish the top-level gist from fragment-specific gists.
+        
+        Things to animate:
+            - whole message (expand animation, interp box)
+            - paragraph
+            - bullet point
+        Things to reveal:
+            - paragraph
+            - bullet point
+
+
+- Message
+    - Gist
+    - static effects
+    - dynamic effects
+    . actions
+        . fragments
+            - Gist
+            - string
+            . children
+            - static effects
+            - dynamic effects
+    - consequences
+    - descriptions
+    - prompts
