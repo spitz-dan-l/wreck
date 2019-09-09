@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "compile": "tsc",
     "test": "tsc && mocha ./build/tests",
     "debug": "echo 'Remember to open chrome://inspect in a tab before running this.\n' && tsc && mocha --inspect-brk ./build/tests",
     "build": "webpack --progress --colors --mode production",

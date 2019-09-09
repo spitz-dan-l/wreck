@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { history_array, Interpretations, InterpretationValue, label_value, group_compound_worlds, MaybeCompoundWorld, CompoundWorld, is_compound_world } from '../typescript/interpretation';
 import { keys } from '../typescript/keyboard_tools';
 import { render_message } from '../typescript/message';

@@ -95,3 +95,21 @@ One thing I'm starting to believe is that I know enough about text passages to m
     - consequences
     - descriptions
     - prompts
+
+New scheme
+
+The text for a frame is an unattached html element
+
+In the course of processing a frame, you add staged text update actions, which include:
+
+- adding child elements
+    - the engine auto-adds the animation-new dynamic class
+- updating persistent and ephemeral css classes on specific elements
+    - the engine auto-detects changes to static classes and animates them
+
+You can assign a gist to a child element at the time it is added.
+It will show up as a css class that starts with "gist-"
+
+This class can then be used when specifying parent nodes to add children to, or nodes to set css classes on.
+
+After the frame is processed, the engine applies the updates and attaches the resulting element.

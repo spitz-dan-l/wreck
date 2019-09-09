@@ -19,7 +19,6 @@
 
 
 */
-
 import { O } from 'ts-toolbelt';
 import { Interpretations, pre_interp } from './interpretation';
 import { INITIAL_MESSAGE, Message } from './message';

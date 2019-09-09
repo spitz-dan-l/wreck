@@ -139,5 +139,3 @@ export function update<S>(source: S, ...updaters: F.NoInfer<Updater<S>>[]): S {
 export function update_any<S>(source: S, updater: any): S {
     return update(source, updater);
 }
-
-
