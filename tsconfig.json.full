@@ -21,18 +21,11 @@
         "./src/tests",
         "./src/typescript/*",
         "./src/typescript/UIBuilder/*",
-        "./src/typescript/demo_worlds/bird_world.ts",
+        "./src/typescript/demo_worlds/**/*",
         "./src/components"
     ],
 
     "exclude": [
-        "./src/tests",
-        "./src/typescript/demo_worlds/**",
-        "./src/typescript/demo_worlds/narrascope",
-        "./src/typescript/venience",
-        "./src/typescript/lock.ts",
-        "./src/typescript/message.ts",
-        "./src/typescript/interpretation.ts",
-        "./src/typescript/narrative_fsa.ts"
+        "./src/typescript/venience"
     ]
 }

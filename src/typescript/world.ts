@@ -23,14 +23,16 @@ import { O } from 'ts-toolbelt';
 import { Interpretations, pre_interp } from './interpretation';
 import { INITIAL_MESSAGE, Message } from './message';
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
-import { update } from './utils';
+import { update, map } from './utils';
+import { Story, StoryUpdates, init_frame, apply_story_updates, remove_eph_story } from './text';
+import { stages } from './stages';
 
 export interface World {
-    readonly message: Message,
     readonly parsing: Parsing | undefined,
     readonly previous: this | null,
     readonly index: number,
-    readonly interpretations: Interpretations,
+    readonly story: Story,
+    readonly story_updates: StoryUpdates,
     readonly parent: this | null,
     readonly child: this | null
 }
@@ -43,11 +45,11 @@ export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
 
 const INITIAL_WORLD: World = {
-    message: INITIAL_MESSAGE,
+    story: stages([0, init_frame(0)]),
+    story_updates: stages(),
     parsing: undefined,
     previous: null,
     index: 0,
-    interpretations: {},
     parent: null,
     child: null
 };
@@ -98,12 +100,19 @@ export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
 export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W>;
 export function make_update_thread(spec: WorldSpec<World>, world: World) {
     let next_state = world;
+    const new_index = world.index + 1;
 
     next_state = update(next_state, {
         previous: _ => world,
-        index: _ => _ + 1,
-        message: () => INITIAL_MESSAGE,
-        interpretations: pre_interp,
+        index: _ => new_index,
+        story: _ => apply_story_updates(_, world.story_updates),
+        story_updates: () => stages([0, [{
+            index: new_index,
+            op: {
+                kind: 'Add',
+                elements: init_frame(new_index)
+            }
+        }]]),
         parsing: () => undefined,
         parent: () => null,
         child: () => null

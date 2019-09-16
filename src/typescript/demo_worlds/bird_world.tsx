@@ -1,8 +1,12 @@
+/** @jsx createElement */
+import { createElement } from '../UIBuilder/UIBuilder';
 import { random_choice } from '../text_tools';
 import { update } from '../utils';
 import { CommandHandler, get_initial_world, make_world_spec, World, world_driver, Narrator } from '../world';
 import { interpretation_updater, interps } from '../interpretation';
 import { failed } from '../parser';
+import { story_updater, css_updater } from '../text';
+import { stages } from '../stages';
 
 interface BirdWorld extends World {
     readonly is_in_heaven: boolean
@@ -11,14 +15,6 @@ interface BirdWorld extends World {
 let initial_world: BirdWorld = {
     ...get_initial_world<BirdWorld>(),
     is_in_heaven: false,
-    message: {
-        kind: 'Message',
-        action: [],
-        consequence: ['You are currently down.'],
-        description: [],
-        prompt: []
-    },
-    interpretations: interps({ 0: {happy: true} })
 };
 
 export const bird_world_spec = () => make_world_spec({
@@ -31,13 +27,15 @@ export function new_bird_world() {
 }
 
 let post: Narrator<BirdWorld> = (new_world, old_world) => {
-    return update(new_world, interpretation_updater(new_world, (w) => {
-        if (w.is_in_heaven === new_world.is_in_heaven) {
-            return { happy: true };
-        } else {
-            return { happy: false };
-        }
-    }));
+    return update(new_world,
+        css_updater(w => {
+            if (w.is_in_heaven === new_world.is_in_heaven) {
+                return { happy: true };
+            } else {
+                return { happy: false };
+            }    
+        })
+    );
 }
 
 let handle_command: CommandHandler<BirdWorld> = (world, parser) => {
@@ -78,12 +76,12 @@ let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
         return parser.failure;
     }
 
-    return update(world, {
-        message: {
-            consequence: _ => [..._, `You are currently ${dir}.`]
-        },
-        is_in_heaven: _ => !_
-    });
+    return update(world,
+        story_updater({
+            consequence: <div>You are currently {dir}.</div>
+        }),
+        { is_in_heaven: _ => !_}
+    );
 }
 
 let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
@@ -110,11 +108,11 @@ let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
 
     let message = `"${random_choice(utterance_options)}," you say.`;
 
-    return update(world, { 
-        message: {
-            action: _ => [..._, message]
-        }
-    });
+    return update(world,
+        story_updater({
+            action: <div>{message}</div>
+        })
+    );
 }
 
 let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
@@ -162,9 +160,9 @@ let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
         return parser.failure;
     }
 
-    return update(world, {
-        message: {
-            consequence: _ => [..._, `You feel ${quality}.`] 
-        }
-    });
+    return update(world,
+        story_updater({
+            consequence: <div>You feel {quality}.</div>
+        })
+    );
 }

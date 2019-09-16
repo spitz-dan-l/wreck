@@ -113,3 +113,11 @@ It will show up as a css class that starts with "gist-"
 This class can then be used when specifying parent nodes to add children to, or nodes to set css classes on.
 
 After the frame is processed, the engine applies the updates and attaches the resulting element.
+
+The way to distinguish ephemeral css classes is via a prefix in the name?
+    Would eliminate the need for additional data structure/attributes
+
+Since gists are converted to class slug, would need a way to parse that slug?
+Unless you just do both- slugify and add as class, *and* store as data attribute.
+    -Yeah do this. Easy enough to explicitly check the .gist property when serializing.
+

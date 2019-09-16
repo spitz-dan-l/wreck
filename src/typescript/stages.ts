@@ -29,9 +29,15 @@ export function stage_entries<X>(x: Stages<X>): [number, X][] {
     return stage_keys(x).map(s => [s, x.get(s)!]);
 }
 
-export function map_stages<T, R>(f: (t: T, stage?: number) => R, x: Stages<T>): Stages<R> {
+export function map_stages<T, R>(x: Stages<T>, f: (t: T, stage?: number) => R): Stages<R> {
     return stages(
         ...stage_entries(x).map(([s, t]) => [s, f(t, s)] as const))
+}
+
+export function foreach_stages<T>(x: Stages<T>, f: (t: T, stage?: number) => void): void {
+    for (let [stage, t] of stage_entries(x)) {
+        f(t, stage);
+    }
 }
 
 export function merge_stages<T>(x: MaybeStages<T>, reducer: (acc: T, next: T) => T, init: T, stage_limit?: number): T {

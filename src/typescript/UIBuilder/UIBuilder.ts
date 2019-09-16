@@ -1,10 +1,6 @@
-export declare namespace JSX {
-    export type Element = HTMLElement | SVGAElement;
+import {JSX as JSX_} from './JSX';
 
-    export interface IntrinsicElements {
-        [tag: string]: any
-    }
-}
+export import JSX = JSX_;
 
 const attribMap = {
     'htmlFor': 'for',
@@ -143,25 +139,19 @@ export function createElement<P extends Props<Component<P>>>(type: any, props: P
         }
     }
     else {   // It is an HTML or SVG element
-        if (svgElements[type]) {
-            node = document.createElementNS("http://www.w3.org/2000/svg", type);
-        }
-        else {
+        // if (svgElements[type]) {
+        //     node = document.createElementNS("http://www.w3.org/2000/svg", type);
+        // }
+        // else {
             node = document.createElement(type);
-        }
+        // }
         applyElementProps(node, props);
         appendChildrenRecursively(node, children);
     }
     return node;
 }
 export declare namespace createElement {
-    namespace JSX {
-        export type Element = HTMLElement | SVGAElement;
-    
-        export interface IntrinsicElements {
-            [tag: string]: any
-        }
-    }
+    export import JSX = JSX_;
 }
 
 function appendChildrenRecursively(node: JSX.Element, children: any[]): void {

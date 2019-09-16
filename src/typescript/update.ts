@@ -48,11 +48,20 @@ I strongly encourage you to stake your professional reputation on the behavior o
 //             ((x: T) => T) :
 //         (x: T) => T;
 
+// export type Updater<T> =
+//     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
+//     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
+//     [T] extends [(...args: any) => any] ? (x: T) => T :
+//         ((T extends Primitive | any[] | Set<any> | Map<any, any> ? T :
+//             T extends object ? ObjectUpdater<T> :
+//                 never) |
+//          ((x: T) => T));
 export type Updater<T> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
     [T] extends [(...args: any) => any] ? (x: T) => T :
-        ((T extends Primitive | any[] | Set<any> | Map<any, any> ? T :
+        ((T extends Primitive | any[] | Set<any> ? T :
+            T extends Map<infer K, infer V> ? MapUpdater<K, V> :
             T extends object ? ObjectUpdater<T> :
                 never) |
          ((x: T) => T));
@@ -62,12 +71,15 @@ type NotFunction<T> = T extends (...args: any) => any ? never : T;
 
 type Primitive = undefined | null | boolean | string | number | symbol;
 
+export interface MapUpdater<K, V> extends Map<K, Updater<V>> {};
+
 export type ObjectUpdater<T> = {
     [K in keyof T]?: Updater<T[K]>
 }
 
 import {F} from 'ts-toolbelt';
 import { P } from 'ts-toolbelt/out/types/src/Object/_api';
+import { K } from 'handlebars';
 
 // The second generic type parameter is a hack to prevent typescript from using the contents of updater
 // to figure out the source and return types when doing type inference on calls to this function.
@@ -86,10 +98,11 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
 
     if (updater instanceof Map){
         let result: Map<any, any>;
+        const ctor = <MapConstructor>updater.constructor;
         if (source instanceof Map) {
-            result = new Map([...source]);
+            result = new ctor([...source]);//Map([...source]);
         } else {
-            result = new Map();
+            result = new ctor();
         }
 
         for (let [k, v] of updater) {

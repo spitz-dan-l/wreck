@@ -53,9 +53,9 @@ export function map_puffer<T extends World>(mapper: PufferMapper<T>, puffer: Puf
     let norm_puffer = normalize_puffer(puffer);
 
     return {
-        pre: mapper.pre ? map_stages(mapper.pre, norm_puffer.pre) : norm_puffer.pre,
-        handle_command: mapper.handle_command ? map_stages(mapper.handle_command, norm_puffer.handle_command) : norm_puffer.handle_command,
-        post: mapper.post ? map_stages(mapper.post, norm_puffer.post) : norm_puffer.post,
+        pre: mapper.pre ? map_stages(norm_puffer.pre, mapper.pre) : norm_puffer.pre,
+        handle_command: mapper.handle_command ? map_stages(norm_puffer.handle_command, mapper.handle_command) : norm_puffer.handle_command,
+        post: mapper.post ? map_stages(norm_puffer.post, mapper.post) : norm_puffer.post,
         css_rules: norm_puffer.css_rules,
         ...drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules')
     }

@@ -106,6 +106,7 @@ import { Stages, stage_keys, stages } from '../typescript/stages';
 import { key_union, update } from '../typescript/utils';
 import { World } from '../typescript/world';
 import { normalize_whitespace } from '../typescript/text_tools';
+import { Story, StoryUpdates } from '../typescript/text';
 
 export type AnimationState = {
   changes: InterpretationChanges,
