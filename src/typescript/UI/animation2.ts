@@ -1,6 +1,40 @@
-import { Story, StoryUpdates, FrameUpdate, apply_story_updates, apply_frame_update, find_eph, remove_eph } from "../typescript/text";
-import { World } from "../typescript/world";
-import { stage_entries, stages, map_stages } from "../typescript/stages";
+import { Story, StoryUpdates, FrameUpdate, apply_story_updates, apply_frame_update, find_eph, remove_eph } from "../text";
+import { World } from "../world";
+import { stage_entries, stages, map_stages, stage_keys } from "../stages";
+import { update } from "../utils";
+
+export type AnimationState = {
+    story_updates: StoryUpdates,
+    current_stage: number | undefined,
+    lock_input: boolean
+}
+  
+export const empty_animation_state: AnimationState = {
+    story_updates: stages(),
+    current_stage: undefined,
+    lock_input: false
+};
+  
+export function new_animation_state(world: World): AnimationState {
+    // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
+    const story_updates = world.story_updates;
+    let stages = stage_keys(story_updates);
+    let current_stage: number | undefined = stages[0];
+    return {
+        story_updates,
+        current_stage,
+        lock_input: stages.length > 0 };
+}
+  
+export function advance_animation(state: AnimationState) {
+    let stages = stage_keys(state.story_updates);
+    let next_stage = stages[stages.indexOf(state.current_stage!) + 1];
+    return update(state, {
+        current_stage: next_stage,
+        lock_input: next_stage !== undefined
+    });
+}
+  
 
 // update the view for one stage of changes
 export function update_history_view(root_elt: HTMLElement, story: Story, updates: FrameUpdate[]) {
@@ -10,7 +44,7 @@ export function update_history_view(root_elt: HTMLElement, story: Story, updates
         apply_frame_update(result, update); 
     }
 
-    for (const [stage, elt] of result) {
+    for (const [stage, elt] of stage_entries(result)) {
         const old_elt = story.get(stage);
         if (elt === old_elt) {
             continue;
@@ -25,9 +59,9 @@ export function update_history_view(root_elt: HTMLElement, story: Story, updates
     return result;
 }
 
-export function start_animations(root_elt: HTMLElement, story: Story) {
-    return Promise.all(map_stages(story, elt => animate(elt)).values())
-        .then(() => remove_eph(root_elt));
+export async function start_animations(root_elt: HTMLElement, story: Story) {
+    await Promise.all(map_stages(story, elt => animate(elt)).values());
+    return remove_eph(root_elt);
 }
 
 export function compute_possible_labels(possible_world: World): FrameUpdate[] {

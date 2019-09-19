@@ -21,6 +21,7 @@
         "./src/tests",
         "./src/typescript/*",
         "./src/typescript/UIBuilder/*",
+        "./src/typescript/UI/*",
         "./src/typescript/demo_worlds/bird_world.ts",
         "./src/components"
     ],

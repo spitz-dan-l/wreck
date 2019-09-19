@@ -1,5 +1,6 @@
+type _Element = Element;
 export declare namespace JSX {
-    export type Element = HTMLElement;// | SVGAElement;
+    export type Element = _Element;
 
     export interface IntrinsicElements {
         [tag: string]: any

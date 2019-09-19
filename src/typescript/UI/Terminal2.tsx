@@ -1,15 +1,12 @@
-import * as React from 'react';
-import { group_compound_worlds, MaybeCompoundWorld, CompoundWorld, is_compound_world } from '../typescript/history';
-import { history_array, Interpretations, InterpretationValue, label_value } from '../typescript/interpretation';
-import { keys } from '../typescript/keyboard_tools';
-import { render_message } from '../typescript/message';
-import { Parsing, RawInput, SUBMIT_TOKEN, Token, TokenAvailability, TokenMatch, TypeaheadOption } from '../typescript/parser';
-import { array_last, entries, filter_values, key_union, map_values, update } from '../typescript/utils';
-import { CommandResult, World } from "../typescript/world";
-import { advance_animation, animate, AnimationState, empty_animation_state, new_animation_state, scroll_down } from './animation';
-import { OutputText, ParsedText } from './Text';
-import { checkPropTypes } from 'prop-types';
-import { C } from 'ts-toolbelt';
+/** @jsx createElement */
+import { createElement } from '../UIBuilder/UIBuilder';
+import { CompoundWorld, group_compound_worlds, is_compound_world, MaybeCompoundWorld } from '../history';
+import { keys } from '../keyboard_tools';
+import { Parsing, RawInput, SUBMIT_TOKEN, Token, TokenAvailability, TokenMatch, TypeaheadOption } from '../parser';
+import { array_last, filter_values, key_union, map_values, update } from '../utils';
+import { CommandResult, World } from "../world";
+import { advance_animation, animate, AnimationState, empty_animation_state, new_animation_state, scroll_down } from './animation2';
+import { OutputText, ParsedText } from '../../components/Text';
 
 // STATE, ACTIONS, REDUCERS
 
@@ -33,7 +30,6 @@ type AppAction =
 
 // "reducer" function which returns updated state according to the
 // "kind" of the action passed to it
-// TODO look up whether there are methods for factoring reducers better
 function app_reducer(state: AppState, action: AppAction): AppState {
   if (state.animation_state.lock_input && action.kind !== 'AdvanceAnimation') {
     return state;
@@ -99,7 +95,7 @@ function app_reducer(state: AppState, action: AppAction): AppState {
 function update_animation_state(new_state: AppState, old_state: AppState): AppState {
   if (new_state.command_result.world.index > old_state.command_result.world.index) {
     return update(new_state, {
-      animation_state: _ => new_animation_state(new_state.command_result.world, old_state.command_result.world)
+      animation_state: _ => new_animation_state(new_state.command_result.world)
     });
   }
   return new_state;

@@ -121,7 +121,7 @@ export interface Props<T> {
     ref?: (instance: T) => void;
 }
 
-export function createElement<P extends Props<Component<P>>>(type: any, props: P, ...children: any[]): JSX.Element | JSX.Element[] {
+export function createElement2<P extends Props<Component<P>>>(type: any, props: P, ...children: any[]): JSX.Element | JSX.Element[] {
     props = props || <P>{};
     let node: JSX.Element;
     if (type === Fragment) {
@@ -132,7 +132,7 @@ export function createElement<P extends Props<Component<P>>>(type: any, props: P
         if (type.prototype.render) {   // Is it a component class?
             const component: Component<P> = new type(_props);
             node = component.render();
-            applyComponentProps<P>(component, props);
+            // applyComponentProps<P>(component, props);
         }
         else {   // It is a functional component
             node = type(_props);
@@ -145,6 +145,24 @@ export function createElement<P extends Props<Component<P>>>(type: any, props: P
         // else {
             node = document.createElement(type);
         // }
+        applyElementProps(node, props);
+        appendChildrenRecursively(node, children);
+    }
+    return node;
+}
+
+export function createElement<P extends Props<Component<P>>>(type: any, props: P, ...children: any[]): JSX.Element | JSX.Element[] {
+    props = props || <P>{};
+    let node: JSX.Element;
+    if (type === Fragment) {
+        return children;
+    }
+    else if (typeof type === 'function') {   // Is it either a component class or a functional component?
+        const _props = { ...props, children } as P;
+        node = type(_props);
+        applyComponentProps<P>(node, props);
+    } else {   // It is an HTML element
+        node = document.createElement(type);
         applyElementProps(node, props);
         appendChildrenRecursively(node, children);
     }
@@ -208,7 +226,7 @@ function applyElementProps(node: JSX.Element, props: Object): void {
     }
 }
 
-function applyComponentProps<P>(component: Component<P>, props: Object): void {
+function applyComponentProps<P>(component: JSX.Element, f: any, props: Object): void {
     const ref = props['ref'];
     if (ref) {
         if (typeof ref === 'function') {

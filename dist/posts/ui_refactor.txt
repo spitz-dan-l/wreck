@@ -1,0 +1,15 @@
+My game ui setup with react:
+- global state object (redux style)
+- state is updated via action reducer pattern. State updates trigger re evaluating the component tree
+- tree of react components receives current state as props, declaratively renders ui as virtual dom
+- react backend diffs the old/new virtual dom tree and mutates the real dom accordingly
+Without react:
+- global state object (redux style)
+- state is updated via action reducer pattern. State updates trigger re evaluating the component tree
+- tree of “mutator components” receives current state and previous state as separate props objects, compares current vs previous, and directly mutates the dom tree accordingly
+
+Notes on the new scheme
+- Still have a good one-way dependency from state to view. View can still only update state by dispatching actions. State changes still trickle down through component tree.
+- You have to write your own per-component diffing logic. But, you're diffing props, not dom trees, which is usually easier. You are also allowed to simply ignore any differences, and always replace the component's dom subtree with a fresh one, which lets you write the same style of code as with react, but it might be laggier.
+- You can mutate the dom directly! Which makes two categories of feature more natural to implement: document-oriented transformations, and animations. (This is the main motivation of the whole thing for me)
+- The hypothetical performance ceiling is higher, and it's easier to reason about and adjust performance since you are in control of your own dom mutations
