@@ -1,57 +1,196 @@
 export type Props = {};
+export type AllProps<P extends Props> = P & { children?: Element[] }
 
-export type Renderer<P extends Props> = (props: P, old?: {old_props: P, old_root: Component<P>}) => Element;
+export type Renderer<P extends Props> = (props: P, old?: {old_props: P, old_root: Component<P>}) => Component<P>;
 export type RendererFor<Comp> = Comp extends Component<infer P> ? Renderer<P> : never;
 
-export function renderer<P extends Props>(f: (props: P, old?: {old_props: P, old_root: Component<P>}) => Element) {
-    return (props: P, old?: any) => {
-        return apply(f, props, old);
-    }
-}
-
-export const UpdateComponent: unique symbol = Symbol('UpdateComponent');
-
 export interface Component<P extends Props> extends Element {
-    [UpdateComponent]: (props: P) => Component<P>;
+    __brand: P
 }
+
 export type ComponentFor<Rend> = Rend extends Renderer<infer P> ? Component<P> : never;
 export type Getter<Root extends Component<Props>, E extends Element> = (root: Root) => E;
+export type PropsFor<Comp> = Comp extends Component<infer P> ? P : never;
 
-export function is_component<P extends Props>(x: Element | Component<P>): x is Component<P> {
-    return x[UpdateComponent] !== undefined;
-}
+export type PropMapper<
+    Comp1 extends Component<Props>,
+    Comp2 extends Component<Props>
+> = (props: PropsFor<Comp1>) => PropsFor<Comp2>;
 
-export function apply<P extends Props>(renderer: Renderer<P>, props: P, old?: {old_props: P, old_root: Component<P>}): Component<P> {
-    let result = renderer(props, old) as Component<P>;
+export function update_component<P extends Props>(renderer: Renderer<P>, props: P, old: { old_props: P, old_root: Component<P>}) {
+    const result = renderer(props, old);
 
-    result[UpdateComponent] = (new_props) => apply(renderer, new_props, {old_props: props, old_root: result});
-  
-    if (old && result !== old.old_root) {
+    if (result !== old.old_root) {
         old.old_root.replaceWith(result);
     }
 
     return result;
 }
 
+export type Updater<
+    C1 extends Component<Props>,
+    C2 extends Component<Props>
+> = (props: PropsFor<C1>, old?: {old_props: PropsFor<C1>, old_root: C1}) => C2;
+
+export function make_updater<
+    P1 extends Props,
+    P2 extends Props
+>(
+    getter: Getter<Component<P1>, Component<P2>>,
+    prop_mapper: PropMapper<Component<P1>, Component<P2>>,
+    renderer: RendererFor<Component<P2>>
+): Updater<Component<P1>, Component<P2>> {
+    return (props: P1, old?: { old_props: P1, old_root: Component<P1>}) => {
+        if (!old) {
+            return renderer(prop_mapper(props));
+        }
+
+        return update_component(
+            renderer,
+            prop_mapper(props),
+            {
+                old_props: prop_mapper(old.old_props),
+                old_root: getter(old.old_root)
+            }
+        );
+    }
+}
+
+import {A} from 'ts-toolbelt';
+
+export type ElementHelpers<C1 extends Component<Props>, C2 extends Element> = A.Compute<{ get: Getter<C1, C2> }>
+export type ChildHelpers<C1 extends Component<Props>, C2 extends Component<Props>> = A.Compute<{
+    get: Getter<C1, C2>,
+    map: PropMapper<C1, C2>,
+    render: Updater<C1, C2>
+}>
+
+export function declare_child<C1 extends Component<Props>, C2 extends Element>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
+export function declare_child<C1 extends Component<Props>, C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper: PropMapper<C1, C2>, renderer: RendererFor<C2>): ChildHelpers<C1, C2>;
+export function declare_child<C1 extends Component<Props>, C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper?: PropMapper<C1, C2>, renderer?: RendererFor<C2>) {
+    let result: any = {get: getter};
+    if (mapper !== undefined) {
+        result.map = mapper;
+    }
+
+    if (renderer !== undefined) {
+        result.render = make_updater(getter, mapper!, renderer);
+    }
+
+    return result;
+}
+
+export function child_declarator_for<C1 extends Component<Props>>() {
+    function child_declarator_for_inner<C2 extends Element>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
+    function child_declarator_for_inner<C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper: PropMapper<C1, C2>, renderer: RendererFor<C2>): ChildHelpers<C1, C2>;
+    function child_declarator_for_inner<C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper?: PropMapper<C1, C2>, renderer?: RendererFor<C2>) {
+        return declare_child(getter, mapper!, renderer as RendererFor<C2>);
+    }
+    return child_declarator_for_inner;
+}
+
+export type UI<State, Action> = {
+    initialize: (init_state: State) => Component<State>,
+    dispatch: (action: Action) => void,
+    effect: (f: () => void) => void
+}
+
+export function make_ui<State, Action>(
+    renderer: Renderer<State>,
+    reducer: (state: State, action: Action) => State
+): UI<State, Action> {
+    let old_state: State;
+    let component: Component<State>;
+
+    function initialize(initial_state: State) {
+        component = renderer(initial_state);
+        old_state = initial_state;
+        return component;
+    }
+
+    
+    let render_promise: Promise<void> | null = null;
+    let action_queue: Action[] = [];
+    let effect_queue: (() => void)[] = [];
+    
+    function dispatch(action: Action) {
+        if (old_state === undefined) {
+            throw new Error('dispatch function was called before initializer.');
+        }
+        action_queue.push(action);
+
+        if (render_promise === null) {
+            render_promise = Promise.resolve().then(render);
+        }
+    }
+
+    function effect(f: () => void) {
+        if (old_state === undefined) {
+            throw new Error('effect function was called before initializer.');
+        }
+        effect_queue.push(f);
+
+        if (render_promise === null) {
+            render_promise = Promise.resolve().then(render);
+        }
+    }
+
+    function render() {
+        render_promise = null;
+
+        let new_state = old_state;
+        while (action_queue.length > 0) {
+            new_state = reducer(new_state, action_queue.shift()!);
+        }
+
+        component = update_component(
+            renderer,
+            new_state,
+            {
+                old_props: old_state,
+                old_root: component
+            }
+        );
+
+        old_state = new_state;
+
+        while (effect_queue.length > 0) {
+            effect_queue.shift()!();
+        }
+    } 
+
+    return {
+        initialize,
+        dispatch,
+        effect
+    };
+}
+
 type _Element = Element;
 
 export declare namespace JSX {
     export type Element = _Element;
+
     export interface IntrinsicElements {
         [tag: string]: any
     }
+
+    interface ElementChildrenAttribute {
+		children: any;
+	}
 }
 
 export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: any[]): JSX.Element {
-    props = props || <P>{};
-    const _props = { ...props, children } as P;
+    const all_props: AllProps<P> = {...props, children};
     
-    let renderer: Renderer<P>;
+    let result: JSX.Element;
     if (typeof type === 'string') {
-        return IntrinsicElementRenderer(type)(_props);
+        result = intrinsic_element_renderer(type)(all_props);
     } else {
-        return apply(type, _props);
+        result = type(all_props);
     }
+    
+    return result;
 }
 
 export import JSX_ = JSX;
@@ -59,8 +198,24 @@ export declare namespace createElement {
     export import JSX = JSX_;
 }
 
-export const IntrinsicElementRenderer = (tag: string): Renderer<any> =>
-    (props) => {
+export function update_class<E extends Element>(elt: E, options: { add?: string[], remove?: string[] }) {
+    if (options.add) {
+        options.add.forEach(c => {
+            elt.classList.add(c);
+        })
+    }
+
+    if (options.remove) {
+        options.remove.forEach(c => {
+            elt.classList.remove(c);
+        });
+    }
+
+    return elt;
+}
+
+export const intrinsic_element_renderer = (tag: string) =>
+    (props: any) => {
         const node = document.createElement(tag) as unknown as JSX.Element;
         applyElementProps(node, props);
         appendChildrenRecursively(node, props.children);

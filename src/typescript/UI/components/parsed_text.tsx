@@ -1,7 +1,5 @@
-/** @jsx createElement */
-import { createElement } from '../UIBuilder/UIBuilder';
-import { MatchStatus, Parsing, Token, TokenAvailability, TokenMatch } from '../parser';
-
+import { createElement, Renderer, Component } from '../framework';
+import { MatchStatus, Parsing, Token, TokenAvailability, TokenMatch } from '../../parser';
 
 export const Carat = () => <span>>&nbsp;</span>;
 
@@ -44,7 +42,9 @@ function get_class_name(tm: TokenMatch) {
   return classes.join(' ');
 }
 
-export const ParsedText = (props: { parsing: Parsing }) => {
+export type ParsedTextProps = { parsing: Parsing };
+export type ParsedText = Component<ParsedTextProps>;
+export const ParsedText: Renderer<ParsedTextProps> = (props) => {
   let parsing: Parsing = props.parsing;
   
   let command_classes = ['command'];
@@ -77,6 +77,6 @@ export const ParsedText = (props: { parsing: Parsing }) => {
           ))
         }
       </div>
-    </div>
+    </div> as ParsedText
   );
 }
