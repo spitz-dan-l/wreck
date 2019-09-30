@@ -1,7 +1,8 @@
 import { Story, StoryUpdates, FrameUpdate, apply_story_updates, apply_frame_update, find_eph, remove_eph } from "../text";
 import { World } from "../world";
-import { stage_entries, stages, map_stages, stage_keys } from "../stages";
+import { stage_entries, stages, map_stages, stage_keys, Stages } from "../stages";
 import { update } from "../utils";
+import { P } from "ts-toolbelt/out/types/src/Object/_api";
 
 export type AnimationState = {
     story_updates: StoryUpdates,
@@ -35,9 +36,38 @@ export function advance_animation(state: AnimationState) {
     });
 }
   
+export function set_history_view(root: HTMLElement, story: Story) {
+    for (const [stage, frame] of stage_entries(story)) {
+        let prev_frame = root.querySelector(`[data-index="${stage}"]`);
+        if (prev_frame === null) {
+            root.appendChild(frame);
+        } else {
+            if (prev_frame !== frame) {
+                prev_frame.replaceWith(frame);
+            }
+        }
+    }
+    return root;
+}
+
+export function extract_story(root: HTMLElement): Story {
+    const result: Story = stages();
+    const children = Array.from(root.children) as HTMLElement[];
+    for (const child of children) {
+        const index = parseInt(child.dataset.index!);
+        if (index == NaN) {
+            throw new Error('Tried to extract a story frame with missing or invalid data-index attribute.');
+        }
+        result.set(index, child);
+    }
+
+    return result;
+}
+
 
 // update the view for one stage of changes
-export function update_history_view(root_elt: HTMLElement, story: Story, updates: FrameUpdate[]) {
+export function update_history_view(root_elt: HTMLElement, updates: FrameUpdate[]) {
+    const story = extract_story(root_elt);
     let result = stages(...story);
 
     for (const update of updates) {
@@ -172,7 +202,11 @@ export function animate(comp_elt: HTMLElement) {
                 'animation-start',
                 'animation-active');
 
-            walkElt(comp_elt, (e) => e.style.maxHeight = '');
+            walkElt(comp_elt, (e) => {
+                e.style.maxHeight = null; // = '';
+                delete e.dataset.maxHeight;
+                delete e.dataset.isCollapsing;
+            });
 
             if (comp_elt.classList.contains('eph-new')) {
                 scroll_down();

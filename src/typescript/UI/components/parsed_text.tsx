@@ -1,4 +1,4 @@
-import { createElement, Renderer, Component } from '../framework';
+import { createElement, Renderer, Component } from '../framework/framework';
 import { MatchStatus, Parsing, Token, TokenAvailability, TokenMatch } from '../../parser';
 
 export const Carat = () => <span>>&nbsp;</span>;

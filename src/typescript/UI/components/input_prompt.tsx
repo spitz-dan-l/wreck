@@ -1,39 +1,39 @@
 import { Parsing } from '../../parser';
-import { child_declarator_for, Component, createElement, Renderer } from '../framework';
+import { child_declarator_for, Component, createElement, Renderer } from '../framework/framework';
 import { ui_resources } from '../prelude';
 import { ParsedText } from './parsed_text';
 
 
-export type PromptProps = {parsing: Parsing, locked: boolean};
-export type Prompt = Component<PromptProps>;
+export type InputPromptProps = {parsing: Parsing, locked: boolean};
+export type InputPrompt = Component<InputPromptProps>;
 
-const prompt_child = child_declarator_for<Prompt>();
+const input_prompt_child = child_declarator_for<InputPrompt>();
 
-const prompt_input = prompt_child((root) => root.querySelector('input')!)
+const input_prompt_input = input_prompt_child((root) => root.querySelector('input')!)
 
-const prompt_text = prompt_child<ParsedText>(
+const input_prompt_text = input_prompt_child<ParsedText>(
     (root) => root.querySelector('.parsed-text')! as ParsedText,
     ({parsing}) => ({parsing}),
     ParsedText);
 
-const prompt_cursor = prompt_child(
+const input_prompt_cursor = input_prompt_child(
     (root) => root.querySelector('.cursor')! as Cursor,
     ({locked}) => ({locked}),
     (props, old?) => Cursor(props, old));
 
-export const Prompt: Renderer<PromptProps> = (props, old?) => {
+export const InputPrompt: Renderer<InputPromptProps> = (props, old?) => {
     const dispatch = ui_resources.get('dispatch');
 
     if (old === undefined) {
-        let result = <div class="prompt">
+        let result = <div class="input-prompt">
             <input value={props.parsing.raw.text} />
             <span>
-                <prompt_text.render {...props} />
-                <prompt_cursor.render {...props} />
+                <input_prompt_text.render {...props} />
+                <input_prompt_cursor.render {...props} />
             </span>
-        </div> as Prompt;
+        </div> as InputPrompt;
 
-        prompt_input.get(result).addEventListener('input', (e) => {
+        input_prompt_input.get(result).addEventListener('input', (e) => {
             dispatch({
                 kind: 'ChangeText',
                 text: (e.target as HTMLInputElement).value
@@ -44,13 +44,13 @@ export const Prompt: Renderer<PromptProps> = (props, old?) => {
     }
 
     if (props.parsing.raw.text !== old.old_props.parsing.raw.text) {
-        const input = prompt_input.get(old.old_root);
+        const input = input_prompt_input.get(old.old_root);
         input.value = props.parsing.raw.text;
 
-        prompt_text.render(props, old);
+        input_prompt_text.render(props, old);
     }
 
-    prompt_cursor.render(props, old);
+    input_prompt_cursor.render(props, old);
 
     return old.old_root;
 }

@@ -5,7 +5,7 @@ import { keys } from '../keyboard_tools';
 import { Parsing, RawInput, SUBMIT_TOKEN, Token, TokenAvailability, TokenMatch, TypeaheadOption } from '../parser';
 import { array_last, filter_values, key_union, map_values, update } from '../utils';
 import { CommandResult, World } from "../world";
-import { advance_animation, animate, AnimationState, empty_animation_state, new_animation_state, scroll_down } from './animation2';
+import { advance_animation, animate, AnimationState, empty_animation_state, new_animation_state, scroll_down } from './animation';
 import { OutputText, ParsedText } from '../../components/Text';
 
 // STATE, ACTIONS, REDUCERS

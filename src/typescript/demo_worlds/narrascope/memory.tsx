@@ -1,12 +1,14 @@
+import { createElement } from '../../UI/framework/framework';
 import { gist, Gists, render_gist_text } from '../../gist';
-import { find_historical } from '../../interpretation';
-import { message_updater } from '../../message';
+import { find_historical } from '../../history';
+// import { message_updater } from '../../message';
 import { Puffer } from '../../puffer';
 import { StaticIndex } from '../../static_resources';
 import { bound_method, map, update } from '../../utils';
 import { add_to_notes, Notes } from './notes';
 import { ActionID, Puffers, resource_registry, Venience } from "./prelude";
 import { capitalize } from '../../text_tools';
+import { story_updater } from '../../text';
 
 
 export type MemorySpec = {
@@ -32,15 +34,16 @@ const action_index = resource_registry.get('action_index', false);
 
 function memory_description(spec: MemorySpec) {
     const action = action_index.get(spec.action);
-    return `
-    <div class="interp">
-        ${spec.description}
+    return <div>
+        <div class="interp">
+            {spec.description}
+        </div>
+        <br/>
+        {capitalize(render_gist_text(gist(spec.action)))} confers:
+        <blockquote>
+            {action.description}
+        </blockquote>
     </div>
-    <br/>
-    ${capitalize(render_gist_text(gist(spec.action)))} confers:
-    <blockquote>
-        ${action.description}
-    </blockquote>`
 }
 
 export function make_memory(spec: MemorySpec): Puffer<Venience> {
@@ -63,9 +66,10 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
                     gist: () => gist('memory', { action: gist(action.name)})
                 },
                 w => add_to_notes(w, spec.action),
-                message_updater(`
-                You close your eyes, and hear Katya's voice:
-                ${memory_description(spec)}`)
+                story_updater(<div>
+                    You close your eyes, and hear Katya's voice:
+                    {memory_description(spec)}
+                </div>)
             );
         },
         post: (world2, world1) => {
@@ -76,11 +80,14 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
 
             world1 = find_historical(world1, w => w.owner === null)!;
 
-            if (!spec.could_remember(world1) &&
-                world2.message.prompt.length === 0) {
-                return update(world2, message_updater({
-                    prompt: ['You feel as though you might <strong>remember something...</strong>']
-                }));
+            if (!spec.could_remember(world1)) {
+                return update(world2,
+                    story_updater({
+                        prompt: <div>
+                            You feel as though you might <strong>remember something...</strong>
+                        </div>
+                    })
+                );
             }
             return world2;
         }

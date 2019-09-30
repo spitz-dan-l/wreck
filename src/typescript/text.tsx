@@ -1,24 +1,32 @@
-/** @jsx createElement */
 import { Stages, stages, stage_entries, map_stages } from './stages';
-import { createElement } from './UIBuilder/UIBuilder';
+import { createElement } from './UI/framework/framework';
 import { World } from './world';
 import { Updater, appender, map } from './utils';
 import { update } from './update';
-import { history_array } from './interpretation';
+import { history_array } from './history';
+import { Parsing } from './parser';
+import { ParsedText } from './UI/components/parsed_text';
 
 
 export const init_frame = (index: number) => <div className="frame eph-new" data-index={index}>
-    <div className="action"></div>
-    <div className="consequence"></div>
-    <div className="description"></div>
-    <div className="prompt"></div>
-</div>;
+    <div className="input-text" />
+    <div className="output-text">
+        <div className="action"></div>
+        <div className="consequence"></div>
+        <div className="description"></div>
+        <div className="prompt"></div>
+    </div>
+</div> as HTMLElement;
 
 export type FrameUpdate = {
     index: number,
     selector?: string,
     op: FrameUpdateOp
 };
+
+export function frame_update(update: FrameUpdate) {
+    return update;
+}
 
 type CSSUpdates = {
     [class_name: string]: boolean;
@@ -29,15 +37,37 @@ export type FrameUpdateOp =
     | { kind: 'CSS', updates: CSSUpdates }
     ;
 
+export function add_op(elements: HTMLElement | HTMLElement[]) {
+    return { kind: 'Add', elements } as const;
+}
+
+export function css_op(updates: CSSUpdates) {
+    return { kind: 'CSS', updates } as const;
+}
+
 // Note that the meaning of Story stages is different than that of StoryUpdates stages.
 // Story stages are the frame indexes of each story frame.
 export type Story = Stages<HTMLElement>;
 // StoryUpdates stages are the groupings of updates for animation.
 export type StoryUpdates = Stages<FrameUpdate[]>;
 
+
+let eph_effects = true;
+
+export function with_eph_effects<R>(effects_on: boolean, f: () => R) {
+    const prev = eph_effects;
+    eph_effects = effects_on;
+    const result = f();
+    eph_effects = prev;
+    return result;
+}
+
+
 function add_child(parent: HTMLElement | null, child: HTMLElement) {
     child = child.cloneNode(true) as HTMLElement;
-    child.classList.add('eph-new');
+    if (eph_effects) {
+        child.classList.add('eph-new');
+    }
     if (parent !== null) {
         parent.appendChild(child);
     }
@@ -67,12 +97,16 @@ export function apply_frame_update_op(elt: HTMLElement | null, op: FrameUpdateOp
             if (!on) {
                 if (elt.classList.contains(cls)) {
                     elt.classList.remove(cls);
-                    elt.classList.add(`eph-removing-${cls}`);
+                    if (eph_effects) {
+                        elt.classList.add(`eph-removing-${cls}`);
+                    }
                 }
             } else {
                 if (!elt.classList.contains(cls)) {
                     elt.classList.add(cls);
-                    elt.classList.add(`eph-adding-${cls}`);
+                    if (eph_effects) {
+                        elt.classList.add(`eph-adding-${cls}`);
+                    }
                 }
             }
         }
@@ -166,9 +200,14 @@ export type TextAddSpec = {
     consequence?: HTMLElement | HTMLElement[]
     description?: HTMLElement | HTMLElement[]
     prompt?: HTMLElement | HTMLElement[]
-}
+} | HTMLElement | HTMLElement[];
 
 export const make_text_additions = (index: number, spec: TextAddSpec) => {
+    if (spec instanceof Array || spec instanceof HTMLElement) {
+        spec = {
+            consequence: spec
+        };
+    }
     const result: FrameUpdate[] = [];
     for (const prop of ['action', 'consequence', 'description', 'prompt'] as const) {
         const elements = spec[prop];
@@ -194,12 +233,35 @@ export const story_updater = (spec: TextAddSpec, stage=0) =>
 export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
     (world: W) => {
         const history = history_array(world);
-        const css_updates: FrameUpdate[] = history.map(w => ({
-            index: w.index,
-            op: { kind: 'CSS', updates: f(w) }
-        }));
+        const css_updates: FrameUpdate[] = history.flatMap(w => {
+            const updates = f(w);
+
+            if (Object.keys(updates).length === 0) {
+                return [];
+            }
+
+            return [{
+                index: w.index,
+                op: { kind: 'CSS', updates: f(w) }
+            }]
+        });
 
         return update(world as World, {
             story_updates: stages([0, appender(...css_updates)])
         }) as W
     }
+
+export const add_input_text = (world: World, parsing: Parsing) => {
+    return update(world, {
+        story_updates: stages([0, appender({
+            index: world.index,
+            selector: '.input-text',
+            op: {
+                kind: 'Add',
+                elements: <ParsedText parsing={parsing} />
+            }
+        } as FrameUpdate)])
+    });
+}
+
+export const css_update(index: number, )

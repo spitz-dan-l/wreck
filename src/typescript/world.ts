@@ -20,11 +20,9 @@
 
 */
 import { O } from 'ts-toolbelt';
-import { Interpretations, pre_interp } from './interpretation';
-import { INITIAL_MESSAGE, Message } from './message';
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
-import { update, map } from './utils';
-import { Story, StoryUpdates, init_frame, apply_story_updates, remove_eph_story } from './text';
+import { update, map, appender } from './utils';
+import { Story, StoryUpdates, init_frame, apply_story_updates, remove_eph_story, add_input_text } from './text';
 import { stages } from './stages';
 
 export interface World {
@@ -157,7 +155,10 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
 
     let w: World = result.result;
 
-    w = update(w, { parsing: () => result.parsing });
+    w = update(w, 
+        { parsing: () => result.parsing },
+        _ => add_input_text(_, result.parsing)
+    );
 
     // If this is a compound action, assign it as the parent to the children,
     // and return the last child instead of the parent.

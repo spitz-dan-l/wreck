@@ -19,9 +19,8 @@
         "strictBindCallApply": false
     },
     "include": [
-        "./src/tests",
+        // "./src/tests",
         "./src/typescript/*",
-        "./src/typescript/UIBuilder/*",
         "./src/typescript/UI/**/*",
         "./src/typescript/demo_worlds/bird_world.ts"
     ],
@@ -34,6 +33,9 @@
         "./src/typescript/lock.ts",
         "./src/typescript/message.ts",
         "./src/typescript/interpretation.ts",
-        "./src/typescript/narrative_fsa.ts"
+        "./src/typescript/narrative_fsa.ts",
+        "./src/typescript/UI/Terminal2.tsx",
+        "./src/typescript/UI/Terminal3.tsx",
+        "./src/typescript/gist.ts"
     ]
 }

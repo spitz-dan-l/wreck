@@ -10,25 +10,30 @@ module.exports = {
         path: path.resolve(__dirname, "dist")
     },
 
-    devtool: false,
+    devtool: 'source-map',//false,
 
     resolve: {
         // Add '.ts' and '.tsx' as resolvable extensions.
         extensions: [".ts", ".tsx", ".js", ".json"],
-        alias: { handlebars: 'handlebars/dist/handlebars.min.js' }
+        // alias: { handlebars: 'handlebars/dist/handlebars.min.js' }
     },
-
     module: {
         rules: [
-            { test: /\.(ts|js)x?$/, loader: 'babel-loader', exclude: /node_modules/ },
+            // all files with a `.ts` or `.tsx` extension will be handled by `ts-loader`
+            { test: /\.tsx?$/, loader: "ts-loader", options: { transpileOnly: true} }
         ]
     },
+    // module: {
+    //     rules: [
+    //         { test: /\.(ts|js)x?$/, loader: 'babel-loader', exclude: /node_modules/ },
+    //     ]
+    // },
 
-    plugins: [
-        // NOTE: the Eval plugin actually follows the exclude: option, while the vanilla one just doesn't. Dumb.
-        new EvalSourceMapDevToolPlugin({
-            test: /\.(ts|js)x?$/,
-            exclude: /node_modules/
-        })
-    ]
+    // plugins: [
+    //     // NOTE: the Eval plugin actually follows the exclude: option, while the vanilla one just doesn't. Dumb.
+    //     new EvalSourceMapDevToolPlugin({
+    //         test: /\.(ts|js)x?$/,
+    //         exclude: /node_modules/
+    //     })
+    // ]
 };

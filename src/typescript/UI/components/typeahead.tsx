@@ -1,5 +1,5 @@
 import { ui_resources } from "../prelude";
-import { Renderer, createElement, Component } from "../framework";
+import { Renderer, createElement, Component } from "../framework/framework";
 import { TypeaheadOption, Parsing, Token, TokenAvailability, TokenMatch } from "../../parser";
 import { isEqual } from "lodash";
 

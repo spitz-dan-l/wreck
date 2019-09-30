@@ -1,15 +1,17 @@
+import {JSX as JSX_} from './JSX';
+
 export type Props = {};
 export type AllProps<P extends Props> = P & { children?: Element[] }
 
 export type Renderer<P extends Props> = (props: P, old?: {old_props: P, old_root: Component<P>}) => Component<P>;
 export type RendererFor<Comp> = Comp extends Component<infer P> ? Renderer<P> : never;
 
-export interface Component<P extends Props> extends Element {
+export interface Component<P extends Props> extends HTMLElement {
     __brand: P
 }
 
 export type ComponentFor<Rend> = Rend extends Renderer<infer P> ? Component<P> : never;
-export type Getter<Root extends Component<Props>, E extends Element> = (root: Root) => E;
+export type Getter<Root extends Component<Props>, E extends HTMLElement> = (root: Root) => E;
 export type PropsFor<Comp> = Comp extends Component<infer P> ? P : never;
 
 export type PropMapper<
@@ -58,14 +60,14 @@ export function make_updater<
 
 import {A} from 'ts-toolbelt';
 
-export type ElementHelpers<C1 extends Component<Props>, C2 extends Element> = A.Compute<{ get: Getter<C1, C2> }>
+export type ElementHelpers<C1 extends Component<Props>, C2 extends HTMLElement> = A.Compute<{ get: Getter<C1, C2> }>
 export type ChildHelpers<C1 extends Component<Props>, C2 extends Component<Props>> = A.Compute<{
     get: Getter<C1, C2>,
     map: PropMapper<C1, C2>,
     render: Updater<C1, C2>
 }>
 
-export function declare_child<C1 extends Component<Props>, C2 extends Element>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
+export function declare_child<C1 extends Component<Props>, C2 extends HTMLElement>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
 export function declare_child<C1 extends Component<Props>, C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper: PropMapper<C1, C2>, renderer: RendererFor<C2>): ChildHelpers<C1, C2>;
 export function declare_child<C1 extends Component<Props>, C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper?: PropMapper<C1, C2>, renderer?: RendererFor<C2>) {
     let result: any = {get: getter};
@@ -81,7 +83,7 @@ export function declare_child<C1 extends Component<Props>, C2 extends Component<
 }
 
 export function child_declarator_for<C1 extends Component<Props>>() {
-    function child_declarator_for_inner<C2 extends Element>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
+    function child_declarator_for_inner<C2 extends HTMLElement>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
     function child_declarator_for_inner<C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper: PropMapper<C1, C2>, renderer: RendererFor<C2>): ChildHelpers<C1, C2>;
     function child_declarator_for_inner<C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper?: PropMapper<C1, C2>, renderer?: RendererFor<C2>) {
         return declare_child(getter, mapper!, renderer as RendererFor<C2>);
@@ -108,15 +110,14 @@ export function make_ui<State, Action>(
         return component;
     }
 
-    
     let render_promise: Promise<void> | null = null;
-    let action_queue: Action[] = [];
-    let effect_queue: (() => void)[] = [];
+    const action_queue: Action[] = [];
+    const effect_queue: (() => void)[] = [];
     
     function dispatch(action: Action) {
-        if (old_state === undefined) {
-            throw new Error('dispatch function was called before initializer.');
-        }
+        // if (old_state === undefined) {
+        //     throw new Error('dispatch function was called before initializer.');
+        // }
         action_queue.push(action);
 
         if (render_promise === null) {
@@ -125,9 +126,9 @@ export function make_ui<State, Action>(
     }
 
     function effect(f: () => void) {
-        if (old_state === undefined) {
-            throw new Error('effect function was called before initializer.');
-        }
+        // if (old_state === undefined) {
+        //     throw new Error('effect function was called before initializer.');
+        // }
         effect_queue.push(f);
 
         if (render_promise === null) {
@@ -136,6 +137,9 @@ export function make_ui<State, Action>(
     }
 
     function render() {
+        if (old_state === undefined) {
+            throw new Error('dispatch or effect function was called before initializer.');
+        }
         render_promise = null;
 
         let new_state = old_state;
@@ -143,16 +147,18 @@ export function make_ui<State, Action>(
             new_state = reducer(new_state, action_queue.shift()!);
         }
 
-        component = update_component(
-            renderer,
-            new_state,
-            {
-                old_props: old_state,
-                old_root: component
-            }
-        );
+        if (new_state !== old_state) {
+            component = update_component(
+                renderer,
+                new_state,
+                {
+                    old_props: old_state,
+                    old_root: component
+                }
+            );
 
-        old_state = new_state;
+            old_state = new_state;
+        }
 
         while (effect_queue.length > 0) {
             effect_queue.shift()!();
@@ -166,24 +172,10 @@ export function make_ui<State, Action>(
     };
 }
 
-type _Element = Element;
-
-export declare namespace JSX {
-    export type Element = _Element;
-
-    export interface IntrinsicElements {
-        [tag: string]: any
-    }
-
-    interface ElementChildrenAttribute {
-		children: any;
-	}
-}
-
-export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: any[]): JSX.Element {
+export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: any[]): JSX_.Element {
     const all_props: AllProps<P> = {...props, children};
     
-    let result: JSX.Element;
+    let result: JSX_.Element;
     if (typeof type === 'string') {
         result = intrinsic_element_renderer(type)(all_props);
     } else {
@@ -193,12 +185,14 @@ export function createElement<P extends Props>(type: Renderer<P> | string, props
     return result;
 }
 
-export import JSX_ = JSX;
+export {JSX} from './JSX';
+// export import JSX_ = JSX;
 export declare namespace createElement {
+    // export {JSX} from './JSX';
     export import JSX = JSX_;
 }
 
-export function update_class<E extends Element>(elt: E, options: { add?: string[], remove?: string[] }) {
+export function update_class<E extends HTMLElement>(elt: E, options: { add?: string[], remove?: string[] }) {
     if (options.add) {
         options.add.forEach(c => {
             elt.classList.add(c);
@@ -216,13 +210,13 @@ export function update_class<E extends Element>(elt: E, options: { add?: string[
 
 export const intrinsic_element_renderer = (tag: string) =>
     (props: any) => {
-        const node = document.createElement(tag) as unknown as JSX.Element;
+        const node = document.createElement(tag) as unknown as HTMLElement;
         applyElementProps(node, props);
         appendChildrenRecursively(node, props.children);
         return node;
     }
 
-function appendChildrenRecursively(node: JSX.Element, children: any[]): void {
+function appendChildrenRecursively(node: HTMLElement, children: any[]): void {
     for (const child of children) {
         if (child instanceof Node) {   // Is it an HTML or SVG element?
             node.appendChild(child);
@@ -239,7 +233,7 @@ function appendChildrenRecursively(node: JSX.Element, children: any[]): void {
     }
 }
 
-function applyElementProps(node: JSX.Element, props: Object): void {
+function applyElementProps(node: HTMLElement, props: Object): void {
     for (const prop in props) {
         if (prop === 'children') {
             continue;

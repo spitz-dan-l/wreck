@@ -1,5 +1,6 @@
 import { gist, Gists, render_gist_command, render_gist_text } from '../../gist';
-import { Fragment, message_updater } from '../../message';
+import { createElement } from '../../UI/framework/framework';
+// import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
 import { StaticMap } from '../../static_resources';
 import { capitalize } from '../../text_tools';
@@ -8,6 +9,7 @@ import { map } from '../../utils';
 import { } from './metaphor';
 import { NoteID, Puffers, resource_registry, StaticNoteIDs, Venience } from './prelude';
 import { stages } from '../../stages';
+import { story_updater } from '../../text';
 
 type NoteGists = { [K in NoteID]: undefined };
 
@@ -32,7 +34,7 @@ Gists({
 
 export type NoteEntry = {
     note_id: NoteID,
-    description: () => Fragment
+    description: () => HTMLElement
 }
 
 interface Notes {
@@ -61,8 +63,12 @@ export function add_to_notes(world: Venience, note_id: NoteID) {
 
     return update(world,
         { has_written_down: map([note_id, true]) },
-        message_updater({prompt: [`You write about ${capitalize(render_gist_text(gist(note_id)))} in your <strong>notes</strong>.`]})
-    )    
+        story_updater({
+            prompt: <div>
+                You write about {capitalize(render_gist_text(gist(note_id)))} in your <strong>notes</strong>.
+            </div>
+        })
+    );
 }
 
 Puffers({
@@ -80,13 +86,14 @@ Puffers({
             }, () => parser.submit(() =>
             update(world,
                 { gist: gist('notes') },
-                message_updater({ description: [
-                    `You have written down notes about the following:`,
-                    Object.values(note_index.all())
+                story_updater({ description: <div>
+                    You have written down notes about the following:
+                    {Object.values(note_index.all())
                         .filter(n => world.has_written_down.get(n.note_id))
-                        .map(n => `<blockquote>${capitalize(render_gist_text(gist(n.note_id)))}</blockquote>`)
-                        .join('')
-                ]})
+                        .map(n => <blockquote>{capitalize(render_gist_text(gist(n.note_id)))}</blockquote>)
+                        .join('')}
+                    </div>
+                })
             ))));
 
             let specific_threads: ParserThread<Venience>[] = [];
@@ -108,7 +115,10 @@ Puffers({
                         has_read: map([entry.note_id, true]),
                         gist: () => gist('notes about', { topic: g })
                     },
-                    message_updater({ description: [`<strong>${capitalize(render_gist_text(g))}</strong>`, entry.description()] })
+                    story_updater({ description: <div>
+                        <strong>${capitalize(render_gist_text(g))}</strong>
+                        {entry.description()}
+                    </div> })
                 )})));
             }
 

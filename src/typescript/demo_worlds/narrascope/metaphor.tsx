@@ -1,15 +1,16 @@
 import { Gist, gist, gists_equal, gist_to_string, render_gist_command, render_gist_text, has_tag, Gists } from '../../gist';
-import { find_historical, find_index, history_array, interpretation_updater, interps } from "../../interpretation";
-import { MessageUpdateSpec, message_updater } from "../../message";
+import { find_historical, find_index, history_array } from "../../history";
 import { ConsumeSpec, ParserThread, Parser } from "../../parser";
 import { Puffer } from "../../puffer";
 import { StaticIndex, StaticMap } from '../../static_resources';
 import { is_simulated, search_future } from '../../supervenience';
-import { bound_method, map, update, Updater } from "../../utils";
+import { bound_method, map, update, Updater, appender } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer, StaticActionIDs, StaticFacetIDs } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
-import Handlebars from 'handlebars';
 import { stages } from '../../stages';
+import { css_updater, story_updater, frame_update, css_op } from '../../text';
+import { extract_story } from '../../UI/animation';
+import { createElement } from '../../UI/framework/framework';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -125,40 +126,55 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
     world = facet.handle_action(action, world);
 
     world = update(world,
-        interpretation_updater(world, (w) =>
-            w.index > world.current_interpretation! ? {
-                [`descr-${action.slug}-blink`]: Symbol('Once'),
-                [`descr-${facet.slug}-blink`]: Symbol('Once')
-            } : {}),
-        { 
-            interpretations: interps({
-                [interpretted_world.index]: {
-                    [`interp-${facet.slug}-blink`]: Symbol('Once')
-                },
-                [world.index]: {
-                    'animation-new': {
-                        kind: 'Interpretation',
-                        value: Symbol(),
-                        stage: 1
-                    }
-                }
-            }),
+        css_updater((w) => {
+            if (w.index > world.current_interpretation!) {
+                return {
+                    [`eph-descr-${action.slug}-blink`]: true,
+                    [`eph-descr-${facet.slug}-blink`]: true
+                };
+            }
+            if (w.index === world.current_interpretation!) {
+                return {
+                    [`eph-interp-${facet.slug}-blink`]: true
+                };
+            }
+            return {};
+        }),
+        {
+            story_updates: _ => {
+                const stage_0 = [..._.get(0)!];
+                const new_frame_i = stage_0.findIndex(u =>
+                    u.index === world.index &&
+                    u.selector === undefined &&
+                    u.op.kind === 'Add');
+                const new_frame = stage_0.splice(new_frame_i, 1)[0];
+                const stage_1 = [
+                    ...(_.get(1) || []),
+                    new_frame
+                ];
+                return update(_, stages(
+                    [0, stage_0],
+                    [1, stage_1]
+                ));
+            },
             has_tried: map([action.name, map([facet.name, true])])
         });
 
     let solved = facet.solved(world)
     if (solved) {
         if (!already_solved) {
-            return update(world,
-                { interpretations: interps({ [interpretted_world.index]: {
-                    [`interp-${facet.slug}`]: true
-                }})}
-            );
+            return update(world, {
+                story_updates: stages([0, appender(frame_update({
+                    index: interpretted_world.index,
+                    op: css_op({ [`interp-${facet.slug}`]: true })
+                }))])
+            });
         } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
             return update(world, {
-                interpretations: interps({ [interpretted_world.index]: {
-                    [`interp-${facet.slug}-solved-blink`]: Symbol('Once')
-                }})
+                story_updates: stages([0, appender(frame_update({
+                    index: interpretted_world.index,
+                    op: css_op({ [`eph-interp-${facet.slug}-solved-blink`]: true })
+                }))])
             });
         }
     }
@@ -260,14 +276,21 @@ Puffers(lock_and_brand('Metaphor', {
                         w => metaphor_lock.lock(w, index),
                         { 
                             current_interpretation: index,
-                            interpretations: interps({
-                                [index]: {
+                            story_updates: stages([0, appender(frame_update({
+                                index,
+                                op: css_op({
                                     'interpretation-block': true,
                                     'interpretation-active': true
-                                }
-                            }),
+                                })
+                            }))]),
                             gist: () => gist('contemplation', {subject: immediate_world.gist!})
                         },
+                        story_updater({
+                            action: <div>
+                                You contemplate {render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
+                            </div>,
+                            
+                        })
                         message_updater({
                             action: [`You contemplate ${render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.`],
                             description: [descriptions.join('')]

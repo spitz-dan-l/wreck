@@ -1,5 +1,5 @@
 import { World } from "../../world";
-import { createElement, Component, Renderer } from "../framework";
+import { createElement, Component, Renderer } from "../framework/framework";
 import { ui_resources } from '../prelude';
 
 export type UndoProps = {

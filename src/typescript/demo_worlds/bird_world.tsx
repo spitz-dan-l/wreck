@@ -1,9 +1,7 @@
-/** @jsx createElement */
-import { createElement } from '../UIBuilder/UIBuilder';
+import { createElement } from '../UI/framework/framework';
 import { random_choice } from '../text_tools';
 import { update } from '../utils';
 import { CommandHandler, get_initial_world, make_world_spec, World, world_driver, Narrator } from '../world';
-import { interpretation_updater, interps } from '../interpretation';
 import { failed } from '../parser';
 import { story_updater, css_updater } from '../text';
 import { stages } from '../stages';
@@ -20,6 +18,7 @@ let initial_world: BirdWorld = {
 export const bird_world_spec = () => make_world_spec({
     initial_world,
     handle_command,
+    post
 });
 
 export function new_bird_world() {

@@ -2,7 +2,7 @@ import { OutputText, ParsedText } from '../../components/Text';
 import { CompoundWorld, group_compound_worlds, is_compound_world, MaybeCompoundWorld } from '../history';
 import { keys } from '../keyboard_tools';
 import { Parsing, Token, TokenAvailability, TokenMatch, TypeaheadOption } from '../parser';
-import { createElement, make_ui, Renderer, Component, child_declarator_for } from '../UI/framework';
+import { createElement, make_ui, Renderer, Component, child_declarator_for } from './framework/framework';
 import { filter_values, key_union, map_values } from '../utils';
 import { World } from "../world";
 import { app_reducer, AppState } from './actions';
@@ -14,6 +14,7 @@ export const initialize_app = ui.initialize
 
 const dispatch = ui.dispatch;
 ui_resources.initialize('dispatch', dispatch);
+ui_resources.initialize('effect', ui.effect);
 
 // VIEW LOGIC
 export type App = Component<AppState>;

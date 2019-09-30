@@ -78,8 +78,6 @@ export type ObjectUpdater<T> = {
 }
 
 import {F} from 'ts-toolbelt';
-import { P } from 'ts-toolbelt/out/types/src/Object/_api';
-import { K } from 'handlebars';
 
 // The second generic type parameter is a hack to prevent typescript from using the contents of updater
 // to figure out the source and return types when doing type inference on calls to this function.
