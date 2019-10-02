@@ -22,6 +22,8 @@
 
 import { starts_with, tokenize, split_tokens } from './text_tools';
 import { array_last, drop_keys } from './utils';
+import { Pool } from './static_resources';
+import { Topics } from './demo_worlds/narrascope/topic';
 
 class NoMatch {
     kind: 'NoMatch' = 'NoMatch';
@@ -414,8 +416,8 @@ export class Parser {
         let labels: TokenLabels = this.label_context; //{ filler: true };
         let availability: TokenAvailability = 'Available';
         
-        if (overrides) {
-            if (overrides.labels) {
+        if (overrides !== undefined) {
+            if (overrides.labels !== undefined) {
                 labels = {...labels, ...overrides.labels};
             }
             
@@ -435,7 +437,7 @@ export class Parser {
                 availability,
                 labels
             })));
-
+            
             if (failed(status)) {
                 return status;
             }
@@ -461,13 +463,14 @@ export class Parser {
         return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'))
     }
 
-    clamp_availability(spec: TaintedRawConsumeSpec) {
+    clamp_availability(spec: TaintedRawConsumeSpec): void {
         if (availability_order[spec.availability] < availability_order[this.current_availability]) {
-            return {...spec, availability: this.current_availability};
+            spec.availability = this.current_availability;
+            // return {...spec, availability: this.current_availability};
         } else if (availability_order[spec.availability] > availability_order[this.current_availability]) {
             this.current_availability = spec.availability;
         }
-        return spec;
+        // return spec;
     }
     /*
         This will throw a parse exception if the desired tokens can't be consumed.
@@ -479,7 +482,10 @@ export class Parser {
             throw new ParseError('Tried to consume() on a done parser.');
         }
 
-        tokens = tokens.map(t => this.clamp_availability(t));
+        for (let t of tokens) {
+            this.clamp_availability(t);
+        }
+        // tokens = tokens.map(t => this.clamp_availability(t));
 
         let partial = false;
         let error = false;
@@ -530,9 +536,11 @@ export class Parser {
             if (spec.token !== NEVER_TOKEN) {
                 return <RawConsumeSpec>spec;
             }
-            let result = {...spec};
-            result.token = '';
-            return <RawConsumeSpec>result;
+            spec.token = '';
+            return <RawConsumeSpec>spec;
+            // let result = {...spec};
+            // result.token = '';
+            // return <RawConsumeSpec>result;
         }
 
         if (partial) {
@@ -579,6 +587,9 @@ export class Parser {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
+        // return <NoMatch>this._consume([
+        //     rcs_pool.create(NEVER_TOKEN, 'Available', {})
+        // ]);
         return <NoMatch>this._consume([{
             kind: 'RawConsumeSpec',
             token: NEVER_TOKEN,
@@ -591,6 +602,9 @@ export class Parser {
     submit<T>(callback: ParserThread<T>): ParseValue<T>;
     submit<T>(result: T): ParseValue<T>;
     submit<T>(result?: any) {
+        // let status = this._consume([
+        //     rcs_pool.create(SUBMIT_TOKEN, 'Available', {})
+        // ]);
         let status = this._consume([{
             kind: 'RawConsumeSpec',
             token: SUBMIT_TOKEN,

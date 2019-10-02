@@ -1,14 +1,14 @@
 import { Stages, stages, stage_entries, map_stages } from './stages';
 import { createElement } from './UI/framework/framework';
 import { World } from './world';
-import { Updater, appender, map } from './utils';
+import { Updater, append, map } from './utils';
 import { update } from './update';
 import { history_array } from './history';
 import { Parsing } from './parser';
 import { ParsedText } from './UI/components/parsed_text';
 
 
-export const init_frame = (index: number) => <div className="frame eph-new" data-index={index}>
+const empty_frame = <div className="frame">
     <div className="input-text" />
     <div className="output-text">
         <div className="action"></div>
@@ -17,6 +17,21 @@ export const init_frame = (index: number) => <div className="frame eph-new" data
         <div className="prompt"></div>
     </div>
 </div> as HTMLElement;
+
+export const init_frame = (index: number) => {
+    const result = empty_frame.cloneNode(true) as HTMLElement;
+    result.setAttribute('data-index', index.toString());
+    return result;
+};
+// export const init_frame = (index: number) => <div className="frame" data-index={index}>
+//     <div className="input-text" />
+//     <div className="output-text">
+//         <div className="action"></div>
+//         <div className="consequence"></div>
+//         <div className="description"></div>
+//         <div className="prompt"></div>
+//     </div>
+// </div> as HTMLElement;
 
 export type FrameUpdate = {
     index: number,
@@ -32,12 +47,15 @@ type CSSUpdates = {
     [class_name: string]: boolean;
 };
 
+export type TextFragment = HTMLElement | string | TextFragmentArray;
+interface TextFragmentArray extends Array<TextFragment> {};
+
 export type FrameUpdateOp =
-    | { kind: 'Add', elements: HTMLElement | HTMLElement[] }
+    | { kind: 'Add', elements: TextFragment }
     | { kind: 'CSS', updates: CSSUpdates }
     ;
 
-export function add_op(elements: HTMLElement | HTMLElement[]) {
+export function add_op(elements: TextFragment) {
     return { kind: 'Add', elements } as const;
 }
 
@@ -63,34 +81,41 @@ export function with_eph_effects<R>(effects_on: boolean, f: () => R) {
 }
 
 
-function add_child(parent: HTMLElement | null, child: HTMLElement) {
-    child = child.cloneNode(true) as HTMLElement;
-    if (eph_effects) {
-        child.classList.add('eph-new');
+function add_child(parent: HTMLElement | null, child: TextFragment) {
+    if (child instanceof Array) {
+        child.map(c => add_child(parent, c));
+        return;
+    }
+    let c: Node;
+    if (typeof child === 'string') {
+        c = document.createTextNode(child);
+    } else {
+        c = child.cloneNode(true) as HTMLElement;    
+    }
+
+    if (eph_effects && c instanceof HTMLElement) {
+        c.classList.add('eph-new');
     }
     if (parent !== null) {
-        parent.appendChild(child);
+        parent.appendChild(c);
     }
-    return child;
+    return c;
 }
 
 export function apply_frame_update_op(elt: HTMLElement | null, op: FrameUpdateOp) {
     if (op.kind === 'Add') {
         if (elt === null) {
-            if (op.elements instanceof Array) {
-                throw new Error(`Tried to add a list of elements without a parent`);
+            if (typeof(op.elements) === 'string' || op.elements instanceof Array) {
+                throw new Error(`Tried to add a string or list of elements without a parent`);
             }
-            return add_child(null, op.elements);
+            return add_child(null, op.elements) as HTMLElement;
         } else {
-            if (op.elements instanceof Array) {
-                op.elements.forEach(e => add_child(elt, e));
-            } else {
-                add_child(elt, op.elements);
-            }
+            add_child(elt, op.elements);
             return elt;
         }
     } else if (op.kind === 'CSS') {
         if (elt === null) {
+            debugger;
             throw new Error("Tried to update CSS for null element.");
         }
         for (const [cls, on] of Object.entries(op.updates)) {
@@ -122,6 +147,7 @@ export function apply_frame_update(story: Story, update: FrameUpdate) {
     let target_elt: HTMLElement | null;
     if (target_frame === undefined) {
         if (update.selector !== undefined) {
+            debugger;
             throw new Error(`Tried to select an element from nonexistent index: ${update.index}. Selector: ${update.selector}`);
         }
         target_elt = null;
@@ -133,13 +159,12 @@ export function apply_frame_update(story: Story, update: FrameUpdate) {
             target_elt = target_frame.querySelector(update.selector);   
         }
     }
+        let updated = apply_frame_update_op(target_elt, update.op);
 
-    let updated = apply_frame_update_op(target_elt, update.op);
-
-    if (target_frame === undefined) {
-        target_frame = updated;
-    }
-    story.set(update.index, target_frame);
+        if (target_frame === undefined) {
+            target_frame = updated;
+        }
+        story.set(update.index, target_frame);
 }
 
 export function find_eph(elt: HTMLElement) {
@@ -155,11 +180,15 @@ export function remove_eph(elt: HTMLElement) {
     const matches = find_eph(elt);
 
     matches.forEach(match => {
+        const to_remove: string[] = [];
         match.classList.forEach(class_name => {
             if (class_name.startsWith('eph-')) {
-                match.classList.remove(class_name);
+                to_remove.push(class_name);
             }
         });
+        for (let class_name of to_remove) {
+            match.classList.remove(class_name);
+        }
     });
 }
 
@@ -172,15 +201,7 @@ export function remove_eph_story(story: Story) {
         }
 
         const result = elt.cloneNode(true) as HTMLElement;
-        const matches = result.querySelectorAll('[class*="eph-"]');
-
-        matches.forEach(match => {
-            match.classList.forEach(class_name => {
-                if (class_name.startsWith('eph-')) {
-                    match.classList.remove(class_name);
-                }
-            });
-        });
+        remove_eph(result);
         return result;
     });
 }
@@ -195,15 +216,28 @@ export function apply_story_updates(story: Story, story_updates: StoryUpdates) {
     return result;
 }
 
+// export type FrameUpdateSpec = {
+//     index: number,
+//     stage?: number,
+//     selector?: string,
+//     op: FrameUpdateOp
+// }
+
+// export function add_story_updates(...specs: FrameUpdateSpec[]) {
+//     return <W extends World>(world: W) => {
+
+//     };
+// }
+
 export type TextAddSpec = {
-    action?: HTMLElement | HTMLElement[]
-    consequence?: HTMLElement | HTMLElement[]
-    description?: HTMLElement | HTMLElement[]
-    prompt?: HTMLElement | HTMLElement[]
-} | HTMLElement | HTMLElement[];
+    action?: TextFragment
+    consequence?: TextFragment
+    description?: TextFragment
+    prompt?: TextFragment
+} | TextFragment;
 
 export const make_text_additions = (index: number, spec: TextAddSpec) => {
-    if (spec instanceof Array || spec instanceof HTMLElement) {
+    if (typeof spec === 'string' || spec instanceof Array || spec instanceof HTMLElement) {
         spec = {
             consequence: spec
         };
@@ -227,7 +261,7 @@ export const make_text_additions = (index: number, spec: TextAddSpec) => {
 
 export const story_updater = (spec: TextAddSpec, stage=0) =>
     <W extends World>(world: W) => update(world as World, {
-        story_updates: stages([stage, appender(...make_text_additions(world.index, spec))])
+        story_updates: stages([stage, append(...make_text_additions(world.index, spec))])
     }) as W;
 
 export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
@@ -247,13 +281,13 @@ export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
         });
 
         return update(world as World, {
-            story_updates: stages([0, appender(...css_updates)])
+            story_updates: stages([0, append(...css_updates)])
         }) as W
     }
 
 export const add_input_text = (world: World, parsing: Parsing) => {
     return update(world, {
-        story_updates: stages([0, appender({
+        story_updates: stages([0, append({
             index: world.index,
             selector: '.input-text',
             op: {
@@ -264,4 +298,19 @@ export const add_input_text = (world: World, parsing: Parsing) => {
     });
 }
 
-export const css_update(index: number, )
+/*
+    TODO: experiment with better schemes for collecting story updates in a given frame
+
+    Problem:
+        We need to be able to organize groups of story updates in stages.
+        We also need to be able to e.g.
+            move all story updates pertaining to frame 7 from stage 0 to stage 1
+            and have this apply to any future story updates made to frame 7 this tick.
+    
+    Change the data structure representing story updates?
+    Or, develop more sophisticated operators for updating the current data structure?
+
+
+
+*/
+

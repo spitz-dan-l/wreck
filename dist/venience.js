@@ -17429,7 +17429,7 @@ exports.app_reducer = app_reducer;
 function update_animation_state(new_state, old_state) {
     if (new_state.command_result.world.index > old_state.command_result.world.index) {
         return utils_1.update(new_state, {
-            animation_state: _ => animation_1.new_animation_state(new_state.command_result.world)
+            animation_state: _ => animation_1.new_animation_state(new_state.command_result.world, old_state.command_result.world)
         });
     }
     return new_state;
@@ -17524,14 +17524,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const text_1 = __webpack_require__(/*! ../text */ "./src/typescript/text.tsx");
 const stages_1 = __webpack_require__(/*! ../stages */ "./src/typescript/stages.ts");
 const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
+const history_1 = __webpack_require__(/*! ../history */ "./src/typescript/history.ts");
 exports.empty_animation_state = {
     story_updates: stages_1.stages(),
     current_stage: undefined,
     lock_input: false
 };
-function new_animation_state(world) {
+function new_animation_state(world, previous_world) {
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
-    const story_updates = world.story_updates;
+    const index_threshold = previous_world ? previous_world.index : 0; //world.index - 1;
+    const new_frames = history_1.history_array(world).filter(w => w.index > index_threshold).reverse();
+    const story_updates = stages_1.make_consecutive(new_frames.map(w => w.story_updates));
     let stages = stages_1.stage_keys(story_updates);
     let current_stage = stages[0];
     return {
@@ -17550,6 +17553,10 @@ function advance_animation(state) {
     });
 }
 exports.advance_animation = advance_animation;
+function final_story(world) {
+    return text_1.apply_story_updates(world.story, world.story_updates);
+}
+exports.final_story = final_story;
 function set_history_view(root, story) {
     for (const [stage, frame] of stages_1.stage_entries(story)) {
         let prev_frame = root.querySelector(`[data-index="${stage}"]`);
@@ -17558,6 +17565,10 @@ function set_history_view(root, story) {
         }
         else {
             if (prev_frame !== frame) {
+                if (prev_frame.isEqualNode(frame)) {
+                    // Possible performance issue, but maybe not
+                    debugger;
+                }
                 prev_frame.replaceWith(frame);
             }
         }
@@ -17605,19 +17616,19 @@ async function start_animations(root_elt, story) {
     return text_1.remove_eph(root_elt);
 }
 exports.start_animations = start_animations;
-function compute_possible_labels(possible_world) {
-    // find all class differences between story and possible_story.
-    // add would-add/would-remove classes to story
+function compute_possible_labels(world, possible_world) {
+    const current_story = text_1.apply_story_updates(world.story, world.story_updates);
     // scan through the CSS changes for this frame, keeping only the last class for each index and selector.
-    const possible_updates = stages_1.stage_entries(possible_world.story_updates)
-        .flatMap(([s, updates]) => updates.filter(update => update.op.kind === 'CSS'));
+    const new_worlds = history_1.history_array(possible_world).filter(w => w.index > world.index).reverse();
+    const possible_updates = new_worlds.flatMap(pw => stages_1.stage_entries(pw.story_updates)
+        .flatMap(([s, updates]) => updates.filter(update => update.op.kind === 'CSS')));
     const final_story = text_1.apply_story_updates(possible_world.story, possible_world.story_updates);
     const would_updates = [];
     for (const update of possible_updates) {
         if (update.op.kind !== 'CSS') {
             continue;
         }
-        const frame_0 = possible_world.story.get(update.index);
+        const frame_0 = current_story.get(update.index);
         const frame_1 = final_story.get(update.index);
         if (frame_0 === undefined || frame_0 === frame_1) {
             continue;
@@ -17830,6 +17841,7 @@ exports.App = (state, old) => {
 Object.defineProperty(exports, "__esModule", { value: true });
 const framework_1 = __webpack_require__(/*! ../framework/framework */ "./src/typescript/UI/framework/framework.ts");
 const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/UI/prelude.ts");
+const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
 const animation_1 = __webpack_require__(/*! ../animation */ "./src/typescript/UI/animation.ts");
 const text_1 = __webpack_require__(/*! ../../text */ "./src/typescript/text.tsx");
 const update_1 = __webpack_require__(/*! ../../update */ "./src/typescript/update.ts");
@@ -17840,7 +17852,8 @@ exports.History = (props, old) => {
     let root;
     if (!old) {
         root = framework_1.createElement("div", { className: "history" });
-        animation_1.set_history_view(root, props.world.story);
+        const first_world = utils_1.array_last(history_1.history_array(props.world));
+        animation_1.set_history_view(root, first_world.story);
     }
     else {
         root = old.old_root;
@@ -17865,6 +17878,9 @@ exports.History = (props, old) => {
             elt.remove();
             w = w.previous;
         }
+        text_1.with_eph_effects(false, () => {
+            animation_1.set_history_view(root, animation_1.final_story(props.world));
+        });
     }
     // dim the most recent frame if undo is selected.
     if (props.world.index === old.old_props.world.index &&
@@ -17891,12 +17907,8 @@ exports.History = (props, old) => {
     }
     /*
         Todos
-            - Possible classes
-                update them when the possible world changes.
             - compound history
     */
-    // TODO - support u
-    // TODO - add or remove possible labels
     return root;
 };
 function show_possible_css(props) {
@@ -17906,7 +17918,7 @@ function possible_css_updates(props) {
     if (props.undo_selected || props.possible_world === null) {
         return [];
     }
-    return animation_1.compute_possible_labels(props.possible_world);
+    return animation_1.compute_possible_labels(props.world, props.possible_world);
 }
 //     let worlds: MaybeCompoundWorld<World>[] = group_compound_worlds(world); //history_array(world).reverse();
 //     let result = worlds.map((w, i) => {
@@ -18136,7 +18148,7 @@ exports.ParsedText = (props) => {
     }
     return framework_1.createElement("div", { className: "parsed-text" },
         framework_1.createElement(exports.Carat, null),
-        framework_1.createElement("div", { className: command_classes.join(' ') }, view.matches.map((elt, i) => (framework_1.createElement("div", { key: i.toString(), className: get_class_name(elt) },
+        framework_1.createElement("div", { className: command_classes.join(' ') }, view.matches.map((elt, i) => (framework_1.createElement("div", { className: get_class_name(elt) },
             framework_1.createElement("span", null, parsing.whitespace[i] + convert_token(elt.actual)))))));
 };
 
@@ -18220,7 +18232,7 @@ exports.Typeahead = ({ parsing, typeahead_index, undo_selected }, old) => {
         return framework_1.createElement("ul", { className: "typeahead" },
             grid(parsing).map((option, i) => framework_1.createElement("li", { onMouseOver: () => handleMouseOver(i), className: get_option_class(option, i, typeahead_index, undo_selected), onClick: () => handleClick(i) },
                 framework_1.createElement("span", null, '  '),
-                option.option.map((m, j) => framework_1.createElement("span", { key: j, className: get_option_token_class(m) }, m === null ?
+                option.option.map((m, j) => framework_1.createElement("span", { className: get_option_token_class(m) }, m === null ?
                     parsing.whitespace[j] + whitespace(convert_token(parsing.tokens[j])) :
                     (j >= parsing.whitespace.length || j !== 0 && parsing.whitespace[j] === '' ?
                         ' ' :
@@ -18344,42 +18356,49 @@ function child_declarator_for() {
 }
 exports.child_declarator_for = child_declarator_for;
 function make_ui(renderer, reducer) {
-    let old_state;
+    let old_state = undefined;
     let component;
+    let rendering = false;
     function initialize(initial_state) {
-        component = renderer(initial_state);
+        if (component !== undefined) {
+            throw new Error('multiple calls to initialize().');
+        }
         old_state = initial_state;
-        return component;
+        return render();
     }
-    let render_promise = null;
+    let render_task = null;
     const action_queue = [];
     const effect_queue = [];
     function dispatch(action) {
-        // if (old_state === undefined) {
-        //     throw new Error('dispatch function was called before initializer.');
-        // }
+        if (old_state === undefined) {
+            throw new Error('dispatch function was called before initializer.');
+        }
         action_queue.push(action);
-        if (render_promise === null) {
-            render_promise = Promise.resolve().then(render);
+        if (render_task === null) {
+            render_task = setTimeout(render);
         }
     }
     function effect(f) {
-        // if (old_state === undefined) {
-        //     throw new Error('effect function was called before initializer.');
-        // }
-        effect_queue.push(f);
-        if (render_promise === null) {
-            render_promise = Promise.resolve().then(render);
+        if (old_state === undefined) {
+            throw new Error('effect function was called before initializer.');
         }
+        if (!rendering) {
+            throw new Error('effect() was called outside of a render');
+        }
+        effect_queue.push(f);
     }
     function render() {
         if (old_state === undefined) {
             throw new Error('dispatch or effect function was called before initializer.');
         }
-        render_promise = null;
+        render_task = null;
         let new_state = old_state;
         while (action_queue.length > 0) {
             new_state = reducer(new_state, action_queue.shift());
+        }
+        rendering = true;
+        if (component === undefined) {
+            component = renderer(old_state);
         }
         if (new_state !== old_state) {
             component = update_component(renderer, new_state, {
@@ -18388,9 +18407,13 @@ function make_ui(renderer, reducer) {
             });
             old_state = new_state;
         }
-        while (effect_queue.length > 0) {
-            effect_queue.shift()();
-        }
+        rendering = false;
+        requestAnimationFrame(() => {
+            while (effect_queue.length > 0) {
+                effect_queue.shift()();
+            }
+        });
+        return component;
     }
     return {
         initialize,
@@ -18399,15 +18422,7 @@ function make_ui(renderer, reducer) {
     };
 }
 exports.make_ui = make_ui;
-// export declare namespace JSX {
-//     export type Element = _Element;
-//     export interface IntrinsicElements {
-//         [tag: string]: any
-//     }
-//     interface ElementChildrenAttribute {
-// 		children: any;
-// 	}
-// }
+// export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: any[]): JSX_.Element {
 function createElement(type, props, ...children) {
     const all_props = Object.assign({}, props, { children });
     let result;
@@ -18447,7 +18462,7 @@ function appendChildrenRecursively(node, children) {
         if (child instanceof Node) { // Is it an HTML or SVG element?
             node.appendChild(child);
         }
-        else if (Array.isArray(child)) { // example: <div>{items}</div>
+        else if (child instanceof Array) { // example: <div>{items}</div>
             appendChildrenRecursively(node, child);
         }
         else if (child === false) {
@@ -18599,143 +18614,1377 @@ exports.ui_resources = new static_resources_1.StaticMap([
 
 /***/ }),
 
-/***/ "./src/typescript/demo_worlds/bird_world.tsx":
-/*!***************************************************!*\
-  !*** ./src/typescript/demo_worlds/bird_world.tsx ***!
-  \***************************************************/
+/***/ "./src/typescript/demo_worlds/narrascope/memory.tsx":
+/*!**********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/memory.tsx ***!
+  \**********************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const framework_1 = __webpack_require__(/*! ../UI/framework/framework */ "./src/typescript/UI/framework/framework.ts");
-const text_tools_1 = __webpack_require__(/*! ../text_tools */ "./src/typescript/text_tools.ts");
-const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
-const world_1 = __webpack_require__(/*! ../world */ "./src/typescript/world.ts");
-const parser_1 = __webpack_require__(/*! ../parser */ "./src/typescript/parser.ts");
-const text_1 = __webpack_require__(/*! ../text */ "./src/typescript/text.tsx");
-let initial_world = Object.assign({}, world_1.get_initial_world(), { is_in_heaven: false });
-exports.bird_world_spec = () => world_1.make_world_spec({
-    initial_world,
-    handle_command,
-    post
-});
-function new_bird_world() {
-    return world_1.world_driver(exports.bird_world_spec());
+const framework_1 = __webpack_require__(/*! ../../UI/framework/framework */ "./src/typescript/UI/framework/framework.ts");
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const notes_1 = __webpack_require__(/*! ./notes */ "./src/typescript/demo_worlds/narrascope/notes.tsx");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const text_tools_1 = __webpack_require__(/*! ../../text_tools */ "./src/typescript/text_tools.ts");
+const text_1 = __webpack_require__(/*! ../../text */ "./src/typescript/text.tsx");
+const action_index = prelude_1.resource_registry.get('action_index', false);
+function memory_description(spec) {
+    const action = action_index.get(spec.action);
+    return framework_1.createElement("div", null,
+        framework_1.createElement("div", { class: "interp" }, spec.description()),
+        framework_1.createElement("br", null),
+        text_tools_1.capitalize(gist_1.render_gist_text(gist_1.gist(spec.action))),
+        " confers:",
+        framework_1.createElement("blockquote", null, action.description));
 }
-exports.new_bird_world = new_bird_world;
-let post = (new_world, old_world) => {
-    return utils_1.update(new_world, text_1.css_updater(w => {
-        if (w.is_in_heaven === new_world.is_in_heaven) {
-            return { happy: true };
+function make_memory(spec) {
+    return {
+        handle_command: (world, parser) => {
+            if (world.has_acquired.get(spec.action) || !spec.could_remember(world)) {
+                return parser.eliminate();
+            }
+            let result = parser.consume('remember_something', () => parser.submit());
+            if (parser.failure) {
+                return parser.failure;
+            }
+            let action = action_index.get(spec.action);
+            return utils_1.update(world, {
+                has_acquired: utils_1.map([spec.action, true]),
+                gist: () => gist_1.gist('memory', { action: gist_1.gist(action.name) })
+            }, w => notes_1.add_to_notes(w, spec.action), text_1.story_updater(framework_1.createElement("div", null,
+                "You close your eyes, and hear Katya's voice:",
+                memory_description(spec))));
+        },
+        post: (world2, world1) => {
+            // weird workaround for when you get locked out. seems to work *shrugs*
+            if (!spec.could_remember(world2)) {
+                return world2;
+            }
+            world1 = history_1.find_historical(world1, w => w.owner === null);
+            if (!spec.could_remember(world1)) {
+                return utils_1.update(world2, text_1.story_updater({
+                    prompt: framework_1.createElement("div", null,
+                        "You feel as though you might ",
+                        framework_1.createElement("strong", null, "remember something..."))
+                }));
+            }
+            return world2;
         }
-        else {
-            return { happy: false };
+    };
+}
+exports.make_memory = make_memory;
+gist_1.Gists({
+    tag: 'memory',
+    text: ({ action }) => `your memory of ${action}`,
+    command: ({ action }) => ['my_memory of', action]
+});
+const memory_index = prelude_1.resource_registry.initialize('memory_index', new static_resources_1.StaticIndex([
+    function add_memory_to_puffers(spec) {
+        prelude_1.Puffers(make_memory(spec));
+        notes_1.Notes({
+            note_id: spec.action,
+            description: () => memory_description(spec)
+        });
+        return spec;
+    }
+]));
+exports.Memories = utils_1.bound_method(memory_index, 'add');
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/metaphor.tsx":
+/*!************************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/metaphor.tsx ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const supervenience_1 = __webpack_require__(/*! ../../supervenience */ "./src/typescript/supervenience.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const supervenience_spec_1 = __webpack_require__(/*! ./supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
+const stages_1 = __webpack_require__(/*! ../../stages */ "./src/typescript/stages.ts");
+const text_1 = __webpack_require__(/*! ../../text */ "./src/typescript/text.tsx");
+const framework_1 = __webpack_require__(/*! ../../UI/framework/framework */ "./src/typescript/UI/framework/framework.ts");
+prelude_1.resource_registry.initialize('initial_world_metaphor', {
+    gist: null,
+    owner: null,
+    current_interpretation: null,
+    has_acquired: utils_1.map(),
+    has_tried: utils_1.map()
+});
+const global_lock = prelude_1.resource_registry.get('global_lock', false);
+let null_lock = global_lock(null);
+let metaphor_lock = global_lock('Metaphor');
+function make_action(spec) {
+    return {
+        css_rules: [
+            `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
+                animation-name: interpreting, would-cite !important;
+                animation-duration: 2s, 2s !important;
+                animation-iteration-count: infinite, infinite !important;
+            }`
+        ]
+    };
+}
+let action_index = prelude_1.resource_registry.initialize('action_index', new static_resources_1.StaticMap(prelude_1.StaticActionIDs, [
+    function add_action_to_puffers(action) {
+        prelude_1.Puffers(make_action(action));
+        gist_1.Gists({
+            tag: action.name,
+            text: () => action.noun,
+            command: () => action.noun_cmd
+        });
+        return action;
+    }
+]));
+exports.Actions = (spec) => action_index.initialize(spec.name, spec);
+function get_actions(world) {
+    let actions = [];
+    for (let [act_id, on] of world.has_acquired) {
+        if (on) {
+            actions.push(action_index.get(act_id));
         }
-    }));
-};
-let handle_command = (world, parser) => {
-    let cmds = [
-        go_cmd,
-        mispronounce_cmd,
-        be_cmd
-    ];
-    return parser.split(cmds.map(cmd => () => cmd(world, parser)));
-};
-let go_cmd = (world, parser) => {
-    parser.consume({ tokens: 'go', labels: { keyword: true } });
-    if (parser.failure) {
-        return parser.failure;
     }
-    let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
-    let dir = parser.split(['up', 'down'].map(dir => () => parser.consume({
-        tokens: `${dir}_stairs`,
-        locked: is_locked[dir],
-        labels: { option: true }
-    }, dir)));
-    if (parser_1.failed(dir)) {
-        return dir;
+    return actions;
+}
+function any_actions(world) {
+    return [...world.has_acquired].some(([act, on]) => on);
+}
+function apply_action(world, facet, action) {
+    if (world.current_interpretation === null) {
+        throw new Error(`Tried to apply an action without having a current interpretation.`);
     }
-    parser.submit();
-    if (parser.failure) {
-        return parser.failure;
+    let interpretted_world = history_1.find_index(world, world.current_interpretation);
+    if (!facet.can_recognize(world, interpretted_world)) {
+        throw new Error(`Tried to interact with facet ${facet.name} without being able to recognize it.`);
     }
-    return utils_1.update(world, text_1.story_updater({
-        consequence: framework_1.createElement("div", null,
-            "You are currently ",
-            dir,
-            ".")
-    }), { is_in_heaven: _ => !_ });
-};
-let mispronounce_cmd = (world, parser) => {
-    if (!world.is_in_heaven) {
+    if (!facet.can_apply(action)) {
+        throw new Error(`Tried to apply action ${action.name} to facet ${facet.name}, but it can't be applied.`);
+    }
+    let already_solved = facet.solved(world);
+    world = facet.handle_action(action, world);
+    world = utils_1.update(world, text_1.css_updater((w) => {
+        if (w.index > world.current_interpretation) {
+            return {
+                [`eph-descr-${action.slug}-blink`]: true,
+                [`eph-descr-${facet.slug}-blink`]: true
+            };
+        }
+        if (w.index === world.current_interpretation) {
+            return {
+                [`eph-interp-${facet.slug}-blink`]: true
+            };
+        }
+        return {};
+    }), {
+        story_updates: _ => stages_1.find_and_move_to_stage(_, u => u.index < world.index, () => -1),
+        has_tried: utils_1.map([action.name, utils_1.map([facet.name, true])])
+    });
+    let solved = facet.solved(world);
+    if (solved) {
+        if (!already_solved) {
+            return utils_1.update(world, {
+                story_updates: stages_1.stages([0, utils_1.append(text_1.frame_update({
+                        index: interpretted_world.index,
+                        op: text_1.css_op({ [`interp-${facet.slug}`]: true })
+                    }))])
+            });
+        }
+        else if (solved !== already_solved) { // The player picked the right answer again. blink it.
+            return utils_1.update(world, {
+                story_updates: stages_1.stages([0, utils_1.append(text_1.frame_update({
+                        index: interpretted_world.index,
+                        op: text_1.css_op({ [`eph-interp-${facet.slug}-solved-blink`]: true })
+                    }))])
+            });
+        }
+    }
+    return world;
+}
+;
+exports.make_action_applicator = (world, facet_id, action_id) => (parser) => {
+    if (!world.has_acquired.get(action_id)) {
         return parser.eliminate();
     }
-    parser.consume({ tokens: "mispronounce zarathustra's name", labels: { keyword: true } });
-    if (parser.failure) {
-        return parser.failure;
+    const facet = facet_index.get(facet_id);
+    if (facet === undefined) {
+        throw Error('Invalid facet name: ' + facet_id);
     }
-    parser.submit();
-    if (parser.failure) {
-        return parser.failure;
+    const action = action_index.get(action_id);
+    if (action === undefined) {
+        throw Error('Invalid action name: ' + action_id);
     }
-    let utterance_options = [
-        'Zammersretter',
-        'Hoosterzaro',
-        'Rooster Thooster',
-        'Thester Zar',
-        'Zerthes Threstine'
-    ];
-    let message = `"${text_tools_1.random_choice(utterance_options)}," you say.`;
-    return utils_1.update(world, text_1.story_updater({
-        action: framework_1.createElement("div", null, message)
-    }));
+    if (!facet.can_apply(action)) {
+        return parser.eliminate();
+    }
+    let already_solved = facet.solved(world);
+    return (parser.consume({
+        tokens: action.get_cmd(facet.noun_phrase_cmd),
+        used: !!already_solved || (world.has_tried.has(action.name) && world.has_tried.get(action.name)[facet.name]),
+        labels: { interp: true, filler: true }
+    }, () => parser.submit(() => {
+        return apply_action(world, facet, action);
+    })));
 };
-let be_cmd = (world, parser) => {
-    parser.consume({ tokens: 'be', labels: { keyword: true } });
-    if (parser.failure) {
-        return parser.failure;
+// Begin and end contemplations
+prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
+    pre: world => utils_1.update(world, { gist: null }),
+    handle_command: stages_1.stages([2, (world, parser) => {
+            if (!any_actions(world)) {
+                return parser.eliminate();
+            }
+            if (world.current_interpretation === null) {
+                if (world.previous === null) {
+                    return parser.eliminate();
+                }
+                let contemplatable_worlds = history_1.history_array(world).filter(w => w.gist !== null && w.gist.tag !== 'contemplation');
+                let gists = [];
+                for (let w of contemplatable_worlds) {
+                    if (gists.findIndex(g2 => gist_1.gists_equal(w.gist, g2)) === -1) {
+                        gists.push(w.gist);
+                    }
+                }
+                parser.label_context = { interp: true, filler: true };
+                const immediate_world = (world.previous.gist !== null && world.previous.gist.tag !== 'contemplation') ?
+                    world.previous :
+                    null;
+                const direct_thread = () => {
+                    if (immediate_world === null) {
+                        return parser.eliminate();
+                    }
+                    return parser.consume(['contemplate', gist_1.render_gist_command(immediate_world.gist)], () => parser.submit(() => {
+                        const index = immediate_world.index;
+                        let descriptions = [];
+                        for (let facet of Object.values(facet_index.all())) {
+                            if (!facet.can_recognize(world, immediate_world)) {
+                                continue;
+                            }
+                            descriptions.push(framework_1.createElement("blockquote", { class: `descr-${facet.slug}` }, facet.noun_phrase));
+                        }
+                        if (descriptions.length === 0) {
+                            descriptions.push(framework_1.createElement("div", null, "However, nothing about it seems particularly notable."));
+                        }
+                        else {
+                            descriptions.unshift(framework_1.createElement("div", null, "You notice the following aspects:"));
+                        }
+                        return utils_1.update(world, w => metaphor_lock.lock(w, index), {
+                            current_interpretation: index,
+                            story_updates: stages_1.stages([0, utils_1.append(text_1.frame_update({
+                                    index,
+                                    op: text_1.css_op({
+                                        'interpretation-block': true,
+                                        'interpretation-active': true
+                                    })
+                                }))]),
+                            gist: () => gist_1.gist('contemplation', { subject: immediate_world.gist })
+                        }, text_1.story_updater({
+                            action: framework_1.createElement("div", null,
+                                "You contemplate ",
+                                gist_1.render_gist_text(immediate_world.gist),
+                                ". A sense of focus begins to permeate your mind."),
+                            description: descriptions
+                        }));
+                    }));
+                };
+                const indirect_simulator = 'indirect_contemplation';
+                if (gists.length === 1 || supervenience_1.is_simulated(indirect_simulator, world)) {
+                    return direct_thread(parser);
+                }
+                const indirect_thread = (() => parser.consume({
+                    tokens: 'contemplate',
+                    labels: { interp: true, filler: true }
+                }, () => {
+                    const indirect_threads = gists.map(g => () => {
+                        const indirect_search_id = `contemplate-indirect-${world.index}-${gist_1.gist_to_string(g)}`;
+                        if (immediate_world !== null && gist_1.gists_equal(g, immediate_world.gist)) {
+                            return parser.eliminate();
+                        }
+                        const target_gist = gist_1.gist('contemplation', {
+                            subject: gist_1.has_tag(g, 'memory') ? gist_1.gist('notes about', { topic: g.children.action }) : g
+                        });
+                        const result = supervenience_1.search_future({
+                            thread_maker: supervenience_spec_1.get_thread_maker(),
+                            goals: [w => !!w.gist && gist_1.gists_equal(w.gist, target_gist)],
+                            max_steps: 2,
+                            space: [w => w.gist && gist_1.gist_to_string(w.gist)],
+                            search_id: indirect_search_id,
+                            simulator_id: indirect_simulator,
+                            command_filter: (w, cmd) => {
+                                let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
+                                if (w.gist && gist_1.gists_equal(w.gist, target_gist.children.subject)) {
+                                    return would_contemplate;
+                                }
+                                return !would_contemplate;
+                            }
+                        }, world.previous);
+                        if (result.result === null) {
+                            return parser.eliminate();
+                        }
+                        return parser.consume({
+                            tokens: gist_1.render_gist_command(g),
+                            labels: { interp: true, filler: true }
+                        }, () => parser.submit(() => utils_1.update(world, { child: () => result.result })));
+                    });
+                    return parser.split(indirect_threads);
+                }));
+                const result = parser.split([direct_thread, indirect_thread]);
+                return result;
+            }
+            else {
+                return parser.consume({
+                    tokens: 'end_contemplation',
+                    labels: { interp: true, filler: true }
+                }, () => parser.submit(() => utils_1.update(world, metaphor_lock.release, {
+                    current_interpretation: null,
+                    story_updates: stages_1.stages([0, utils_1.append(text_1.frame_update({
+                            index: world.current_interpretation,
+                            op: text_1.css_op({ 'interpretation-active': false })
+                        }))]),
+                    has_tried: () => new Map(),
+                }, text_1.story_updater({
+                    action: 'Your mind returns to a less focused state.'
+                }))));
+            }
+        }]),
+}));
+function RenderFacet(props) {
+    const f = facet_index.get(props.name);
+    if (f.content === undefined) {
+        throw new Error(`Tried to render facet ${props.name} with no content set.`);
     }
-    let roles = [
-        'the One Who Gazes Ahead',
-        'the One Who Gazes Back',
-        'the One Who Gazes Up',
-        'the One Who Gazes Down',
-        'the One Whose Palms Are Open',
-        'the One Whose Palms Are Closed',
-        'the One Who Is Strong',
-        'the One Who Is Weak',
-        'the One Who Seduces',
-        'the One Who Is Seduced'
-    ];
-    let qualities = [
-        'outwardly curious',
-        'introspective',
-        'transcendent',
-        'sorrowful',
-        'receptive',
-        'adversarial',
-        'confident',
-        'impressionable',
-        'predatory',
-        'vulnerable'
-    ];
-    let quality = parser.split(roles.map((r, i) => () => parser.consume({ tokens: `${r.replace(/ /g, '_')}`, labels: { option: true } }, qualities[i])));
-    if (parser_1.failed(quality)) {
-        return quality;
+    return f.content;
+}
+exports.RenderFacet = RenderFacet;
+const facet_index = prelude_1.resource_registry.initialize('facet_index', new static_resources_1.StaticMap(prelude_1.StaticFacetIDs, [
+    function add_facet_to_puffers(spec) {
+        prelude_1.Puffers(make_facet(spec));
+        return spec;
+    },
+]));
+const make_facet = (spec) => prelude_1.lock_and_brand('Metaphor', {
+    handle_command: (world, parser) => {
+        if (world.current_interpretation === null) {
+            return parser.eliminate();
+        }
+        let interpretted_world = history_1.find_index(world, world.current_interpretation);
+        if (!spec.can_recognize(world, interpretted_world)) {
+            return parser.eliminate();
+        }
+        let threads = [];
+        for (let action of Object.values(action_index.all())) {
+            threads.push(exports.make_action_applicator(world, spec.name, action.name));
+        }
+        return parser.split(threads);
+    },
+    post: (world2, world1) => {
+        let updates = [];
+        if (world2.current_interpretation !== null && world2.current_interpretation === world1.current_interpretation) {
+            let interpretted_world = history_1.find_historical(world2, w => w.index === world2.current_interpretation);
+            if (!spec.can_recognize(world1, interpretted_world) && spec.can_recognize(world2, interpretted_world)) {
+                updates.push(text_1.story_updater({
+                    prompt: framework_1.createElement("div", null,
+                        "You notice an aspect that you hadn't before:",
+                        framework_1.createElement("blockquote", { class: `descr-${spec.slug}` }, spec.noun_phrase))
+                }));
+            }
+        }
+        if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
+            updates.push({ story_updates: stages_1.stages([0, utils_1.append(text_1.frame_update({
+                        index: world2.index,
+                        op: text_1.css_op({ [`interp-${spec.slug}`]: true })
+                    }))]) });
+        }
+        return utils_1.update(world2, ...updates);
+    },
+    css_rules: [`
+        .history .would-add-interp-${spec.slug}-blink .${spec.slug} {
+            animation-name: interpreting, would-interpret !important;
+            animation-duration: 2s, 2s !important;
+            animation-iteration-count: infinite, infinite !important;
+        }`,
+        `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
+            animation-name: interpreting, would-cite !important;
+            animation-duration: 2s, 2s !important;
+            animation-iteration-count: infinite, infinite !important;
+        }`,
+        `.history .adding-interp-${spec.slug}.animation-start .${spec.slug} .interp-${spec.slug} {
+            opacity: 0.01;
+            max-height: 0px;
+        }`,
+        `.history .adding-interp-${spec.slug}.animation-start.animation-active .${spec.slug} .interp-${spec.slug} {
+            opacity: 1.0;
+            transition: max-height 400ms linear, opacity 300ms ease-in;
+            transition-delay: 0ms, 400ms;
+        }`,
+        `.history .interp-${spec.slug} .output-text .interp-${spec.slug} {
+            display: block;
+            color: gold;
+            opacity: 1;
+        }`,
+        `.history .output-text .interp-${spec.slug} {
+            display: none;
+        }`,
+        `.history .adding-interp-${spec.slug}-blink.animation-start .${spec.slug} .interp-${spec.slug} {
+            background-color: orange;
+        }`,
+        `.history .adding-interp-${spec.slug}-blink.animation-start.animation-active .${spec.slug} .interp-${spec.slug} {
+            background-color: inherit;
+            transition: background-color 700ms linear;
+        }`
+    ]
+});
+exports.Facets = (spec) => facet_index.initialize(spec.name, spec);
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/narrascope.tsx":
+/*!**************************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/narrascope.tsx ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const framework_1 = __webpack_require__(/*! ../../UI/framework/framework */ "./src/typescript/UI/framework/framework.ts");
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const puffer_1 = __webpack_require__(/*! ../../puffer */ "./src/typescript/puffer.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const world_1 = __webpack_require__(/*! ../../world */ "./src/typescript/world.ts");
+const metaphor_1 = __webpack_require__(/*! ./metaphor */ "./src/typescript/demo_worlds/narrascope/metaphor.tsx");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const topic_1 = __webpack_require__(/*! ./topic */ "./src/typescript/demo_worlds/narrascope/topic.ts");
+const memory_1 = __webpack_require__(/*! ./memory */ "./src/typescript/demo_worlds/narrascope/memory.tsx");
+const text_1 = __webpack_require__(/*! ../../text */ "./src/typescript/text.tsx");
+prelude_1.resource_registry.initialize('initial_world_narrascope', {
+    has_chill: false,
+    has_recognized_something_wrong: false,
+    is_curious_about_history: false,
+    has_admitted_negligence: false,
+    has_unpacked_culpability: false,
+    has_volunteered: false,
+    end: false,
+    has_scrutinized_memory: utils_1.map()
+});
+metaphor_1.Actions({
+    name: 'to attend',
+    noun: 'attention',
+    noun_cmd: 'attention',
+    description: "The ability to attend to particular facets of one's perception.",
+    slug: 'attend',
+    get_cmd: (facet) => ['attend_to', facet],
+    get_wrong_msg: (facet) => framework_1.createElement("div", null,
+        "Merely paying more attention to ",
+        facet,
+        " does not seem to be enough.")
+});
+memory_1.Memories({
+    action: 'to attend',
+    could_remember: world => !!world.has_considered.get('your notebook'),
+    description: () => framework_1.createElement(metaphor_1.RenderFacet, { name: "a memory 1" })
+});
+function about_attentive(w) {
+    return w.gist !== null && gist_1.includes_tag('to attend', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 1',
+    noun_phrase: "A memory.",
+    slug: 'memory-1',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_attentive(w1) && !!w2.has_acquired.get('to attend'),
+    can_apply: (action) => true /*action.name === 'to scrutinize'*/,
+    solved: w => w.has_scrutinized_memory.get(1) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([1, Symbol()]) });
+        }
+        return world;
+    },
+    content: framework_1.createElement("div", { class: "memory-1" },
+        "\"Wake up, my dear. Attend to the world around you.\"",
+        framework_1.createElement("blockquote", { class: "interp-memory-1" },
+            "Katya took you to the ",
+            framework_1.createElement("a", { target: "_blank", href: "https://en.wikipedia.org/wiki/Mauna_Kea_Observatories" }, "Mauna Kea Observatories"),
+            " in Hawaii once, to study the astronomers at work.",
+            framework_1.createElement("br", null),
+            "There was to be little time to relax or sleep in; astronomers are busy folk."))
+});
+function about_scrutinizing(w) {
+    return w.gist !== null && gist_1.includes_tag('to scrutinize', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 2',
+    noun_phrase: "A memory.",
+    slug: 'memory-2',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_scrutinizing(w1) && !!w2.has_acquired.get('to scrutinize'),
+    can_apply: (action) => action.name === 'to scrutinize',
+    solved: w => w.has_scrutinized_memory.get(2) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([2, Symbol()]) });
+        }
+        return world;
     }
-    parser.submit();
-    if (parser.failure) {
-        return parser.failure;
+});
+function about_hammer(w) {
+    return w.gist !== null && gist_1.includes_tag('to hammer', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 3',
+    noun_phrase: "A memory.",
+    slug: 'memory-3',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_hammer(w1) && !!w2.has_acquired.get('to hammer'),
+    can_apply: (action) => action.name === 'to scrutinize',
+    solved: w => w.has_scrutinized_memory.get(3) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([3, Symbol()]) });
+        }
+        return world;
     }
-    return utils_1.update(world, text_1.story_updater({
-        consequence: framework_1.createElement("div", null,
-            "You feel ",
-            quality,
+});
+function about_volunteer(w) {
+    return w.gist !== null && gist_1.includes_tag('to volunteer', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 4',
+    noun_phrase: "A memory.",
+    slug: 'memory-4',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_volunteer(w1) && !!w2.has_acquired.get('to volunteer'),
+    can_apply: (action) => action.name === 'to scrutinize',
+    solved: w => w.has_scrutinized_memory.get(4) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([4, Symbol()]) });
+        }
+        return world;
+    }
+});
+topic_1.Topics({
+    name: 'Sam',
+    cmd: 'sam',
+    can_consider: () => true,
+    message: () => framework_1.createElement("div", { class: "sam" },
+        framework_1.createElement("div", { class: "friendship-sam" },
+            "An old friend on his way to work.",
+            framework_1.createElement("blockquote", { class: "interp-friendship-sam" }, "You realize how long it's been since you've seen him anywhere other than the bus.")),
+        framework_1.createElement("div", { class: "sam-demeanor" },
+            "He glances at you, smiling vaguely.",
+            framework_1.createElement("blockquote", { class: "interp-sam-demeanor" },
+                "Something about his smile feels... false. A lie.",
+                framework_1.createElement("br", null),
+                "And his eyes. Flicking here and there. Noncommital. Nervous.")),
+        framework_1.createElement("div", { class: "interp-sam affinity" },
+            "...Something is wrong.",
+            framework_1.createElement("blockquote", { class: "interp-affinity" }, "Indeed. It's time to try to do something about it."))),
+    reconsider: (w2, w1) => {
+        if (w2.has_acquired.get('to attend') && !w2.has_chill) {
+            return true;
+        }
+        if (w2.has_acquired.get('to scrutinize') && !w2.has_recognized_something_wrong) {
+            return true;
+        }
+        if (w2.has_acquired.get('to hammer') && !w2.is_curious_about_history) {
+            return true;
+        }
+        if (w2.has_acquired.get('to volunteer') && !w2.has_volunteered) {
+            return true;
+        }
+        return false;
+    }
+});
+function has_considered_notebook(world) {
+    return world.has_considered.get('your notebook');
+}
+;
+topic_1.Topics({
+    name: 'yourself',
+    cmd: 'myself',
+    can_consider: () => true,
+    message: (world) => framework_1.createElement("div", null,
+        "You haven't entirely woken up.",
+        framework_1.createElement("br", null),
+        has_considered_notebook(world)
+            ? framework_1.createElement("div", null, "Your notebook sits in your lap.")
+            : framework_1.createElement("div", null,
+                "A ",
+                framework_1.createElement("strong", null, "thick notebook"),
+                " sits in your lap.")),
+});
+topic_1.Topics({
+    name: 'your notebook',
+    cmd: 'my_notebook',
+    can_consider: (world) => !!world.has_considered.get('yourself'),
+    message: () => ({
+        description: framework_1.createElement("div", null,
+            "You keep it with you at all times.",
+            framework_1.createElement("br", null),
+            "It is filled with the words of someone very wise, who you once knew."),
+        prompt: framework_1.createElement("div", null,
+            "Each day you try to ",
+            framework_1.createElement("strong", null, "remember something"),
+            " that she told you, and write it down.")
+    })
+});
+const abtsm = gist_1.gist('impression', { subject: gist_1.gist('Sam') });
+// Big old hack but it'll do for now
+function about_sam(world) {
+    return world.gist !== null && gist_1.gists_equal(world.gist, abtsm);
+}
+metaphor_1.Facets({
+    name: 'Sam',
+    noun_phrase: "Sam's presence by your side.",
+    slug: 'sam',
+    noun_phrase_cmd: 'sam',
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to attend'),
+    can_apply: (action) => true /*action.name === 'to attend'*/,
+    solved: w => w.has_chill,
+    handle_action: (action, world) => {
+        if (action.name === 'to attend') {
+            return utils_1.update(world, { has_chill: Symbol() }, text_1.story_updater({
+                consequence: utils_1.cond(!world.has_chill, () => framework_1.createElement("div", null, "A chill comes over you.")),
+                description: framework_1.createElement("div", null,
+                    "Something about Sam is ",
+                    framework_1.createElement("i", null, "incorrect"),
+                    ".",
+                    framework_1.createElement("br", null),
+                    "You can feel the discordance in your bones. It scares you.")
+            }));
+        }
+        else {
+            // TODO: replace generic wrong msg with hint asking for more specifity
+            if (action.name === 'to scrutinize') {
+                return utils_1.update(world, text_1.story_updater(framework_1.createElement("div", null, "You'll need to be more specific about what to scrutinize.")));
+            }
+            return utils_1.update(world, text_1.story_updater(action.get_wrong_msg('sam')));
+        }
+    }
+});
+metaphor_1.Actions({
+    name: 'to scrutinize',
+    noun: 'scrunity',
+    noun_cmd: 'scrutiny',
+    description: "The ability to unpack details and look beyond your initial assumptions.",
+    slug: 'scrutiny',
+    get_cmd: (facet) => ['scrutinize', facet],
+    get_wrong_msg: (facet) => framework_1.createElement("div", null,
+        "`Despite your thorough scrutiny, $",
+        facet,
+        " remains unresolved.`")
+});
+memory_1.Memories({
+    action: 'to scrutinize',
+    could_remember: world => !!world.has_chill,
+    description: () => framework_1.createElement("div", { class: "memory-2" },
+        "\"Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance.\"",
+        framework_1.createElement("blockquote", { class: "interp-memory-2" },
+            "She mentioned this while making a point about the intricacies of the ",
+            framework_1.createElement("a", { target: "_blank", href: "https://en.wikipedia.org/wiki/Observer_effect_(physics)" }, "Observer Effect"),
+            "."))
+});
+metaphor_1.Facets({
+    name: "Sam's demeanor",
+    noun_phrase: "Sam's demeanor",
+    slug: 'sam-demeanor',
+    noun_phrase_cmd: "sam's_demeanor",
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to scrutinize'),
+    can_apply: (action) => true /*action.name === 'to scrutinize'*/,
+    solved: w => w.has_recognized_something_wrong,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_recognized_something_wrong: Symbol() }, text_1.story_updater(framework_1.createElement("div", null,
+                "You are struck by the alarming incongruence of his demeanor.",
+                framework_1.createElement("br", null),
+                "The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.")));
+        }
+        else if (action.name === 'to attend') {
+            return utils_1.update(world, text_1.story_updater(`You notice nothing new about his demeanor.`));
+        }
+        else {
+            return utils_1.update(world, text_1.story_updater(action.get_wrong_msg("sam's demeanor")));
+        }
+    }
+});
+metaphor_1.Actions({
+    name: 'to hammer',
+    noun: 'the hammer',
+    noun_cmd: 'the_hammer',
+    description: "The act of dismantling one's own previously-held beliefs.",
+    slug: 'to-hammer',
+    get_cmd: (facet) => ['hammer_against the_foundations_of', facet],
+    get_wrong_msg: (facet) => `You find yourself unable to shake ${facet}, despite your efforts.`
+});
+memory_1.Memories({
+    action: 'to hammer',
+    could_remember: world => !!world.has_recognized_something_wrong,
+    description: () => framework_1.createElement("div", { class: "memory-3" },
+        "\"Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble.\"",
+        framework_1.createElement("blockquote", { class: "interp-memory-3" },
+            "She always pushed you.",
+            framework_1.createElement("br", null),
+            "Katya was always one to revel in the overturning of wrong ideas."))
+});
+metaphor_1.Facets({
+    name: 'your friendship with Sam',
+    slug: 'friendship-sam',
+    noun_phrase_cmd: 'my_friendship_with_sam',
+    noun_phrase: 'Your friendship with Sam.',
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to hammer'),
+    can_apply: (action) => true /*included(action.name, ['to hammer'])*/,
+    solved: w => w.is_curious_about_history,
+    handle_action: (action, world) => {
+        if (action.name === 'to hammer') {
+            return utils_1.update(world, text_1.story_updater({
+                action: [`You ask yourself a hard question: <i>Is Sam really your friend?</i>`],
+                consequence: ["You realize you don't know anymore."],
+                prompt: ["You'll have to <strong>consider your history</strong>."]
+            }), { is_curious_about_history: Symbol() });
+        }
+        return world;
+    }
+});
+topic_1.Topics({
+    name: 'your history with Sam',
+    cmd: 'my_history_with_Sam',
+    can_consider: (w) => !!w.is_curious_about_history,
+    message: () => ({ description: [
+            `You've known Sam since you both arrived in Boston about 10 years ago.
+        <br/>
+        You were studying under Katya, and he was doing agricultural engineering a few buildings over.
+        <div class="falling-out">
+            At some point along the way, you drifted apart.
+            <blockquote class="interp-falling-out culpability">
+                It wasn't mutual. It was <i>you</i>.
+                <blockquote class="interp-culpability">
+                    After Katya left, you turned inward. Closed off.
+                    <br/>
+                    You stopped being curious about people like Sam.
+                </blockquote>
+            </blockquote>
+        </div>`
+        ]
+    }),
+    reconsider: (w2, w1) => {
+        if (!w2.has_unpacked_culpability) {
+            return true;
+        }
+        return false;
+    }
+});
+gist_1.Gists({
+    tag: 'your history with Sam',
+    text: () => 'your history with Sam',
+    command: () => 'my_history_with_sam'
+});
+function is_about_history(w) {
+    return w.gist !== null && gist_1.gists_equal(w.gist, gist_1.gist('impression', { subject: gist_1.gist('your history with Sam') }));
+}
+metaphor_1.Facets({
+    name: 'your drifting apart',
+    slug: 'falling-out',
+    noun_phrase_cmd: 'our_drifting_apart',
+    noun_phrase: 'Your drifting apart.',
+    can_recognize: (w2, w1) => is_about_history(w1),
+    can_apply: (action) => true /*included(action.name, ['to hammer'])*/,
+    solved: w => w.has_admitted_negligence,
+    handle_action: (action, world) => {
+        if (action.name === 'to hammer') {
+            return utils_1.update(world, { has_admitted_negligence: Symbol() }, text_1.story_updater(`
+                    You force yourself to look the truth in the eye: <i>You</i> bowed out of the friendship.
+                    <br/>
+                    There was nothing mutual about it. You sidelined him without explanation.`));
+        }
+        return world;
+    }
+});
+metaphor_1.Facets({
+    name: 'your culpability',
+    slug: 'culpability',
+    noun_phrase_cmd: 'my_culpability',
+    noun_phrase: 'Your culpability.',
+    can_recognize: (w2, w1) => is_about_history(w1) && !!w2.has_admitted_negligence,
+    can_apply: (action) => true /*included(action.name, ['to scrutinize'])*/,
+    solved: w => w.has_unpacked_culpability,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_unpacked_culpability: Symbol() }, text_1.story_updater(`
+                    There's no doubt you did it out of self-preservation.
+                    <br/>
+                    There's also no doubt he deserved better.
+                    <br/>
+                    You wince at the guilt.`));
+        }
+        return world;
+    }
+});
+metaphor_1.Actions({
+    name: 'to volunteer',
+    noun: 'the volunteer',
+    noun_cmd: 'the_volunteer',
+    description: "The offering of an active intervention in the world, to change it for the better.",
+    slug: 'volunteer',
+    get_cmd: (facet) => ['volunteer to_foster', facet],
+    get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains concerning.`
+});
+memory_1.Memories({
+    action: 'to volunteer',
+    could_remember: world => !!world.has_unpacked_culpability,
+    description: () => framework_1.createElement("div", { class: "memory-4" },
+        "\"Do more than merely receive and respond, my dear. We must participate, as best as we can. We must volunteer ourselves to the world.\"",
+        framework_1.createElement("blockquote", { class: "interp-memory-4" }, "This is one of the last things she said to you, before she left."))
+});
+metaphor_1.Facets({
+    name: 'the old affinity',
+    slug: 'affinity',
+    noun_phrase_cmd: 'the_old_affinity',
+    noun_phrase: 'The old affinity you once had for each other.',
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to volunteer'),
+    can_apply: (action) => true /*included(action.name, ['to volunteer'])*/,
+    solved: w => w.has_volunteered,
+    handle_action: (action, world) => {
+        if (action.name === 'to volunteer') {
+            return utils_1.update(world, { has_volunteered: Symbol(), }, text_1.story_updater(`
+                    You turn in your seat, and look him in the eyes, and say,`));
+        }
+        return world;
+    }
+});
+let global_lock = prelude_1.resource_registry.get('global_lock', false);
+let outro_lock = global_lock('Outro');
+prelude_1.Puffers({
+    role_brand: true,
+    pre: world => {
+        if (world.has_volunteered) {
+            return utils_1.update(world, w => outro_lock.lock(w));
+        }
+        return world;
+    },
+    handle_command: (world, parser) => {
+        if (!world.has_volunteered || world.end) {
+            return parser.eliminate();
+        }
+        return parser.consume('How are you, Sam?', () => parser.submit(() => utils_1.update(world, { end: true }, text_1.story_updater(framework_1.createElement("div", null,
+            framework_1.createElement("div", { class: "interp" }, "VENIENCE WORLD"),
+            "A work of ",
+            framework_1.createElement("span", { class: "blue" }, "interactive fiction"),
+            framework_1.createElement("br", null),
+            "by ",
+            framework_1.createElement("div", { class: "interp-inline" }, "Daniel Spitz"),
+            framework_1.createElement("br", null),
+            framework_1.createElement("br", null),
+            "Thank you for playing the demo!")))));
+    }
+});
+// Test command to beat the whole demo
+// Puffers({
+//     handle_command: { kind: 'Stages',
+//         4: ((world, parser) => {
+//             if (is_simulated('playtester', world)) {
+//                 return parser.eliminate();
+//             }
+//             if (world.end) {
+//                 return parser.eliminate();
+//             }
+//             return parser.consume('beat_the_game', () =>
+//                 parser.submit(() => {
+//                 return find_world_at(world.previous!, 7).result!;
+//         }))})
+//     }
+// });
+var prelude_2 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+exports.Venience = prelude_2.Venience;
+let initial_venience_world = Object.assign({}, world_1.get_initial_world(), prelude_1.resource_registry.get('initial_world_prelude', false), prelude_1.resource_registry.get('initial_world_metaphor', false), prelude_1.resource_registry.get('initial_world_topic', false), prelude_1.resource_registry.get('initial_world_narrascope', false), prelude_1.resource_registry.get('initial_world_notes', false));
+initial_venience_world = utils_1.update(initial_venience_world, text_1.story_updater('You and Sam are sitting together on the bus.'));
+const puffer_index = prelude_1.resource_registry.get('puffer_index', false);
+exports.venience_world_spec = puffer_1.make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
+function new_venience_world() {
+    return world_1.world_driver(exports.venience_world_spec);
+}
+exports.new_venience_world = new_venience_world;
+prelude_1.resource_registry.initialize('venience_world_spec', exports.venience_world_spec);
+prelude_1.resource_registry.seal();
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/notes.tsx":
+/*!*********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/notes.tsx ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const framework_1 = __webpack_require__(/*! ../../UI/framework/framework */ "./src/typescript/UI/framework/framework.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const text_tools_1 = __webpack_require__(/*! ../../text_tools */ "./src/typescript/text_tools.ts");
+const update_1 = __webpack_require__(/*! ../../update */ "./src/typescript/update.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const stages_1 = __webpack_require__(/*! ../../stages */ "./src/typescript/stages.ts");
+const text_1 = __webpack_require__(/*! ../../text */ "./src/typescript/text.tsx");
+gist_1.Gists({
+    tag: 'notes',
+    text: () => 'your notes',
+    command: () => 'my_notes'
+});
+gist_1.Gists({
+    tag: 'notes about',
+    text: ({ topic }) => `your notes about ${topic}`,
+    command: ({ topic }) => ['my_notes about', topic]
+});
+prelude_1.resource_registry.initialize('initial_world_notes', {
+    has_written_down: utils_1.map(),
+    has_read: utils_1.map()
+});
+const note_index = prelude_1.resource_registry.initialize('note_index', new static_resources_1.StaticMap(prelude_1.StaticNoteIDs));
+function add_to_notes(world, note_id) {
+    const entry = note_index.get(note_id);
+    return update_1.update(world, { has_written_down: utils_1.map([note_id, true]) }, text_1.story_updater({
+        prompt: framework_1.createElement("div", null,
+            "You write about ",
+            text_tools_1.capitalize(gist_1.render_gist_text(gist_1.gist(note_id))),
+            " in your ",
+            framework_1.createElement("strong", null, "notes"),
             ".")
     }));
+}
+exports.add_to_notes = add_to_notes;
+prelude_1.Puffers({
+    handle_command: stages_1.stages([3, (world, parser) => {
+            if (Object.values(note_index.all()).every(n => !world.has_written_down.get(n.note_id))) {
+                return parser.eliminate();
+            }
+            const list_thread = (() => parser.consume({
+                tokens: 'notes',
+                used: Object.values(note_index.all()).every(n => !world.has_written_down.get(n.note_id) || world.has_read.get(n.note_id))
+            }, () => parser.submit(() => update_1.update(world, { gist: gist_1.gist('notes') }, text_1.story_updater({ description: framework_1.createElement("div", null,
+                    "You have written down notes about the following:",
+                    Object.values(note_index.all())
+                        .filter(n => world.has_written_down.get(n.note_id))
+                        .map(n => framework_1.createElement("blockquote", null, text_tools_1.capitalize(gist_1.render_gist_text(gist_1.gist(n.note_id)))))
+                        .join(''))
+            })))));
+            let specific_threads = [];
+            for (const entry of Object.values(note_index.all())) {
+                if (!world.has_written_down.get(entry.note_id)) {
+                    continue;
+                }
+                specific_threads.push(() => parser.consume({
+                    tokens: ['notes about', gist_1.render_gist_command(gist_1.gist(entry.note_id))],
+                    used: world.has_read.get(entry.note_id)
+                }, () => parser.submit(() => {
+                    const g = gist_1.gist(entry.note_id);
+                    return update_1.update(world, {
+                        has_read: utils_1.map([entry.note_id, true]),
+                        gist: () => gist_1.gist('notes about', { topic: g })
+                    }, text_1.story_updater({ description: framework_1.createElement("div", null,
+                            framework_1.createElement("strong", null,
+                                "$",
+                                text_tools_1.capitalize(gist_1.render_gist_text(g))),
+                            entry.description()) }));
+                })));
+            }
+            return parser.split([list_thread, ...specific_threads]);
+        }])
+});
+exports.Notes = (spec) => note_index.initialize(spec.note_id, spec);
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/prelude.ts":
+/*!**********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/prelude.ts ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const lock_1 = __webpack_require__(/*! ../../lock */ "./src/typescript/lock.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+exports.StaticTopicIDs = [
+    'Sam',
+    'yourself',
+    'your notebook',
+    'your history with Sam'
+];
+exports.StaticActionIDs = [
+    'to attend',
+    'to scrutinize',
+    'to hammer',
+    'to volunteer'
+];
+exports.StaticNoteIDs = exports.StaticActionIDs;
+exports.StaticFacetIDs = [
+    "Sam",
+    "Sam's demeanor",
+    "your friendship with Sam",
+    "your drifting apart",
+    "your culpability",
+    "the old affinity",
+    'a memory 1',
+    'a memory 2',
+    'a memory 3',
+    'a memory 4'
+];
+;
+const static_resource_names = [
+    'initial_world_prelude',
+    'puffer_index',
+    'global_lock',
+    'gist_renderer_index',
+    'initial_world_metaphor',
+    'action_index',
+    'facet_index',
+    'initial_world_topic',
+    'topic_index',
+    'initial_world_notes',
+    'note_index',
+    'memory_index',
+    'initial_world_narrascope',
+    'venience_world_spec'
+];
+exports.resource_registry = new static_resources_1.StaticMap(static_resource_names);
+;
+exports.resource_registry.initialize('initial_world_prelude', { owner: null });
+const global_lock = exports.resource_registry.initialize('global_lock', lock_1.lock_builder({
+    owner: (w) => w.owner,
+    set_owner: (w, owner) => utils_1.update(w, { owner })
+}));
+const puffer_index = exports.resource_registry.initialize('puffer_index', new static_resources_1.StaticIndex([
+    function ensure_lock(puffer) {
+        if (puffer.role_brand === undefined) {
+            return lock_and_brand(null, puffer);
+        }
+        return puffer;
+    }
+]));
+exports.resource_registry.initialize('gist_renderer_index', gist_1.gist_renderer_index);
+exports.Puffers = utils_1.bound_method(puffer_index, 'add');
+function lock_and_brand(owner, puffer) {
+    return utils_1.update(puffer, global_lock(owner).lock_puffer, { role_brand: true });
+}
+exports.lock_and_brand = lock_and_brand;
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts":
+/*!*********************************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/supervenience_spec.ts ***!
+  \*********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const interpretation_1 = __webpack_require__(/*! ../../interpretation */ "./src/typescript/interpretation.ts");
+const supervenience_1 = __webpack_require__(/*! ../../supervenience */ "./src/typescript/supervenience.ts");
+const world_1 = __webpack_require__(/*! ../../world */ "./src/typescript/world.ts");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+exports.goals = [
+    w => !!w.has_chill,
+    w => !!w.has_recognized_something_wrong,
+    w => !!w.is_curious_about_history,
+    w => !!w.has_admitted_negligence,
+    w => !!w.has_unpacked_culpability,
+    w => !!w.has_volunteered,
+    w => w.end
+];
+const gist_pat = {
+    tag: 'impression',
+    children: {
+        subject: [
+            { tag: 'Sam' },
+            { tag: 'your history with Sam' }
+        ]
+    }
 };
+exports.space = [
+    w => {
+        if (w.owner !== 'Metaphor') {
+            return false;
+        }
+        let g = interpretation_1.find_index(w, w.current_interpretation).gist;
+        if (g === null) {
+            return null;
+        }
+        if (gist_1.gist_matches(g, gist_pat)) {
+            return g;
+        }
+        return null;
+    },
+    w => w.has_considered,
+    w => w.has_acquired,
+    w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
+];
+exports.command_filter = (w, cmd) => {
+    if (cmd[0] && cmd[0].token === 'notes') {
+        return false;
+    }
+    return true;
+};
+function get_thread_maker() {
+    const venience_world_spec = prelude_1.resource_registry.get('venience_world_spec');
+    return world_1.update_thread_maker(venience_world_spec);
+}
+exports.get_thread_maker = get_thread_maker;
+function find_world_at(world, goals_met) {
+    const thread_maker = get_thread_maker();
+    let spec = {
+        thread_maker,
+        goals: exports.goals,
+        space: exports.space,
+        command_filter: exports.command_filter,
+        simulator_id: 'playtester',
+        search_id: 'reach-subgoal-' + goals_met
+    };
+    spec.goals = spec.goals.slice(0, goals_met);
+    return supervenience_1.search_future(spec, world);
+}
+exports.find_world_at = find_world_at;
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/topic.ts":
+/*!********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/topic.ts ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const text_1 = __webpack_require__(/*! ../../text */ "./src/typescript/text.tsx");
+prelude_1.resource_registry.initialize('initial_world_topic', {
+    has_considered: utils_1.map()
+});
+gist_1.Gists({
+    tag: 'impression',
+    text: ({ subject }) => `your impression of ${subject}`,
+    command: ({ subject }) => ['my_impression of', subject]
+});
+function make_topic(spec) {
+    return {
+        handle_command: (world, parser) => {
+            if (!spec.can_consider(world)) {
+                return parser.eliminate();
+            }
+            return parser.consume({
+                tokens: ['consider', spec.cmd],
+                used: world.has_considered.get(spec.name)
+            }, () => parser.submit(() => utils_1.update(world, text_1.story_updater(spec.message(world)), {
+                gist: () => gist_1.gist('impression', { subject: gist_1.gist(spec.name) }),
+                has_considered: utils_1.map([spec.name, true])
+            }, ...utils_1.cond(!!spec.consider, () => spec.consider))));
+        },
+        post: (world2, world1) => {
+            if (spec.reconsider === undefined ||
+                world2.gist && gist_1.gists_equal(world2.gist, gist_1.gist('impression', { subject: gist_1.gist(spec.name) })) ||
+                !spec.reconsider(world2, world1)) {
+                return world2;
+            }
+            return utils_1.update(world2, {
+                has_considered: utils_1.map([spec.name, false])
+            });
+        }
+    };
+}
+exports.make_topic = make_topic;
+const topic_index = prelude_1.resource_registry.initialize('topic_index', new static_resources_1.StaticMap(prelude_1.StaticTopicIDs, [
+    function add_topic_to_puffers(spec) {
+        prelude_1.Puffers(make_topic(spec));
+        return spec;
+    },
+    function add_topic_to_gists(spec) {
+        gist_1.Gists({
+            tag: spec.name,
+            text: () => spec.name,
+            command: () => spec.cmd
+        });
+        return spec;
+    }
+]));
+exports.Topics = (spec) => topic_index.initialize(spec.name, spec);
+
+
+/***/ }),
+
+/***/ "./src/typescript/gist.ts":
+/*!********************************!*\
+  !*** ./src/typescript/gist.ts ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const static_resources_1 = __webpack_require__(/*! ./static_resources */ "./src/typescript/static_resources.ts");
+/* This will produce an error only if GistSpecs is invalid. */ const InvalidSpecs = null;
+exports.gist_renderer_index = new static_resources_1.StaticIndex();
+function render_gist_text(gist) {
+    let spec = exports.gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag;
+    });
+    if (spec === undefined) {
+        return gist.tag;
+    }
+    if (gist.children === undefined) {
+        return spec.text({});
+    }
+    else {
+        let sub_text = {};
+        for (const k in gist.children) {
+            sub_text[k] = render_gist_text(gist.children[k]);
+        }
+        return spec.text(sub_text);
+    }
+}
+exports.render_gist_text = render_gist_text;
+function render_gist_command(gist) {
+    let spec = exports.gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag;
+    });
+    if (spec === undefined) {
+        return gist.tag.replace(' ', '_');
+    }
+    let sub_commands = {};
+    if (gist.children === undefined) {
+        return spec.command({});
+    }
+    for (const k in gist.children) {
+        sub_commands[k] = render_gist_command(gist.children[k]);
+    }
+    return spec.command(sub_commands);
+}
+exports.render_gist_command = render_gist_command;
+function Gists(renderer) {
+    exports.gist_renderer_index.add(renderer);
+}
+exports.Gists = Gists;
+function gist(tag, children) {
+    return {
+        tag,
+        children
+    };
+}
+exports.gist = gist;
+function has_tag(gist, tag) {
+    return gist.tag === tag;
+}
+exports.has_tag = has_tag;
+function gist_to_string(gist) {
+    let result = gist.tag;
+    if (gist.children === undefined) {
+        return result;
+    }
+    result += ';';
+    for (let [k, v] of Object.entries(gist.children)) {
+        result += k + '|' + gist_to_string(v);
+    }
+    result += ';';
+    return result;
+}
+exports.gist_to_string = gist_to_string;
+function gists_equal(gist1, gist2) {
+    if (gist1.tag !== gist2.tag) {
+        return false;
+    }
+    if (typeof gist1.children !== typeof gist2.children) {
+        return false;
+    }
+    if (gist1.children === undefined) {
+        return true;
+    }
+    for (const k in gist1.children) {
+        if (!(k in gist2.children)) {
+            debugger;
+            return false;
+        }
+        if (!gists_equal(gist1.children[k], gist2.children[k])) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.gists_equal = gists_equal;
+function includes_tag(tag, gist) {
+    if (gist.tag === tag) {
+        return true;
+    }
+    if (gist.children === undefined) {
+        return false;
+    }
+    for (const k in gist.children) {
+        const g = gist.children[k];
+        if (includes_tag(tag, g)) {
+            return true;
+        }
+    }
+    return false;
+}
+exports.includes_tag = includes_tag;
+function gist_matches(gist, pattern) {
+    if (pattern === undefined) {
+        return true;
+    }
+    if (pattern instanceof Array) {
+        return pattern.some(pat => gist_matches(gist, pat));
+    }
+    if (gist.tag !== pattern.tag) {
+        return false;
+    }
+    if (pattern.children === undefined) {
+        return true;
+    }
+    if (gist.children === undefined) {
+        return false;
+    }
+    for (const k in pattern.children) {
+        if (!gist_matches(gist.children[k], pattern.children[k])) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.gist_matches = gist_matches;
+// TODO: includes subpattern
 
 
 /***/ }),
@@ -18750,6 +19999,183 @@ let be_cmd = (world, parser) => {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+function find_historical(world, f) {
+    let w = world;
+    while (w != null) {
+        if (f(w)) {
+            return w;
+        }
+        w = w.previous;
+    }
+    return null;
+}
+exports.find_historical = find_historical;
+function find_index(world, index) {
+    return find_historical(world, w => w.index === index);
+}
+exports.find_index = find_index;
+// When mapping or filtering history, simply converting to an array is easier than
+// reimplementing all the various traversal methods on the linked list
+function history_array(world) {
+    let w = world;
+    let result = [];
+    while (w != null) {
+        result.push(w);
+        w = w.previous;
+    }
+    return result;
+}
+exports.history_array = history_array;
+function is_compound_world(x) {
+    return x.kind === 'CompoundWorld';
+}
+exports.is_compound_world = is_compound_world;
+function group_compound_worlds(world) {
+    let result = history_array(world).reverse();
+    let another_pass;
+    do {
+        another_pass = false;
+        const next_result = [];
+        let run_info = null;
+        function push_run(r_info, end) {
+            const run = result.slice(r_info.start, end);
+            next_result.push({
+                kind: 'CompoundWorld',
+                root: r_info.parent,
+                children: run
+            });
+            run_info = null;
+            another_pass = true;
+        }
+        for (let i = 0; i < result.length; i++) {
+            const w = result[i];
+            const parent = (is_compound_world(w) ? w.root : w).parent;
+            if (run_info !== null) {
+                if (parent !== run_info.parent) {
+                    // this is the end of a run
+                    push_run(run_info, i);
+                }
+                else {
+                    continue;
+                }
+            }
+            if (parent !== null) {
+                run_info = {
+                    start: i,
+                    parent: parent
+                };
+            }
+            else {
+                next_result.push(w);
+            }
+        }
+        if (run_info !== null) {
+            push_run(run_info, result.length);
+        }
+        result = next_result;
+    } while (another_pass);
+    return result;
+}
+exports.group_compound_worlds = group_compound_worlds;
+
+
+/***/ }),
+
+/***/ "./src/typescript/interpretation.ts":
+/*!******************************************!*\
+  !*** ./src/typescript/interpretation.ts ***!
+  \******************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+function make_local_interps(spec) {
+    let result = {};
+    for (const [label, value] of Object.entries(spec)) {
+        if (typeof value !== 'object') {
+            const value2 = {
+                kind: 'Interpretation',
+                value
+            };
+            result[label] = value2;
+        }
+        else {
+            result[label] = value;
+        }
+    }
+    return result;
+}
+exports.make_local_interps = make_local_interps;
+function interps(spec) {
+    let result = {};
+    for (const [index, local_spec] of Object.entries(spec)) {
+        result[index] = make_local_interps(local_spec);
+    }
+    return result;
+}
+exports.interps = interps;
+function label_value(local_interps, label) {
+    if (local_interps[label] === undefined) {
+        return false;
+    }
+    return local_interps[label].value;
+}
+exports.label_value = label_value;
+function interpretation_of(world, interps) {
+    return interps[world.index];
+}
+exports.interpretation_of = interpretation_of;
+function self_interpretation(world, updater) {
+    return {
+        interpretations: {
+            [world.index]: updater
+        }
+    };
+}
+exports.self_interpretation = self_interpretation;
+// TODO - set all interp stages to undefined
+function pre_interp(interps) {
+    let u = {};
+    if (!interps) {
+        debugger;
+    }
+    for (let [index, interp] of Object.entries(interps)) {
+        for (let [label, { value, stage }] of Object.entries(interp)) {
+            if (typeof value === 'symbol') {
+                if (u[index] === undefined) {
+                    u[index] = {};
+                }
+                u[index][label] = undefined;
+            }
+        }
+    }
+    if (utils_1.empty(u)) {
+        return interps;
+    }
+    return utils_1.update(interps, u);
+}
+exports.pre_interp = pre_interp;
+function interpretation_updater(world, f) {
+    return { interpretations: (prev_interps) => {
+            let hist_world = world;
+            let u = {};
+            while (hist_world !== null) {
+                let uu = make_local_interps(f(hist_world));
+                if (!utils_1.empty(uu)) {
+                    u[hist_world.index] = uu;
+                }
+                hist_world = hist_world.previous;
+            }
+            if (utils_1.empty(u)) {
+                return prev_interps;
+            }
+            return utils_1.update(prev_interps, u);
+        } };
+}
+exports.interpretation_updater = interpretation_updater;
 function find_historical(world, f) {
     let w = world;
     while (w != null) {
@@ -18854,6 +20280,57 @@ exports.keys = {
 
 /***/ }),
 
+/***/ "./src/typescript/lock.ts":
+/*!********************************!*\
+  !*** ./src/typescript/lock.ts ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
+const puffer_1 = __webpack_require__(/*! ./puffer */ "./src/typescript/puffer.ts");
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+const text_1 = __webpack_require__(/*! ./text */ "./src/typescript/text.tsx");
+function lock_builder(spec) {
+    return (owner) => {
+        function has_permission(w) {
+            let o = spec.owner(w);
+            return o === null || o === owner;
+        }
+        function lock_puffer(puffer) {
+            return puffer_1.gate_puffer((w, old = false) => !old && has_permission(w), puffer);
+        }
+        function lock(world, start_index) {
+            if (start_index === undefined) {
+                start_index = world.index;
+            }
+            return utils_1.update(spec.set_owner(world, owner), text_1.css_updater(w => ({
+                unfocused: w.index < start_index
+            })));
+        }
+        function release(world) {
+            return utils_1.update(spec.set_owner(world, null), text_1.css_updater(() => ({ unfocused: false })));
+        }
+        function lock_parser_thread(world, thread) {
+            return parser_1.gate(has_permission(world), thread);
+        }
+        return {
+            lock,
+            release,
+            lock_puffer,
+            owner: spec.owner,
+            lock_parser_thread
+        };
+    };
+}
+exports.lock_builder = lock_builder;
+
+
+/***/ }),
+
 /***/ "./src/typescript/main.tsx":
 /*!*********************************!*\
   !*** ./src/typescript/main.tsx ***!
@@ -18865,20 +20342,20 @@ exports.keys = {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const app_1 = __webpack_require__(/*! ./UI/components/app */ "./src/typescript/UI/components/app.tsx");
-const bird_world_1 = __webpack_require__(/*! ./demo_worlds/bird_world */ "./src/typescript/demo_worlds/bird_world.tsx");
+// import { new_bird_world } from './demo_worlds/bird_world';
 // import { new_bird_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
-// import { new_venience_world } from './demo_worlds/narrascope/narrascope';
+const narrascope_1 = __webpack_require__(/*! ./demo_worlds/narrascope/narrascope */ "./src/typescript/demo_worlds/narrascope/narrascope.tsx");
 const animation_1 = __webpack_require__(/*! ./UI/animation */ "./src/typescript/UI/animation.ts");
 console.time('world_build');
-let { initial_result, update, css_rules } = bird_world_1.new_bird_world(); //new_venience_world();//new_hex_world();
+let { initial_result, update, css_rules } = narrascope_1.new_venience_world(); //new_hex_world();
 // Ability to start from a specific point in the demo:
-// const START_SOLVED = 0;
-// import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
-// import { raw } from './parser';
-// const starting_world = find_world_at(initial_result.world, START_SOLVED);
-// initial_result = update(starting_world.result!, raw('', false));
+const START_SOLVED = 7;
+const supervenience_spec_1 = __webpack_require__(/*! ./demo_worlds/narrascope/supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
+const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
+const starting_world = supervenience_spec_1.find_world_at(initial_result.world, START_SOLVED);
+initial_result = update(starting_world.result, parser_1.raw('', false));
 console.timeEnd('world_build');
 console.time('render');
 if (css_rules !== undefined) {
@@ -18893,10 +20370,9 @@ const initial_state = {
     undo_selected: false,
     command_result: initial_result,
     updater: update,
-    animation_state: animation_1.empty_animation_state
+    animation_state: animation_1.new_animation_state(initial_result.world, null)
 };
 document.getElementById('terminal').appendChild(app_1.ui.initialize(initial_state));
-// ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');
 
 
@@ -19174,8 +20650,8 @@ class Parser {
         let toks = text_tools_1.split_tokens(spec); //tokenize(spec)[0];
         let labels = this.label_context; //{ filler: true };
         let availability = 'Available';
-        if (overrides) {
-            if (overrides.labels) {
+        if (overrides !== undefined) {
+            if (overrides.labels !== undefined) {
                 labels = Object.assign({}, labels, overrides.labels);
             }
             if (overrides.used) {
@@ -19214,12 +20690,13 @@ class Parser {
     }
     clamp_availability(spec) {
         if (availability_order[spec.availability] < availability_order[this.current_availability]) {
-            return Object.assign({}, spec, { availability: this.current_availability });
+            spec.availability = this.current_availability;
+            // return {...spec, availability: this.current_availability};
         }
         else if (availability_order[spec.availability] > availability_order[this.current_availability]) {
             this.current_availability = spec.availability;
         }
-        return spec;
+        // return spec;
     }
     /*
         This will throw a parse exception if the desired tokens can't be consumed.
@@ -19230,7 +20707,10 @@ class Parser {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
         }
-        tokens = tokens.map(t => this.clamp_availability(t));
+        for (let t of tokens) {
+            this.clamp_availability(t);
+        }
+        // tokens = tokens.map(t => this.clamp_availability(t));
         let partial = false;
         let error = false;
         let i = 0;
@@ -19275,9 +20755,11 @@ class Parser {
             if (spec.token !== exports.NEVER_TOKEN) {
                 return spec;
             }
-            let result = Object.assign({}, spec);
-            result.token = '';
-            return result;
+            spec.token = '';
+            return spec;
+            // let result = {...spec};
+            // result.token = '';
+            // return <RawConsumeSpec>result;
         }
         if (partial) {
             // push all tokens as partials
@@ -19318,6 +20800,9 @@ class Parser {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
+        // return <NoMatch>this._consume([
+        //     rcs_pool.create(NEVER_TOKEN, 'Available', {})
+        // ]);
         return this._consume([{
                 kind: 'RawConsumeSpec',
                 token: exports.NEVER_TOKEN,
@@ -19326,6 +20811,9 @@ class Parser {
             }]);
     }
     submit(result) {
+        // let status = this._consume([
+        //     rcs_pool.create(SUBMIT_TOKEN, 'Available', {})
+        // ]);
         let status = this._consume([{
                 kind: 'RawConsumeSpec',
                 token: exports.SUBMIT_TOKEN,
@@ -19516,6 +21004,169 @@ exports.traverse_thread = traverse_thread;
 
 /***/ }),
 
+/***/ "./src/typescript/puffer.ts":
+/*!**********************************!*\
+  !*** ./src/typescript/puffer.ts ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+/*
+    A puffer is a type of pattern described in Conway's Game of Life.
+    http://www.conwaylife.com/wiki/Puffer
+
+    It is an object that moves itself through the Life grid, and leaves behind debris where it has been.
+
+    Here, a Puffer is a bundle of world behaviors that run within the game world,
+    reading and updating game state, and leaving behind the "debris" of those updates.
+    Sometimes that "debris" is just incidental bits of state, sometimes it is
+    read or otherwise used by other Puffers sharing the world.
+*/
+Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+const world_1 = __webpack_require__(/*! ./world */ "./src/typescript/world.ts");
+const stages_1 = __webpack_require__(/*! ./stages */ "./src/typescript/stages.ts");
+function normalize_puffer(puffer) {
+    return Object.assign({ pre: stages_1.normalize_stages(puffer.pre), handle_command: stages_1.normalize_stages(puffer.handle_command), post: stages_1.normalize_stages(puffer.post), css_rules: puffer.css_rules || [] }, utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules'));
+}
+exports.normalize_puffer = normalize_puffer;
+function map_puffer(mapper, puffer) {
+    let norm_puffer = normalize_puffer(puffer);
+    return Object.assign({ pre: mapper.pre ? stages_1.map_stages(norm_puffer.pre, mapper.pre) : norm_puffer.pre, handle_command: mapper.handle_command ? stages_1.map_stages(norm_puffer.handle_command, mapper.handle_command) : norm_puffer.handle_command, post: mapper.post ? stages_1.map_stages(norm_puffer.post, mapper.post) : norm_puffer.post, css_rules: norm_puffer.css_rules }, utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules'));
+}
+exports.map_puffer = map_puffer;
+function gate_puffer(cond, puffer) {
+    return map_puffer({
+        pre: (cb) => {
+            if (typeof cb !== 'function') {
+                debugger;
+            }
+            return (world) => {
+                if (cond(world)) {
+                    return cb(world);
+                }
+                return world;
+            };
+        },
+        handle_command: (cb) => {
+            return (world, parser) => {
+                if (!cond(world)) {
+                    return parser.eliminate();
+                }
+                return cb(world, parser);
+            };
+        },
+        post: (cb) => {
+            return (new_world, old_world) => {
+                if (cond(new_world, false) || cond(old_world, true)) {
+                    return cb(new_world, old_world);
+                }
+                return new_world;
+            };
+        }
+    }, puffer);
+}
+exports.gate_puffer = gate_puffer;
+function knit_puffers(puffers) {
+    let normalized = puffers.map(normalize_puffer);
+    let handler_stage_levels = {
+        pre: [],
+        handle_command: [],
+        post: []
+    };
+    for (let prop of ['pre', 'handle_command', 'post']) {
+        for (let puffer of normalized) {
+            handler_stage_levels[prop].push(...stages_1.stage_keys(puffer[prop]));
+        }
+        handler_stage_levels[prop] = [...new Set(handler_stage_levels[prop]).values()].sort((a, b) => a - b);
+    }
+    function iterate(prop, combine) {
+        let result = stages_1.stages();
+        for (let stage of handler_stage_levels[prop]) {
+            let cbs = [];
+            for (let p of normalized) {
+                if (p[prop].get(stage) !== undefined) {
+                    cbs.push(p[prop].get(stage));
+                }
+            }
+            result.set(stage, combine(cbs));
+        }
+        return result;
+    }
+    let result = {
+        pre: stages_1.stages(),
+        handle_command: stages_1.stages(),
+        post: stages_1.stages(),
+        css_rules: []
+    };
+    result.pre = iterate('pre', (pres) => (world) => {
+        return pres.reduce((acc, p) => p(acc), world);
+    });
+    result.handle_command = iterate('handle_command', (hcs) => (world, parser) => {
+        return parser.split(hcs.map((hc) => () => hc(world, parser)));
+    });
+    result.post = iterate('post', (posts) => (new_world, old_world) => {
+        return posts.reduce((acc, p) => p(acc, old_world), new_world);
+    });
+    result.css_rules = normalized.flatMap(p => p.css_rules);
+    return result;
+}
+exports.knit_puffers = knit_puffers;
+function bake_puffers(puffers) {
+    let normalized = puffers.map(normalize_puffer);
+    let all_stages = {
+        pre: [],
+        handle_command: [],
+        post: []
+    };
+    for (let prop of ['pre', 'handle_command', 'post']) {
+        for (let puffer of normalized) {
+            all_stages[prop].push(...stages_1.stage_keys(puffer[prop]));
+        }
+        all_stages[prop] = [...new Set(all_stages[prop]).values()].sort((a, b) => a - b);
+    }
+    function iterate(prop, combine) {
+        let result;
+        let cbs = [];
+        for (let stage of all_stages[prop]) {
+            for (let p of normalized) {
+                const cb = p[prop].get(stage);
+                if (cb !== undefined) {
+                    cbs.push(cb);
+                }
+            }
+        }
+        return combine(cbs);
+    }
+    let pre = iterate('pre', (cbs) => (world) => cbs.reduce((acc, cb) => {
+        if (typeof cb !== 'function') {
+            debugger;
+        }
+        return cb(acc);
+    }, world));
+    let handle_command = iterate('handle_command', (cbs) => (world, parser) => parser.split(cbs.map(cb => (p) => cb(world, p))));
+    let post = iterate('post', (cbs) => (new_world, old_world) => cbs.reduce((acc, cb) => cb(acc, old_world), new_world));
+    let css_rules = puffers.flatMap(p => p.css_rules || []);
+    let result = {
+        pre,
+        handle_command,
+        post,
+        css_rules
+    };
+    return result;
+}
+exports.bake_puffers = bake_puffers;
+function make_puffer_world_spec(initial_world, puffer_index) {
+    let spec = bake_puffers(puffer_index);
+    return world_1.make_world_spec(Object.assign({ initial_world }, spec));
+}
+exports.make_puffer_world_spec = make_puffer_world_spec;
+
+
+/***/ }),
+
 /***/ "./src/typescript/stages.ts":
 /*!**********************************!*\
   !*** ./src/typescript/stages.ts ***!
@@ -19533,6 +21184,10 @@ function stages(...args) {
     return new Stages(args);
 }
 exports.stages = stages;
+function array_to_stages(arr) {
+    return stages(...arr.map((x, i) => [i, x]));
+}
+exports.array_to_stages = array_to_stages;
 function is_stages(x) {
     return x instanceof Stages;
 }
@@ -19551,6 +21206,10 @@ function stage_keys(x) {
     return [...x.keys()].sort((a, b) => a - b);
 }
 exports.stage_keys = stage_keys;
+function stage_values(x) {
+    return stage_keys(x).map(s => x.get(s));
+}
+exports.stage_values = stage_values;
 function stage_entries(x) {
     return stage_keys(x).map(s => [s, x.get(s)]);
 }
@@ -19583,6 +21242,33 @@ function merge_stages(x, reducer, init, stage_limit) {
     }
 }
 exports.merge_stages = merge_stages;
+function find_and_move_to_stage(obj, find, update) {
+    let result = stages(...obj);
+    let additions = stages();
+    for (let [stage, xs] of stage_entries(obj)) {
+        let to_move = xs.filter(x => find(x));
+        let to_keep = xs.filter(x => !find(x));
+        if (to_move.length > 0) {
+            additions.set(update(stage), to_move);
+            result.set(stage, to_keep);
+        }
+    }
+    for (let [stage, moved_xs] of stage_entries(additions)) {
+        let xs = result.get(stage);
+        if (xs === undefined) {
+            result.set(stage, moved_xs);
+        }
+        else {
+            xs.push(...moved_xs);
+        }
+    }
+    return result;
+}
+exports.find_and_move_to_stage = find_and_move_to_stage;
+function make_consecutive(objs) {
+    return array_to_stages(objs.flatMap(s => stage_values(s)));
+}
+exports.make_consecutive = make_consecutive;
 
 
 /***/ }),
@@ -19756,6 +21442,273 @@ class StaticIndex {
     }
 }
 exports.StaticIndex = StaticIndex;
+class Pool {
+    constructor(allocator, initializer) {
+        this.allocator = allocator;
+        this.initializer = initializer;
+        this.pool = [];
+        this.book = [];
+    }
+    grow(n) {
+        for (let i = 0; i < n; i++) {
+            this.pool.push(this.allocator());
+            this.book.push(false);
+        }
+        return this;
+    }
+    create(...params) {
+        const i = this.book.indexOf(false);
+        if (i === -1) {
+            throw new Error('Pool ran out of free slots');
+        }
+        this.book[i] = true;
+        const result = this.pool[i];
+        this.initializer(result, ...params);
+        return result;
+    }
+    free(obj) {
+        const i = this.pool.indexOf(obj);
+        if (i === -1) {
+            throw new Error('Tried to free something not found in pool.');
+        }
+        this.book[i] = false;
+    }
+}
+exports.Pool = Pool;
+
+
+/***/ }),
+
+/***/ "./src/typescript/supervenience.ts":
+/*!*****************************************!*\
+  !*** ./src/typescript/supervenience.ts ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const world_1 = __webpack_require__(/*! ./world */ "./src/typescript/world.ts");
+const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+const interpretation_1 = __webpack_require__(/*! ./interpretation */ "./src/typescript/interpretation.ts");
+function default_narrative_space() {
+    return [w => utils_1.drop_keys(w, 'previous', 'index', 'parsing', 'parent', 'child')];
+}
+function get_score(w, goals) {
+    return goals.map(g => g(w)).reduce((acc, goal_met) => acc + (goal_met ? 1 : 0), 0);
+}
+// do a breadth-first search of possible futures for some goal state
+function search_future(spec, world) {
+    if (is_simulated(spec.simulator_id, world)) {
+        // A future search for this world's timeline is already running.
+        // Recursive future searches are most likely too inefficient to allow, so
+        // we return null in this case, indicating to the caller who would have
+        // conducted the future search that she is already in a simulation, and should
+        // therefore only take atomic/non-recursive actions.
+        return {
+            kind: 'FutureSearchResult',
+            status: 'InSimulation',
+            result: null,
+            stats: null
+        };
+    }
+    if (spec.search_id !== undefined) {
+        let cached_result = lookup_cache(spec.search_id, world);
+        if (cached_result !== undefined) {
+            return cached_result;
+        }
+    }
+    try {
+        function cache(result) {
+            return cache_search_result(spec, world, result);
+        }
+        begin_search(spec.simulator_id, world);
+        if (spec.space === undefined) {
+            spec = Object.assign({}, spec, { space: default_narrative_space() });
+        }
+        let n_skipped = 0;
+        const visited = [[
+                world,
+                spec.space.map(dim => dim(world)),
+                get_score(world, spec.goals)
+            ]];
+        let i = 0;
+        let anchor = 0;
+        function make_stats(steps_in_solution) {
+            return {
+                iterations: i,
+                steps_in_solution,
+                states_enumerated: visited.length,
+                states_skipped: n_skipped
+            };
+        }
+        lup: while (spec.give_up_after === undefined || i < spec.give_up_after) {
+            const next_index = visited.length - 1 - i;
+            if (next_index < 0) {
+                // Failed future world search, goal is unreachable
+                // (If max_steps was set in the spec, it could be due to no solution being available in max_steps)
+                return cache({
+                    kind: 'FutureSearchResult',
+                    status: 'Unreachable',
+                    result: null,
+                    stats: make_stats()
+                });
+            }
+            const [w, pos, score] = visited[next_index];
+            if (score === spec.goals.length) {
+                let n_turns = w.index - world.index;
+                return cache({
+                    kind: 'FutureSearchResult',
+                    status: 'Found',
+                    result: w,
+                    stats: make_stats(n_turns)
+                });
+            }
+            if (spec.max_steps !== undefined && w.index - world.index >= spec.max_steps) {
+                i++;
+                continue;
+            }
+            const transitions = parser_1.traverse_thread(spec.thread_maker(w), spec.command_filter !== undefined
+                ? (cmd) => spec.command_filter(w, cmd)
+                : undefined);
+            const neighbor_states = Object.values(transitions);
+            if (neighbor_states.length === 0) {
+                throw new Error('Future search reached a non-goal terminal state');
+            }
+            for (let parse_result of neighbor_states) {
+                const dest = world_1.add_parsing(parse_result.result, parse_result.parsing); //{...parse_result.result, parsing: parse_result.parsing};
+                const dest_pos = spec.space.map(dim => dim(dest));
+                const dest_score = get_score(dest, spec.goals);
+                if (dest_score > score) {
+                    // skip ahead to only search from this node now
+                    visited.unshift([dest, dest_pos, dest_score]);
+                    n_skipped += visited.length - 1 - i;
+                    i = visited.length - 1;
+                    anchor = i;
+                    continue lup;
+                }
+                else if (dest_score < score) {
+                    n_skipped++;
+                }
+                else if (!visited.slice(0, visited.length - anchor).some(([, pos]) => dest_pos.every((d, j) => utils_1.deep_equal(d, pos[j])))) {
+                    visited.unshift([dest, dest_pos, dest_score]);
+                }
+                else {
+                    n_skipped++;
+                }
+            }
+            i++;
+        }
+        return cache({
+            kind: 'FutureSearchResult',
+            status: 'Timeout',
+            result: null,
+            stats: make_stats()
+        });
+    }
+    finally {
+        end_search(spec.simulator_id, world);
+    }
+}
+exports.search_future = search_future;
+const active_simulators = {};
+function is_simulated(simulator_id, world) {
+    if (!(simulator_id in active_simulators)) {
+        return false;
+    }
+    const entry = active_simulators[simulator_id];
+    return interpretation_1.find_historical(world, w => entry.has(w)) !== null;
+}
+exports.is_simulated = is_simulated;
+function begin_search(simulator_id, world) {
+    let entry;
+    if (simulator_id in active_simulators) {
+        entry = active_simulators[simulator_id];
+    }
+    else {
+        entry = active_simulators[simulator_id] = new Set();
+    }
+    entry.add(world);
+}
+function end_search(simulator_id, world) {
+    let entry = active_simulators[simulator_id];
+    entry.delete(world);
+    if (entry.size === 0) {
+        delete active_simulators[simulator_id];
+    }
+}
+const cache_size = 1000;
+const cached_searches = {};
+function cache_search_result(search_spec, world, search_result) {
+    if (search_spec.search_id === undefined) {
+        return search_result;
+    }
+    let entry;
+    if (search_spec.search_id in cached_searches) {
+        entry = cached_searches[search_spec.search_id];
+    }
+    else {
+        entry = cached_searches[search_spec.search_id] = {
+            kind: 'CacheEntry',
+            spec: search_spec,
+            results: []
+        };
+    }
+    let position = get_position(search_spec, world);
+    let match = find_in_entry(entry, position);
+    if (match === undefined) {
+        entry.results.push({ world, position, result: search_result });
+        if (cached_searches[search_spec.search_id] === undefined) {
+            cached_searches[search_spec.search_id] = entry;
+        }
+    }
+    let search_ids = Object.keys(cached_searches);
+    if (search_ids.length > cache_size) {
+        for (let sid of search_ids.slice(0, search_ids.length - cache_size)) {
+            delete cached_searches[sid];
+        }
+    }
+    return search_result;
+}
+function find_in_entry(entry, world_position) {
+    for (let result of entry.results) {
+        if (utils_1.deep_equal(world_position, result.position)) {
+            return result;
+        }
+    }
+    return undefined;
+}
+function lookup_cache(search_id, world) {
+    let entry = cached_searches[search_id];
+    if (entry === undefined) {
+        return undefined;
+    }
+    let match = find_in_entry(entry, get_position(entry.spec, world));
+    if (match === undefined) {
+        return undefined;
+    }
+    return match.result;
+}
+function get_position(spec, world) {
+    let space;
+    if (spec.space === undefined) {
+        space = default_narrative_space();
+    }
+    else {
+        space = spec.space;
+    }
+    return space.map(d => d(world));
+}
+/*
+    TODO
+    For the narrative dimensions, each narrative dimension can be paired with a command filter.
+
+    This would be useful for fully automating the bright/dim text logic.
+
+    A command is bright if it participates in a shortest path to advancing in a narrative dimension
+*/ 
 
 
 /***/ }),
@@ -19776,13 +21729,31 @@ const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
 const update_1 = __webpack_require__(/*! ./update */ "./src/typescript/update.ts");
 const history_1 = __webpack_require__(/*! ./history */ "./src/typescript/history.ts");
 const parsed_text_1 = __webpack_require__(/*! ./UI/components/parsed_text */ "./src/typescript/UI/components/parsed_text.tsx");
-exports.init_frame = (index) => framework_1.createElement("div", { className: "frame eph-new", "data-index": index },
+const empty_frame = framework_1.createElement("div", { className: "frame" },
     framework_1.createElement("div", { className: "input-text" }),
     framework_1.createElement("div", { className: "output-text" },
         framework_1.createElement("div", { className: "action" }),
         framework_1.createElement("div", { className: "consequence" }),
         framework_1.createElement("div", { className: "description" }),
         framework_1.createElement("div", { className: "prompt" })));
+exports.init_frame = (index) => {
+    const result = empty_frame.cloneNode(true);
+    result.setAttribute('data-index', index.toString());
+    return result;
+};
+function frame_update(update) {
+    return update;
+}
+exports.frame_update = frame_update;
+;
+function add_op(elements) {
+    return { kind: 'Add', elements };
+}
+exports.add_op = add_op;
+function css_op(updates) {
+    return { kind: 'CSS', updates };
+}
+exports.css_op = css_op;
 let eph_effects = true;
 function with_eph_effects(effects_on, f) {
     const prev = eph_effects;
@@ -19793,35 +21764,41 @@ function with_eph_effects(effects_on, f) {
 }
 exports.with_eph_effects = with_eph_effects;
 function add_child(parent, child) {
-    child = child.cloneNode(true);
-    if (eph_effects) {
-        child.classList.add('eph-new');
+    if (child instanceof Array) {
+        child.map(c => add_child(parent, c));
+        return;
+    }
+    let c;
+    if (typeof child === 'string') {
+        c = document.createTextNode(child);
+    }
+    else {
+        c = child.cloneNode(true);
+    }
+    if (eph_effects && c instanceof HTMLElement) {
+        c.classList.add('eph-new');
     }
     if (parent !== null) {
-        parent.appendChild(child);
+        parent.appendChild(c);
     }
-    return child;
+    return c;
 }
 function apply_frame_update_op(elt, op) {
     if (op.kind === 'Add') {
         if (elt === null) {
-            if (op.elements instanceof Array) {
-                throw new Error(`Tried to add a list of elements without a parent`);
+            if (typeof (op.elements) === 'string' || op.elements instanceof Array) {
+                throw new Error(`Tried to add a string or list of elements without a parent`);
             }
             return add_child(null, op.elements);
         }
         else {
-            if (op.elements instanceof Array) {
-                op.elements.forEach(e => add_child(elt, e));
-            }
-            else {
-                add_child(elt, op.elements);
-            }
+            add_child(elt, op.elements);
             return elt;
         }
     }
     else if (op.kind === 'CSS') {
         if (elt === null) {
+            debugger;
             throw new Error("Tried to update CSS for null element.");
         }
         for (const [cls, on] of Object.entries(op.updates)) {
@@ -19854,6 +21831,7 @@ function apply_frame_update(story, update) {
     let target_elt;
     if (target_frame === undefined) {
         if (update.selector !== undefined) {
+            debugger;
             throw new Error(`Tried to select an element from nonexistent index: ${update.index}. Selector: ${update.selector}`);
         }
         target_elt = null;
@@ -19886,11 +21864,15 @@ exports.find_eph = find_eph;
 function remove_eph(elt) {
     const matches = find_eph(elt);
     matches.forEach(match => {
+        const to_remove = [];
         match.classList.forEach(class_name => {
             if (class_name.startsWith('eph-')) {
-                match.classList.remove(class_name);
+                to_remove.push(class_name);
             }
         });
+        for (let class_name of to_remove) {
+            match.classList.remove(class_name);
+        }
     });
 }
 exports.remove_eph = remove_eph;
@@ -19902,14 +21884,7 @@ function remove_eph_story(story) {
             return elt;
         }
         const result = elt.cloneNode(true);
-        const matches = result.querySelectorAll('[class*="eph-"]');
-        matches.forEach(match => {
-            match.classList.forEach(class_name => {
-                if (class_name.startsWith('eph-')) {
-                    match.classList.remove(class_name);
-                }
-            });
-        });
+        remove_eph(result);
         return result;
     });
 }
@@ -19924,6 +21899,11 @@ function apply_story_updates(story, story_updates) {
 }
 exports.apply_story_updates = apply_story_updates;
 exports.make_text_additions = (index, spec) => {
+    if (typeof spec === 'string' || spec instanceof Array || spec instanceof HTMLElement) {
+        spec = {
+            consequence: spec
+        };
+    }
     const result = [];
     for (const prop of ['action', 'consequence', 'description', 'prompt']) {
         const elements = spec[prop];
@@ -19941,21 +21921,27 @@ exports.make_text_additions = (index, spec) => {
     return result;
 };
 exports.story_updater = (spec, stage = 0) => (world) => update_1.update(world, {
-    story_updates: stages_1.stages([stage, utils_1.appender(...exports.make_text_additions(world.index, spec))])
+    story_updates: stages_1.stages([stage, utils_1.append(...exports.make_text_additions(world.index, spec))])
 });
 exports.css_updater = (f) => (world) => {
     const history = history_1.history_array(world);
-    const css_updates = history.map(w => ({
-        index: w.index,
-        op: { kind: 'CSS', updates: f(w) }
-    }));
+    const css_updates = history.flatMap(w => {
+        const updates = f(w);
+        if (Object.keys(updates).length === 0) {
+            return [];
+        }
+        return [{
+                index: w.index,
+                op: { kind: 'CSS', updates: f(w) }
+            }];
+    });
     return update_1.update(world, {
-        story_updates: stages_1.stages([0, utils_1.appender(...css_updates)])
+        story_updates: stages_1.stages([0, utils_1.append(...css_updates)])
     });
 };
 exports.add_input_text = (world, parsing) => {
     return update_1.update(world, {
-        story_updates: stages_1.stages([0, utils_1.appender({
+        story_updates: stages_1.stages([0, utils_1.append({
                 index: world.index,
                 selector: '.input-text',
                 op: {
@@ -19965,6 +21951,21 @@ exports.add_input_text = (world, parsing) => {
             })])
     });
 };
+/*
+    TODO: experiment with better schemes for collecting story updates in a given frame
+
+    Problem:
+        We need to be able to organize groups of story updates in stages.
+        We also need to be able to e.g.
+            move all story updates pertaining to frame 7 from stage 0 to stage 1
+            and have this apply to any future story updates made to frame 7 this tick.
+    
+    Change the data structure representing story updates?
+    Or, develop more sophisticated operators for updating the current data structure?
+
+
+
+*/
 
 
 /***/ }),
@@ -20334,10 +22335,10 @@ function infer_literal_array(...arr) {
 }
 exports.infer_literal_array = infer_literal_array;
 // Array helpers //
-function appender(...elts) {
-    return (arr) => [...arr, ...elts];
+function append(...elts) {
+    return (arr) => [...(arr || []), ...elts];
 }
-exports.appender = appender;
+exports.append = append;
 function appender_uniq(...elts) {
     return (arr) => [...arr, ...elts.filter(t => !arr.includes(t))];
 }
@@ -20595,6 +22596,10 @@ function make_update_thread(spec, world) {
     };
 }
 exports.make_update_thread = make_update_thread;
+function add_parsing(world, parsing) {
+    return utils_1.update(world, { parsing: () => parsing }, _ => text_1.add_input_text(_, parsing));
+}
+exports.add_parsing = add_parsing;
 function apply_command(spec, world, command) {
     let thread = make_update_thread(spec, world);
     let result = parser_1.Parser.run_thread(command, thread);
@@ -20612,7 +22617,7 @@ function apply_command(spec, world, command) {
         };
     }
     let w = result.result;
-    w = utils_1.update(w, { parsing: () => result.parsing }, _ => text_1.add_input_text(_, result.parsing));
+    w = add_parsing(w, result.parsing);
     // If this is a compound action, assign it as the parent to the children,
     // and return the last child instead of the parent.
     if (w.child !== null) {

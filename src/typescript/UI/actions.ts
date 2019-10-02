@@ -90,7 +90,7 @@ export function app_reducer(state: AppState, action: AppAction): AppState {
 function update_animation_state(new_state: AppState, old_state: AppState): AppState {
     if (new_state.command_result.world.index > old_state.command_result.world.index) {
         return update(new_state, {
-            animation_state: _ => new_animation_state(new_state.command_result.world)
+            animation_state: _ => new_animation_state(new_state.command_result.world, old_state.command_result.world)
         });
     }
     return new_state;

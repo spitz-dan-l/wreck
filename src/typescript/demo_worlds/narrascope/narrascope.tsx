@@ -1,16 +1,16 @@
+import { createElement } from '../../UI/framework/framework';
 import { gist, Gists, gists_equal, includes_tag } from '../../gist';
-import { message_updater, register_helper } from '../../message';
 import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
 import { cond, included, update, map } from '../../utils';
 import { get_initial_world, WorldSpec, world_driver } from '../../world';
-import { Actions, Facets } from './metaphor';
+import { Actions, Facets, RenderFacet } from './metaphor';
 import { Puffers, resource_registry, Venience } from './prelude';
 import { find_world_at } from './supervenience_spec';
 import { Topics } from './topic';
 import { Memories } from './memory';
 import {add_to_notes} from './notes';
-import Handlebars from 'handlebars';
+import { story_updater } from '../../text';
 
 
 interface PuzzleState {
@@ -51,14 +51,13 @@ Actions({
     description: "The ability to attend to particular facets of one's perception.",
     slug: 'attend',
     get_cmd: (facet) => ['attend_to', facet],
-    get_wrong_msg: (facet) => `Merely paying more attention to ${facet} does not seem to be enough.`
+    get_wrong_msg: (facet) => <div>Merely paying more attention to {facet} does not seem to be enough.</div>
 });
 
 Memories({
     action: 'to attend',
     could_remember: world => !!world.has_considered.get('your notebook'),
-    description: `
-    {{> 'a memory 1'}}`
+    description: () => <RenderFacet name="a memory 1" />
 });
 
 function about_attentive(w: Venience) {
@@ -83,15 +82,14 @@ Facets({
         return world;
     },
 
-    content: `
-    <div class="memory-1">
+    content: <div class="memory-1">
         "Wake up, my dear. Attend to the world around you."
         <blockquote class="interp-memory-1">
             Katya took you to the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
             <br/>
             There was to be little time to relax or sleep in; astronomers are busy folk.
         </blockquote>
-    </div>`
+    </div>
 });
 
 function about_scrutinizing(w: Venience) {
@@ -167,8 +165,7 @@ Topics({
     name: 'Sam',
     cmd: 'sam',
     can_consider: () => true,
-    message: `
-    <div class="sam">
+    message: () => <div class="sam">
         <div class="friendship-sam">
             An old friend on his way to work.
             <blockquote class="interp-friendship-sam">
@@ -189,7 +186,7 @@ Topics({
                 Indeed. It's time to try to do something about it.
             </blockquote>
         </div>
-    </div>`,
+    </div>,
     reconsider: (w2, w1) => {
         if (w2.has_acquired.get('to attend') && !w2.has_chill) {
             return true;
@@ -210,35 +207,37 @@ Topics({
     }
 });
 
-register_helper('has_considered_notebook', (world: Venience) => {
+function has_considered_notebook(world: Venience) {
     return world.has_considered.get('your notebook');
-});
+};
 
 Topics({
     name: 'yourself',
     cmd: 'myself',
     can_consider: () => true,
-    message: `You haven't entirely woken up.
-    <br/>
-    {{#if (has_considered_notebook @world)}}
-        Your notebook sits in your lap.
-    {{else}}
-        A <strong>thick notebook</strong> sits in your lap.
-    {{/if}}`,
+    message: (world) => <div>
+        You haven't entirely woken up.
+        <br/>
+        {has_considered_notebook(world)
+            ? <div>Your notebook sits in your lap.</div>
+            : <div>A <strong>thick notebook</strong> sits in your lap.</div>}
+    </div>,
 });
 
 Topics({
     name: 'your notebook',
     cmd: 'my_notebook',
     can_consider: (world) => !!world.has_considered.get('yourself'),
-    message: {
-        description: [`
+    message: () => ({
+        description: <div>
             You keep it with you at all times.
             <br/>
-            It is filled with the words of someone very wise, who you once knew.`],
-        prompt: [`
-            Each day you try to <strong>remember something</strong> that she told you, and write it down.`]
-    }
+            It is filled with the words of someone very wise, who you once knew.
+        </div>,
+        prompt: <div>
+            Each day you try to <strong>remember something</strong> that she told you, and write it down.
+        </div>
+    })
 });
 
 const abtsm = gist('impression', { subject: gist('Sam') });
@@ -260,20 +259,21 @@ Facets({
         if (action.name === 'to attend') {
             return update(world, 
                 { has_chill: Symbol() },    
-                message_updater({
-                    consequence: cond(!world.has_chill, () => `A chill comes over you.`),
-                    description: [`
+                story_updater({
+                    consequence: cond(!world.has_chill, () => <div>A chill comes over you.</div>),
+                    description: <div>
                         Something about Sam is <i>incorrect</i>.
                         <br/>
-                        You can feel the discordance in your bones. It scares you.`]
+                        You can feel the discordance in your bones. It scares you.
+                    </div>
                 })
             );
         } else {
             // TODO: replace generic wrong msg with hint asking for more specifity
             if (action.name === 'to scrutinize') {
-                return update(world, message_updater("You'll need to be more specific about what to scrutinize."))
+                return update(world, story_updater(<div>You'll need to be more specific about what to scrutinize.</div>))
             }
-            return update(world, message_updater(action.get_wrong_msg('sam')));
+            return update(world, story_updater(action.get_wrong_msg('sam')));
         }
     }
 });
@@ -285,19 +285,18 @@ Actions({
     description: "The ability to unpack details and look beyond your initial assumptions.",
     slug: 'scrutiny',
     get_cmd: (facet) => ['scrutinize', facet],
-    get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains unresolved.`
+    get_wrong_msg: (facet) => <div>`Despite your thorough scrutiny, ${facet} remains unresolved.`</div>
 })
 
 Memories({
     action: 'to scrutinize',
     could_remember: world => !!world.has_chill,
-    description: `
-    <div class="memory-2">
+    description: () => <div class="memory-2">
         "Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance."
         <blockquote class="interp-memory-2">
             She mentioned this while making a point about the intricacies of the <a target="_blank" href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">Observer Effect</a>.
         </blockquote>
-    </div>`
+    </div>
 });
 
 Facets({
@@ -313,15 +312,16 @@ Facets({
         if (action.name === 'to scrutinize') {
             return update(world,
                 { has_recognized_something_wrong: Symbol() },
-                message_updater(`
+                story_updater(<div>
                     You are struck by the alarming incongruence of his demeanor.
                     <br/>
-                    The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.`));
+                    The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.
+                </div>));
         } else if (action.name === 'to attend') {
             return update(world,
-                message_updater(`You notice nothing new about his demeanor.`));
+                story_updater(`You notice nothing new about his demeanor.`));
         } else {
-            return update(world, message_updater(action.get_wrong_msg("sam's demeanor")));
+            return update(world, story_updater(action.get_wrong_msg("sam's demeanor")));
         }
     }
 });
@@ -339,15 +339,14 @@ Actions({
 Memories({
     action: 'to hammer',
     could_remember: world => !!world.has_recognized_something_wrong,
-    description: `
-        <div class="memory-3">
-            "Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble."
-            <blockquote class="interp-memory-3">
-                She always pushed you.
-                </br>
-                Katya was always one to revel in the overturning of wrong ideas.
-            </blockquote>
-        </div>`
+    description: () => <div class="memory-3">
+        "Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble."
+        <blockquote class="interp-memory-3">
+            She always pushed you.
+            <br />
+            Katya was always one to revel in the overturning of wrong ideas.
+        </blockquote>
+    </div>
 });
 
 Facets({
@@ -363,7 +362,7 @@ Facets({
     handle_action: (action, world) => {
         if (action.name === 'to hammer') {
             return update(world,
-                message_updater({
+                story_updater({
                     action: [`You ask yourself a hard question: <i>Is Sam really your friend?</i>`],
                     consequence: ["You realize you don't know anymore."],
                     prompt: ["You'll have to <strong>consider your history</strong>."]
@@ -380,7 +379,7 @@ Topics({
     name: 'your history with Sam',
     cmd: 'my_history_with_Sam',
     can_consider: (w) => !!w.is_curious_about_history,
-    message: { description: [
+    message: () => ({ description: [
         `You've known Sam since you both arrived in Boston about 10 years ago.
         <br/>
         You were studying under Katya, and he was doing agricultural engineering a few buildings over.
@@ -395,7 +394,7 @@ Topics({
                 </blockquote>
             </blockquote>
         </div>`]
-    },
+    }),
     reconsider: (w2, w1) => {
         if (!w2.has_unpacked_culpability) {
             return true;
@@ -427,7 +426,7 @@ Facets({
         if (action.name === 'to hammer') {
             return update(world,
                 { has_admitted_negligence: Symbol() },
-                message_updater(`
+                story_updater(`
                     You force yourself to look the truth in the eye: <i>You</i> bowed out of the friendship.
                     <br/>
                     There was nothing mutual about it. You sidelined him without explanation.`));
@@ -449,7 +448,7 @@ Facets({
         if (action.name === 'to scrutinize') {
             return update(world,
                 { has_unpacked_culpability: Symbol() },
-                message_updater(`
+                story_updater(`
                     There's no doubt you did it out of self-preservation.
                     <br/>
                     There's also no doubt he deserved better.
@@ -473,13 +472,12 @@ Actions({
 Memories({
     action: 'to volunteer',
     could_remember: world => !!world.has_unpacked_culpability,
-    description: `
-    <div class="memory-4">
+    description: () => <div class="memory-4">
         "Do more than merely receive and respond, my dear. We must participate, as best as we can. We must volunteer ourselves to the world."
         <blockquote class="interp-memory-4">
             This is one of the last things she said to you, before she left.
         </blockquote>
-    </div>`
+    </div>
 });
 
 Facets({
@@ -495,7 +493,7 @@ Facets({
         if (action.name === 'to volunteer') {
             return update(world,
                 { has_volunteered: Symbol(), },
-                message_updater(`
+                story_updater(`
                     You turn in your seat, and look him in the eyes, and say,`));
         }
         return world;
@@ -523,7 +521,7 @@ Puffers({
                 () => parser.submit(
                     () => update(world,
                         { end: true },
-                        message_updater(`
+                        story_updater(<div>
                             <div class="interp">
                                 VENIENCE WORLD
                             </div>
@@ -531,7 +529,8 @@ Puffers({
                             <br/>
                             by <div class="interp-inline">Daniel Spitz</div>
                             <br/><br/>
-                            Thank you for playing the demo!`))));
+                            Thank you for playing the demo!
+                        </div>))));
     }
 });
 
@@ -558,15 +557,17 @@ Puffers({
 
 export { Venience } from './prelude';
 
-const initial_venience_world: Venience = update({
-        ...get_initial_world<Venience>(),
-        ...resource_registry.get('initial_world_prelude', false),
-        ...resource_registry.get('initial_world_metaphor', false),
-        ...resource_registry.get('initial_world_topic', false),
-        ...resource_registry.get('initial_world_narrascope', false),
-        ...resource_registry.get('initial_world_notes', false)
-    },
-    message_updater('You and Sam are sitting together on the bus.')
+let initial_venience_world: Venience = {
+    ...get_initial_world<Venience>(),
+    ...resource_registry.get('initial_world_prelude', false),
+    ...resource_registry.get('initial_world_metaphor', false),
+    ...resource_registry.get('initial_world_topic', false),
+    ...resource_registry.get('initial_world_narrascope', false),
+    ...resource_registry.get('initial_world_notes', false)
+};
+
+initial_venience_world = update(initial_venience_world,
+    story_updater('You and Sam are sitting together on the bus.')
 );
 
 const puffer_index = resource_registry.get('puffer_index', false);

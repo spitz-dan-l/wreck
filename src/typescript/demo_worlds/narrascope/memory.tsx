@@ -1,7 +1,6 @@
 import { createElement } from '../../UI/framework/framework';
 import { gist, Gists, render_gist_text } from '../../gist';
 import { find_historical } from '../../history';
-// import { message_updater } from '../../message';
 import { Puffer } from '../../puffer';
 import { StaticIndex } from '../../static_resources';
 import { bound_method, map, update } from '../../utils';
@@ -14,7 +13,7 @@ import { story_updater } from '../../text';
 export type MemorySpec = {
     action: ActionID,
     could_remember: (w: Venience) => boolean,
-    description: string
+    description: () => HTMLElement
 }
 
 declare module './prelude' {
@@ -36,7 +35,7 @@ function memory_description(spec: MemorySpec) {
     const action = action_index.get(spec.action);
     return <div>
         <div class="interp">
-            {spec.description}
+            {spec.description()}
         </div>
         <br/>
         {capitalize(render_gist_text(gist(spec.action)))} confers:

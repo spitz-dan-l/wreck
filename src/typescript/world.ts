@@ -21,9 +21,10 @@
 */
 import { O } from 'ts-toolbelt';
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
-import { update, map, appender } from './utils';
+import { update, map, append } from './utils';
 import { Story, StoryUpdates, init_frame, apply_story_updates, remove_eph_story, add_input_text } from './text';
 import { stages } from './stages';
+import { P } from 'ts-toolbelt/out/types/src/Object/_api';
 
 export interface World {
     readonly parsing: Parsing | undefined,
@@ -134,6 +135,12 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     }
 }
 
+export function add_parsing<W extends World>(world: W, parsing: Parsing): W {
+    return update(world as World,
+        { parsing: () => parsing },
+        _ => add_input_text(_, parsing)
+    ) as W;
+}
 
 export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;
 export function apply_command(spec: WorldSpec<World>, world: World, command: RawInput): CommandResult<World> {
@@ -155,10 +162,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
 
     let w: World = result.result;
 
-    w = update(w, 
-        { parsing: () => result.parsing },
-        _ => add_input_text(_, result.parsing)
-    );
+    w = add_parsing(w, result.parsing);
 
     // If this is a compound action, assign it as the parent to the children,
     // and return the last child instead of the parent.

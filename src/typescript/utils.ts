@@ -114,8 +114,8 @@ export function infer_literal_array<T extends string>(...arr: T[]): T[] {
 
 // Array helpers //
 
-export function appender<T>(...elts: T[]){
-    return (arr: T[]) => [...arr, ...elts];
+export function append<T>(...elts: T[]){
+    return (arr?: T[]) => [...(arr || []), ...elts];
 }
 
 export function appender_uniq<T>(...elts: T[]) {

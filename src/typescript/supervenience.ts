@@ -1,4 +1,4 @@
-import {World, WorldSpec, update_thread_maker} from './world';
+import {World, WorldSpec, update_thread_maker, add_parsing} from './world';
 import { traverse_thread, ParserThread, RawConsumeSpec, Parser, gate } from './parser';
 import { deep_equal, drop_keys } from './utils';
 import { find_historical } from './interpretation';
@@ -163,7 +163,7 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
                 throw new Error('Future search reached a non-goal terminal state');
             }
             for (let parse_result of neighbor_states) {
-                const dest = {...parse_result.result, parsing: parse_result.parsing};
+                const dest = add_parsing(parse_result.result, parse_result.parsing); //{...parse_result.result, parsing: parse_result.parsing};
                 const dest_pos = spec.space!.map(dim => dim(dest));
                 const dest_score = get_score(dest, spec.goals);
                 
@@ -228,7 +228,7 @@ function end_search<W extends World>(simulator_id: string, world: W) {
     }
 }
 
-const cache_size = 100;
+const cache_size = 1000;
 
 type CacheEntry<W extends World> = {
     kind: 'CacheEntry',

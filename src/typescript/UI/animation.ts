@@ -1,8 +1,9 @@
 import { Story, StoryUpdates, FrameUpdate, apply_story_updates, apply_frame_update, find_eph, remove_eph } from "../text";
 import { World } from "../world";
-import { stage_entries, stages, map_stages, stage_keys, Stages } from "../stages";
+import { stage_entries, stages, map_stages, stage_keys, Stages, make_consecutive } from "../stages";
 import { update } from "../utils";
 import { P } from "ts-toolbelt/out/types/src/Object/_api";
+import { history_array } from "../history";
 
 export type AnimationState = {
     story_updates: StoryUpdates,
@@ -16,9 +17,11 @@ export const empty_animation_state: AnimationState = {
     lock_input: false
 };
   
-export function new_animation_state(world: World): AnimationState {
+export function new_animation_state(world: World, previous_world: World | null): AnimationState {
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
-    const story_updates = world.story_updates;
+    const index_threshold = previous_world ? previous_world.index : 0;//world.index - 1;
+    const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();
+    const story_updates = make_consecutive(new_frames.map(w => w.story_updates));
     let stages = stage_keys(story_updates);
     let current_stage: number | undefined = stages[0];
     return {
@@ -35,7 +38,11 @@ export function advance_animation(state: AnimationState) {
         lock_input: next_stage !== undefined
     });
 }
-  
+
+export function final_story(world: World) {
+    return apply_story_updates(world.story, world.story_updates);
+}
+
 export function set_history_view(root: HTMLElement, story: Story) {
     for (const [stage, frame] of stage_entries(story)) {
         let prev_frame = root.querySelector(`[data-index="${stage}"]`);
@@ -43,6 +50,10 @@ export function set_history_view(root: HTMLElement, story: Story) {
             root.appendChild(frame);
         } else {
             if (prev_frame !== frame) {
+                if (prev_frame.isEqualNode(frame)) {
+                    // Possible performance issue, but maybe not
+                    debugger;
+                }
                 prev_frame.replaceWith(frame);
             }
         }
@@ -94,16 +105,17 @@ export async function start_animations(root_elt: HTMLElement, story: Story) {
     return remove_eph(root_elt);
 }
 
-export function compute_possible_labels(possible_world: World): FrameUpdate[] {
-    // find all class differences between story and possible_story.
-    // add would-add/would-remove classes to story
+export function compute_possible_labels(world: World, possible_world: World): FrameUpdate[] {
+    const current_story = apply_story_updates(world.story, world.story_updates);
 
     // scan through the CSS changes for this frame, keeping only the last class for each index and selector.
-    const possible_updates = stage_entries(possible_world.story_updates)
-        .flatMap(([s, updates]) =>
-            updates.filter(update =>
-                update.op.kind === 'CSS'));
-    
+    const new_worlds = history_array(possible_world).filter(w => w.index > world.index).reverse();
+    const possible_updates = new_worlds.flatMap(pw =>
+        stage_entries(pw.story_updates)
+            .flatMap(([s, updates]) =>
+                updates.filter(update =>
+                    update.op.kind === 'CSS')));
+        
     const final_story = apply_story_updates(possible_world.story, possible_world.story_updates);
     const would_updates: FrameUpdate[] = [];
 
@@ -112,7 +124,7 @@ export function compute_possible_labels(possible_world: World): FrameUpdate[] {
             continue;
         }
 
-        const frame_0 = possible_world.story.get(update.index);
+        const frame_0 = current_story.get(update.index);
         const frame_1 = final_story.get(update.index);
 
         if (frame_0 === undefined || frame_0 === frame_1) {

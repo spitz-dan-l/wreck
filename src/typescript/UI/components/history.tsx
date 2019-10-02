@@ -1,12 +1,12 @@
 import { World } from "../../world";
 import { createElement, Component, Renderer } from "../framework/framework";
 import { ui_resources } from '../prelude';
-import { is_compound_world, MaybeCompoundWorld, group_compound_worlds } from "../../history";
-import { AnimationState, animate, update_history_view, start_animations, set_history_view, compute_possible_labels } from "../animation";
+import { is_compound_world, MaybeCompoundWorld, group_compound_worlds, history_array } from "../../history";
+import { AnimationState, animate, update_history_view, start_animations, set_history_view, compute_possible_labels, final_story } from "../animation";
 import { apply_story_updates, FrameUpdate, with_eph_effects } from "../../text";
 import { merge_stages } from "../../stages";
 import { update } from "../../update";
-import { map_values } from "../../utils";
+import { map_values, array_last } from "../../utils";
 
 type HistoryProps = {
     world: World,
@@ -24,7 +24,8 @@ export const History: Renderer<HistoryProps> = (props, old?) => {
 
     if (!old) {
         root = <div className="history" /> as History;
-        set_history_view(root, props.world.story);
+        const first_world = array_last(history_array(props.world))!;
+        set_history_view(root, first_world.story);
     } else {
         root = old.old_root;
     }
@@ -55,6 +56,10 @@ export const History: Renderer<HistoryProps> = (props, old?) => {
             elt.remove();
             w = w.previous!;
         }
+        
+        with_eph_effects(false, () => {
+            set_history_view(root, final_story(props.world));
+        });
     }
 
     // dim the most recent frame if undo is selected.
@@ -99,7 +104,7 @@ function possible_css_updates(props: HistoryProps) {
     if (props.undo_selected || props.possible_world === null) {
         return [];
     }
-    return compute_possible_labels(props.possible_world);
+    return compute_possible_labels(props.world, props.possible_world);
 }
 //     let worlds: MaybeCompoundWorld<World>[] = group_compound_worlds(world); //history_array(world).reverse();
   

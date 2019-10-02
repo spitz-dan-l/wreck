@@ -69,7 +69,7 @@ export const ParsedText: Renderer<ParsedTextProps> = (props) => {
       <div className={command_classes.join(' ')}>
         {
           view.matches.map((elt, i) => (
-            <div key={i.toString()} className={get_class_name(elt)}>
+            <div className={get_class_name(elt)}>
               <span>
                 { parsing.whitespace[i] + convert_token(elt.actual) }
               </span>

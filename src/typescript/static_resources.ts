@@ -211,3 +211,42 @@ export class StaticIndex<T> {
         this.sealed = true;
     }
 }
+
+export class Pool<T, Init extends any[]> {
+    private pool: T[] = [];
+    private book: boolean[] = [];
+
+    constructor(
+        private allocator: () => T,
+        private initializer: (t: T, ...params: Init) => void,
+    ) {}
+
+    grow(n: number) {
+        for (let i = 0; i < n; i++) {
+            this.pool.push(this.allocator());
+            this.book.push(false);
+        }
+        return this;
+    }
+
+    create(...params: Init) {
+        const i = this.book.indexOf(false);
+        if (i === -1) {
+            throw new Error('Pool ran out of free slots');
+        }
+        this.book[i] = true;
+        
+        const result = this.pool[i];
+        this.initializer(result, ...params);
+        
+        return result;
+    }
+
+    free(obj: T) {
+        const i = this.pool.indexOf(obj);
+        if (i === -1) {
+            throw new Error('Tried to free something not found in pool.');
+        }
+        this.book[i] = false;
+    }
+}

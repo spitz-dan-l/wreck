@@ -1,10 +1,10 @@
 import { gist, Gists, gists_equal } from '../../gist';
-import { MessageUpdateSpec, message_updater } from '../../message';
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
 import { StaticIndex, StaticMap } from '../../static_resources';
 import { bound_method, cond, update, map } from '../../utils';
 import { ActionID, Puffers, resource_registry, TopicID, Venience, StaticTopicIDs } from "./prelude";
+import { TextAddSpec, story_updater } from '../../text';
 
 export interface Topics {
     has_considered: Map<TopicID, boolean>;
@@ -14,7 +14,7 @@ export type TopicSpec = {
     name: TopicID,
     cmd: ConsumeSpec,
     can_consider: (w: Venience) => boolean,
-    message: MessageUpdateSpec,
+    message: (w: Venience) => TextAddSpec,
     consider?: (w: Venience) => Venience,
     reconsider?: (w2: Venience, w1: Venience) => boolean
 }
@@ -59,7 +59,7 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
             }, () =>
                 parser.submit(
                     () => update(world,
-                        message_updater(spec.message),
+                        story_updater(spec.message(world)),
                         {
                             gist: () => gist('impression', { subject: gist(spec.name)}),
                             has_considered: map( [spec.name, true] )

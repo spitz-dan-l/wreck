@@ -101,52 +101,61 @@ export function make_ui<State, Action>(
     renderer: Renderer<State>,
     reducer: (state: State, action: Action) => State
 ): UI<State, Action> {
-    let old_state: State;
+    let old_state: State | undefined = undefined;
     let component: Component<State>;
 
+    let rendering = false;
+
     function initialize(initial_state: State) {
-        component = renderer(initial_state);
+        if (component !== undefined) {
+            throw new Error('multiple calls to initialize().');
+        }
         old_state = initial_state;
-        return component;
+        return render();
     }
 
-    let render_promise: Promise<void> | null = null;
+    let render_task: number | null = null;
+    
     const action_queue: Action[] = [];
     const effect_queue: (() => void)[] = [];
     
     function dispatch(action: Action) {
-        // if (old_state === undefined) {
-        //     throw new Error('dispatch function was called before initializer.');
-        // }
+        if (old_state === undefined) {
+            throw new Error('dispatch function was called before initializer.');
+        }
         action_queue.push(action);
 
-        if (render_promise === null) {
-            render_promise = Promise.resolve().then(render);
+        if (render_task === null) {
+            render_task = setTimeout(render);
         }
     }
 
     function effect(f: () => void) {
-        // if (old_state === undefined) {
-        //     throw new Error('effect function was called before initializer.');
-        // }
-        effect_queue.push(f);
-
-        if (render_promise === null) {
-            render_promise = Promise.resolve().then(render);
+        if (old_state === undefined) {
+            throw new Error('effect function was called before initializer.');
         }
+        if (!rendering) {
+            throw new Error('effect() was called outside of a render');
+        }
+
+        effect_queue.push(f);
     }
 
     function render() {
         if (old_state === undefined) {
             throw new Error('dispatch or effect function was called before initializer.');
         }
-        render_promise = null;
+        render_task = null;
 
         let new_state = old_state;
         while (action_queue.length > 0) {
             new_state = reducer(new_state, action_queue.shift()!);
         }
 
+        rendering = true;
+        if (component === undefined) {
+            component = renderer(old_state);
+        }
         if (new_state !== old_state) {
             component = update_component(
                 renderer,
@@ -156,14 +165,18 @@ export function make_ui<State, Action>(
                     old_root: component
                 }
             );
-
             old_state = new_state;
         }
+        rendering = false;
 
-        while (effect_queue.length > 0) {
-            effect_queue.shift()!();
-        }
-    } 
+        requestAnimationFrame(() => {
+            while (effect_queue.length > 0) {
+                effect_queue.shift()!();
+            }
+        });
+
+        return component;
+    }
 
     return {
         initialize,
@@ -172,7 +185,8 @@ export function make_ui<State, Action>(
     };
 }
 
-export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: any[]): JSX_.Element {
+// export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: any[]): JSX_.Element {
+export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: JSX_.CreateElementChild[]): JSX_.Element {
     const all_props: AllProps<P> = {...props, children};
     
     let result: JSX_.Element;
@@ -221,7 +235,7 @@ function appendChildrenRecursively(node: HTMLElement, children: any[]): void {
         if (child instanceof Node) {   // Is it an HTML or SVG element?
             node.appendChild(child);
         }
-        else if (Array.isArray(child)) {   // example: <div>{items}</div>
+        else if (child instanceof Array) {   // example: <div>{items}</div>
             appendChildrenRecursively(node, child);
         }
         else if (child === false) {

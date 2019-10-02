@@ -88,7 +88,7 @@ export const Typeahead: Renderer<TypeaheadProps> = ({parsing, typeahead_index, u
                 >
                     <span>{'  '}</span>
                     { option.option.map((m, j) =>
-                        <span key={j} className={get_option_token_class(m)}>
+                        <span className={get_option_token_class(m)}>
                             { m === null ?
                                 parsing.whitespace[j] + whitespace(convert_token(parsing.tokens[j])) :
                                 (j >= parsing.whitespace.length || j !== 0 && parsing.whitespace[j] === '' ?

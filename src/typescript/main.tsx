@@ -4,7 +4,7 @@ import { ui, AppState } from './UI/components/app';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
 import { new_venience_world } from './demo_worlds/narrascope/narrascope';
-import { empty_animation_state } from './UI/animation';
+import { empty_animation_state, new_animation_state } from './UI/animation';
 
 
 console.time('world_build');
@@ -12,14 +12,13 @@ let {initial_result, update, css_rules} = new_venience_world();//new_hex_world()
 
 // Ability to start from a specific point in the demo:
 
-const START_SOLVED = 0;
+const START_SOLVED = 7;
 
 import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
 import { raw } from './parser';
 
 const starting_world = find_world_at(initial_result.world, START_SOLVED);
 initial_result = update(starting_world.result!, raw('', false));
-
 
 console.timeEnd('world_build');
 
@@ -39,10 +38,9 @@ const initial_state: AppState = {
     undo_selected: false,
     command_result: initial_result,
     updater: update,
-    animation_state: empty_animation_state
+    animation_state: new_animation_state(initial_result.world, null)
 };
 
 document.getElementById('terminal')!.appendChild(ui.initialize(initial_state));
 
-// ReactDom.render(<History world={result.world} />, document.getElementById('terminal'));
 console.timeEnd('render');

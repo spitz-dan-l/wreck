@@ -1,8 +1,9 @@
 import { World } from './world';
 import { Parser, ParserThread, ConsumeSpec, gate } from './parser';
 import { gate_puffer, Puffer } from './puffer';
-import { LocalInterpretations, interpretation_updater, find_historical } from './interpretation';
+import { find_historical } from './history';
 import {update, Updater} from './utils';
+import { css_updater } from './text';
 
 export type LockStatus = 'Unlocked' | 'Mine' | 'Locked';
 
@@ -36,25 +37,14 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
             }
 
             return <W>update(<World>spec.set_owner(world, owner),
-                interpretation_updater(world, w => {
-                    if (w.index < start_index!) {
-                        return { unfocused: {
-                            kind: 'Interpretation',
-                            value: true,
-                            stage: 0
-                        }};
-                    }
-                    return { unfocused: false };
-                }));
+                css_updater(w => ({
+                    unfocused: w.index < start_index!
+                })));
         }
 
         function release(world: W) {
             return <W>update(<World>spec.set_owner(world, null),
-                interpretation_updater(world, () => ({ unfocused: {
-                    kind: 'Interpretation',
-                    value: false,
-                    stage: 0
-                } })));
+                css_updater(() => ({ unfocused: false})));
         }
 
         function lock_parser_thread<R>(world: W, thread: ParserThread<R>) {

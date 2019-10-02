@@ -4,11 +4,11 @@ import { ConsumeSpec, ParserThread, Parser } from "../../parser";
 import { Puffer } from "../../puffer";
 import { StaticIndex, StaticMap } from '../../static_resources';
 import { is_simulated, search_future } from '../../supervenience';
-import { bound_method, map, update, Updater, appender } from "../../utils";
+import { bound_method, map, update, Updater, append } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer, StaticActionIDs, StaticFacetIDs } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
-import { stages } from '../../stages';
-import { css_updater, story_updater, frame_update, css_op } from '../../text';
+import { stages, find_and_move_to_stage } from '../../stages';
+import { css_updater, story_updater, frame_update, css_op, TextAddSpec } from '../../text';
 import { extract_story } from '../../UI/animation';
 import { createElement } from '../../UI/framework/framework';
 
@@ -53,7 +53,7 @@ export type Action = {
     noun_cmd: ConsumeSpec,
     description: string,
     slug: string,
-    get_wrong_msg: (facet_phrase: string) => MessageUpdateSpec,
+    get_wrong_msg: (facet_phrase: string) => TextAddSpec,
     get_cmd: (facet_phrase: ConsumeSpec) => ConsumeSpec
 }
 
@@ -141,22 +141,10 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
             return {};
         }),
         {
-            story_updates: _ => {
-                const stage_0 = [..._.get(0)!];
-                const new_frame_i = stage_0.findIndex(u =>
-                    u.index === world.index &&
-                    u.selector === undefined &&
-                    u.op.kind === 'Add');
-                const new_frame = stage_0.splice(new_frame_i, 1)[0];
-                const stage_1 = [
-                    ...(_.get(1) || []),
-                    new_frame
-                ];
-                return update(_, stages(
-                    [0, stage_0],
-                    [1, stage_1]
-                ));
-            },
+            story_updates: _ => 
+                find_and_move_to_stage(_,
+                    u => u.index < world.index,
+                    () => -1),
             has_tried: map([action.name, map([facet.name, true])])
         });
 
@@ -164,14 +152,14 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
     if (solved) {
         if (!already_solved) {
             return update(world, {
-                story_updates: stages([0, appender(frame_update({
+                story_updates: stages([0, append(frame_update({
                     index: interpretted_world.index,
                     op: css_op({ [`interp-${facet.slug}`]: true })
                 }))])
             });
         } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
             return update(world, {
-                story_updates: stages([0, appender(frame_update({
+                story_updates: stages([0, append(frame_update({
                     index: interpretted_world.index,
                     op: css_op({ [`eph-interp-${facet.slug}-solved-blink`]: true })
                 }))])
@@ -254,29 +242,29 @@ Puffers(lock_and_brand('Metaphor', {
 
                     const index = immediate_world.index;
                 
-                    let descriptions: string[] = [];
+                    let descriptions: HTMLElement[] = [];
 
                     for (let facet of Object.values(facet_index.all())) {
                         if (!facet.can_recognize(world, immediate_world)) {
                             continue;
                         }
-                        descriptions.push(`
-                            <blockquote class="descr-${facet.slug}">
-                                ${facet.noun_phrase}
+                        descriptions.push(
+                            <blockquote class={`descr-${facet.slug}`}>
+                                {facet.noun_phrase}
                             </blockquote>
-                        `);
+                        );
                     }
                     if (descriptions.length === 0) {
-                        descriptions.push('However, nothing about it seems particularly notable.');
+                        descriptions.push(<div>However, nothing about it seems particularly notable.</div>);
                     } else {
-                        descriptions.unshift('You notice the following aspects:');
+                        descriptions.unshift(<div>You notice the following aspects:</div>);
                     }
 
                     return update(world,
                         w => metaphor_lock.lock(w, index),
                         { 
                             current_interpretation: index,
-                            story_updates: stages([0, appender(frame_update({
+                            story_updates: stages([0, append(frame_update({
                                 index,
                                 op: css_op({
                                     'interpretation-block': true,
@@ -289,12 +277,8 @@ Puffers(lock_and_brand('Metaphor', {
                             action: <div>
                                 You contemplate {render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
                             </div>,
-                            
+                            description: descriptions                            
                         })
-                        message_updater({
-                            action: [`You contemplate ${render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.`],
-                            description: [descriptions.join('')]
-                        }),
                     );
                 }))};
 
@@ -365,15 +349,16 @@ Puffers(lock_and_brand('Metaphor', {
                     metaphor_lock.release,
                     {
                         current_interpretation: null,
-                        interpretations: interps({
-                            [world.current_interpretation!]: {'interpretation-active': false}
-                        }),
+                        story_updates: stages([0, append(frame_update({
+                            index: world.current_interpretation!,
+                            op: css_op({'interpretation-active': false})
+                        }))]),
                         has_tried: () => new Map(),
                         
                     },
-                    message_updater({
-                        action: [`Your mind returns to a less focused state.`]
-                    }),
+                    story_updater({
+                        action: 'Your mind returns to a less focused state.'
+                    })
                 )));
             }
         }]
@@ -395,8 +380,16 @@ type FacetSpec = {
     solved: (world: Venience) => boolean | symbol,
     handle_action: (action: Action, world: Venience) => Venience,
 
-    content?: string
+    content?: HTMLElement
 };
+
+export function RenderFacet(props: { name: FacetID }) {
+    const f = facet_index.get(props.name);
+    if (f.content === undefined) {
+        throw new Error(`Tried to render facet ${props.name} with no content set.`);
+    }
+    return f.content;
+}
 
 const facet_index = resource_registry.initialize('facet_index',
     new StaticMap(StaticFacetIDs, [
@@ -404,12 +397,12 @@ const facet_index = resource_registry.initialize('facet_index',
             Puffers(make_facet(spec));
             return spec;
         },
-        function register_handlebars_partial(spec) {
-            if (spec.content !== undefined) {
-                Handlebars.registerPartial(spec.name, spec.content);
-            }
-            return spec;
-        }
+        // function register_handlebars_partial(spec) {
+        //     if (spec.content !== undefined) {
+        //         Handlebars.registerPartial(spec.name, spec.content);
+        //     }
+        //     return spec;
+        // }
     ])
 );
 
@@ -439,20 +432,22 @@ const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaph
         if (world2.current_interpretation !== null && world2.current_interpretation === world1.current_interpretation) {
             let interpretted_world = find_historical(world2, w => w.index === world2.current_interpretation)!;
             if (!spec.can_recognize(world1, interpretted_world) && spec.can_recognize(world2, interpretted_world)) {
-                updates.push(message_updater({
-                    prompt: [`
-                    You notice an aspect that you hadn't before:
-                    <blockquote class="descr-${spec.slug}">
-                        ${spec.noun_phrase}
-                    </blockquote>`]}));
+                updates.push(story_updater({
+                    prompt: <div>
+                        You notice an aspect that you hadn't before:
+                        <blockquote class={`descr-${spec.slug}`}>
+                            {spec.noun_phrase}
+                        </blockquote>
+                    </div>}));
             }
         }
 
         if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
             updates.push(
-                { interpretations: interps({ [world2.index]: {
-                    [`interp-${spec.slug}`]: true
-                }})}
+                { story_updates: stages([0, append(frame_update({
+                    index: world2.index,
+                    op: css_op({ [`interp-${spec.slug}`]: true })
+                }))])}
             );
         }
         return update(world2, ...updates);
