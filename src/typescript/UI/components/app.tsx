@@ -100,9 +100,11 @@ export const App: Renderer<AppState> = (state, old?) => {
 
         return <div class="app">
             <app_history.render {...state} />
-            <app_prompt.render {...state} />
-            <app_typeahead.render {...state} />
-            <app_undo_button.render {...state} />
+            <div>
+                <app_prompt.render {...state} />
+                <app_typeahead.render {...state} />
+                <app_undo_button.render {...state} />
+            </div>
         </div> as App;
     }
 

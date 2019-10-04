@@ -304,7 +304,8 @@ Puffers(lock_and_brand('Metaphor', {
                             subject: has_tag(g, 'memory') ? gist('notes about', {topic: g.children.action}) : g
                         });
 
-                        const result = search_future({
+                        const result = search_future(
+                            {
                                 thread_maker: get_thread_maker(),
                                 goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
                                 max_steps: 2,
@@ -320,7 +321,8 @@ Puffers(lock_and_brand('Metaphor', {
                                     return !would_contemplate;
                                 }
                             },
-                            world.previous!);
+                            world);
+                            //world.previous!);
                         if (result.result === null) {
                             return parser.eliminate();
                         }

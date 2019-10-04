@@ -56,15 +56,20 @@ I strongly encourage you to stake your professional reputation on the behavior o
 //             T extends object ? ObjectUpdater<T> :
 //                 never) |
 //          ((x: T) => T));
+
 export type Updater<T> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
-    [T] extends [(...args: any) => any] ? (x: T) => T :
+    [T] extends [(...args: any) => any] ?
+        (((x: T) => T) |
+         // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
+         unknown extends T ? T : never) :
         ((T extends Primitive | any[] | Set<any> ? T :
             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
             T extends object ? ObjectUpdater<T> :
                 never) |
          ((x: T) => T));
+
 
 
 type NotFunction<T> = T extends (...args: any) => any ? never : T;

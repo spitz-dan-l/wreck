@@ -17815,9 +17815,10 @@ exports.App = (state, old) => {
         });
         return framework_1.createElement("div", { class: "app" },
             framework_1.createElement(app_history.render, Object.assign({}, state)),
-            framework_1.createElement(app_prompt.render, Object.assign({}, state)),
-            framework_1.createElement(app_typeahead.render, Object.assign({}, state)),
-            framework_1.createElement(app_undo_button.render, Object.assign({}, state)));
+            framework_1.createElement("div", null,
+                framework_1.createElement(app_prompt.render, Object.assign({}, state)),
+                framework_1.createElement(app_typeahead.render, Object.assign({}, state)),
+                framework_1.createElement(app_undo_button.render, Object.assign({}, state))));
     }
     app_history.render(state, old);
     app_prompt.render(state, old);
@@ -18930,7 +18931,8 @@ prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
                                 }
                                 return !would_contemplate;
                             }
-                        }, world.previous);
+                        }, world);
+                        //world.previous!);
                         if (result.result === null) {
                             return parser.eliminate();
                         }
@@ -21177,6 +21179,7 @@ exports.make_puffer_world_spec = make_puffer_world_spec;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
 class Stages extends Map {
 }
 exports.Stages = Stages;
@@ -21269,6 +21272,135 @@ function make_consecutive(objs) {
     return array_to_stages(objs.flatMap(s => stage_values(s)));
 }
 exports.make_consecutive = make_consecutive;
+;
+function is_stree_branch(x) {
+    return x instanceof Stages;
+}
+exports.is_stree_branch = is_stree_branch;
+function stree_to_array(stree) {
+    if (stree === undefined) {
+        return [];
+    }
+    else if (is_stree_branch(stree)) {
+        return stage_values(stree).flatMap(x => stree_to_array(x));
+    }
+    else {
+        return [stree];
+    }
+}
+exports.stree_to_array = stree_to_array;
+function stree_find(stree, f) {
+    if (is_stree_branch(stree)) {
+        for (const [stage, x] of stage_entries(stree)) {
+            const child_path = stree_find(x, f);
+            if (child_path !== null) {
+                return [stage, ...child_path];
+            }
+        }
+        return null;
+    }
+    if (stree === undefined) {
+        return null;
+    }
+    return f(stree) ? [] : null;
+}
+exports.stree_find = stree_find;
+function stree_find_all(stree, f) {
+    const result = [];
+    if (is_stree_branch(stree)) {
+        for (const [stage, x] of stage_entries(stree)) {
+            const child_paths = stree_find_all(x, f);
+            result.push(...child_paths.map(p => [stage, ...p]));
+        }
+    }
+    else if (stree !== undefined && f(stree)) {
+        result.push([]);
+    }
+    return result;
+}
+exports.stree_find_all = stree_find_all;
+function stree_get(stree, path) {
+    let node = stree;
+    for (const i of path) {
+        if (node === undefined) {
+            break;
+        }
+        else if (is_stree_branch(node)) {
+            node = node.get(i);
+        }
+        else {
+            if (i !== 0) {
+                break;
+            }
+        }
+    }
+    return node;
+}
+exports.stree_get = stree_get;
+function stree_cut(stree, path) {
+    if (path.length === 0) {
+        return [undefined, stree];
+    }
+    const i = path[0];
+    if (is_stree_branch(stree)) {
+        if (!stree.has(i)) {
+            return [stree, undefined];
+        }
+        let [child, found] = stree_cut(stree.get(i), path.slice(1));
+        if (found === undefined) {
+            return [stree, undefined];
+        }
+        return [stages(...stree, [i, child]), found];
+    }
+    else {
+        if (i === 0) {
+            return stree_cut(stree, path.slice(1));
+        }
+        return [stree, undefined];
+    }
+}
+exports.stree_cut = stree_cut;
+function stree_append(stree, x, path = []) {
+    let result;
+    if (stree === undefined) {
+        result = undefined;
+    }
+    else if (is_stages(stree)) {
+        result = stages(...stree);
+    }
+    else {
+        result = stages([0, stree]);
+    }
+    if (path.length === 0) {
+        if (result === undefined) {
+            return x;
+        }
+        else {
+            let idx = utils_1.array_last(stage_keys(result));
+            if (idx === undefined) {
+                idx = 0;
+            }
+            else {
+                idx += 1;
+            }
+            result.set(idx, x);
+        }
+    }
+    else {
+        if (result === undefined) {
+            result = stages();
+        }
+        const i = path[0];
+        result.set(i, stree_append(result.get(i), x, path.slice(1)));
+    }
+    return result;
+}
+exports.stree_append = stree_append;
+function stree_move(stree, from, to) {
+    const [stree2, child] = stree_cut(stree, from);
+    return stree_append(stree2, child, to);
+}
+exports.stree_move = stree_move;
 
 
 /***/ }),

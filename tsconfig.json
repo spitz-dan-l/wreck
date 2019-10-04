@@ -22,7 +22,9 @@
         // "./src/tests",
         "./src/typescript/*",
         "./src/typescript/UI/**/*",
-        "./src/typescript/demo_worlds/bird_world.ts"
+        "./src/typescript/story/**/*",
+        "./src/typescript/demo_worlds/bird_world.ts", "src/typescript/story/text2.tsx", "src/story/JSX2.ts", "src/story/story.ts"
+        
     ],
 
     "exclude": [

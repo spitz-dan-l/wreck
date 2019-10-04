@@ -38,6 +38,8 @@
     "@types/react-dom": "16.8.4",
     "lens.ts": "^0.5.1",
     "lodash": "^4.17.15",
+    "snabbdom": "^0.7.3",
+    "snabbdom-pragma": "^2.8.0",
     "ts-toolbelt": "^3.1.2"
   },
   "resolutions": {

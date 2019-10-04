@@ -164,6 +164,8 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
 
     w = add_parsing(w, result.parsing);
 
+    // TODO no longer represent parent/child in the structure
+    // it will be purely a view thing.
     // If this is a compound action, assign it as the parent to the children,
     // and return the last child instead of the parent.
     if (w.child !== null) {

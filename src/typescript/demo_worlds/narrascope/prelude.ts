@@ -59,16 +59,26 @@ const static_resource_names: StaticNameIndexFor<StaticResources> = [
     'puffer_index',
     'global_lock',
     'gist_renderer_index',
+    'initial_world_topic',
+    'topic_index',
     'initial_world_metaphor',
     'action_index',
     'facet_index',
-    'initial_world_topic',
-    'topic_index',
     'initial_world_notes',
     'note_index',
     'memory_index',
     'initial_world_narrascope',
-    'venience_world_spec'
+    'venience_world_spec',
+    // 'initial_world_metaphor',
+    // 'action_index',
+    // 'facet_index',
+    // 'initial_world_topic',
+    // 'topic_index',
+    // 'initial_world_notes',
+    // 'note_index',
+    // 'memory_index',
+    // 'initial_world_narrascope',
+    // 'venience_world_spec'
 ]
 
 export const resource_registry = new StaticMap<StaticResources>(static_resource_names);
