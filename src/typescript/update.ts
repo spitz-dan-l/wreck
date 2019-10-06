@@ -57,6 +57,19 @@ I strongly encourage you to stake your professional reputation on the behavior o
 //                 never) |
 //          ((x: T) => T));
 
+// export type Updater<T> =
+//     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
+//     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
+//     [T] extends [(...args: any) => any] ?
+//         (((x: T) => T) |
+//          // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
+//          unknown extends T ? T : never) :
+//         ((T extends Primitive | any[] | Set<any> ? T :
+//             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
+//             T extends object ? ObjectUpdater<T> :
+//                 never) |
+//          ((x: T) => T));
+
 export type Updater<T> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
@@ -64,23 +77,32 @@ export type Updater<T> =
         (((x: T) => T) |
          // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
          unknown extends T ? T : never) :
-        ((T extends Primitive | any[] | Set<any> ? T :
+        ((T extends Primitive | Set<any> ? T :
             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
+            T extends any[] ? 
+                T extends {0: any} ? TupleUpdater<T> : ArrayUpdater<T> :
             T extends object ? ObjectUpdater<T> :
                 never) |
          ((x: T) => T));
 
 
-
-type NotFunction<T> = T extends (...args: any) => any ? never : T;
-
 type Primitive = undefined | null | boolean | string | number | symbol;
 
 export interface MapUpdater<K, V> extends Map<K, Updater<V>> {};
 
+type ArrayIndices<T extends any[]> = {
+    [K in keyof T]: K
+}[number];
+
+export type TupleUpdater<T extends any[] & {0: any}> = Partial<T>;
+
+export type ArrayUpdater<T extends any[]> = {
+    [K in ArrayIndices<T>]?: Updater<T[K]>
+}
+
 export type ObjectUpdater<T> = {
     [K in keyof T]?: Updater<T[K]>
-}
+};
 
 import {F} from 'ts-toolbelt';
 
@@ -95,8 +117,26 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
     // if updater is a non-traversible value
     // check for all types we don't intend to recursively traverse.
     // this means all (non-function) primitives, and arrays
-    if ( !(updater instanceof Object) || updater instanceof Array || updater instanceof Set) {
+    if ( !(updater instanceof Object) || updater instanceof Set) {
         return <S>updater;
+    }
+
+    if (updater instanceof Array) {
+        let result: any[];
+        if (source instanceof Array) {
+            result = [...source];
+        } else {
+            result = [];
+        }
+
+        for (let i = 0; i < updater.length; i++) {
+            const x = updater[i];
+            if (x === undefined) {
+                continue;
+            }
+            result[i] = x;
+        }
+        return <S><unknown>result;
     }
 
     if (updater instanceof Map){
@@ -124,7 +164,9 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
     // you can achieve this by passing a function returning your desired object.
     if (updater instanceof Object) {
         let result: Partial<S>;
-        if (source instanceof Object) {
+        if (source instanceof Array) {
+            result = [...source] as any;
+        } else if (source instanceof Object) {
             result = {...source};
         } else {
             result = {};

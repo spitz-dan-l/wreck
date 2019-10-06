@@ -9,23 +9,32 @@ export namespace JSX {
 		children;
     }
 
-	type FilterProperties<E extends {}> = Partial<Omit<E,
-		// NOTE: tried adding a filter to remove readonly keys, it was too slow
-		| O.SelectKeys<E, (...a: any) => any>
-		| 'children'
-		| 'style'
-		| 'dataset'
-	>>
+	// type FilterProperties<E extends {}> = Partial<Omit<E,
+	// 	// NOTE: tried adding a filter to remove readonly keys, it was too slow
+	// 	| O.SelectKeys<E, (...a: any) => any>
+	// 	| 'children'
+	// 	| 'style'
+	// 	| 'dataset'
+	// >>
 
-	type Styles = Partial<Omit<CSSStyleDeclaration,
-		O.SelectKeys<CSSStyleDeclaration, (...a: any) => any>
-	>>
+	// type Styles = Partial<Omit<CSSStyleDeclaration,
+	// 	O.SelectKeys<CSSStyleDeclaration, (...a: any) => any>
+	// >>
+	type Styles = Partial<CSSStyleDeclaration>;
 
-	export type IntrinsicElements = A.Compute<{
-		[K in keyof HTMLElementTagNameMap]: FilterProperties<HTMLElementTagNameMap[K]> & {
+	// export type IntrinsicElements = A.Compute<{
+	// 	[K in keyof HTMLElementTagNameMap]: FilterProperties<HTMLElementTagNameMap[K]> & {
+	// 		children?: DeepFragment[],
+	// 		style?: Styles,
+	// 		dataset?: Record<string, any>
+	// 	}
+	// }>
+
+	export type IntrinsicElements = {
+		[K in keyof HTMLElementTagNameMap]: Record<string, any> & {
 			children?: DeepFragment[],
 			style?: Styles,
 			dataset?: Record<string, any>
 		}
-	}>
+	}
 }

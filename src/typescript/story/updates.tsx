@@ -1,18 +1,19 @@
 import { Stages, stages, stage_entries, map_stages } from '../stages';
-import { createElement, StoryNode, Fragment } from './story';
+import { createElement, StoryNode, Fragment, is_story_node, replace_in } from './story';
 import { World } from '../world';
 import { Updater, append, map } from '../utils';
 import { update } from '../update';
 import { history_array } from '../history';
 import { Parsing } from '../parser';
 import { ParsedText } from '../UI/components/parsed_text';
+import { StoryQuerySpec, StoryQueryIndex, build_query } from './story_query';
 
 export type StoryUpdate = {
-    selector: string,
+    query: StoryQuerySpec,
     op: StoryUpdateOp
 };
 
-export function frame_update(update: StoryUpdate) {
+export function story_update(update: StoryUpdate) {
     return update;
 }
 
@@ -20,23 +21,39 @@ type CSSUpdates = {
     [class_name: string]: boolean;
 };
 
-export type TextFragment = HTMLElement | string | TextFragmentArray;
-interface TextFragmentArray extends Array<TextFragment> {};
+export type AddOp = {
+    kind: 'Add';
+    elements: Fragment[];
+};
+
+export type RemoveOp = {
+    kind: 'Remove';
+};
+
+type CSSOp = {
+    kind: 'CSS';
+    updates: CSSUpdates;
+};
 
 export type StoryUpdateOp =
-    | { kind: 'Add', elements: TextFragment }
-    | { kind: 'CSS', updates: CSSUpdates }
+    | AddOp
+    | RemoveOp
+    | CSSOp
     ;
 
-export function add_op(elements: TextFragment) {
-    return { kind: 'Add', elements } as const;
+export function add_op(elements: Fragment[]): AddOp {
+    return { kind: 'Add', elements };
 }
 
-export function css_op(updates: CSSUpdates) {
-    return { kind: 'CSS', updates } as const;
+export function remove_op(): RemoveOp {
+    return { kind: 'Remove' };
 }
 
-export type Story = StoryNode;
+export function css_op(updates: CSSUpdates): CSSOp {
+    return { kind: 'CSS', updates };
+}
+
+export type Story = StoryNode & { __brand: 'Story' };
 // StoryUpdates stages are the groupings of updates for animation.
 export type StoryUpdates = Stages<StoryUpdate[]>;
 
@@ -54,73 +71,59 @@ export function with_eph_effects<R>(effects_on: boolean, f: () => R) {
     return result;
 }
 
-function add_child_mut(parent: HTMLElement, child: TextFragment): void {
+function add_child(parent: StoryNode, child: Fragment | Fragment[]): StoryNode {
     if (child instanceof Array) {
-        child.map(c => add_child_mut(parent, c));
-        return;
-    }
-    let c: Node;
-    if (typeof child === 'string') {
-        c = document.createTextNode(child);
-    } else {
-        c = child.cloneNode(true) as HTMLElement;    
+        return child.reduce<StoryNode>((p, c) => add_child(p, c), parent);
     }
 
-    if (eph_effects && c instanceof HTMLElement) {
-        c.classList.add('eph-new');
-    }
-    parent.appendChild(c);
-    return;
-}
-
-function add_child(parent: StoryNode, child: Fragment) {
-    if (eph_effects) {
-
+    if (eph_effects && is_story_node(child)){
+        child = update(child, {
+            classes: { ['eph-new']: true }
+        });
     }
     return update(parent, {
         children: append(child)
     });
 }
 
-export function apply_story_update_op(elt: HTMLElement, op: StoryUpdateOp) {
+export function apply_story_update_op(elt: StoryNode, op: StoryUpdateOp) {
     if (op.kind === 'Add') {
         return add_child(elt, op.elements);
     } else if (op.kind === 'CSS') {
-        elt = elt.cloneNode(true) as HTMLElement;
-        for (const [cls, on] of Object.entries(op.updates)) {
-            if (!on) {
-                if (elt.classList.contains(cls)) {
-                    elt.classList.remove(cls);
-                    if (eph_effects) {
-                        elt.classList.add(`eph-removing-${cls}`);
-                    }
-                }
-            } else {
-                if (!elt.classList.contains(cls)) {
-                    elt.classList.add(cls);
-                    if (eph_effects) {
-                        elt.classList.add(`eph-adding-${cls}`);
-                    }
+        const updates = {...op.updates};
+        if (eph_effects) {
+            for (const [cls, on] of Object.entries(updates)) {
+                if (!!on !== !!elt.classes[cls]) {
+                    updates[`eph-${on ? 'adding' : 'removing'}-$cls`] = true;
                 }
             }
         }
-        return elt;
+        
+        return update(elt, {
+            classes: updates
+        });        
     } else {
         throw new Error('Should not get here');
     }
 }
 
-export function apply_story_update(story: Story, update: StoryUpdate) {
-    story = story.cloneNode(true) as Story;
-    
-    let target_elt: HTMLElement | null;
-    target_elt = story.querySelector(update.selector);   
-    
-    if (target_elt === null) {
-        throw new Error('StoryUpdate had bad selector: '+update.selector);
+export function apply_story_update(story: Story, story_update: StoryUpdate) {
+    const query = build_query(story_update.query);
+    const targets = query(story);
+
+    if (targets.length === 0) {
+        throw new Error('StoryUpdate query returned no matches: '+JSON.stringify(story_update.query));
     }
 
-    target_elt.replaceWith(apply_story_update_op(target_elt, update.op));
+    // sort in descending order of path length.
+    // this guarantees that no parent will be updated before its children
+    targets.sort(([,path1], [,path2]) => path2.length - path1.length);
+
+    // TODO this is slightly more complicated by the ability to remove
+    for (const [target, path] of targets) {
+        const updated_child = apply_story_update_op(target, story_update.op);
+        story = replace_in(story, path, updated_child) as Story;
+    }
 
     return story;
 }
