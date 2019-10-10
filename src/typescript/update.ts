@@ -24,10 +24,7 @@ through a deeply-nested object
 Issues:
 - Awkward to update embedded functions. You are forced to always supply an updater function for them.
   (Otherwise, it would be ambiguous at runtime whether you had supplied a replacement or an updater function.)
-- Does not deal with Maps in a useful way (ignores their keys, looks at their object properties)
-  (because I don't use them because they don't support compound keys)
-- The type signature of update() uses two type parameters, when only one really ought to be necessary.
-- Behavior for "unique symbol" types is finnicky
+- Behavior for "unique symbol" types is finnicky/does not work
 - It should be possible to specify a new typing of this, with the same underlying impl,
     which can transform from the source type to a new target type
 
@@ -70,25 +67,40 @@ I strongly encourage you to stake your professional reputation on the behavior o
 //                 never) |
 //          ((x: T) => T));
 
-export type Updater<T> =
+// export type Updater<T> =
+//     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
+//     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
+//     [T] extends [(...args: any) => any] ?
+//         (((x: T) => T) |
+//          // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
+//          unknown extends T ? T : never) :
+//         ((T extends Primitive | Set<any> ? T :
+//             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
+//             T extends any[] ? 
+//                 T extends {0: any} ? TupleUpdater<T> : ArrayUpdater<T> :
+//             T extends object ? ObjectUpdater<T> :
+//                 never) |
+//          ((x: T) => T));
+
+export type Updater<T, Del extends boolean=false> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
     [T] extends [(...args: any) => any] ?
-        (((x: T) => T) |
+        (((x: T) => Maybe<T, Del>) |
          // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
-         unknown extends T ? T : never) :
-        ((T extends Primitive | Set<any> ? T :
+         ([unknown] extends [T] ? Maybe<T, Del> : never)) :
+        (Maybe<(T extends Primitive | Set<any> ? T :
             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
             T extends any[] ? 
                 T extends {0: any} ? TupleUpdater<T> : ArrayUpdater<T> :
             T extends object ? ObjectUpdater<T> :
-                never) |
-         ((x: T) => T));
+                never), Del> |
+         ((x: T) => Maybe<T, Del>));
 
+type Maybe<T, Delete extends boolean> = Delete extends true ? T | undefined : T;
 
 type Primitive = undefined | null | boolean | string | number | symbol;
 
-export interface MapUpdater<K, V> extends Map<K, Updater<V>> {};
 
 type ArrayIndices<T extends any[]> = {
     [K in keyof T]: K
@@ -97,11 +109,13 @@ type ArrayIndices<T extends any[]> = {
 export type TupleUpdater<T extends any[] & {0: any}> = Partial<T>;
 
 export type ArrayUpdater<T extends any[]> = {
-    [K in ArrayIndices<T>]?: Updater<T[K]>
+    [K in ArrayIndices<T>]?: Updater<T[K], true>
 }
 
+export interface MapUpdater<K, V> extends Map<K, Updater<V, true>> {};
+
 export type ObjectUpdater<T> = {
-    [K in keyof T]?: Updater<T[K]>
+    [K in keyof T]?: Updater<T[K], true>
 };
 
 import {F} from 'ts-toolbelt';
@@ -134,7 +148,7 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
             if (x === undefined) {
                 continue;
             }
-            result[i] = x;
+            result[i] = update(result[i], x);
         }
         return <S><unknown>result;
     }
@@ -143,7 +157,7 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
         let result: Map<any, any>;
         const ctor = <MapConstructor>updater.constructor;
         if (source instanceof Map) {
-            result = new ctor([...source]);//Map([...source]);
+            result = new ctor([...source]);
         } else {
             result = new ctor();
         }
@@ -152,7 +166,12 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
             if (v === undefined) {
                 result.delete(k);
             } else {
-                result.set(k, update(result.get(k), v))
+                const r = update(result.get(k), v);
+                if (r === undefined) {
+                    result.delete(k);
+                } else {
+                    result.set(k, r)
+                }
             }
         }
 
@@ -176,8 +195,18 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
             if (v === undefined) {
                 delete result[n];
             } else {
-                result[n] = update(result[n], v);
+                const r = update(result[n], v);
+                if (r === undefined) {
+                    delete result[n];
+                } else {
+                    result[n] = r;
+                }
             }
+        }
+
+        if (result instanceof Array) {
+            // flatten to remove empty (deleted) slots
+            result = <S><unknown>result.flat(0);
         }
 
         return <S>result;

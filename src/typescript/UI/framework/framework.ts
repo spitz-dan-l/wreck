@@ -1,9 +1,8 @@
-import {JSX as JSX_} from './JSX';
-
 export type Props = {};
-export type AllProps<P extends Props> = P & { children?: Element[] }
 
-export type Renderer<P extends Props> = (props: P, old?: {old_props: P, old_root: Component<P>}) => Component<P>;
+export type BaseProps = { children?: (HTMLElement | Text)[] };
+
+export type Renderer<P extends Props> = (props: P & BaseProps, old?: {old_props: P & BaseProps, old_root: Component<P>}) => Component<P>;
 export type RendererFor<Comp> = Comp extends Component<infer P> ? Renderer<P> : never;
 
 export interface Component<P extends Props> extends HTMLElement {
@@ -12,14 +11,14 @@ export interface Component<P extends Props> extends HTMLElement {
 
 export type ComponentFor<Rend> = Rend extends Renderer<infer P> ? Component<P> : never;
 export type Getter<Root extends Component<Props>, E extends HTMLElement> = (root: Root) => E;
-export type PropsFor<Comp> = Comp extends Component<infer P> ? P : never;
+export type PropsFor<Comp> = Comp extends Component<infer P> ? P & BaseProps : never;
 
 export type PropMapper<
     Comp1 extends Component<Props>,
     Comp2 extends Component<Props>
 > = (props: PropsFor<Comp1>) => PropsFor<Comp2>;
 
-export function update_component<P extends Props>(renderer: Renderer<P>, props: P, old: { old_props: P, old_root: Component<P>}) {
+export function update_component<P extends Props>(renderer: Renderer<P>, props: P & BaseProps, old: { old_props: P & BaseProps, old_root: Component<P>}) {
     const result = renderer(props, old);
 
     if (result !== old.old_root) {
@@ -42,7 +41,7 @@ export function make_updater<
     prop_mapper: PropMapper<Component<P1>, Component<P2>>,
     renderer: RendererFor<Component<P2>>
 ): Updater<Component<P1>, Component<P2>> {
-    return (props: P1, old?: { old_props: P1, old_root: Component<P1>}) => {
+    return (props: P1 & BaseProps, old?: { old_props: P1 & BaseProps, old_root: Component<P1>}) => {
         if (!old) {
             return renderer(prop_mapper(props));
         }
@@ -185,26 +184,7 @@ export function make_ui<State, Action>(
     };
 }
 
-// export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: any[]): JSX_.Element {
-export function createElement<P extends Props>(type: Renderer<P> | string, props: P, ...children: JSX_.CreateElementChild[]): JSX_.Element {
-    const all_props: AllProps<P> = {...props, children};
-    
-    let result: JSX_.Element;
-    if (typeof type === 'string') {
-        result = intrinsic_element_renderer(type)(all_props);
-    } else {
-        result = type(all_props);
-    }
-    
-    return result;
-}
 
-export {JSX} from './JSX';
-// export import JSX_ = JSX;
-export declare namespace createElement {
-    // export {JSX} from './JSX';
-    export import JSX = JSX_;
-}
 
 export function update_class<E extends HTMLElement>(elt: E, options: { add?: string[], remove?: string[] }) {
     if (options.add) {
@@ -222,148 +202,148 @@ export function update_class<E extends HTMLElement>(elt: E, options: { add?: str
     return elt;
 }
 
-export const intrinsic_element_renderer = (tag: string) =>
-    (props: any) => {
-        const node = document.createElement(tag) as unknown as HTMLElement;
-        applyElementProps(node, props);
-        appendChildrenRecursively(node, props.children);
-        return node;
-    }
+// export const intrinsic_element_renderer = (tag: string) =>
+//     (props: any) => {
+//         const node = document.createElement(tag) as unknown as HTMLElement;
+//         applyElementProps(node, props);
+//         appendChildrenRecursively(node, props.children);
+//         return node;
+//     }
 
-function appendChildrenRecursively(node: HTMLElement, children: any[]): void {
-    for (const child of children) {
-        if (child instanceof Node) {   // Is it an HTML or SVG element?
-            node.appendChild(child);
-        }
-        else if (child instanceof Array) {   // example: <div>{items}</div>
-            appendChildrenRecursively(node, child);
-        }
-        else if (child === false) {
-            // The value false is ignored, to allow conditional display using && operator
-        }
-        else if (child != null) {   // if item is not null or undefined
-            node.appendChild(document.createTextNode(child));
-        }
-    }
-}
+// function appendChildrenRecursively(node: HTMLElement, children: any[]): void {
+//     for (const child of children) {
+//         if (child instanceof Node) {   // Is it an HTML or SVG element?
+//             node.appendChild(child);
+//         }
+//         else if (child instanceof Array) {   // example: <div>{items}</div>
+//             appendChildrenRecursively(node, child);
+//         }
+//         else if (child === false) {
+//             // The value false is ignored, to allow conditional display using && operator
+//         }
+//         else if (child != null) {   // if item is not null or undefined
+//             node.appendChild(document.createTextNode(child));
+//         }
+//     }
+// }
 
-function applyElementProps(node: HTMLElement, props: Object): void {
-    for (const prop in props) {
-        if (prop === 'children') {
-            continue;
-        }  
-        const value = props[prop];
-        if (value == null)   // if value is null or undefined
-            continue;
-        if (prop === 'ref') {
-            if (typeof value === 'function') {
-                value(node);
-            }
-            else {
-                throw new Error("'ref' must be a function");
-            }
-        }
-        else if (eventMap.hasOwnProperty(prop)) {
-            node[eventMap[prop]] = value;
-        }
-        else if (typeof value === 'function') {
-            node.addEventListener(prop, value);
-        }
-        else if (prop === 'style' && typeof value === 'object') {   // Example: <div style={{height: "20px"}}></div>
-            for (const styleName in value) {
-                (<HTMLElement>node).style[styleName] = value[styleName];
-            }
-        }
-        else {
-            const name = attribMap.hasOwnProperty(prop) ? attribMap[prop] : prop;
-            if (name in node && typeof value === 'object') {
-                // pass object-valued attributes to Web Components
-                node[name] = value;   // value is set without any type conversion
-            }
-            else {
-                node.setAttribute(name, value);   // value will be converted to string
-            }
-        }
-    }
-}
+// function applyElementProps(node: HTMLElement, props: Object): void {
+//     for (const prop in props) {
+//         if (prop === 'children') {
+//             continue;
+//         }  
+//         const value = props[prop];
+//         if (value == null)   // if value is null or undefined
+//             continue;
+//         if (prop === 'ref') {
+//             if (typeof value === 'function') {
+//                 value(node);
+//             }
+//             else {
+//                 throw new Error("'ref' must be a function");
+//             }
+//         }
+//         else if (eventMap.hasOwnProperty(prop)) {
+//             node[eventMap[prop]] = value;
+//         }
+//         else if (typeof value === 'function') {
+//             node.addEventListener(prop, value);
+//         }
+//         else if (prop === 'style' && typeof value === 'object') {   // Example: <div style={{height: "20px"}}></div>
+//             for (const styleName in value) {
+//                 (<HTMLElement>node).style[styleName] = value[styleName];
+//             }
+//         }
+//         else {
+//             const name = attribMap.hasOwnProperty(prop) ? attribMap[prop] : prop;
+//             if (name in node && typeof value === 'object') {
+//                 // pass object-valued attributes to Web Components
+//                 node[name] = value;   // value is set without any type conversion
+//             }
+//             else {
+//                 node.setAttribute(name, value);   // value will be converted to string
+//             }
+//         }
+//     }
+// }
 
-const attribMap = {
-    'htmlFor': 'for',
-    'className': 'class',
-    'defaultValue': 'value',
-    'defaultChecked': 'checked'
-};
+// const attribMap = {
+//     'htmlFor': 'for',
+//     'className': 'class',
+//     'defaultValue': 'value',
+//     'defaultChecked': 'checked'
+// };
 
-const eventMap = {
-    // Clipboard events
-    'onCopy': 'oncopy',
-    'onCut': 'oncut',
-    'onPaste': 'onpaste',
-    // Keyboard events
-    'onKeyDown': 'onkeydown',
-    'onKeyPress': 'onkeypress',
-    'onKeyUp': 'onkeyup',
-    // Focus events
-    'onFocus': 'onfocus',
-    'onBlur': 'onblur',
-    // Form events
-    'onChange': 'onchange',
-    'onInput': 'oninput',
-    'onSubmit': 'onsubmit',
-    // Mouse events
-    'onClick': 'onclick',
-    'onContextMenu': 'oncontextmenu',
-    'onDoubleClick': 'ondblclick',
-    'onDrag': 'ondrag',
-    'onDragEnd': 'ondragend',
-    'onDragEnter': 'ondragenter',
-    'onDragExit': 'ondragexit',
-    'onDragLeave': 'ondragleave',
-    'onDragOver': 'ondragover',
-    'onDragStart': 'ondragstart',
-    'onDrop': 'ondrop',
-    'onMouseDown': 'onmousedown',
-    'onMouseEnter': 'onmouseenter',
-    'onMouseLeave': 'onmouseleave',
-    'onMouseMove': 'onmousemove',
-    'onMouseOut': 'onmouseout',
-    'onMouseOver': 'onmouseover',
-    'onMouseUp': 'onmouseup',
-    // Selection events
-    'onSelect': 'onselect',
-    // Touch events
-    'onTouchCancel': 'ontouchcancel',
-    'onTouchEnd': 'ontouchend',
-    'onTouchMove': 'ontouchmove',
-    'onTouchStart': 'ontouchstart',
-    // UI events
-    'onScroll': 'onscroll',
-    // Wheel events
-    'onWheel': 'onwheel',
-    // Media events
-    'onAbort': 'onabort',
-    'onCanPlay': 'oncanplay',
-    'onCanPlayThrough': 'oncanplaythrough',
-    'onDurationChange': 'ondurationchange',
-    'onEmptied': 'onemptied',
-    'onEncrypted': 'onencrypted',
-    'onEnded': 'onended',
-    'onLoadedData': 'onloadeddata',
-    'onLoadedMetadata': 'onloadedmetadata',
-    'onLoadStart': 'onloadstart',
-    'onPause': 'onpause',
-    'onPlay': 'onplay',
-    'onPlaying': 'onplaying',
-    'onProgress': 'onprogress',
-    'onRateChange': 'onratechange',
-    'onSeeked': 'onseeked',
-    'onSeeking': 'onseeking',
-    'onStalled': 'onstalled',
-    'onSuspend': 'onsuspend',
-    'onTimeUpdate': 'ontimeupdate',
-    'onVolumeChange': 'onvolumechange',
-    'onWaiting': 'onwaiting',
-    // Image events
-    'onLoad': 'onload',
-    'onError': 'onerror'
-};
+// const eventMap = {
+//     // Clipboard events
+//     'onCopy': 'oncopy',
+//     'onCut': 'oncut',
+//     'onPaste': 'onpaste',
+//     // Keyboard events
+//     'onKeyDown': 'onkeydown',
+//     'onKeyPress': 'onkeypress',
+//     'onKeyUp': 'onkeyup',
+//     // Focus events
+//     'onFocus': 'onfocus',
+//     'onBlur': 'onblur',
+//     // Form events
+//     'onChange': 'onchange',
+//     'onInput': 'oninput',
+//     'onSubmit': 'onsubmit',
+//     // Mouse events
+//     'onClick': 'onclick',
+//     'onContextMenu': 'oncontextmenu',
+//     'onDoubleClick': 'ondblclick',
+//     'onDrag': 'ondrag',
+//     'onDragEnd': 'ondragend',
+//     'onDragEnter': 'ondragenter',
+//     'onDragExit': 'ondragexit',
+//     'onDragLeave': 'ondragleave',
+//     'onDragOver': 'ondragover',
+//     'onDragStart': 'ondragstart',
+//     'onDrop': 'ondrop',
+//     'onMouseDown': 'onmousedown',
+//     'onMouseEnter': 'onmouseenter',
+//     'onMouseLeave': 'onmouseleave',
+//     'onMouseMove': 'onmousemove',
+//     'onMouseOut': 'onmouseout',
+//     'onMouseOver': 'onmouseover',
+//     'onMouseUp': 'onmouseup',
+//     // Selection events
+//     'onSelect': 'onselect',
+//     // Touch events
+//     'onTouchCancel': 'ontouchcancel',
+//     'onTouchEnd': 'ontouchend',
+//     'onTouchMove': 'ontouchmove',
+//     'onTouchStart': 'ontouchstart',
+//     // UI events
+//     'onScroll': 'onscroll',
+//     // Wheel events
+//     'onWheel': 'onwheel',
+//     // Media events
+//     'onAbort': 'onabort',
+//     'onCanPlay': 'oncanplay',
+//     'onCanPlayThrough': 'oncanplaythrough',
+//     'onDurationChange': 'ondurationchange',
+//     'onEmptied': 'onemptied',
+//     'onEncrypted': 'onencrypted',
+//     'onEnded': 'onended',
+//     'onLoadedData': 'onloadeddata',
+//     'onLoadedMetadata': 'onloadedmetadata',
+//     'onLoadStart': 'onloadstart',
+//     'onPause': 'onpause',
+//     'onPlay': 'onplay',
+//     'onPlaying': 'onplaying',
+//     'onProgress': 'onprogress',
+//     'onRateChange': 'onratechange',
+//     'onSeeked': 'onseeked',
+//     'onSeeking': 'onseeking',
+//     'onStalled': 'onstalled',
+//     'onSuspend': 'onsuspend',
+//     'onTimeUpdate': 'ontimeupdate',
+//     'onVolumeChange': 'onvolumechange',
+//     'onWaiting': 'onwaiting',
+//     // Image events
+//     'onLoad': 'onload',
+//     'onError': 'onerror'
+// };

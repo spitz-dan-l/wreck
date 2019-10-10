@@ -115,6 +115,12 @@ export function infer_literal_array<T extends string>(...arr: T[]): T[] {
 // Array helpers //
 
 export function append<T>(...elts: T[]){
+    function _append(arr: T[]): T[];
+    // function _append(arr?: T[]): T[];
+    function _append(arr?: T[]): T[] {
+        return [...(arr || []), ...elts];
+    }
+    return _append;
     return (arr?: T[]) => [...(arr || []), ...elts];
 }
 
@@ -192,6 +198,9 @@ export function merge_objects<T extends {}>(arr: T[]): T {
 // WARNING: this will break if obj has a property that is explicitly set to undefined!
 export function entries<K extends keyof any, V>(obj: {[k in K]?: V}): [K, V][] {
     return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
+}
+export function keys<K extends keyof any>(obj: {[k in K]?: any}): K[] {
+    return <K[]>Object.keys(obj);
 }
 
 export function drop_keys<O extends {}, K extends keyof O>(obj: O, ...keys: K[]): Omit<O, K> {

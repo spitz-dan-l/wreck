@@ -22,9 +22,11 @@
 import { O } from 'ts-toolbelt';
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
 import { update, map, append } from './utils';
-import { Story, StoryUpdates, init_frame, apply_story_updates, remove_eph_story, add_input_text } from './text';
+import { createElement } from './story/story';
+import { Story, StoryUpdates, make_frame, apply_story_updates, add_input_text, init_story, story_update, replace_op, EmptyFrame, add_op, StoryHole, init_story_updates } from './story/updates';
 import { stages } from './stages';
 import { P } from 'ts-toolbelt/out/types/src/Object/_api';
+import { query } from './story/story_query';
 
 export interface World {
     readonly parsing: Parsing | undefined,
@@ -44,7 +46,7 @@ export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
 
 const INITIAL_WORLD: World = {
-    story: stages([0, init_frame(0)]),
+    story: init_story,
     story_updates: stages(),
     parsing: undefined,
     previous: null,
@@ -55,7 +57,7 @@ const INITIAL_WORLD: World = {
 
 // Helper to return INITIAL_WORLD constant as any kind of W type.
 export function get_initial_world<W extends World>(): Pick<W, keyof World> {
-    return <W>INITIAL_WORLD;
+    return INITIAL_WORLD as W;
 }
 
 export type WorldSpec<W extends World> = {
@@ -82,7 +84,7 @@ export function make_world_spec<W extends World>(spec: {
     post?: Narrator<W>,
     css_rules?: string[]
 }): WorldSpec<W> {
-    return <WorldSpec<W>>spec;
+    return spec;
 }
 
 export type CommandResult<W extends World> = {
@@ -105,20 +107,14 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
         previous: _ => world,
         index: _ => new_index,
         story: _ => apply_story_updates(_, world.story_updates),
-        story_updates: () => stages([0, [{
-            index: new_index,
-            op: {
-                kind: 'Add',
-                elements: init_frame(new_index)
-            }
-        }]]),
+        story_updates: () => init_story_updates(new_index),
         parsing: () => undefined,
         parent: () => null,
         child: () => null
     });
 
     if (spec.pre !== undefined) {
-        next_state = <World> spec.pre(next_state);
+        next_state = spec.pre(next_state);
     }
 
     return function update_thread(parser: Parser) {
@@ -128,7 +124,7 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
         }
         
         if (spec.post !== undefined) {
-            next_state2 = <World>spec.post(next_state2, world);
+            next_state2 = spec.post(next_state2, world);
         }
 
         return next_state2;

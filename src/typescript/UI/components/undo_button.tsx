@@ -1,5 +1,5 @@
 import { World } from "../../world";
-import { createElement, Component, Renderer } from "../framework/framework";
+import { createElement, Component, Renderer } from "../framework";
 import { ui_resources } from '../prelude';
 
 export type UndoProps = {
@@ -26,8 +26,11 @@ export const UndoButton: Renderer<UndoProps> = ({world, undo_selected}, old?) =>
     if (old === undefined) {
         return <div
             className={get_undo_class()}
-            onMouseOver={() => dispatch({kind: 'SelectUndo'})}
-            onClick={() => { dispatch({kind: 'SelectUndo'}); dispatch({kind: 'Submit'}); }}
+            on={{
+                mouseover: () => dispatch({kind: 'SelectUndo'}),
+                click: () => { dispatch({kind: 'SelectUndo'}); dispatch({kind: 'Submit'}); }
+            }}
+           
         >
             {String.fromCharCode(10226)} Undo
         </div> as UndoButton;

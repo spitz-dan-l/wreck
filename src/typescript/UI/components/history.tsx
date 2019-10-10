@@ -1,5 +1,5 @@
 import { World } from "../../world";
-import { createElement, Component, Renderer } from "../framework/framework";
+import { createElement, Component, Renderer } from "../framework";
 import { ui_resources } from '../prelude';
 import { is_compound_world, MaybeCompoundWorld, group_compound_worlds, history_array } from "../../history";
 import { AnimationState, animate, update_history_view, start_animations, set_history_view, compute_possible_labels, final_story } from "../animation";

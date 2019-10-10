@@ -1,4 +1,5 @@
-import { createElement, Renderer, Component } from '../framework/framework';
+import { createElement, story_to_dom, StoryRenderer, StoryNode, RendererBaseProps } from '../../story';
+import { Renderer, Component } from '../framework/framework';
 import { MatchStatus, Parsing, Token, TokenAvailability, TokenMatch } from '../../parser';
 
 export const Carat = () => <span>>&nbsp;</span>;
@@ -44,7 +45,10 @@ function get_class_name(tm: TokenMatch) {
 
 export type ParsedTextProps = { parsing: Parsing };
 export type ParsedText = Component<ParsedTextProps>;
-export const ParsedText: Renderer<ParsedTextProps> = (props) => {
+export const ParsedText: Renderer<ParsedTextProps> = (props: ParsedTextProps) =>
+    story_to_dom(ParsedTextStory(props)) as ParsedText;
+
+export const ParsedTextStory: StoryRenderer<ParsedTextProps> = (props) => {
   let parsing: Parsing = props.parsing;
   
   let command_classes = ['command'];
@@ -77,6 +81,6 @@ export const ParsedText: Renderer<ParsedTextProps> = (props) => {
           ))
         }
       </div>
-    </div> as ParsedText
+    </div> as StoryNode
   );
 }

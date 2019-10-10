@@ -1,7 +1,7 @@
 import { keys } from '../../keyboard_tools';
 import { AppState, app_reducer } from "../actions";
 import { scroll_down } from "../animation";
-import { child_declarator_for, Component, createElement, make_ui, Renderer } from "../framework/framework";
+import { child_declarator_for, Component, createElement, make_ui, Renderer } from "../framework";
 import { ui_resources } from "../prelude";
 import { UndoButton } from "./undo_button";
 import { InputPrompt } from './input_prompt';
@@ -98,7 +98,7 @@ export const App: Renderer<AppState> = (state, old?) => {
             scroll_down();
         });
 
-        return <div class="app">
+        return <div className="app">
             <app_history.render {...state} />
             <div>
                 <app_prompt.render {...state} />

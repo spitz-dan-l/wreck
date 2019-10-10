@@ -1,5 +1,5 @@
 import { Parsing } from '../../parser';
-import { child_declarator_for, Component, createElement, Renderer } from '../framework/framework';
+import { child_declarator_for, Component, createElement, Renderer } from '../framework';
 import { ui_resources } from '../prelude';
 import { ParsedText } from './parsed_text';
 
@@ -25,7 +25,7 @@ export const InputPrompt: Renderer<InputPromptProps> = (props, old?) => {
     const dispatch = ui_resources.get('dispatch');
 
     if (old === undefined) {
-        let result = <div class="input-prompt">
+        let result = <div className="input-prompt">
             <input value={props.parsing.raw.text} />
             <span>
                 <input_prompt_text.render {...props} />

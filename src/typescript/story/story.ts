@@ -1,4 +1,9 @@
 import { split_tokens } from '../text_tools';
+import { AllHTMLAttributes, set_attributes } from '../jsx_utils';
+import { update } from '../update';
+import { HTMLAttributesWithout } from '../jsx_utils';
+import { NodeProps } from './create';
+
 
 export type StoryHole = { kind: 'StoryHole' };
 
@@ -10,10 +15,20 @@ export interface StoryNode {
     kind: 'StoryNode',
     tag: string,
     classes: Record<string, boolean>,
-    attributes: Record<string, any>,
-    dataset: Record<string, any>,
+    attributes: HTMLAttributesWithout<NodeProps>
+    data: { frame_index?: number },
     children: Fragment<this>[]
 }
+
+export interface StoryNodeTypes {
+    StoryNode: StoryNode;
+}
+
+type ValidStoryNodeTypes<T> = {
+    [K in keyof T]: T[K] extends StoryNode ? never : K;
+}[keyof T];
+
+const InvalidStoryNodeTypes: never = <ValidStoryNodeTypes<StoryNodeTypes>><unknown>null;
 
 export function is_story_node<Node extends StoryNode=StoryNode>(x: Fragment<Node>): x is Node {
     return (x as any).kind === 'StoryNode';
@@ -23,63 +38,20 @@ export function is_story_hole(x: Fragment): x is StoryHole {
 }
 
 
-// creating story trees
-type BaseProps = Record<string, any> & {
-    className?: string,
-    dataset?: Record<string, any>
-};
-
-export type StoryRenderer<P extends BaseProps> = (props: P & { children: Fragment[] }) => StoryNode;
-
-export function createElement<P extends {}>(tag: StoryRenderer<P>, props: P, ...deep_children: DeepFragment[]): StoryNode;
-export function createElement<P extends BaseProps>(tag: string, props: P, ...deep_children: DeepFragment[]): StoryNode;
-export function createElement(tag: string | StoryRenderer<{}>, props: BaseProps, ...deep_children: DeepFragment[]): StoryNode {
-    const children = deep_children.flat(Infinity);
-    if (typeof(tag) === 'function') {
-        return tag({...props, children})
-    } 
-    
-    const classes: Record<string, boolean> = {};
-    if (props.className) {
-        for (const c of split_tokens(props.classes)) {
-            classes[c] = true;
-        }
-    }
-
-    let dataset: {};
-    if (props.dataset) {
-        dataset = props.dataset;
-    } else {
-        dataset = {}
-    }
-
-    const attributes = {...props};
-    delete attributes.className;
-    delete attributes.dataset;
-
-    return {
-        kind: 'StoryNode',
-        tag,
-        classes,
-        attributes,
-        dataset,
-        children: children.flat(Infinity)
-    }
-}
-
-import {JSX as JSX_} from './JSX';
-import { update, ObjectUpdater, Updater } from '../update';
-export {JSX} from './JSX';
-export declare namespace createElement {
-    export import JSX = JSX_;
-}
-
-
 // Find subnodes within a story
 export type StoryPredicate = (n: StoryNode) => boolean;
-export type Path = number[];
 
-export function find_node(node: StoryNode, predicate: StoryPredicate): [StoryNode, Path] | null {
+export type Path = number[];
+export function is_path_empty(x: Path): x is [] {
+    return x.length === 0;
+}
+export function is_path_full(x: Path): x is [number, ...number[]] {
+    return x.length > 0;
+}
+
+export type FoundNode = [StoryNode, Path];
+
+export function find_node(node: StoryNode, predicate: StoryPredicate): FoundNode | null {
     if (predicate(node)) {
         return [node, []];
     }
@@ -96,8 +68,8 @@ export function find_node(node: StoryNode, predicate: StoryPredicate): [StoryNod
     return null;
 }
 
-export function find_all_nodes(node: StoryNode, predicate: StoryPredicate): [StoryNode, Path][] {
-    const result: [StoryNode, Path][] = [];
+export function find_all_nodes(node: StoryNode, predicate: StoryPredicate): FoundNode[] {
+    const result: FoundNode[] = [];
     if (predicate(node)) {
         result.push([node, []]);
     }
@@ -106,21 +78,21 @@ export function find_all_nodes(node: StoryNode, predicate: StoryPredicate): [Sto
         if (is_story_node(child)) {
             result.push(...find_all_nodes(child, predicate)
                 .map(([n, p]) =>
-                    [n, [i, ...p]] as [StoryNode, Path]));
+                    [n, [i, ...p]] as FoundNode));
         }
     }
     return result;
 }
 
 // Find from a sequence of predicates. Makes it easy to get querySelector-like behavior.
-export function find_path(node: StoryNode, predicates: StoryPredicate[]): [StoryNode, Path] | null {
+export function find_chain(node: StoryNode, predicates: StoryPredicate[]): FoundNode | null {
     if (predicates.length === 0) {
         return [node, []];
     }
 
     const xs = find_all_nodes(node, predicates[0])
     for (const [x, p] of xs) {
-        const c = find_path(x, predicates.slice(0));
+        const c = find_chain(x, predicates.slice(0));
         if (c !== null && c[0] !== x) {
             return [c[0], [...p, ...c[1]]];
         }
@@ -129,18 +101,18 @@ export function find_path(node: StoryNode, predicates: StoryPredicate[]): [Story
     return null;
 }
 
-export function find_all_path(node: StoryNode, predicates: StoryPredicate[]): [StoryNode, Path][] {
+export function find_all_chain(node: StoryNode, predicates: StoryPredicate[]): FoundNode[] {
     if (predicates.length === 0) {
         return [[node, []]];
     }
 
-    const result: [StoryNode, Path][] = [];
+    const result: FoundNode[] = [];
     const xs = find_all_nodes(node, predicates[0]);
     for (const [x, p] of xs) {
-        const cs = find_all_path(x, predicates.slice(0));
+        const cs = find_all_chain(x, predicates.slice(0));
         result.push(...cs
             .filter(([c, cp]) => c !== x)
-            .map(([c, cp]) => [c, [...p, ...cp]] as [StoryNode, Path]));
+            .map(([c, cp]) => [c, [...p, ...cp]] as FoundNode));
     }
     return result;
 }
@@ -184,10 +156,12 @@ export function path_to(parent: StoryNode, target: StoryNode): Path | null {
 }
 
 // updating story nodes
-export function replace_in(parent: StoryNode, path: Path, updated: StoryNode): StoryNode;
-export function replace_in<N extends Fragment>(parent: Fragment, path: [], updated: N): N;
-export function replace_in(parent: Fragment, path: Path, updated: Fragment): Fragment;
-export function replace_in(parent: Fragment, path: Path, updated: Fragment): Fragment {
+export function replace_in<S extends StoryNode>(parent: S, path: Path, updated: StoryNode): S;
+export function replace_in<N extends Fragment | undefined>(parent: Fragment, path: [], updated: N): N;
+export function replace_in<N extends Fragment>(parent: N, path: [number, ...Path], updated: Fragment | undefined): N;
+export function replace_in<N extends Fragment>(parent: Fragment, path: Path, updated: Fragment): Fragment;
+export function replace_in(parent: Fragment, path: Path, updated: Fragment | undefined): Fragment | undefined;
+export function replace_in(parent: Fragment, path: Path, updated: Fragment | undefined): Fragment | undefined  {
     if (path.length === 0) {
         return updated;
     }
@@ -213,19 +187,11 @@ export function story_to_dom(story: StoryNode) {
         }
     }
 
-    for (const [data_attr, val] of Object.entries(story.dataset)) {
-        elt.dataset[data_attr] = val as string;
+    for (const [data_attr, val] of Object.entries(story.data)) {
+        elt.dataset[data_attr] = '' + val;
     }
 
-    for (const [prop, value] of Object.entries(story.attributes)) {
-        if (prop === 'style') {
-            for (const [attr, val] of Object.entries(value as {})) {
-                elt.style[attr] = val;
-            }
-        }
-        
-        elt[prop] = value;
-    }
+    set_attributes(elt, story.attributes);
 
     for (const c of story.children) {
         if (is_story_hole(c)) {

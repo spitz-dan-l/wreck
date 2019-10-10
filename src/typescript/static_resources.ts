@@ -1,4 +1,4 @@
-import { map_values, from_entries, construct_from_keys } from './utils';
+import { map_values, from_entries, construct_from_keys, keys } from './utils';
 
 export class StaticResource<ValueType> {
     kind: 'StaticResource';
@@ -43,9 +43,13 @@ export type StaticNameIndex = readonly string[] & { readonly 0: string };
 
 export type NameOf<N extends StaticNameIndex> = N[number];
 
-import {U} from 'ts-toolbelt';
+export type StaticNameIndexFor<T extends {}> = {
+    [K in keyof T]: null
+};
 
-export type StaticNameIndexFor<T extends {}> = Readonly<U.TupleOf<keyof T>>;
+export function static_names<T extends {}>(...names: (keyof StaticNameIndexFor<T>)[]): StaticNameIndexFor<T> {
+    return null as any;
+}
 
 export type ResourcesFor<T> = {
     [K in keyof T]: StaticResource<T[K]>
@@ -60,9 +64,9 @@ export class StaticMap<T extends {}> {
     resources: ResourcesFor<T>;
     
     constructor(static_name_index: StaticNameIndexFor<T>, mappers?: Mapper<T>[]);
-    constructor(readonly static_name_index: readonly (keyof T)[], readonly mappers: Mapper<T>[]=[]) {
+    constructor(readonly static_name_index: Record<keyof T, null>, readonly mappers: Mapper<T>[]=[]) {
         this.resources = {} as ResourcesFor<T>;
-        for (let name of static_name_index) {
+        for (let name of keys(static_name_index)) {
             this.create(name);
         }
     }
@@ -85,7 +89,7 @@ export class StaticMap<T extends {}> {
             throw new Error('Tried to register a mapper after the map was sealed.');
         }
 
-        for (const name of this.static_name_index) {
+        for (const name of keys(this.static_name_index)) {
             const resource = this.resources[name]
             if (!resource.initialized) {
                 continue;
@@ -156,7 +160,7 @@ export class StaticMap<T extends {}> {
             throw new Error('Tried to get all resources before the registry was sealed.');
         }
 
-        return construct_from_keys(this.static_name_index, name => this.get(name, assert_sealed));
+        return construct_from_keys(keys(this.static_name_index), name => this.get(name, assert_sealed));
     }
 }
 

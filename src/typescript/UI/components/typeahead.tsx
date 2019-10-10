@@ -1,5 +1,5 @@
 import { ui_resources } from "../prelude";
-import { Renderer, createElement, Component } from "../framework/framework";
+import { Renderer, createElement, Component } from "../framework";
 import { TypeaheadOption, Parsing, Token, TokenAvailability, TokenMatch } from "../../parser";
 import { isEqual } from "lodash";
 
@@ -82,9 +82,11 @@ export const Typeahead: Renderer<TypeaheadProps> = ({parsing, typeahead_index, u
         return <ul className="typeahead">
             {grid(parsing).map((option, i) =>
                 <li
-                    onMouseOver={() => handleMouseOver(i)}
+                    on={{
+                        mouseover: () => handleMouseOver(i),
+                        click: () => handleClick(i)
+                    }}
                     className={get_option_class(option, i, typeahead_index, undo_selected)}
-                    onClick={() => handleClick(i)}
                 >
                     <span>{'  '}</span>
                     { option.option.map((m, j) =>
