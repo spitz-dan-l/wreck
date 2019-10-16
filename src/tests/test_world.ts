@@ -1,10 +1,10 @@
 import * as assert from 'assert';
 import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
-import { new_bird_world, bird_world_spec } from '../typescript/demo_worlds/bird_world';
-import { new_bird_world as new_puffer_bird_world, bird_world_spec as puffer_bird_world_spec } from '../typescript/demo_worlds/puffer_bird_world';
+// import { new_bird_world, bird_world_spec } from '../typescript/demo_worlds/bird_world';
+// import { new_bird_world as new_puffer_bird_world, bird_world_spec as puffer_bird_world_spec } from '../typescript/demo_worlds/puffer_bird_world';
 import { raw, traverse_thread } from '../typescript/parser';
-import { render_message } from '../typescript/message';
+// import { render_message } from '../typescript/message';
 import { make_update_thread } from '../typescript/world';
 
 describe('world', () => {

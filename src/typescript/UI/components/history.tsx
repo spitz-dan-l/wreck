@@ -2,11 +2,11 @@ import { World } from "../../world";
 import { createElement, Component, Renderer } from "../framework";
 import { ui_resources } from '../prelude';
 import { is_compound_world, MaybeCompoundWorld, group_compound_worlds, history_array } from "../../history";
-import { AnimationState, animate, update_history_view, start_animations, set_history_view, compute_possible_labels, final_story } from "../animation";
-import { apply_story_updates, FrameUpdate, with_eph_effects } from "../../text";
+import { AnimationState, animate, final_story, compute_possible_effects } from "../animation";
+import { apply_story_updates_all, StoryUpdateSpec, apply_story_updates_stage, story_to_dom, ReversibleUpdateSpec, story_update, query, story_op, remove_eph, Story } from "../../story";
 import { merge_stages } from "../../stages";
-import { update } from "../../update";
-import { map_values, array_last } from "../../utils";
+import { map_values, array_last, update } from "../../utils";
+import { Effects, request_animation_frame } from "../../effect_utils";
 
 type HistoryProps = {
     world: World,
@@ -19,92 +19,94 @@ export type History = Component<HistoryProps>;
 export const History: Renderer<HistoryProps> = (props, old?) => {
     const dispatch = ui_resources.get('dispatch');
     const effect = ui_resources.get('effect');
-  
+    const effect_promise = ui_resources.get('effect_promise');
+
     let root: History;
 
     if (!old) {
-        root = <div className="history" /> as History;
         const first_world = array_last(history_array(props.world))!;
-        set_history_view(root, first_world.story);
+        root = set_history_view_from_scratch(first_world.story);
     } else {
         root = old.old_root;
     }
 
-    if (props.animation_state.current_stage !== undefined) {
-        const story = update_history_view(
-            root,
-            props.animation_state.story_updates.get(props.animation_state.current_stage)!
+    const anim = props.animation_state;
+    if (anim.current_stage !== undefined) {
+        const dom_effects = new Effects(root);
+        
+        let updated_story = apply_story_updates_stage(
+            anim.current_story!,
+            anim.update_plan.get(anim.current_stage)!,
+            dom_effects
         );
-        effect(() => {
-            let p = Promise.resolve(start_animations(root, story));
-            
-            p.then(() => {
-                dispatch({ kind: 'AdvanceAnimation' });
-            });
-        });
-    }
-    
-    if (!old) {
+        
+        dom_effects.push(async dom => {
+            await effect_promise();
+            await animate(dom);
+            return dom;
+        })
+
+        updated_story = remove_eph(updated_story, dom_effects);
+
+        dom_effects.push(() => dispatch({ kind: 'AdvanceAnimation', next_story: updated_story }));
         return root;
     }
+
+    let story = final_story(props.world);
     
-    // We did an undo. delete extra elements.
-    if (props.world.index < old.old_props.world.index) {
-        let w = old.old_props.world;
-        while (w.index > props.world.index) {
-            const elt = root.querySelector(`[data-index="${w.index}"`)!;
-            elt.remove();
-            w = w.previous!;
-        }
-        
-        with_eph_effects(false, () => {
-            set_history_view(root, final_story(props.world));
-        });
+    if (!old || props.world.index < old.old_props.world.index) {
+        root = set_history_view_from_scratch(story, root) as History;
     }
 
+    const would_effects: ReversibleUpdateSpec[] = [];
     // dim the most recent frame if undo is selected.
-    if (props.world.index === old.old_props.world.index &&
-        props.undo_selected !== old.old_props.undo_selected) {
-        root.querySelector(`[data-index="${props.world.index}"]`)!.classList.toggle('would-undo');
+    if (props.world.index === (old ? old.old_props.world.index : undefined) &&
+        props.undo_selected !== (old ? old.old_props.undo_selected : undefined)) {
+        would_effects.push(story_update(
+            query('frame', { index: props.world.index }),
+            story_op('css', { updates: { 'would-undo': props.undo_selected }})
+        ));        
     }
 
-    if (show_possible_css(props) !== show_possible_css(old.old_props)) {
-        const updates: FrameUpdate[] = [
+    if (!old || show_possible_effects(old.old_props) !== show_possible_effects(props)) {
+        if (old) {
             // reverse the old possible labels
-            ...possible_css_updates(old.old_props)
-                .map(u => update(u, {
-                    op: {
-                        updates: _ => map_values(_, v => !v)
-                    }
-                })),
-            // apply the new updates
-            ...possible_css_updates(props)
-        ];
-        
-        if (updates.length > 0) {
-            with_eph_effects(false, () => {
-                update_history_view(root, updates);
-            });
+            const reversed_old_possible_effects = possible_effects(old.old_props)
+                .map(u => update(u, { op: { parameters: {
+                    updates: _ => map_values(_, v => !v)
+                } } }));
+            would_effects.push(...reversed_old_possible_effects);
         }
-        
+        would_effects.push(...possible_effects(props));
     }
-    /*
-        Todos
-            - compound history
-    */
+
+    if (would_effects.length > 0) {
+        const dom_effects = new Effects(root);
+        story = apply_story_updates_stage(story, would_effects, dom_effects);
+        remove_eph(story, dom_effects);
+    }
 
     return root;
 }
 
-function show_possible_css(props: HistoryProps) {
+export function set_history_view_from_scratch(story: Story, root?: History): History {
+    const result = story_to_dom(story);
+    if (root) {
+        root.replaceWith(result);
+    }
+
+    return result as History;
+}
+
+function show_possible_effects(props: HistoryProps) {
     return props.undo_selected ? null : props.possible_world;
 }
 
-function possible_css_updates(props: HistoryProps) {
+function possible_effects(props: HistoryProps) {
     if (props.undo_selected || props.possible_world === null) {
         return [];
     }
-    return compute_possible_labels(props.world, props.possible_world);
+    return compute_possible_effects(props.world, props.possible_world);
 }
 //     let worlds: MaybeCompoundWorld<World>[] = group_compound_worlds(world); //history_array(world).reverse();
   

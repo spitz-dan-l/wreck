@@ -20,10 +20,8 @@
 
 */
 
-import { starts_with, tokenize, split_tokens } from './text_tools';
+import { starts_with, tokenize, split_tokens } from './text_utils';
 import { array_last, drop_keys } from './utils';
-import { Pool } from './static_resources';
-import { Topics } from './demo_worlds/narrascope/topic';
 
 class NoMatch {
     kind: 'NoMatch' = 'NoMatch';
@@ -341,6 +339,8 @@ export function failed<T>(result: ParseValue<T>): result is NoMatch | ParseResta
     return (result instanceof NoMatch || result instanceof ParseRestart);
 }
 
+type Path = (number | Iterator<number>)[];
+
 export class Parser {
     constructor(input_stream: Token[], splits_to_take: number[]) {
         this.input_stream = input_stream;
@@ -657,17 +657,15 @@ export class Parser {
             let n_iterations = 0;
             let n_splits = 0;
 
-
-            type Path = (number | Iterator<number>)[];
             const frontier: Path[] = [[]];
             const results: (T | NoMatch)[] = [];
             const parse_results: TokenMatch[][] = [];
 
             while (frontier.length > 0) {
                 const path = <Path>frontier.pop();
-                let splits_to_take;
+                let splits_to_take: number[];
                 if (path.length === 0) {
-                    splits_to_take = path;
+                    splits_to_take = path as number[];
                 } else {
                     let n = (array_last(path) as Iterator<number>).next();
                     if (n.done) {
@@ -675,7 +673,7 @@ export class Parser {
                     } else {
                         frontier.push(path);
                     }
-                    splits_to_take = [...path.slice(0, -1), n.value];
+                    splits_to_take = [...path.slice(0, -1), n.value] as number[];
                 }
 
                 const p = new Parser(tokens, splits_to_take);

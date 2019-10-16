@@ -1,5 +1,5 @@
-import { keys } from '../../keyboard_tools';
-import { AppState, app_reducer } from "../actions";
+import { keys } from '../../keyboard_utils';
+import { AppState, app_reducer } from "../app_state";
 import { scroll_down } from "../animation";
 import { child_declarator_for, Component, createElement, make_ui, Renderer } from "../framework";
 import { ui_resources } from "../prelude";
@@ -12,19 +12,20 @@ export const ui = make_ui((state, old?) => App(state, old), app_reducer);
 export const initialize_app = ui.initialize
 
 const dispatch = ui.dispatch;
+ui_resources.initialize('initialize', ui.initialize)
 ui_resources.initialize('dispatch', dispatch);
 ui_resources.initialize('effect', ui.effect);
+ui_resources.initialize('effect_promise', ui.effect_promise);
 
 ui_resources.seal();
 
 // VIEW LOGIC
 export type App = Component<AppState>;
-export {AppState} from '../actions';
 
 const app_child = child_declarator_for<App>();
 
 const app_history = app_child(
-    root => root.querySelector('.history')! as History,
+    root => root.querySelector('.story')! as History,
     (props) => ({
         world: props.command_result.world,
         possible_world: props.command_result.possible_world,

@@ -1,174 +1,37 @@
 import { Stages, stages, stage_entries, map_stages } from '../stages';
-import { StoryNode, Fragment, is_story_node, replace_in, is_path_empty, is_path_full, find_all_nodes, is_story_hole, find_node, FoundNode, StoryHole } from './story';
+import { StoryNode, Fragment, is_story_node, replace_in, is_path_empty, is_path_full, find_all_nodes, is_story_hole, find_node, FoundNode, StoryHole, story_to_dom, Path } from './story';
 import { createElement } from './create';
 import { World } from '../world';
-import { Updater, append, map } from '../utils';
-import { update } from '../update';
+import { Updater, append, map, map_values, update } from '../utils';
 import { history_array } from '../history';
 import { Parsing } from '../parser';
 import { ParsedText, ParsedTextStory } from '../UI/components/parsed_text';
-import { StoryQuerySpec, StoryQueryIndex, compile_query, StoryQueryTypes, query } from './story_query';
-
-export type StoryUpdate = {
-    query: StoryQuerySpec,
-    op: StoryUpdateOp
-};
-
-export function story_update(query: StoryQuerySpec, op: StoryUpdateOp): StoryUpdate {
-    return { query, op };
-}
-
-export type AddOp = {
-    kind: 'Add';
-    elements: Fragment | Fragment[];
-};
-
-export type RemoveOp = {
-    kind: 'Remove';
-};
-
-type CSSUpdates = {
-    [class_name: string]: boolean;
-};
-
-type CSSOp = {
-    kind: 'CSS';
-    updates: CSSUpdates;
-};
-
-type ReplaceOp = {
-    kind: 'Replace';
-    element: Fragment;
-}
-
-export type StoryUpdateOp =
-    | AddOp
-    | RemoveOp
-    | CSSOp
-    | ReplaceOp
-    ;
-
-export function add_op(elements: Fragment | Fragment[]): AddOp {
-    return { kind: 'Add', elements };
-}
-
-export function remove_op(): RemoveOp {
-    return { kind: 'Remove' };
-}
-
-export function css_op(updates: CSSUpdates): CSSOp {
-    return { kind: 'CSS', updates };
-}
-
-export function replace_op(element: Fragment): ReplaceOp {
-    return { kind: 'Replace', element };
-}
-
+import { StoryQuerySpec, StoryQueryIndex, compile_query, StoryQueryTypes, query } from './query';
+import { animate } from '../UI/animation';
+import { ui_resources } from '../UI/prelude';
+import { Effects } from '../effect_utils';
 
 export type Story = StoryNode & { __brand: 'Story' };
+
+export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | undefined
+export type StoryUpdate = (story: Story, effects?: Effects<HTMLElement>) => Story;
+
+
+export type StoryUpdateSpec<Q extends StoryQuerySpec=StoryQuerySpec, O extends StoryOpSpec=StoryOpSpec> = {
+    query: Q,
+    op: O
+};
+
+export type ReversibleOpSpec = StoryOpSpec<'css'>;
+export type ReversibleUpdateSpec = StoryUpdateSpec<StoryQuerySpec, ReversibleOpSpec>;
+
 // StoryUpdates stages are the groupings of updates for animation.
-export type StoryUpdates = Stages<StoryUpdate[]>;
-
-/*
-    Implement story updates both on StoryNodes, and on DOM ?
-*/
-
-let eph_effects = true;
-
-export function with_eph_effects<R>(effects_on: boolean, f: () => R) {
-    const prev = eph_effects;
-    eph_effects = effects_on;
-    const result = f();
-    eph_effects = prev;
-    return result;
+export type StoryUpdatePlan = {
+    would_effects: ReversibleUpdateSpec[]
+    effects: Stages<StoryUpdateSpec[]>;
 }
 
-function add_child(parent: StoryNode, child: Fragment | Fragment[]): StoryNode {
-    if (child instanceof Array) {
-        return child.reduce<StoryNode>((p, c) => add_child(p, c), parent);
-    }
-
-    if (eph_effects && is_story_node(child)){
-        child = update(child, {
-            classes: { ['eph-new']: true }
-        });
-    }
-    return update(parent, {
-        children: append(child)
-    });
-}
-
-export function apply_story_update_op(elt: StoryNode, op: StoryUpdateOp) {
-    switch (op.kind) {
-        case 'Add': {
-            return add_child(elt, op.elements);
-        }
-        case 'CSS': {
-            const updates = {...op.updates};
-            if (eph_effects) {
-                for (const [cls, on] of Object.entries(updates)) {
-                    if (!!on !== !!elt.classes[cls]) {
-                        updates[`eph-${on ? 'adding' : 'removing'}-$cls`] = true;
-                    }
-                }
-            }
-            
-            return update(elt, {
-                classes: updates
-            });        
-        }
-        case 'Remove': {
-            return undefined;
-        }
-        case 'Replace': {
-            return op.element
-        }
-        default: {
-            throw new Error('Should not get here');
-        }
-    }
-}
-
-export function apply_story_update(story: Story, story_update: StoryUpdate) {
-    const query = compile_query(story_update.query);
-    const targets = query(story);
-
-    if (targets.length === 0) {
-        throw new Error('StoryUpdate query returned no matches: '+JSON.stringify(story_update.query));
-    }
-
-    // sort the deepest and last children first
-    // this guarantees that no parent will be updated before its children
-    // and no child array's indices will move before its children are updated
-    targets.sort(([,path1], [,path2]) => {
-        if (path2.length !== path1.length) {
-            return path2.length - path1.length;
-        }
-        for (let i = 0; i < path1.length; i++) {
-            if (path1[i] !== path2[i]) {
-                return path2[i] - path1[i];
-            }
-        }
-        return 0;
-    });
-
-    for (const [target, path] of targets) {
-        const updated_child = apply_story_update_op(target, story_update.op);
-        if (is_path_full(path)) {
-            story = replace_in(story, path, updated_child);
-        } else {
-            if (updated_child === undefined || !is_story_node(updated_child)) {
-                throw new Error('Update would have deleted entire story: '+JSON.stringify(story_update));
-            }
-            story = replace_in(story, path as [], updated_child);
-        }
-        
-    }
-
-    return story;
-}
-
-declare module './story_query' {
+declare module './query' {
     export interface StoryQueryTypes {
         story_root: {};
         story_hole: {};
@@ -184,6 +47,7 @@ StoryQueryIndex.initialize('story_hole', () =>
     (story) => {
         const result = find_all_nodes(story, n => is_story_hole(n));
         if (result.length !== 1) {
+            debugger;
             throw new Error(`Found ${result.length} story holes. There should only ever be one.`);
         }
         return result;
@@ -191,21 +55,22 @@ StoryQueryIndex.initialize('story_hole', () =>
 
 StoryQueryIndex.initialize('eph', () =>
     (story) => find_all_nodes(story,
-        (n) => Object.entries(n.classes)
+        (n) => is_story_node(n) && Object.entries(n.classes)
             .some(([cls, on]) => on && cls.startsWith('eph-'))));
 
 StoryQueryIndex.initialize('has_class', (params) =>
     (story) => find_all_nodes(story,
-        (n) => typeof(params.class) === 'string'
-            ? !!n.classes[params.class]
-            : Object.entries(n.classes)
-                .some(([cls, on]) =>
-                    on && (params.class as RegExp).test(cls))));
+        (n) => is_story_node(n) &&
+            (typeof(params.class) === 'string'
+                ? !!n.classes[params.class]
+                : Object.entries(n.classes)
+                    .some(([cls, on]) =>
+                        on && (params.class as RegExp).test(cls)))));
 
 StoryQueryIndex.initialize('frame', ({index, subquery}) =>
     (story) => {
         const found = find_node(story,
-            (n) => n.data.frame_index === index);
+            (n) => is_story_node(n) && n.data.frame_index === index);
         if (found === null) {
             return [];
         }
@@ -217,26 +82,188 @@ StoryQueryIndex.initialize('frame', ({index, subquery}) =>
             .map(([n, p]) => [n, [...path, ...p]]);
     });
 
-export function remove_eph(story: Story) {
-    return apply_story_update(story, {
-        query: {
-            name: 'eph',
-            parameters: {}
-        },
-        op: { kind: 'Remove' }
-    });
+
+export function story_update<Q extends StoryQuerySpec=StoryQuerySpec, O extends StoryOpSpec=StoryOpSpec>(query: Q, op: O): StoryUpdateSpec<Q, O> {
+    return { query, op };
 }
 
-export function apply_story_updates(story: Story, story_updates: StoryUpdates) {
+export interface StoryOpTypes {
+    add: { children: Fragment | Fragment[] };
+    remove: {};
+    css: { updates: CSSUpdates };
+    remove_eph: {};
+    replace: { replacement: Fragment };
+}
+
+export type CSSUpdates = {
+    [class_name: string]: boolean;
+};
+
+export type StoryOpSpec<Key extends keyof StoryOpTypes=keyof StoryOpTypes> = {
+    [K in Key]: {
+        name: K,
+        parameters: StoryOpTypes[K]
+    }
+}[Key];
+
+export function story_op<O extends keyof StoryOpTypes>(name: O, parameters: StoryOpTypes[O]): StoryOpSpec<O> {
+    return  { name, parameters };
+}
+
+export type StoryOps = {
+    [K in keyof StoryOpTypes]: (parameters: StoryOpTypes[K]) => StoryOp
+};
+
+export const StoryUpdateOps: StoryOps = {
+    add: ({children}) => (parent, effects?) => {
+        if (!is_story_node(parent)) {
+            throw new Error('Tried to append children to terminal node '+JSON.stringify(parent));
+        }
+        if (children instanceof Array) {
+            return children.reduce((p, c) => StoryUpdateOps.add({children: c})(p, effects), parent);
+        }
+    
+        if (effects) {
+            effects.push(dom => {
+                let dom_children = children;
+                if (is_story_node(children)){
+                    dom_children = update(children, {
+                        classes: { ['eph-new']: true }
+                    });
+                }
+                const child_dom = story_to_dom(dom_children);
+                dom.appendChild(child_dom);
+            });
+        }
+        return update(parent, {
+            children: append(children)
+        });
+    },
+    css: ({updates}) => (elt, effects?) => {
+        if (!is_story_node(elt)) {
+            throw new Error('Tried to update CSS on non-StoryNode '+JSON.stringify(elt));
+        }
+        updates = {...updates};
+        if (effects) {
+            effects.push(dom => {
+                const dom_ = dom as HTMLElement;
+                for (const [cls, on] of Object.entries(updates)) {
+                    dom_.classList.toggle(cls, on);
+                    if (!!on !== !!elt.classes[cls]) {
+                        dom_.classList.add(`eph-${on ? 'adding' : 'removing'}-${cls}`);
+                    }
+                }
+            });
+        }
+        return update(elt, {
+            classes: updates
+        });
+    },
+    remove_eph: () => (elt, effects?) => {
+        if (!is_story_node(elt)) {
+            throw new Error('Tried to update CSS on non-StoryNode '+JSON.stringify(elt));
+        }
+        return update(elt, {
+            classes: _ => map_values(_, (on, cls) => {
+                if (on && cls.startsWith('eph-')) {
+                    if (effects !== undefined) {
+                        effects.push(dom => (dom as HTMLElement).classList.remove(cls));
+                    }
+                    return false;
+                }
+                return on;
+            })
+        });
+    },
+    remove: () => (elt, effects?) => {
+        if (effects) {
+            effects.push(dom => dom.remove());
+        }
+        return undefined;
+    },
+    replace: ({replacement}) => (elt, effects?) => {
+        if (effects) {
+            effects.push(dom =>
+                dom.replaceWith(story_to_dom(replacement))
+            )
+        }
+        return replacement;
+    } 
+}
+
+export function compile_story_update_op(op_spec: StoryOpSpec): StoryOp {
+    return StoryUpdateOps[op_spec.name](op_spec.parameters as any);
+}
+
+export function dom_lookup_path(elt: HTMLElement | Text, path: Path): HTMLElement | Text {
+    if (path.length === 0) {
+        return elt;
+    }
+    if (!(elt instanceof HTMLElement)) {
+        throw new Error('Tried to get child of non HTMLElement');
+    }
+
+    const child = elt.childNodes[path[0]];
+    if (!(child instanceof HTMLElement) && !(child instanceof Text)) {
+        throw new Error('Encountered unexpected child in get_path_dom: '+child);
+    }
+    return dom_lookup_path(child, path.slice(1));
+}
+
+export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate {
+    return (story, effects?): Story => {
+        const targets = compile_query(story_update.query)(story);        
+        const op = compile_story_update_op(story_update.op);
+        for (const [target, path] of targets) {
+            const updated_child = op(target, effects ? effects.then(dom => dom_lookup_path(dom, path)) : undefined);
+            
+            const result = replace_in(story, path, updated_child);
+            
+            if (result === undefined) {
+                throw new Error('Update deleted the entire story: '+JSON.stringify(story_update));
+            }
+            if (!is_story_node(result)) {
+                throw new Error('Updated replaced the story root with invalid value: ' + JSON.stringify(result));
+            }
+
+            story = result as Story;
+        }
+    
+        return story;
+    }
+}
+
+export function apply_story_update(story: Story, story_update: StoryUpdateSpec, effects?: Effects<HTMLElement>): Story {
+    return compile_story_update(story_update)(story, effects);
+}
+
+
+export function remove_eph(story: Story, effects?: Effects<HTMLElement>) {
+    return apply_story_update(
+        story,
+        story_update(
+            query('eph', {}),
+            story_op('remove_eph', {})
+        ),
+        effects
+    );
+}
+
+export function apply_story_updates_stage(story: Story, story_updates: StoryUpdateSpec[], effects?: Effects<HTMLElement>) {
+    return story_updates.reduce((story, update) => apply_story_update(story, update, effects), story);
+}
+
+export function apply_story_updates_all(story: Story, story_updates: StoryUpdatePlan) {
     let result = story;
 
-    for (const [stage, updates] of stage_entries(story_updates)) {
-        result = updates.reduce((story, update) => apply_story_update(story, update), result);
+    for (const [stage, updates] of stage_entries(story_updates.effects)) {
+        result = apply_story_updates_stage(result, updates);
         result = remove_eph(result);
     }
     return result;
 }
 
+// Helpers for doing common story updates
 export type TextAddSpec = {
     action?: Fragment | Fragment[]
     consequence?: Fragment | Fragment[]
@@ -254,16 +281,16 @@ export const make_text_additions = (index: number, spec: TextAddSpec) => {
             consequence: spec
         };
     }
-    const result: StoryUpdate[] = [];
+    const result: StoryUpdateSpec[] = [];
     for (const prop of ['action', 'consequence', 'description', 'prompt'] as const) {
-        const elements = spec[prop];
-        if (elements !== undefined) {
+        const children = spec[prop];
+        if (children !== undefined) {
             result.push(
                 story_update(
                     query('frame', {
                         index,
                         subquery: query('has_class', { class: prop }) }),
-                    add_op(elements)
+                    story_op('add', { children })
                 )
             );
         }
@@ -273,13 +300,13 @@ export const make_text_additions = (index: number, spec: TextAddSpec) => {
 
 export const story_updater = (spec: TextAddSpec, stage=0) =>
     <W extends World>(world: W) => update(world as World, {
-        story_updates: stages([stage, append(...make_text_additions(world.index, spec))])
+        story_updates: { effects: stages([stage, append(...make_text_additions(world.index, spec))]) }
     }) as W;
 
 export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
     (world: W) => {
         const history = history_array(world);
-        const css_updates: StoryUpdate[] = history.flatMap(w => {
+        const css_updates: StoryUpdateSpec[] = history.flatMap(w => {
             const updates = f(w);
 
             if (Object.keys(updates).length === 0) {
@@ -288,26 +315,25 @@ export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
 
             return [story_update(
                 query('frame', { index: w.index }),
-                css_op(f(w))
+                story_op('css', {updates: f(w)})
             )]
         });
 
         return update(world as World, {
-            story_updates: stages([0, append(...css_updates)])
+            story_updates: { effects: stages([0, append(...css_updates)]) }
         }) as W
     }
 
 export const add_input_text = (world: World, parsing: Parsing) => {
     return update(world, {
-        story_updates: stages([0, append(
+        story_updates: { effects: stages([0, append(
             story_update(
                 query('frame', {
                     index: world.index,
                     subquery: query('has_class', {class: 'input-text'})
                 }),
-                add_op(<ParsedTextStory parsing={parsing} />)
-            )
-        )])
+                story_op('add', {children: <ParsedTextStory parsing={parsing} />}))
+        )]) }
     });
 }
 
@@ -332,24 +358,27 @@ export const make_frame = (frame_index: number) => {
     });
 };
 
-export function StoryHole(): StoryHole {
+export const Hole = (props: {}): StoryHole => {
     return { kind: 'StoryHole' };
 }
 
 export const init_story = <div className="story">
     <EmptyFrame index={0} />
-    <StoryHole />
+    <Hole />
 </div> as Story;
 
-export function init_story_updates(new_index: number): StoryUpdates {
-    return stages([0, [
-        story_update(
-            query('story_hole', {}),
-            replace_op(<EmptyFrame index={new_index} />)
-        ),
-        story_update(
-            query('story_root', {}),
-            add_op(<StoryHole />)
-        )
-    ]]);
+export function init_story_updates(new_index: number): StoryUpdatePlan {
+    return {
+        would_effects: [],
+        effects: stages([0, [
+            story_update(
+                query('story_hole', {}),
+                story_op('replace', { replacement: <EmptyFrame index={new_index} />})
+            ),
+            story_update(
+                query('story_root', {}),
+                story_op('add', {children: <Hole />})
+            )
+        ]])
+    };
 }

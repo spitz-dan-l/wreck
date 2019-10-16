@@ -1,5 +1,4 @@
 export * from './story';
 export * from './create';
-export * from './story_query';
-export {StoryHole} from './updates';
+export * from './query';
 export * from './updates';

@@ -1,8 +1,9 @@
-import { split_tokens } from '../text_tools';
+import { split_tokens } from '../text_utils';
 import { AllHTMLAttributes, set_attributes } from '../jsx_utils';
 import { update } from '../update';
 import { HTMLAttributesWithout } from '../jsx_utils';
 import { NodeProps } from './create';
+import {Gensym} from '../gensym';
 
 
 export type StoryHole = { kind: 'StoryHole' };
@@ -13,10 +14,13 @@ interface DeepFragmentArray<Node extends StoryNode=StoryNode> extends Array<Deep
 
 export interface StoryNode {
     kind: 'StoryNode',
+    key: Gensym,
     tag: string,
     classes: Record<string, boolean>,
     attributes: HTMLAttributesWithout<NodeProps>
-    data: { frame_index?: number },
+    data: {
+        frame_index?: number
+    },
     children: Fragment<this>[]
 }
 
@@ -39,7 +43,7 @@ export function is_story_hole(x: Fragment): x is StoryHole {
 
 
 // Find subnodes within a story
-export type StoryPredicate = (n: StoryNode) => boolean;
+export type StoryPredicate = (n: Fragment) => boolean;
 
 export type Path = number[];
 export function is_path_empty(x: Path): x is [] {
@@ -49,15 +53,15 @@ export function is_path_full(x: Path): x is [number, ...number[]] {
     return x.length > 0;
 }
 
-export type FoundNode = [StoryNode, Path];
+export type FoundNode = [Fragment, Path];
 
-export function find_node(node: StoryNode, predicate: StoryPredicate): FoundNode | null {
+export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode | null {
     if (predicate(node)) {
         return [node, []];
     }
-    for (let i = 0; i < node.children.length; i++) {
-        const child = node.children[i];
-        if (is_story_node(child)) {
+    if (is_story_node(node)) {
+        for (let i = 0; i < node.children.length; i++) {
+            const child = node.children[i];
             const result = find_node(child, predicate);
             if (result !== null) {
                 const [target, path] = result;
@@ -68,14 +72,14 @@ export function find_node(node: StoryNode, predicate: StoryPredicate): FoundNode
     return null;
 }
 
-export function find_all_nodes(node: StoryNode, predicate: StoryPredicate): FoundNode[] {
+export function find_all_nodes(node: Fragment, predicate: StoryPredicate): FoundNode[] {
     const result: FoundNode[] = [];
     if (predicate(node)) {
         result.push([node, []]);
     }
-    for (let i = 0; i < node.children.length; i++) {
-        const child = node.children[i];
-        if (is_story_node(child)) {
+    if (is_story_node(node)) {
+        for (let i = 0; i < node.children.length; i++) {
+            const child = node.children[i];
             result.push(...find_all_nodes(child, predicate)
                 .map(([n, p]) =>
                     [n, [i, ...p]] as FoundNode));
@@ -85,7 +89,7 @@ export function find_all_nodes(node: StoryNode, predicate: StoryPredicate): Foun
 }
 
 // Find from a sequence of predicates. Makes it easy to get querySelector-like behavior.
-export function find_chain(node: StoryNode, predicates: StoryPredicate[]): FoundNode | null {
+export function find_chain(node: Fragment, predicates: StoryPredicate[]): FoundNode | null {
     if (predicates.length === 0) {
         return [node, []];
     }
@@ -101,7 +105,7 @@ export function find_chain(node: StoryNode, predicates: StoryPredicate[]): Found
     return null;
 }
 
-export function find_all_chain(node: StoryNode, predicates: StoryPredicate[]): FoundNode[] {
+export function find_all_chain(node: Fragment, predicates: StoryPredicate[]): FoundNode[] {
     if (predicates.length === 0) {
         return [[node, []]];
     }
@@ -117,41 +121,36 @@ export function find_all_chain(node: StoryNode, predicates: StoryPredicate[]): F
     return result;
 }
 
-export function story_get(node: StoryNode, path: Path): StoryNode | null {
+export function story_lookup_path(node: Fragment, path: Path): Fragment | null {
     if (path.length === 0) {
         return node;
     }
-
+    if (!is_story_node(node)) {
+        throw new Error('Cannot traverse children of terminal node '+JSON.stringify(node));
+    }
     const i = path[0]
     if (i >= node.children.length) {
         return null;
     }
 
     const c = node.children[i];
-    if (!is_story_node(c)) {
-        return null;
-    }
-
-    return story_get(c, path.slice(0));
+    return story_lookup_path(c, path.slice(0));
 } 
 
-export function path_to(parent: StoryNode, target: StoryNode): Path | null {
+export function path_to(parent: Fragment, target: Fragment): Path | null {
     if (parent === target) {
         return [];
     }
-
-    for (let i = 0; i < parent.children.length; i++) {
-        const child = parent.children[i];
-        if (!is_story_node(child)) {
-            continue;
+    if (is_story_node(parent)) {
+        for (let i = 0; i < parent.children.length; i++) {
+            const child = parent.children[i];
+            const p = path_to(child, target);
+            if (p === null) {
+                continue;
+            }
+            return [i, ...p];
         }
-        const p = path_to(child, target);
-        if (p === null) {
-            continue;
-        }
-        return [i, ...p];
     }
-
     return null;
 }
 
@@ -178,7 +177,18 @@ export function replace_in(parent: Fragment, path: Path, updated: Fragment | und
 }
 
 // Convert Story to DOM
-export function story_to_dom(story: StoryNode) {
+export function story_to_dom(story: StoryNode): HTMLElement;
+export function story_to_dom(story: string): Text;
+export function story_to_dom(story: Fragment): HTMLElement | Text;
+export function story_to_dom(story: Fragment): HTMLElement | Text {
+    if (typeof story === 'string') {
+        return document.createTextNode(story);
+    } else if (is_story_hole(story)) {
+        const placeholder = document.createElement('div');
+        placeholder.id = 'story-hole';
+        return placeholder;
+    }
+
     const elt = document.createElement(story.tag);
 
     for (const [class_name, on] of Object.entries(story.classes)) {
@@ -194,15 +204,7 @@ export function story_to_dom(story: StoryNode) {
     set_attributes(elt, story.attributes);
 
     for (const c of story.children) {
-        if (is_story_hole(c)) {
-            const placeholder = document.createElement('div');
-            placeholder.id = 'story-hole';
-            elt.appendChild(placeholder);
-        } else if (typeof(c) === 'string') {
-            elt.appendChild(document.createTextNode(c));
-        } else {
-            elt.appendChild(story_to_dom(c));
-        }
+        elt.appendChild(story_to_dom(c));
     }
 
     return elt;

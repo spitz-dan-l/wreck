@@ -178,8 +178,13 @@ export function cond<R>(c: boolean, r: () => R) {
 //     // })
 // }
 
-export const included = <T, T2 extends T=T>(value: T, arr: readonly T2[]) =>
-    arr.includes(<T2>value);
+// export function included<T, T2 extends readonly T[]>(value: T, arr: T2): value is T2[number] {
+//     return arr.includes(value);
+// }
+
+export function included<T, Arr extends readonly any[]>(value: T, arr: Arr): value is Arr[number] {
+    return arr.includes(value);
+}
 
 // Object helpers //
 
@@ -195,10 +200,22 @@ export function merge_objects<T extends {}>(arr: T[]): T {
     return arr.reduce((acc, cur) => ({...acc, ...cur}), {} as T);
 }
 
-// WARNING: this will break if obj has a property that is explicitly set to undefined!
-export function entries<K extends keyof any, V>(obj: {[k in K]?: V}): [K, V][] {
-    return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
+export type Entry<Obj extends {}> = Exclude<{
+    [K in keyof Obj]: [K, Exclude<Obj[K], undefined>]
+}[keyof Obj], undefined>;
+
+export function entries<Obj extends {}>(obj: Obj): Entry<Obj>[] {
+    return <Entry<Obj>[]> Object.entries(obj);
 }
+
+export function set_prop<Obj extends {}>(obj: Obj, ...pair: Entry<Obj>) {
+    obj[pair[0]] = pair[1];
+}
+
+// WARNING: this will break if obj has a property that is explicitly set to undefined!
+// export function entries<K extends keyof any, V>(obj: {[k in K]?: V}): [K, V][] {
+//     return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
+// }
 export function keys<K extends keyof any>(obj: {[k in K]?: any}): K[] {
     return <K[]>Object.keys(obj);
 }
@@ -233,8 +250,8 @@ export function construct_from_keys<O extends { [K in keyof any]: any}>(keys: re
     return result;
 }
 
-export function map_values<V1 extends { [K in keyof any]: any }, V2 extends { [K in keyof V1]: any }=V1>(obj: V1, f: <K extends keyof V1>(v: V1[K]) => V2[K]): V2 {
-    return <V2>from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
+export function map_values<V1 extends { [K in keyof any]: any }, V2 extends { [K in keyof V1]: any }=V1>(obj: V1, f: <K extends keyof V1>(v: V1[K], k: K) => V2[K]): V2 {
+    return <V2>from_entries(entries(obj).map(([k, v]) => [k, f(v, k)]));
 }
 
 
@@ -328,7 +345,7 @@ export function begin<T>(): Chain<T, T>;
 export function begin<T>(t: T): Chain<void, T>; 
 export function begin<T>(t?: T): Chain<any, T> {
     if (t === undefined) {
-        return chain(t => t);
+        return chain((t: any) => t);
     } else {
         return chain(() => t);
     }
@@ -356,11 +373,7 @@ export type IntersectTupleTypes<T extends { [k: number]: any }> = UnionToInterse
 export type IntersectBoxedTupleTypes<T extends { [k: number]: any }> = UnboxIntersection<UnionToIntersection<BoxedTupleTypes<T>>>;
 
 import lodash from 'lodash'
-import { number } from 'prop-types';
 export const deep_equal = lodash.isEqual;
-
-
-export {lens} from 'lens.ts';
 
 
 export const statics =
@@ -383,7 +396,8 @@ export const statics =
 
 export const let_ = <T>(f: (...args: any) => T) => f();
 
-import {A, F} from 'ts-toolbelt'
+import {A, F, T} from 'ts-toolbelt'
+import { P } from 'ts-toolbelt/out/types/src/Object/_api';
 
 type MethodProperties<T extends {}> = {
     [K in keyof T]: T[K] extends (...args: any) => any ? K : never
@@ -420,4 +434,20 @@ function wrap<T>(f: Promise<T>): Maybe<T> {
     }));
 
     return result;
+}
+
+
+export function with_context<C, R>(f: (set: (c: C) => void) => R): [R, C | undefined] {
+    let context: C | undefined;
+
+    const setter = (c: C) => {
+        if (context !== undefined) {
+            throw new Error(`Multiple calls to context setter. First ${context} then ${c}.`)
+        }
+        context = c;
+    }
+
+    const result = f(setter);
+
+    return [result, context];
 }

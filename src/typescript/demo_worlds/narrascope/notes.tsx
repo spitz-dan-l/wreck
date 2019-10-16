@@ -3,7 +3,7 @@ import { createElement } from '../../UI/framework/framework';
 // import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
 import { StaticMap } from '../../static_resources';
-import { capitalize } from '../../text_tools';
+import { capitalize } from '../../text_utils';
 import { update } from '../../update';
 import { map } from '../../utils';
 import { } from './metaphor';

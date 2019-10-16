@@ -1,181 +1,76 @@
-import { Story, StoryUpdates, FrameUpdate, apply_story_updates, apply_frame_update, find_eph, remove_eph } from "../text";
+import { Story, StoryUpdatePlan, StoryUpdateSpec, apply_story_updates_all, apply_story_update, remove_eph, story_to_dom, Path, StoryOpSpec, StoryUpdate, compile_query, story_lookup_path, story_update, query, story_op, StoryNode, find_node, is_story_node, CSSUpdates, ReversibleUpdateSpec } from "../story";
 import { World } from "../world";
 import { stage_entries, stages, map_stages, stage_keys, Stages, make_consecutive } from "../stages";
-import { update } from "../utils";
-import { P } from "ts-toolbelt/out/types/src/Object/_api";
+import { update, included, array_last, key_union } from "../utils";
 import { history_array } from "../history";
+import { isEqual } from "lodash";
 
 export type AnimationState = {
-    story_updates: StoryUpdates,
+    update_plan: StoryUpdatePlan['effects'],
     current_stage: number | undefined,
+    current_story: Story | undefined,
     lock_input: boolean
 }
   
 export const empty_animation_state: AnimationState = {
-    story_updates: stages(),
+    update_plan: stages(),
     current_stage: undefined,
+    current_story: undefined,
     lock_input: false
 };
   
 export function new_animation_state(world: World, previous_world: World | null): AnimationState {
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
-    const index_threshold = previous_world ? previous_world.index : 0;//world.index - 1;
+    const index_threshold = previous_world ? previous_world.index : -1;//world.index - 1;
     const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();
-    const story_updates = make_consecutive(new_frames.map(w => w.story_updates));
+    const story_updates =  make_consecutive(new_frames.map(w => w.story_updates.effects));
     let stages = stage_keys(story_updates);
     let current_stage: number | undefined = stages[0];
     return {
-        story_updates,
+        update_plan: story_updates,
         current_stage,
+        current_story: new_frames[0].story,
         lock_input: stages.length > 0 };
 }
   
-export function advance_animation(state: AnimationState) {
-    let stages = stage_keys(state.story_updates);
+export function advance_animation(state: AnimationState, next_story: Story) {
+    let stages = stage_keys(state.update_plan);
     let next_stage = stages[stages.indexOf(state.current_stage!) + 1];
     return update(state, {
         current_stage: next_stage,
+        current_story: next_story,
         lock_input: next_stage !== undefined
     });
 }
 
 export function final_story(world: World) {
-    return apply_story_updates(world.story, world.story_updates);
+    return apply_story_updates_all(world.story, world.story_updates);
 }
 
-export function set_history_view(root: HTMLElement, story: Story) {
-    for (const [stage, frame] of stage_entries(story)) {
-        let prev_frame = root.querySelector(`[data-index="${stage}"]`);
-        if (prev_frame === null) {
-            root.appendChild(frame);
-        } else {
-            if (prev_frame !== frame) {
-                if (prev_frame.isEqualNode(frame)) {
-                    // Possible performance issue, but maybe not
-                    debugger;
+export function compute_possible_effects(world: World, possible_world: World): ReversibleUpdateSpec[] {
+    const p_worlds = history_array(possible_world).filter(w => w.index > world.index);
+
+    const result: ReversibleUpdateSpec[] = [];
+    for (const p_world of p_worlds) {
+        for (const w_ef of p_world.story_updates.would_effects) {
+            const matches = compile_query(w_ef.query)(p_world.story);
+            for (const [m, p] of matches) {
+                if (!is_story_node(m)) {
+                    continue;
                 }
-                prev_frame.replaceWith(frame);
+                if (find_node(world.story, (n => is_story_node(n) && n.key === m.key)) !== null) {
+                    result.push(story_update(
+                        query('key', { key: m.key }),
+                        w_ef.op
+                    ))
+                }
             }
         }
     }
-    return root;
-}
-
-export function extract_story(root: HTMLElement): Story {
-    const result: Story = stages();
-    const children = Array.from(root.children) as HTMLElement[];
-    for (const child of children) {
-        const index = parseInt(child.dataset.index!);
-        if (index == NaN) {
-            throw new Error('Tried to extract a story frame with missing or invalid data-index attribute.');
-        }
-        result.set(index, child);
-    }
-
     return result;
-}
-
-
-// update the view for one stage of changes
-export function update_history_view(root_elt: HTMLElement, updates: FrameUpdate[]) {
-    const story = extract_story(root_elt);
-    let result = stages(...story);
-
-    for (const update of updates) {
-        apply_frame_update(result, update); 
-    }
-
-    for (const [stage, elt] of stage_entries(result)) {
-        const old_elt = story.get(stage);
-        if (elt === old_elt) {
-            continue;
-        }
-        if (old_elt === undefined) {
-            root_elt.appendChild(elt);
-        } else {
-            root_elt.replaceChild(elt, old_elt);
-        }
-    }
-
-    return result;
-}
-
-export async function start_animations(root_elt: HTMLElement, story: Story) {
-    await Promise.all(map_stages(story, elt => animate(elt)).values());
-    return remove_eph(root_elt);
-}
-
-export function compute_possible_labels(world: World, possible_world: World): FrameUpdate[] {
-    const current_story = apply_story_updates(world.story, world.story_updates);
-
-    // scan through the CSS changes for this frame, keeping only the last class for each index and selector.
-    const new_worlds = history_array(possible_world).filter(w => w.index > world.index).reverse();
-    const possible_updates = new_worlds.flatMap(pw =>
-        stage_entries(pw.story_updates)
-            .flatMap(([s, updates]) =>
-                updates.filter(update =>
-                    update.op.kind === 'CSS')));
-        
-    const final_story = apply_story_updates(possible_world.story, possible_world.story_updates);
-    const would_updates: FrameUpdate[] = [];
-
-    for (const update of possible_updates) {
-        if (update.op.kind !== 'CSS') {
-            continue;
-        }
-
-        const frame_0 = current_story.get(update.index);
-        const frame_1 = final_story.get(update.index);
-
-        if (frame_0 === undefined || frame_0 === frame_1) {
-            continue;
-        }
-
-        let target_elt_0: HTMLElement, target_elt_1: HTMLElement;
-        if (update.selector === undefined) {
-            target_elt_0 = frame_0;
-            target_elt_1 = frame_1!;
-        } else {
-            target_elt_0 = frame_0.querySelector(update.selector)! as HTMLElement;
-            target_elt_1 = frame_1!.querySelector(update.selector)! as HTMLElement;
-        }
-        
-        for (const cls in update.op.updates) {
-            let sign: 'add' | 'remove';
-            const present_0 = target_elt_0.classList.contains(cls);
-            const present_1 = target_elt_1.classList.contains(cls);
-            if (present_0 && !present_1) {
-                sign = 'remove';
-            } else if (!present_0 && present_1) {
-                sign = 'add';
-            } else if (cls.startsWith('eph-')) {
-                // weird corner case where eph- classes wouldn't otherwise show up but it's useful
-                // to have them trigger would- classes.
-                sign = update.op.updates[cls] ? 'add' : 'remove';
-            } else {
-                continue;
-            }
-
-            would_updates.push({
-                index: update.index,
-                selector: update.selector,
-                op: {
-                    kind: 'CSS',
-                    updates: {
-                        [`would-${sign}-${cls}`]: true
-                    }
-                }
-            });
-        }
-    }
-    return would_updates;
 }
 
 export function animate(comp_elt: HTMLElement) {
-    if (find_eph(comp_elt).length === 0) {
-        return Promise.resolve();
-    }
-
     return new Promise<void>((resolve) => {
         // Momentarily apply the animation-pre-compute class
         // to accurately measure the target maxHeight
@@ -209,13 +104,22 @@ export function animate(comp_elt: HTMLElement) {
 
         comp_elt.classList.add('animation-active');
 
+        async () => {
+            await new Promise((resolve) => {
+                setTimeout(resolve, 700);
+            });
+
+            
+        }
+        
+
         setTimeout(() => {
             comp_elt.classList.remove(
                 'animation-start',
                 'animation-active');
 
             walkElt(comp_elt, (e) => {
-                e.style.maxHeight = null; // = '';
+                e.style.maxHeight = null;
                 delete e.dataset.maxHeight;
                 delete e.dataset.isCollapsing;
             });
@@ -230,11 +134,11 @@ export function animate(comp_elt: HTMLElement) {
     });
 }
   
-function walkElt(elt, f: (e: HTMLElement) => void){
+function walkElt(elt: HTMLElement, f: (e: HTMLElement) => void){
     let children = elt.children;
     for (let i = 0; i < children.length; i++) {
         let child = children.item(i);
-        walkElt(child, f);
+        walkElt(child as HTMLElement, f);
     }
     f(elt);
 }

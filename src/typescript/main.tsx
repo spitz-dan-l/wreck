@@ -1,24 +1,21 @@
-import { ui, AppState } from './UI/components/app';
-// import { new_bird_world } from './demo_worlds/bird_world';
+import { new_bird_world } from './demo_worlds/bird_world';
 // import { new_bird_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
-import { new_venience_world } from './demo_worlds/narrascope/narrascope';
-import { empty_animation_state, new_animation_state } from './UI/animation';
-
-
+// import { new_venience_world } from './demo_worlds/narrascope/narrascope';
+import { AppState, initialize_app, new_animation_state } from './UI';
 console.time('world_build');
-let {initial_result, update, css_rules} = new_venience_world();//new_hex_world();
+let {initial_result, update, css_rules} = new_bird_world();//new_venience_world();//new_hex_world();
 
 // Ability to start from a specific point in the demo:
 
-const START_SOLVED = 7;
+// const START_SOLVED = 7;
 
-import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
-import { raw } from './parser';
+// import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
+// import { raw } from './parser';
 
-const starting_world = find_world_at(initial_result.world, START_SOLVED);
-initial_result = update(starting_world.result!, raw('', false));
+// const starting_world = find_world_at(initial_result.world, START_SOLVED);
+// initial_result = update(starting_world.result!, raw('', false));
 
 console.timeEnd('world_build');
 
@@ -41,6 +38,6 @@ const initial_state: AppState = {
     animation_state: new_animation_state(initial_result.world, null)
 };
 
-document.getElementById('terminal')!.appendChild(ui.initialize(initial_state));
+document.getElementById('terminal')!.appendChild(initialize_app(initial_state));
 
 console.timeEnd('render');

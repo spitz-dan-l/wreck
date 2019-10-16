@@ -2,7 +2,7 @@
     "compilerOptions": {
         "outDir": "./build/",
         "sourceMap": true,
-        "noImplicitAny": false,
+        "noImplicitAny": true,
         "moduleResolution": "node",
         "esModuleInterop": true,
         "module": "commonjs",
@@ -16,28 +16,38 @@
         "extendedDiagnostics": true,
         "skipDefaultLibCheck": true,
         "strictNullChecks": true,
-        "strictBindCallApply": false
+        "strictBindCallApply": false,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true
     },
     "include": [
+        // "./src/typescript/main.tsx"
         // "./src/tests",
-        "./src/typescript/*",
-        "./src/typescript/UI/**/*",
-        "./src/typescript/story/**/*",
-        "./src/typescript/demo_worlds/bird_world.tsx"
+        // "./src/typescript/*",
+        // "./src/typescript/UI/**/*",
+        // "./src/typescript/story/**/*",
+        // "./src/typescript/demo_worlds/bird_world.tsx"
         
     ],
-
+    "files": [
+        "./src/typescript/main.tsx",
+        "./src/typescript/demo_worlds/bird_world.tsx"
+    ],
     "exclude": [
+        // "./src/*",
+        // "./src/**",
+        // "./src/**/*",
+        // "./src/**/**",
         "./src/tests",
-        "./src/typescript/demo_worlds/**",
-        "./src/typescript/demo_worlds/narrascope",
+        "./src/tests/*",
+        "./src/tests/**",
+        // "./src/typescript/demo_worlds/*",
+        // "./src/typescript/demo_worlds/**",
+        // "./src/typescript/demo_worlds/narrascope/*",
         "./src/typescript/venience",
-        "./src/typescript/lock.ts",
-        "./src/typescript/message.ts",
-        "./src/typescript/interpretation.ts",
-        "./src/typescript/narrative_fsa.ts",
+        // "./src/typescript/lock.ts",
+        // "./src/typescript/narrative_fsa.ts",
         "./src/typescript/UI/Terminal2.tsx",
         "./src/typescript/UI/Terminal3.tsx",
-        "./src/typescript/gist.ts"
     ]
 }

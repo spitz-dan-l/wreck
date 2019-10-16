@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
-import { begin, chain, deep_equal, lens } from '../typescript/utils';
+import { begin, chain, deep_equal } from '../typescript/utils';
 import { update, Updater } from '../typescript/update';
 
 
@@ -95,35 +95,35 @@ describe('update', () => {
         })
     });
 
-    it('lens version', () => {
-        let obj = { a: 1, b: { c: [2,3], d: 5, e: 6 } };
+    // it('lens version', () => {
+    //     let obj = { a: 1, b: { c: [2,3], d: 5, e: 6 } };
 
-        let objL = lens<typeof obj>();
+    //     let objL = lens<typeof obj>();
 
-        let updater = begin<typeof obj>()
-            .z(objL.a.set(0))
-            .z(objL.b.c.set(_ => [..._, 4]))
+    //     let updater = begin<typeof obj>()
+    //         .z(objL.a.set(0))
+    //         .z(objL.b.c.set(_ => [..._, 4]))
 
-        let updated = updater(obj);
+    //     let updated = updater(obj);
 
-        let expected = { a: 0, b: { c: [2, 3, 4], d: 5, e: 6 } };
-        assert.deepEqual(updated, expected);
+    //     let expected = { a: 0, b: { c: [2, 3, 4], d: 5, e: 6 } };
+    //     assert.deepEqual(updated, expected);
 
-        let updater2 = begin<typeof obj>()
-            .z(objL.a.set(0))
-            .z(function (o) {
-                let bL = objL.b;
-                return begin(o)
-                    .z(bL.c.set(_ => [..._, 4]))
-                    .z(bL.e.set(7))()
-            });
+    //     let updater2 = begin<typeof obj>()
+    //         .z(objL.a.set(0))
+    //         .z(function (o) {
+    //             let bL = objL.b;
+    //             return begin(o)
+    //                 .z(bL.c.set(_ => [..._, 4]))
+    //                 .z(bL.e.set(7))()
+    //         });
 
-        let updated2 = updater2(obj);
+    //     let updated2 = updater2(obj);
 
-        let expected2 = { a: 0, b: { c: [2, 3, 4], d: 5, e: 7 } };
+    //     let expected2 = { a: 0, b: { c: [2, 3, 4], d: 5, e: 7 } };
 
-        assert.deepEqual(updated2, expected2);
-    });
+    //     assert.deepEqual(updated2, expected2);
+    // });
 });
 
 describe('chain', () => {

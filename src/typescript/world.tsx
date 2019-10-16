@@ -21,19 +21,16 @@
 */
 import { O } from 'ts-toolbelt';
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
-import { update, map, append } from './utils';
-import { createElement } from './story/story';
-import { Story, StoryUpdates, make_frame, apply_story_updates, add_input_text, init_story, story_update, replace_op, EmptyFrame, add_op, StoryHole, init_story_updates } from './story/updates';
 import { stages } from './stages';
-import { P } from 'ts-toolbelt/out/types/src/Object/_api';
-import { query } from './story/story_query';
+import { add_input_text, apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan } from './story';
+import { update } from './utils';
 
 export interface World {
     readonly parsing: Parsing | undefined,
     readonly previous: this | null,
     readonly index: number,
     readonly story: Story,
-    readonly story_updates: StoryUpdates,
+    readonly story_updates: StoryUpdatePlan,
     readonly parent: this | null,
     readonly child: this | null
 }
@@ -47,7 +44,7 @@ export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
 const INITIAL_WORLD: World = {
     story: init_story,
-    story_updates: stages(),
+    story_updates: { effects: stages(), would_effects: [] },
     parsing: undefined,
     previous: null,
     index: 0,
@@ -106,7 +103,7 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     next_state = update(next_state, {
         previous: _ => world,
         index: _ => new_index,
-        story: _ => apply_story_updates(_, world.story_updates),
+        story: _ => apply_story_updates_all(_, world.story_updates),
         story_updates: () => init_story_updates(new_index),
         parsing: () => undefined,
         parent: () => null,

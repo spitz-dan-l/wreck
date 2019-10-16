@@ -6,7 +6,7 @@ export declare namespace JSX {
     export type Element = HTMLElement;
 
     export interface ElementChildrenAttribute {
-		children;
+		children: any;
     }
 
 	type IntrinsicProps = {

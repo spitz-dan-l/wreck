@@ -3,7 +3,7 @@ import { Parser, ParserThread, ConsumeSpec, gate } from './parser';
 import { gate_puffer, Puffer } from './puffer';
 import { find_historical } from './history';
 import {update, Updater} from './utils';
-import { css_updater } from './text';
+import { css_updater } from './story';
 
 export type LockStatus = 'Unlocked' | 'Mine' | 'Locked';
 

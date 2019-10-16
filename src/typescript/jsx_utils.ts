@@ -1,8 +1,5 @@
 import * as CSS from 'csstype';
-import { A } from 'ts-toolbelt';
-import { entries, keys } from './utils';
-import { TupleOf } from 'ts-toolbelt/out/types/src/Union/_api';
-import { elementType } from 'prop-types';
+import { entries, keys, set_prop } from './utils';
 
 
 export type EventHandler<E extends Event> = (this: HTMLElement, ev: E) => any;
@@ -10,7 +7,7 @@ export type EventHandlers = {
     [K in keyof HTMLElementEventMap]?: EventHandler<HTMLElementEventMap[K]>
 };
 
-export interface CSSProperties extends CSS.Properties<string | number> {
+export interface CSSProperties extends CSS.Properties<string> {
     /**
      * The index signature was removed to enable closed typing for style
      * using CSSType. You're able to use type assertion or module augmentation
@@ -389,9 +386,9 @@ export function set_attributes(element: HTMLElement, attributes: AllHTMLAttribut
         if (attr === 'className') {
             element.setAttribute('class', value);
         } else if (attr === 'style') {
-            const style = element.style;
-            for (const [prop, val] of entries(value as CSSProperties)) {
-                style[prop] = val;
+            const style = element.style as CSSProperties;
+            for (const style_pair of entries(value as CSSProperties)) {
+                set_prop(style, ...style_pair);
             }
         } else if (attr === 'on') {
             for (const [ev_name, handler] of entries(value as EventHandlers)) {

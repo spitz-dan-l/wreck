@@ -9,8 +9,6 @@ import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, V
 import { get_thread_maker } from './supervenience_spec';
 import { stages, find_and_move_to_stage } from '../../stages';
 import { css_updater, story_updater, frame_update, css_op, TextAddSpec } from '../../text';
-import { extract_story } from '../../UI/animation';
-import { createElement } from '../../UI/framework/framework';
 
 export interface Metaphors {
     gist: Gist | null,

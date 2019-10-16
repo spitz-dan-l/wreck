@@ -193,13 +193,13 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
         
         for (let [n, v] of Object.entries(updater)) {
             if (v === undefined) {
-                delete result[n];
+                delete result[n as keyof S];
             } else {
-                const r = update(result[n], v);
+                const r = update(result[n as keyof S], v);
                 if (r === undefined) {
-                    delete result[n];
+                    delete result[n as keyof S];
                 } else {
-                    result[n] = r;
+                    result[n as keyof S] = r;
                 }
             }
         }

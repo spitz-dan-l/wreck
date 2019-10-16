@@ -9,6 +9,9 @@ export function gensym(): Gensym {
 }
 
 export function set_state(s: number) {
+    if (s < state) {
+        throw new Error("Cannot set gensym state below previous value.")
+    }
     state = s;
 }
 

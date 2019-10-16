@@ -6,7 +6,7 @@ export type Renderer<P extends Props> = (props: P & BaseProps, old?: {old_props:
 export type RendererFor<Comp> = Comp extends Component<infer P> ? Renderer<P> : never;
 
 export interface Component<P extends Props> extends HTMLElement {
-    __brand: P
+    __component_brand: P
 }
 
 export type ComponentFor<Rend> = Rend extends Renderer<infer P> ? Component<P> : never;
@@ -46,6 +46,10 @@ export function make_updater<
             return renderer(prop_mapper(props));
         }
 
+        const old_child_root = getter(old.old_root);
+        if (!old_child_root){
+            console.warn('old child root may have disappeared. Check your getter logic.');
+        }
         return update_component(
             renderer,
             prop_mapper(props),
@@ -93,7 +97,8 @@ export function child_declarator_for<C1 extends Component<Props>>() {
 export type UI<State, Action> = {
     initialize: (init_state: State) => Component<State>,
     dispatch: (action: Action) => void,
-    effect: (f: () => void) => void
+    effect: (f: () => void) => void,
+    effect_promise: () => Promise<void>
 }
 
 export function make_ui<State, Action>(
@@ -140,6 +145,10 @@ export function make_ui<State, Action>(
         effect_queue.push(f);
     }
 
+    function effect_promise() {
+        return new Promise<void>(resolve => effect(resolve));
+    }
+
     function render() {
         if (old_state === undefined) {
             throw new Error('dispatch or effect function was called before initializer.');
@@ -166,9 +175,9 @@ export function make_ui<State, Action>(
             );
             old_state = new_state;
         }
-        rendering = false;
-
+        
         requestAnimationFrame(() => {
+            rendering = false;
             while (effect_queue.length > 0) {
                 effect_queue.shift()!();
             }
@@ -180,11 +189,10 @@ export function make_ui<State, Action>(
     return {
         initialize,
         dispatch,
-        effect
+        effect,
+        effect_promise
     };
 }
-
-
 
 export function update_class<E extends HTMLElement>(elt: E, options: { add?: string[], remove?: string[] }) {
     if (options.add) {
@@ -201,149 +209,3 @@ export function update_class<E extends HTMLElement>(elt: E, options: { add?: str
 
     return elt;
 }
-
-// export const intrinsic_element_renderer = (tag: string) =>
-//     (props: any) => {
-//         const node = document.createElement(tag) as unknown as HTMLElement;
-//         applyElementProps(node, props);
-//         appendChildrenRecursively(node, props.children);
-//         return node;
-//     }
-
-// function appendChildrenRecursively(node: HTMLElement, children: any[]): void {
-//     for (const child of children) {
-//         if (child instanceof Node) {   // Is it an HTML or SVG element?
-//             node.appendChild(child);
-//         }
-//         else if (child instanceof Array) {   // example: <div>{items}</div>
-//             appendChildrenRecursively(node, child);
-//         }
-//         else if (child === false) {
-//             // The value false is ignored, to allow conditional display using && operator
-//         }
-//         else if (child != null) {   // if item is not null or undefined
-//             node.appendChild(document.createTextNode(child));
-//         }
-//     }
-// }
-
-// function applyElementProps(node: HTMLElement, props: Object): void {
-//     for (const prop in props) {
-//         if (prop === 'children') {
-//             continue;
-//         }  
-//         const value = props[prop];
-//         if (value == null)   // if value is null or undefined
-//             continue;
-//         if (prop === 'ref') {
-//             if (typeof value === 'function') {
-//                 value(node);
-//             }
-//             else {
-//                 throw new Error("'ref' must be a function");
-//             }
-//         }
-//         else if (eventMap.hasOwnProperty(prop)) {
-//             node[eventMap[prop]] = value;
-//         }
-//         else if (typeof value === 'function') {
-//             node.addEventListener(prop, value);
-//         }
-//         else if (prop === 'style' && typeof value === 'object') {   // Example: <div style={{height: "20px"}}></div>
-//             for (const styleName in value) {
-//                 (<HTMLElement>node).style[styleName] = value[styleName];
-//             }
-//         }
-//         else {
-//             const name = attribMap.hasOwnProperty(prop) ? attribMap[prop] : prop;
-//             if (name in node && typeof value === 'object') {
-//                 // pass object-valued attributes to Web Components
-//                 node[name] = value;   // value is set without any type conversion
-//             }
-//             else {
-//                 node.setAttribute(name, value);   // value will be converted to string
-//             }
-//         }
-//     }
-// }
-
-// const attribMap = {
-//     'htmlFor': 'for',
-//     'className': 'class',
-//     'defaultValue': 'value',
-//     'defaultChecked': 'checked'
-// };
-
-// const eventMap = {
-//     // Clipboard events
-//     'onCopy': 'oncopy',
-//     'onCut': 'oncut',
-//     'onPaste': 'onpaste',
-//     // Keyboard events
-//     'onKeyDown': 'onkeydown',
-//     'onKeyPress': 'onkeypress',
-//     'onKeyUp': 'onkeyup',
-//     // Focus events
-//     'onFocus': 'onfocus',
-//     'onBlur': 'onblur',
-//     // Form events
-//     'onChange': 'onchange',
-//     'onInput': 'oninput',
-//     'onSubmit': 'onsubmit',
-//     // Mouse events
-//     'onClick': 'onclick',
-//     'onContextMenu': 'oncontextmenu',
-//     'onDoubleClick': 'ondblclick',
-//     'onDrag': 'ondrag',
-//     'onDragEnd': 'ondragend',
-//     'onDragEnter': 'ondragenter',
-//     'onDragExit': 'ondragexit',
-//     'onDragLeave': 'ondragleave',
-//     'onDragOver': 'ondragover',
-//     'onDragStart': 'ondragstart',
-//     'onDrop': 'ondrop',
-//     'onMouseDown': 'onmousedown',
-//     'onMouseEnter': 'onmouseenter',
-//     'onMouseLeave': 'onmouseleave',
-//     'onMouseMove': 'onmousemove',
-//     'onMouseOut': 'onmouseout',
-//     'onMouseOver': 'onmouseover',
-//     'onMouseUp': 'onmouseup',
-//     // Selection events
-//     'onSelect': 'onselect',
-//     // Touch events
-//     'onTouchCancel': 'ontouchcancel',
-//     'onTouchEnd': 'ontouchend',
-//     'onTouchMove': 'ontouchmove',
-//     'onTouchStart': 'ontouchstart',
-//     // UI events
-//     'onScroll': 'onscroll',
-//     // Wheel events
-//     'onWheel': 'onwheel',
-//     // Media events
-//     'onAbort': 'onabort',
-//     'onCanPlay': 'oncanplay',
-//     'onCanPlayThrough': 'oncanplaythrough',
-//     'onDurationChange': 'ondurationchange',
-//     'onEmptied': 'onemptied',
-//     'onEncrypted': 'onencrypted',
-//     'onEnded': 'onended',
-//     'onLoadedData': 'onloadeddata',
-//     'onLoadedMetadata': 'onloadedmetadata',
-//     'onLoadStart': 'onloadstart',
-//     'onPause': 'onpause',
-//     'onPlay': 'onplay',
-//     'onPlaying': 'onplaying',
-//     'onProgress': 'onprogress',
-//     'onRateChange': 'onratechange',
-//     'onSeeked': 'onseeked',
-//     'onSeeking': 'onseeking',
-//     'onStalled': 'onstalled',
-//     'onSuspend': 'onsuspend',
-//     'onTimeUpdate': 'ontimeupdate',
-//     'onVolumeChange': 'onvolumechange',
-//     'onWaiting': 'onwaiting',
-//     // Image events
-//     'onLoad': 'onload',
-//     'onError': 'onerror'
-// };

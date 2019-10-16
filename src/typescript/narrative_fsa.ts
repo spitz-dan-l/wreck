@@ -1,5 +1,3 @@
-import { interpretation_updater, LocalInterpretations, LocalInterpretationSpec } from './interpretation';
-import { MessageUpdateSpec, message_updater } from './message';
 import { ConsumeSpec, Parser, ParserThread } from './parser';
 import { knit_puffers, map_puffer, Puffer, PufferMapper } from './puffer';
 import { MaybeStages, normalize_stages, Stages, stage_keys, stages } from './stages';

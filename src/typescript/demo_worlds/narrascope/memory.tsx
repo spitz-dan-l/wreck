@@ -6,7 +6,7 @@ import { StaticIndex } from '../../static_resources';
 import { bound_method, map, update } from '../../utils';
 import { add_to_notes, Notes } from './notes';
 import { ActionID, Puffers, resource_registry, Venience } from "./prelude";
-import { capitalize } from '../../text_tools';
+import { capitalize } from '../../text_utils';
 import { story_updater } from '../../text';
 
 

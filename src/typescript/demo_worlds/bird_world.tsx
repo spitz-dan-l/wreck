@@ -1,10 +1,10 @@
-import { createElement } from '../story';
-import { random_choice } from '../text_tools';
-import { update } from '../utils';
-import { CommandHandler, get_initial_world, make_world_spec, World, world_driver, Narrator } from '../world';
 import { failed } from '../parser';
-import { story_updater, css_updater } from '../story/updates';
-import { stages } from '../stages';
+import { createElement, css_updater, story_updater, StoryQueryIndex } from '../story';
+import { random_choice } from '../text_utils';
+import { update } from '../utils';
+import { CommandHandler, get_initial_world, make_world_spec, Narrator, World, world_driver } from '../world';
+
+StoryQueryIndex.seal();
 
 interface BirdWorld extends World {
     readonly is_in_heaven: boolean

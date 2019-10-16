@@ -1,9 +1,6 @@
 import * as assert from 'assert';
 import 'mocha';
 
-import {render_message} from '../typescript/message';
-import Handlebars from 'handlebars';
-
 describe('render', () => {
     it('should correctly assign @world', () => {
         const template = `{{@world}} is the world`;
