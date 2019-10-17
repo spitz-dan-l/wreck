@@ -17579,12 +17579,12 @@ const typeahead_1 = __webpack_require__(/*! ./typeahead */ "./src/typescript/UI/
 const history_1 = __webpack_require__(/*! ./history */ "./src/typescript/UI/components/history.tsx");
 exports.ui = framework_1.make_ui((state, old) => exports.App(state, old), app_state_1.app_reducer);
 exports.initialize_app = exports.ui.initialize;
-const dispatch = exports.ui.dispatch;
 prelude_1.ui_resources.initialize('initialize', exports.ui.initialize);
-prelude_1.ui_resources.initialize('dispatch', dispatch);
+prelude_1.ui_resources.initialize('dispatch', exports.ui.dispatch);
 prelude_1.ui_resources.initialize('effect', exports.ui.effect);
 prelude_1.ui_resources.initialize('effect_promise', exports.ui.effect_promise);
 prelude_1.ui_resources.seal();
+const dispatch = exports.ui.dispatch;
 const app_child = framework_1.child_declarator_for();
 const app_history = app_child(root => root.querySelector('.story'), (props) => ({
     world: props.command_result.world,
@@ -17661,16 +17661,14 @@ exports.App = (state, old) => {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/UI/prelude.ts");
+const effect_utils_1 = __webpack_require__(/*! ../../effect_utils */ "./src/typescript/effect_utils.ts");
 const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
-const animation_1 = __webpack_require__(/*! ../animation */ "./src/typescript/UI/animation.ts");
 const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
 const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
-const effect_utils_1 = __webpack_require__(/*! ../../effect_utils */ "./src/typescript/effect_utils.ts");
+const animation_1 = __webpack_require__(/*! ../animation */ "./src/typescript/UI/animation.ts");
+const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/UI/prelude.ts");
 exports.History = (props, old) => {
     const dispatch = prelude_1.ui_resources.get('dispatch');
-    const effect = prelude_1.ui_resources.get('effect');
-    const effect_promise = prelude_1.ui_resources.get('effect_promise');
     let root;
     if (!old) {
         const first_world = utils_1.array_last(history_1.history_array(props.world));
@@ -17682,41 +17680,41 @@ exports.History = (props, old) => {
     const anim = props.animation_state;
     if (anim.current_stage !== undefined) {
         const dom_effects = new effect_utils_1.Effects(root);
-        let updated_story = story_1.apply_story_updates_stage(anim.current_story, anim.update_plan.get(anim.current_stage), dom_effects);
-        dom_effects.push(async (dom) => {
-            await effect_promise();
-            await animation_1.animate(dom);
-            return dom;
-        });
-        updated_story = story_1.remove_eph(updated_story, dom_effects);
-        dom_effects.push(() => dispatch({ kind: 'AdvanceAnimation', next_story: updated_story }));
+        let story = story_1.apply_story_updates_stage(anim.current_story, anim.update_plan.get(anim.current_stage), dom_effects);
+        story = push_animation(story, dom_effects);
+        dom_effects.push(() => dispatch({ kind: 'AdvanceAnimation', next_story: story }));
         return root;
     }
-    let story = animation_1.final_story(props.world);
-    if (!old || props.world.index < old.old_props.world.index) {
-        root = set_history_view_from_scratch(story, root);
-    }
+    // compute any visual effects from a currently entered-but-not-yet-submitted command.
     const would_effects = [];
     // dim the most recent frame if undo is selected.
     if (props.world.index === (old ? old.old_props.world.index : undefined) &&
         props.undo_selected !== (old ? old.old_props.undo_selected : undefined)) {
-        would_effects.push(story_1.story_update(story_1.query('frame', { index: props.world.index }), story_1.story_op('css', { updates: { 'would-undo': props.undo_selected } })));
+        would_effects.push(story_1.story_update(story_1.query('frame', { index: props.world.index }), story_1.story_op('css', { 'would-undo': props.undo_selected })));
     }
     if (!old || show_possible_effects(old.old_props) !== show_possible_effects(props)) {
         if (old) {
             // reverse the old possible labels
-            const reversed_old_possible_effects = possible_effects(old.old_props)
-                .map(u => utils_1.update(u, { op: { parameters: {
-                        updates: _ => utils_1.map_values(_, v => !v)
-                    } } }));
+            const old_possible_effects = possible_effects(old.old_props);
+            if (old_possible_effects.length > 0) {
+                debugger;
+            }
+            const reversed_old_possible_effects = old_possible_effects
+                .map(u => utils_1.update(u, { op: {
+                    parameters: _ => utils_1.map_values(_, v => !v)
+                } }));
             would_effects.push(...reversed_old_possible_effects);
         }
         would_effects.push(...possible_effects(props));
     }
+    const story = animation_1.final_story(props.world);
+    if (!old || props.world.index < old.old_props.world.index) {
+        root = set_history_view_from_scratch(story, root);
+    }
     if (would_effects.length > 0) {
         const dom_effects = new effect_utils_1.Effects(root);
-        story = story_1.apply_story_updates_stage(story, would_effects, dom_effects);
-        story_1.remove_eph(story, dom_effects);
+        const story_with_would_effects = story_1.apply_story_updates_stage(story, would_effects, dom_effects);
+        push_animation(story_with_would_effects, dom_effects);
     }
     return root;
 };
@@ -17728,6 +17726,15 @@ function set_history_view_from_scratch(story, root) {
     return result;
 }
 exports.set_history_view_from_scratch = set_history_view_from_scratch;
+function push_animation(story, dom_effects) {
+    const effect_promise = prelude_1.ui_resources.get('effect_promise');
+    dom_effects.push(async (dom) => {
+        await effect_promise();
+        await animation_1.animate(dom);
+        return dom;
+    });
+    return story_1.remove_eph(story, dom_effects);
+}
 function show_possible_effects(props) {
     return props.undo_selected ? null : props.possible_world;
 }
@@ -18360,143 +18367,1218 @@ exports.ui_resources = new static_resources_1.StaticMap({
 
 /***/ }),
 
-/***/ "./src/typescript/demo_worlds/bird_world.tsx":
-/*!***************************************************!*\
-  !*** ./src/typescript/demo_worlds/bird_world.tsx ***!
-  \***************************************************/
+/***/ "./src/typescript/demo_worlds/narrascope/memory.tsx":
+/*!**********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/memory.tsx ***!
+  \**********************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const parser_1 = __webpack_require__(/*! ../parser */ "./src/typescript/parser.ts");
-const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
-const text_utils_1 = __webpack_require__(/*! ../text_utils */ "./src/typescript/text_utils.ts");
-const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
-const world_1 = __webpack_require__(/*! ../world */ "./src/typescript/world.tsx");
-story_1.StoryQueryIndex.seal();
-let initial_world = Object.assign({}, world_1.get_initial_world(), { is_in_heaven: false });
-exports.bird_world_spec = () => world_1.make_world_spec({
-    initial_world,
-    handle_command,
-    post
-});
-function new_bird_world() {
-    return world_1.world_driver(exports.bird_world_spec());
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
+const text_utils_1 = __webpack_require__(/*! ../../text_utils */ "./src/typescript/text_utils.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const notes_1 = __webpack_require__(/*! ./notes */ "./src/typescript/demo_worlds/narrascope/notes.tsx");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const action_index = prelude_1.resource_registry.get('action_index', false);
+function memory_description(spec) {
+    const action = action_index.get(spec.action);
+    return story_1.createElement("div", null,
+        story_1.createElement("div", { className: "interp" }, spec.description()),
+        story_1.createElement("br", null),
+        text_utils_1.capitalize(gist_1.render_gist_text(gist_1.gist(spec.action))),
+        " confers:",
+        story_1.createElement("blockquote", null, action.description));
 }
-exports.new_bird_world = new_bird_world;
-let post = (new_world, old_world) => {
-    return utils_1.update(new_world, story_1.css_updater(w => {
-        if (w.is_in_heaven === new_world.is_in_heaven) {
-            return { happy: true };
+function make_memory(spec) {
+    return {
+        handle_command: (world, parser) => {
+            if (world.has_acquired.get(spec.action) || !spec.could_remember(world)) {
+                return parser.eliminate();
+            }
+            let result = parser.consume('remember_something', () => parser.submit());
+            if (parser.failure) {
+                return parser.failure;
+            }
+            let action = action_index.get(spec.action);
+            return utils_1.update(world, {
+                has_acquired: utils_1.map([spec.action, true]),
+                gist: () => gist_1.gist('memory', { action: gist_1.gist(action.name) })
+            }, w => notes_1.add_to_notes(w, spec.action), story_1.story_updater(story_1.createElement("div", null,
+                "You close your eyes, and hear Katya's voice:",
+                memory_description(spec))));
+        },
+        post: (world2, world1) => {
+            // weird workaround for when you get locked out. seems to work *shrugs*
+            if (!spec.could_remember(world2)) {
+                return world2;
+            }
+            world1 = history_1.find_historical(world1, w => w.owner === null);
+            if (!spec.could_remember(world1)) {
+                return utils_1.update(world2, story_1.story_updater({
+                    prompt: story_1.createElement("div", null,
+                        "You feel as though you might ",
+                        story_1.createElement("strong", null, "remember something..."))
+                }));
+            }
+            return world2;
         }
-        else {
-            return { happy: false };
+    };
+}
+exports.make_memory = make_memory;
+gist_1.Gists({
+    tag: 'memory',
+    text: ({ action }) => `your memory of ${action}`,
+    command: ({ action }) => ['my_memory of', action]
+});
+const memory_index = prelude_1.resource_registry.initialize('memory_index', new static_resources_1.StaticIndex([
+    function add_memory_to_puffers(spec) {
+        prelude_1.Puffers(make_memory(spec));
+        notes_1.Notes({
+            note_id: spec.action,
+            description: () => memory_description(spec)
+        });
+        return spec;
+    }
+]));
+exports.Memories = utils_1.bound_method(memory_index, 'add');
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/metaphor.tsx":
+/*!************************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/metaphor.tsx ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const supervenience_1 = __webpack_require__(/*! ../../supervenience */ "./src/typescript/supervenience.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const supervenience_spec_1 = __webpack_require__(/*! ./supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
+const stages_1 = __webpack_require__(/*! ../../stages */ "./src/typescript/stages.ts");
+const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
+prelude_1.resource_registry.initialize('initial_world_metaphor', {
+    gist: null,
+    owner: null,
+    current_interpretation: null,
+    has_acquired: utils_1.map(),
+    has_tried: utils_1.map()
+});
+const global_lock = prelude_1.resource_registry.get('global_lock', false);
+let null_lock = global_lock(null);
+let metaphor_lock = global_lock('Metaphor');
+function make_action(spec) {
+    return {
+        css_rules: [
+            `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
+                animation-name: interpreting, would-cite !important;
+                animation-duration: 2s, 2s !important;
+                animation-iteration-count: infinite, infinite !important;
+            }`
+        ]
+    };
+}
+let action_index = prelude_1.resource_registry.initialize('action_index', new static_resources_1.StaticMap(prelude_1.StaticActionIDs, [
+    function add_action_to_puffers(action) {
+        prelude_1.Puffers(make_action(action));
+        gist_1.Gists({
+            tag: action.name,
+            text: () => action.noun,
+            command: () => action.noun_cmd
+        });
+        return action;
+    }
+]));
+exports.Actions = (spec) => action_index.initialize(spec.name, spec);
+function get_actions(world) {
+    let actions = [];
+    for (let [act_id, on] of world.has_acquired) {
+        if (on) {
+            actions.push(action_index.get(act_id));
         }
-    }));
-};
-let handle_command = (world, parser) => {
-    let cmds = [
-        go_cmd,
-        mispronounce_cmd,
-        be_cmd
-    ];
-    return parser.split(cmds.map(cmd => () => cmd(world, parser)));
-};
-let go_cmd = (world, parser) => {
-    parser.consume({ tokens: 'go', labels: { keyword: true } });
-    if (parser.failure) {
-        return parser.failure;
     }
-    let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
-    let dir = parser.split(['up', 'down'].map(dir => () => parser.consume({
-        tokens: `${dir}_stairs`,
-        locked: is_locked[dir],
-        labels: { option: true }
-    }, dir)));
-    if (parser_1.failed(dir)) {
-        return dir;
+    return actions;
+}
+function any_actions(world) {
+    return [...world.has_acquired].some(([act, on]) => on);
+}
+function apply_action(world, facet, action) {
+    if (world.current_interpretation === null) {
+        throw new Error(`Tried to apply an action without having a current interpretation.`);
     }
-    parser.submit();
-    if (parser.failure) {
-        return parser.failure;
+    let interpretted_world = history_1.find_index(world, world.current_interpretation);
+    if (!facet.can_recognize(world, interpretted_world)) {
+        throw new Error(`Tried to interact with facet ${facet.name} without being able to recognize it.`);
     }
-    return utils_1.update(world, story_1.story_updater({
-        consequence: story_1.createElement("div", null,
-            "You are currently ",
-            dir,
-            ".")
-    }), { is_in_heaven: _ => !_ });
-};
-let mispronounce_cmd = (world, parser) => {
-    if (!world.is_in_heaven) {
+    if (!facet.can_apply(action)) {
+        throw new Error(`Tried to apply action ${action.name} to facet ${facet.name}, but it can't be applied.`);
+    }
+    let already_solved = facet.solved(world);
+    world = facet.handle_action(action, world);
+    world = utils_1.update(world, story_1.css_updater((w) => {
+        if (w.index > world.current_interpretation) {
+            return {
+                [`eph-descr-${action.slug}-blink`]: true,
+                [`eph-descr-${facet.slug}-blink`]: true
+            };
+        }
+        if (w.index === world.current_interpretation) {
+            return {
+                [`eph-interp-${facet.slug}-blink`]: true
+            };
+        }
+        return {};
+    }), {
+        story_updates: { effects: _ => 
+            // TODO: condition becomes, all updates that would
+            // affect nodes occuring above/before the node with target frame-index
+            stages_1.find_and_move_to_stage(_, u => u.query.name === 'frame' && u.query.parameters.index < world.index, () => -1)
+        },
+        has_tried: utils_1.map([action.name, utils_1.map([facet.name, true])])
+    });
+    let solved = facet.solved(world);
+    if (solved) {
+        if (!already_solved) {
+            return utils_1.update(world, {
+                story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: interpretted_world.index }), story_1.story_op('css', { [`interp-${facet.slug}`]: true })))])
+                }
+            });
+        }
+        else if (solved !== already_solved) { // The player picked the right answer again. blink it.
+            return utils_1.update(world, {
+                story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: interpretted_world.index }), story_1.story_op('css', { [`eph-interp-${facet.slug}-solved-blink`]: true })))]) }
+            });
+        }
+    }
+    return world;
+}
+;
+exports.make_action_applicator = (world, facet_id, action_id) => (parser) => {
+    if (!world.has_acquired.get(action_id)) {
         return parser.eliminate();
     }
-    parser.consume({ tokens: "mispronounce zarathustra's name", labels: { keyword: true } });
-    if (parser.failure) {
-        return parser.failure;
+    const facet = facet_index.get(facet_id);
+    if (facet === undefined) {
+        throw Error('Invalid facet name: ' + facet_id);
     }
-    parser.submit();
-    if (parser.failure) {
-        return parser.failure;
+    const action = action_index.get(action_id);
+    if (action === undefined) {
+        throw Error('Invalid action name: ' + action_id);
     }
-    let utterance_options = [
-        'Zammersretter',
-        'Hoosterzaro',
-        'Rooster Thooster',
-        'Thester Zar',
-        'Zerthes Threstine'
-    ];
-    let message = `"${text_utils_1.random_choice(utterance_options)}," you say.`;
-    return utils_1.update(world, story_1.story_updater({
-        action: story_1.createElement("div", null, message)
-    }));
+    if (!facet.can_apply(action)) {
+        return parser.eliminate();
+    }
+    let already_solved = facet.solved(world);
+    return (parser.consume({
+        tokens: action.get_cmd(facet.noun_phrase_cmd),
+        used: !!already_solved || (world.has_tried.has(action.name) && world.has_tried.get(action.name).get(facet.name)),
+        labels: { interp: true, filler: true }
+    }, () => parser.submit(() => {
+        return apply_action(world, facet, action);
+    })));
 };
-let be_cmd = (world, parser) => {
-    parser.consume({ tokens: 'be', labels: { keyword: true } });
-    if (parser.failure) {
-        return parser.failure;
+// Begin and end contemplations
+prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
+    pre: world => utils_1.update(world, { gist: null }),
+    handle_command: stages_1.stages([2, (world, parser) => {
+            if (!any_actions(world)) {
+                return parser.eliminate();
+            }
+            if (world.current_interpretation === null) {
+                if (world.previous === null) {
+                    return parser.eliminate();
+                }
+                let contemplatable_worlds = history_1.history_array(world).filter(w => w.gist !== null && w.gist.tag !== 'contemplation');
+                let gists = [];
+                for (let w of contemplatable_worlds) {
+                    if (gists.findIndex(g2 => gist_1.gists_equal(w.gist, g2)) === -1) {
+                        gists.push(w.gist);
+                    }
+                }
+                parser.label_context = { interp: true, filler: true };
+                const immediate_world = (world.previous.gist !== null && world.previous.gist.tag !== 'contemplation') ?
+                    world.previous :
+                    null;
+                const direct_thread = () => {
+                    if (immediate_world === null) {
+                        return parser.eliminate();
+                    }
+                    return parser.consume(['contemplate', gist_1.render_gist_command(immediate_world.gist)], () => parser.submit(() => {
+                        const index = immediate_world.index;
+                        let descriptions = [];
+                        for (let facet of Object.values(facet_index.all())) {
+                            if (!facet.can_recognize(world, immediate_world)) {
+                                continue;
+                            }
+                            descriptions.push(story_1.createElement("blockquote", { className: `descr-${facet.slug}` }, facet.noun_phrase));
+                        }
+                        if (descriptions.length === 0) {
+                            descriptions.push(story_1.createElement("div", null, "However, nothing about it seems particularly notable."));
+                        }
+                        else {
+                            descriptions.unshift(story_1.createElement("div", null, "You notice the following aspects:"));
+                        }
+                        return utils_1.update(world, w => metaphor_lock.lock(w, index), {
+                            current_interpretation: index,
+                            story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index }), story_1.story_op('css', {
+                                        'interpretation-block': true,
+                                        'interpretation-active': true
+                                    })))]) },
+                            gist: () => gist_1.gist('contemplation', { subject: immediate_world.gist })
+                        }, story_1.story_updater({
+                            action: story_1.createElement("div", null,
+                                "You contemplate ",
+                                gist_1.render_gist_text(immediate_world.gist),
+                                ". A sense of focus begins to permeate your mind."),
+                            description: descriptions
+                        }));
+                    }));
+                };
+                const indirect_simulator = 'indirect_contemplation';
+                if (gists.length === 1 || supervenience_1.is_simulated(indirect_simulator, world)) {
+                    return direct_thread(parser);
+                }
+                const indirect_thread = (() => parser.consume({
+                    tokens: 'contemplate',
+                    labels: { interp: true, filler: true }
+                }, () => {
+                    const indirect_threads = gists.map(g => () => {
+                        const indirect_search_id = `contemplate-indirect-${world.index}-${gist_1.gist_to_string(g)}`;
+                        if (immediate_world !== null && gist_1.gists_equal(g, immediate_world.gist)) {
+                            return parser.eliminate();
+                        }
+                        const target_gist = gist_1.gist('contemplation', {
+                            subject: gist_1.has_tag(g, 'memory') ? gist_1.gist('notes about', { topic: g.children.action }) : g
+                        });
+                        const result = supervenience_1.search_future({
+                            thread_maker: supervenience_spec_1.get_thread_maker(),
+                            goals: [w => !!w.gist && gist_1.gists_equal(w.gist, target_gist)],
+                            max_steps: 2,
+                            space: [w => w.gist && gist_1.gist_to_string(w.gist)],
+                            search_id: indirect_search_id,
+                            simulator_id: indirect_simulator,
+                            command_filter: (w, cmd) => {
+                                let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
+                                if (w.gist && gist_1.gists_equal(w.gist, target_gist.children.subject)) {
+                                    return would_contemplate;
+                                }
+                                return !would_contemplate;
+                            }
+                        }, world);
+                        //world.previous!);
+                        if (result.result === null) {
+                            return parser.eliminate();
+                        }
+                        return parser.consume({
+                            tokens: gist_1.render_gist_command(g),
+                            labels: { interp: true, filler: true }
+                        }, () => parser.submit(() => utils_1.update(world, { child: () => result.result })));
+                    });
+                    return parser.split(indirect_threads);
+                }));
+                const result = parser.split([direct_thread, indirect_thread]);
+                return result;
+            }
+            else {
+                return parser.consume({
+                    tokens: 'end_contemplation',
+                    labels: { interp: true, filler: true }
+                }, () => parser.submit(() => utils_1.update(world, metaphor_lock.release, {
+                    current_interpretation: null,
+                    story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: world.current_interpretation }), story_1.story_op('css', { 'interpretation-active': false })))]) },
+                    has_tried: () => new Map(),
+                }, story_1.story_updater({
+                    action: 'Your mind returns to a less focused state.'
+                }))));
+            }
+        }]),
+}));
+function RenderFacet(props) {
+    const f = facet_index.get(props.name);
+    if (f.content === undefined) {
+        throw new Error(`Tried to render facet ${props.name} with no content set.`);
     }
-    let roles = [
-        'the One Who Gazes Ahead',
-        'the One Who Gazes Back',
-        'the One Who Gazes Up',
-        'the One Who Gazes Down',
-        'the One Whose Palms Are Open',
-        'the One Whose Palms Are Closed',
-        'the One Who Is Strong',
-        'the One Who Is Weak',
-        'the One Who Seduces',
-        'the One Who Is Seduced'
-    ];
-    let qualities = [
-        'outwardly curious',
-        'introspective',
-        'transcendent',
-        'sorrowful',
-        'receptive',
-        'adversarial',
-        'confident',
-        'impressionable',
-        'predatory',
-        'vulnerable'
-    ];
-    let quality = parser.split(roles.map((r, i) => () => parser.consume({ tokens: `${r.replace(/ /g, '_')}`, labels: { option: true } }, qualities[i])));
-    if (parser_1.failed(quality)) {
-        return quality;
+    return f.content;
+}
+exports.RenderFacet = RenderFacet;
+const facet_index = prelude_1.resource_registry.initialize('facet_index', new static_resources_1.StaticMap(prelude_1.StaticFacetIDs, [
+    function add_facet_to_puffers(spec) {
+        prelude_1.Puffers(make_facet(spec));
+        return spec;
+    },
+]));
+const make_facet = (spec) => prelude_1.lock_and_brand('Metaphor', {
+    handle_command: (world, parser) => {
+        if (world.current_interpretation === null) {
+            return parser.eliminate();
+        }
+        let interpretted_world = history_1.find_index(world, world.current_interpretation);
+        if (!spec.can_recognize(world, interpretted_world)) {
+            return parser.eliminate();
+        }
+        let threads = [];
+        for (let action of Object.values(action_index.all())) {
+            threads.push(exports.make_action_applicator(world, spec.name, action.name));
+        }
+        return parser.split(threads);
+    },
+    post: (world2, world1) => {
+        let updates = [];
+        if (world2.current_interpretation !== null && world2.current_interpretation === world1.current_interpretation) {
+            let interpretted_world = history_1.find_historical(world2, w => w.index === world2.current_interpretation);
+            if (!spec.can_recognize(world1, interpretted_world) && spec.can_recognize(world2, interpretted_world)) {
+                updates.push(story_1.story_updater({
+                    prompt: story_1.createElement("div", null,
+                        "You notice an aspect that you hadn't before:",
+                        story_1.createElement("blockquote", { className: `descr-${spec.slug}` }, spec.noun_phrase))
+                }));
+            }
+        }
+        if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
+            updates.push({ story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: world2.index }), story_1.story_op('css', { [`interp-${spec.slug}`]: true })))]) } });
+        }
+        return utils_1.update(world2, ...updates);
+    },
+    css_rules: [`
+        .history .would-add-interp-${spec.slug}-blink .${spec.slug} {
+            animation-name: interpreting, would-interpret !important;
+            animation-duration: 2s, 2s !important;
+            animation-iteration-count: infinite, infinite !important;
+        }`,
+        `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
+            animation-name: interpreting, would-cite !important;
+            animation-duration: 2s, 2s !important;
+            animation-iteration-count: infinite, infinite !important;
+        }`,
+        `.history .adding-interp-${spec.slug}.animation-start .${spec.slug} .interp-${spec.slug} {
+            opacity: 0.01;
+            max-height: 0px;
+        }`,
+        `.history .adding-interp-${spec.slug}.animation-start.animation-active .${spec.slug} .interp-${spec.slug} {
+            opacity: 1.0;
+            transition: max-height 400ms linear, opacity 300ms ease-in;
+            transition-delay: 0ms, 400ms;
+        }`,
+        `.history .interp-${spec.slug} .output-text .interp-${spec.slug} {
+            display: block;
+            color: gold;
+            opacity: 1;
+        }`,
+        `.history .output-text .interp-${spec.slug} {
+            display: none;
+        }`,
+        `.history .adding-interp-${spec.slug}-blink.animation-start .${spec.slug} .interp-${spec.slug} {
+            background-color: orange;
+        }`,
+        `.history .adding-interp-${spec.slug}-blink.animation-start.animation-active .${spec.slug} .interp-${spec.slug} {
+            background-color: inherit;
+            transition: background-color 700ms linear;
+        }`
+    ]
+});
+exports.Facets = (spec) => facet_index.initialize(spec.name, spec);
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/narrascope.tsx":
+/*!**************************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/narrascope.tsx ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const puffer_1 = __webpack_require__(/*! ../../puffer */ "./src/typescript/puffer.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const world_1 = __webpack_require__(/*! ../../world */ "./src/typescript/world.tsx");
+const metaphor_1 = __webpack_require__(/*! ./metaphor */ "./src/typescript/demo_worlds/narrascope/metaphor.tsx");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const topic_1 = __webpack_require__(/*! ./topic */ "./src/typescript/demo_worlds/narrascope/topic.ts");
+const memory_1 = __webpack_require__(/*! ./memory */ "./src/typescript/demo_worlds/narrascope/memory.tsx");
+prelude_1.resource_registry.initialize('initial_world_narrascope', {
+    has_chill: false,
+    has_recognized_something_wrong: false,
+    is_curious_about_history: false,
+    has_admitted_negligence: false,
+    has_unpacked_culpability: false,
+    has_volunteered: false,
+    end: false,
+    has_scrutinized_memory: utils_1.map()
+});
+metaphor_1.Actions({
+    name: 'to attend',
+    noun: 'attention',
+    noun_cmd: 'attention',
+    description: "The ability to attend to particular facets of one's perception.",
+    slug: 'attend',
+    get_cmd: (facet) => ['attend_to', facet],
+    get_wrong_msg: (facet) => story_1.createElement("div", null,
+        "Merely paying more attention to ",
+        facet,
+        " does not seem to be enough.")
+});
+memory_1.Memories({
+    action: 'to attend',
+    could_remember: world => !!world.has_considered.get('your notebook'),
+    description: () => story_1.createElement(metaphor_1.RenderFacet, { name: "a memory 1" })
+});
+function about_attentive(w) {
+    return w.gist !== null && gist_1.includes_tag('to attend', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 1',
+    noun_phrase: "A memory.",
+    slug: 'memory-1',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_attentive(w1) && !!w2.has_acquired.get('to attend'),
+    can_apply: (action) => true /*action.name === 'to scrutinize'*/,
+    solved: w => w.has_scrutinized_memory.get(1) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([1, Symbol()]) });
+        }
+        return world;
+    },
+    content: story_1.createElement("div", { className: "memory-1" },
+        "\"Wake up, my dear. Attend to the world around you.\"",
+        story_1.createElement("blockquote", { className: "interp-memory-1" },
+            "Katya took you to the ",
+            story_1.createElement("a", { target: "_blank", href: "https://en.wikipedia.org/wiki/Mauna_Kea_Observatories" }, "Mauna Kea Observatories"),
+            " in Hawaii once, to study the astronomers at work.",
+            story_1.createElement("br", null),
+            "There was to be little time to relax or sleep in; astronomers are busy folk."))
+});
+function about_scrutinizing(w) {
+    return w.gist !== null && gist_1.includes_tag('to scrutinize', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 2',
+    noun_phrase: "A memory.",
+    slug: 'memory-2',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_scrutinizing(w1) && !!w2.has_acquired.get('to scrutinize'),
+    can_apply: (action) => action.name === 'to scrutinize',
+    solved: w => w.has_scrutinized_memory.get(2) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([2, Symbol()]) });
+        }
+        return world;
     }
-    parser.submit();
-    if (parser.failure) {
-        return parser.failure;
+});
+function about_hammer(w) {
+    return w.gist !== null && gist_1.includes_tag('to hammer', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 3',
+    noun_phrase: "A memory.",
+    slug: 'memory-3',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_hammer(w1) && !!w2.has_acquired.get('to hammer'),
+    can_apply: (action) => action.name === 'to scrutinize',
+    solved: w => w.has_scrutinized_memory.get(3) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([3, Symbol()]) });
+        }
+        return world;
     }
-    return utils_1.update(world, story_1.story_updater({
-        consequence: story_1.createElement("div", null,
-            "You feel ",
-            quality,
+});
+function about_volunteer(w) {
+    return w.gist !== null && gist_1.includes_tag('to volunteer', w.gist);
+}
+metaphor_1.Facets({
+    name: 'a memory 4',
+    noun_phrase: "A memory.",
+    slug: 'memory-4',
+    noun_phrase_cmd: 'the_memory',
+    can_recognize: (w2, w1) => about_volunteer(w1) && !!w2.has_acquired.get('to volunteer'),
+    can_apply: (action) => action.name === 'to scrutinize',
+    solved: w => w.has_scrutinized_memory.get(4) || false,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_scrutinized_memory: utils_1.map([4, Symbol()]) });
+        }
+        return world;
+    }
+});
+topic_1.Topics({
+    name: 'Sam',
+    cmd: 'sam',
+    can_consider: () => true,
+    message: () => story_1.createElement("div", { className: "sam" },
+        story_1.createElement("div", { className: "friendship-sam" },
+            "An old friend on his way to work.",
+            story_1.createElement("blockquote", { className: "interp-friendship-sam" }, "You realize how long it's been since you've seen him anywhere other than the bus.")),
+        story_1.createElement("div", { className: "sam-demeanor" },
+            "He glances at you, smiling vaguely.",
+            story_1.createElement("blockquote", { className: "interp-sam-demeanor" },
+                "Something about his smile feels... false. A lie.",
+                story_1.createElement("br", null),
+                "And his eyes. Flicking here and there. Noncommital. Nervous.")),
+        story_1.createElement("div", { className: "interp-sam affinity" },
+            "...Something is wrong.",
+            story_1.createElement("blockquote", { className: "interp-affinity" }, "Indeed. It's time to try to do something about it."))),
+    reconsider: (w2, w1) => {
+        if (w2.has_acquired.get('to attend') && !w2.has_chill) {
+            return true;
+        }
+        if (w2.has_acquired.get('to scrutinize') && !w2.has_recognized_something_wrong) {
+            return true;
+        }
+        if (w2.has_acquired.get('to hammer') && !w2.is_curious_about_history) {
+            return true;
+        }
+        if (w2.has_acquired.get('to volunteer') && !w2.has_volunteered) {
+            return true;
+        }
+        return false;
+    }
+});
+function has_considered_notebook(world) {
+    return world.has_considered.get('your notebook');
+}
+;
+topic_1.Topics({
+    name: 'yourself',
+    cmd: 'myself',
+    can_consider: () => true,
+    message: (world) => story_1.createElement("div", null,
+        "You haven't entirely woken up.",
+        story_1.createElement("br", null),
+        has_considered_notebook(world)
+            ? story_1.createElement("div", null, "Your notebook sits in your lap.")
+            : story_1.createElement("div", null,
+                "A ",
+                story_1.createElement("strong", null, "thick notebook"),
+                " sits in your lap.")),
+});
+topic_1.Topics({
+    name: 'your notebook',
+    cmd: 'my_notebook',
+    can_consider: (world) => !!world.has_considered.get('yourself'),
+    message: () => ({
+        description: story_1.createElement("div", null,
+            "You keep it with you at all times.",
+            story_1.createElement("br", null),
+            "It is filled with the words of someone very wise, who you once knew."),
+        prompt: story_1.createElement("div", null,
+            "Each day you try to ",
+            story_1.createElement("strong", null, "remember something"),
+            " that she told you, and write it down.")
+    })
+});
+const abtsm = gist_1.gist('impression', { subject: gist_1.gist('Sam') });
+// Big old hack but it'll do for now
+function about_sam(world) {
+    return world.gist !== null && gist_1.gists_equal(world.gist, abtsm);
+}
+metaphor_1.Facets({
+    name: 'Sam',
+    noun_phrase: "Sam's presence by your side.",
+    slug: 'sam',
+    noun_phrase_cmd: 'sam',
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to attend'),
+    can_apply: (action) => true /*action.name === 'to attend'*/,
+    solved: w => w.has_chill,
+    handle_action: (action, world) => {
+        if (action.name === 'to attend') {
+            return utils_1.update(world, { has_chill: Symbol() }, story_1.story_updater({
+                consequence: utils_1.cond(!world.has_chill, () => story_1.createElement("div", null, "A chill comes over you.")),
+                description: story_1.createElement("div", null,
+                    "Something about Sam is ",
+                    story_1.createElement("i", null, "incorrect"),
+                    ".",
+                    story_1.createElement("br", null),
+                    "You can feel the discordance in your bones. It scares you.")
+            }));
+        }
+        else {
+            // TODO: replace generic wrong msg with hint asking for more specifity
+            if (action.name === 'to scrutinize') {
+                return utils_1.update(world, story_1.story_updater(story_1.createElement("div", null, "You'll need to be more specific about what to scrutinize.")));
+            }
+            return utils_1.update(world, story_1.story_updater(action.get_wrong_msg('sam')));
+        }
+    }
+});
+metaphor_1.Actions({
+    name: 'to scrutinize',
+    noun: 'scrunity',
+    noun_cmd: 'scrutiny',
+    description: "The ability to unpack details and look beyond your initial assumptions.",
+    slug: 'scrutiny',
+    get_cmd: (facet) => ['scrutinize', facet],
+    get_wrong_msg: (facet) => story_1.createElement("div", null,
+        "Despite your thorough scrutiny, ",
+        facet,
+        " remains unresolved.")
+});
+memory_1.Memories({
+    action: 'to scrutinize',
+    could_remember: world => !!world.has_chill,
+    description: () => story_1.createElement("div", { className: "memory-2" },
+        "\"Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance.\"",
+        story_1.createElement("blockquote", { className: "interp-memory-2" },
+            "She mentioned this while making a point about the intricacies of the ",
+            story_1.createElement("a", { target: "_blank", href: "https://en.wikipedia.org/wiki/Observer_effect_(physics)" }, "Observer Effect"),
+            "."))
+});
+metaphor_1.Facets({
+    name: "Sam's demeanor",
+    noun_phrase: "Sam's demeanor",
+    slug: 'sam-demeanor',
+    noun_phrase_cmd: "sam's_demeanor",
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to scrutinize'),
+    can_apply: (action) => true /*action.name === 'to scrutinize'*/,
+    solved: w => w.has_recognized_something_wrong,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_recognized_something_wrong: Symbol() }, story_1.story_updater(story_1.createElement("div", null,
+                "You are struck by the alarming incongruence of his demeanor.",
+                story_1.createElement("br", null),
+                "The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.")));
+        }
+        else if (action.name === 'to attend') {
+            return utils_1.update(world, story_1.story_updater(`You notice nothing new about his demeanor.`));
+        }
+        else {
+            return utils_1.update(world, story_1.story_updater(action.get_wrong_msg("sam's demeanor")));
+        }
+    }
+});
+metaphor_1.Actions({
+    name: 'to hammer',
+    noun: 'the hammer',
+    noun_cmd: 'the_hammer',
+    description: "The act of dismantling one's own previously-held beliefs.",
+    slug: 'to-hammer',
+    get_cmd: (facet) => ['hammer_against the_foundations_of', facet],
+    get_wrong_msg: (facet) => `You find yourself unable to shake ${facet}, despite your efforts.`
+});
+memory_1.Memories({
+    action: 'to hammer',
+    could_remember: world => !!world.has_recognized_something_wrong,
+    description: () => story_1.createElement("div", { className: "memory-3" },
+        "\"Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble.\"",
+        story_1.createElement("blockquote", { className: "interp-memory-3" },
+            "She always pushed you.",
+            story_1.createElement("br", null),
+            "Katya was always one to revel in the overturning of wrong ideas."))
+});
+metaphor_1.Facets({
+    name: 'your friendship with Sam',
+    slug: 'friendship-sam',
+    noun_phrase_cmd: 'my_friendship_with_sam',
+    noun_phrase: 'Your friendship with Sam.',
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to hammer'),
+    can_apply: (action) => true /*included(action.name, ['to hammer'])*/,
+    solved: w => w.is_curious_about_history,
+    handle_action: (action, world) => {
+        if (action.name === 'to hammer') {
+            return utils_1.update(world, story_1.story_updater({
+                action: [`You ask yourself a hard question: <i>Is Sam really your friend?</i>`],
+                consequence: ["You realize you don't know anymore."],
+                prompt: ["You'll have to <strong>consider your history</strong>."]
+            }), { is_curious_about_history: Symbol() });
+        }
+        return world;
+    }
+});
+topic_1.Topics({
+    name: 'your history with Sam',
+    cmd: 'my_history_with_Sam',
+    can_consider: (w) => !!w.is_curious_about_history,
+    message: () => ({ description: story_1.createElement("div", null,
+            "You've known Sam since you both arrived in Boston about 10 years ago.",
+            story_1.createElement("br", null),
+            "You were studying under Katya, and he was doing agricultural engineering a few buildings over.",
+            story_1.createElement("div", { className: "falling-out" },
+                "At some point along the way, you drifted apart.",
+                story_1.createElement("blockquote", { className: "interp-falling-out culpability" },
+                    "It wasn't mutual. It was ",
+                    story_1.createElement("i", null, "you"),
+                    ".",
+                    story_1.createElement("blockquote", { className: "interp-culpability" },
+                        "After Katya left, you turned inward. Closed off.",
+                        story_1.createElement("br", null),
+                        "You stopped being curious about people like Sam.")))) }),
+    reconsider: (w2, w1) => {
+        if (!w2.has_unpacked_culpability) {
+            return true;
+        }
+        return false;
+    }
+});
+gist_1.Gists({
+    tag: 'your history with Sam',
+    text: () => 'your history with Sam',
+    command: () => 'my_history_with_sam'
+});
+function is_about_history(w) {
+    return w.gist !== null && gist_1.gists_equal(w.gist, gist_1.gist('impression', { subject: gist_1.gist('your history with Sam') }));
+}
+metaphor_1.Facets({
+    name: 'your drifting apart',
+    slug: 'falling-out',
+    noun_phrase_cmd: 'our_drifting_apart',
+    noun_phrase: 'Your drifting apart.',
+    can_recognize: (w2, w1) => is_about_history(w1),
+    can_apply: (action) => true /*included(action.name, ['to hammer'])*/,
+    solved: w => w.has_admitted_negligence,
+    handle_action: (action, world) => {
+        if (action.name === 'to hammer') {
+            return utils_1.update(world, { has_admitted_negligence: Symbol() }, story_1.story_updater(`
+                    You force yourself to look the truth in the eye: <i>You</i> bowed out of the friendship.
+                    <br/>
+                    There was nothing mutual about it. You sidelined him without explanation.`));
+        }
+        return world;
+    }
+});
+metaphor_1.Facets({
+    name: 'your culpability',
+    slug: 'culpability',
+    noun_phrase_cmd: 'my_culpability',
+    noun_phrase: 'Your culpability.',
+    can_recognize: (w2, w1) => is_about_history(w1) && !!w2.has_admitted_negligence,
+    can_apply: (action) => true /*included(action.name, ['to scrutinize'])*/,
+    solved: w => w.has_unpacked_culpability,
+    handle_action: (action, world) => {
+        if (action.name === 'to scrutinize') {
+            return utils_1.update(world, { has_unpacked_culpability: Symbol() }, story_1.story_updater(`
+                    There's no doubt you did it out of self-preservation.
+                    <br/>
+                    There's also no doubt he deserved better.
+                    <br/>
+                    You wince at the guilt.`));
+        }
+        return world;
+    }
+});
+metaphor_1.Actions({
+    name: 'to volunteer',
+    noun: 'the volunteer',
+    noun_cmd: 'the_volunteer',
+    description: "The offering of an active intervention in the world, to change it for the better.",
+    slug: 'volunteer',
+    get_cmd: (facet) => ['volunteer to_foster', facet],
+    get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains concerning.`
+});
+memory_1.Memories({
+    action: 'to volunteer',
+    could_remember: world => !!world.has_unpacked_culpability,
+    description: () => story_1.createElement("div", { className: "memory-4" },
+        "\"Do more than merely receive and respond, my dear. We must participate, as best as we can. We must volunteer ourselves to the world.\"",
+        story_1.createElement("blockquote", { className: "interp-memory-4" }, "This is one of the last things she said to you, before she left."))
+});
+metaphor_1.Facets({
+    name: 'the old affinity',
+    slug: 'affinity',
+    noun_phrase_cmd: 'the_old_affinity',
+    noun_phrase: 'The old affinity you once had for each other.',
+    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to volunteer'),
+    can_apply: (action) => true /*included(action.name, ['to volunteer'])*/,
+    solved: w => w.has_volunteered,
+    handle_action: (action, world) => {
+        if (action.name === 'to volunteer') {
+            return utils_1.update(world, { has_volunteered: Symbol(), }, story_1.story_updater(`
+                    You turn in your seat, and look him in the eyes, and say,`));
+        }
+        return world;
+    }
+});
+let global_lock = prelude_1.resource_registry.get('global_lock', false);
+let outro_lock = global_lock('Outro');
+prelude_1.Puffers({
+    role_brand: true,
+    pre: world => {
+        if (world.has_volunteered) {
+            return utils_1.update(world, w => outro_lock.lock(w));
+        }
+        return world;
+    },
+    handle_command: (world, parser) => {
+        if (!world.has_volunteered || world.end) {
+            return parser.eliminate();
+        }
+        return parser.consume('How are you, Sam?', () => parser.submit(() => utils_1.update(world, { end: true }, story_1.story_updater(story_1.createElement("div", null,
+            story_1.createElement("div", { className: "interp" }, "VENIENCE WORLD"),
+            "A work of ",
+            story_1.createElement("span", { className: "blue" }, "interactive fiction"),
+            story_1.createElement("br", null),
+            "by ",
+            story_1.createElement("div", { className: "interp-inline" }, "Daniel Spitz"),
+            story_1.createElement("br", null),
+            story_1.createElement("br", null),
+            "Thank you for playing the demo!")))));
+    }
+});
+// Test command to beat the whole demo
+// Puffers({
+//     handle_command: { kind: 'Stages',
+//         4: ((world, parser) => {
+//             if (is_simulated('playtester', world)) {
+//                 return parser.eliminate();
+//             }
+//             if (world.end) {
+//                 return parser.eliminate();
+//             }
+//             return parser.consume('beat_the_game', () =>
+//                 parser.submit(() => {
+//                 return find_world_at(world.previous!, 7).result!;
+//         }))})
+//     }
+// });
+var prelude_2 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+exports.Venience = prelude_2.Venience;
+let initial_venience_world = Object.assign({}, world_1.get_initial_world(), prelude_1.resource_registry.get('initial_world_prelude', false), prelude_1.resource_registry.get('initial_world_metaphor', false), prelude_1.resource_registry.get('initial_world_topic', false), prelude_1.resource_registry.get('initial_world_narrascope', false), prelude_1.resource_registry.get('initial_world_notes', false));
+initial_venience_world = utils_1.update(initial_venience_world, story_1.story_updater('You and Sam are sitting together on the bus.'));
+const puffer_index = prelude_1.resource_registry.get('puffer_index', false);
+exports.venience_world_spec = puffer_1.make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
+function new_venience_world() {
+    return world_1.world_driver(exports.venience_world_spec);
+}
+exports.new_venience_world = new_venience_world;
+prelude_1.resource_registry.initialize('venience_world_spec', exports.venience_world_spec);
+prelude_1.resource_registry.seal();
+story_1.StoryQueryIndex.seal();
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/notes.tsx":
+/*!*********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/notes.tsx ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const text_utils_1 = __webpack_require__(/*! ../../text_utils */ "./src/typescript/text_utils.ts");
+const update_1 = __webpack_require__(/*! ../../update */ "./src/typescript/update.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const stages_1 = __webpack_require__(/*! ../../stages */ "./src/typescript/stages.ts");
+gist_1.Gists({
+    tag: 'notes',
+    text: () => 'your notes',
+    command: () => 'my_notes'
+});
+gist_1.Gists({
+    tag: 'notes about',
+    text: ({ topic }) => `your notes about ${topic}`,
+    command: ({ topic }) => ['my_notes about', topic]
+});
+prelude_1.resource_registry.initialize('initial_world_notes', {
+    has_written_down: utils_1.map(),
+    has_read: utils_1.map()
+});
+const note_index = prelude_1.resource_registry.initialize('note_index', new static_resources_1.StaticMap(prelude_1.StaticNoteIDs));
+function add_to_notes(world, note_id) {
+    const entry = note_index.get(note_id);
+    return update_1.update(world, { has_written_down: utils_1.map([note_id, true]) }, story_1.story_updater({
+        prompt: story_1.createElement("div", null,
+            "You write about ",
+            text_utils_1.capitalize(gist_1.render_gist_text(gist_1.gist(note_id))),
+            " in your ",
+            story_1.createElement("strong", null, "notes"),
             ".")
     }));
+}
+exports.add_to_notes = add_to_notes;
+prelude_1.Puffers({
+    handle_command: stages_1.stages([3, (world, parser) => {
+            if (Object.values(note_index.all()).every(n => !world.has_written_down.get(n.note_id))) {
+                return parser.eliminate();
+            }
+            const list_thread = (() => parser.consume({
+                tokens: 'notes',
+                used: Object.values(note_index.all()).every(n => !world.has_written_down.get(n.note_id) || world.has_read.get(n.note_id))
+            }, () => parser.submit(() => update_1.update(world, { gist: gist_1.gist('notes') }, story_1.story_updater({ description: story_1.createElement("div", null,
+                    "You have written down notes about the following:",
+                    Object.values(note_index.all())
+                        .filter(n => world.has_written_down.get(n.note_id))
+                        .map(n => story_1.createElement("blockquote", null, text_utils_1.capitalize(gist_1.render_gist_text(gist_1.gist(n.note_id)))))
+                        .join(''))
+            })))));
+            let specific_threads = [];
+            for (const entry of Object.values(note_index.all())) {
+                if (!world.has_written_down.get(entry.note_id)) {
+                    continue;
+                }
+                specific_threads.push(() => parser.consume({
+                    tokens: ['notes about', gist_1.render_gist_command(gist_1.gist(entry.note_id))],
+                    used: world.has_read.get(entry.note_id)
+                }, () => parser.submit(() => {
+                    const g = gist_1.gist(entry.note_id);
+                    return update_1.update(world, {
+                        has_read: utils_1.map([entry.note_id, true]),
+                        gist: () => gist_1.gist('notes about', { topic: g })
+                    }, story_1.story_updater({ description: story_1.createElement("div", null,
+                            story_1.createElement("strong", null,
+                                "$",
+                                text_utils_1.capitalize(gist_1.render_gist_text(g))),
+                            entry.description()) }));
+                })));
+            }
+            return parser.split([list_thread, ...specific_threads]);
+        }])
+});
+exports.Notes = (spec) => note_index.initialize(spec.note_id, spec);
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/prelude.ts":
+/*!**********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/prelude.ts ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const lock_1 = __webpack_require__(/*! ../../lock */ "./src/typescript/lock.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+exports.StaticTopicIDs = {
+    'Sam': null,
+    'yourself': null,
+    'your notebook': null,
+    'your history with Sam': null
 };
+exports.StaticActionIDs = {
+    'to attend': null,
+    'to scrutinize': null,
+    'to hammer': null,
+    'to volunteer': null
+};
+exports.StaticNoteIDs = exports.StaticActionIDs;
+exports.StaticFacetIDs = {
+    "Sam": null,
+    "Sam's demeanor": null,
+    "your friendship with Sam": null,
+    "your drifting apart": null,
+    "your culpability": null,
+    "the old affinity": null,
+    'a memory 1': null,
+    'a memory 2': null,
+    'a memory 3': null,
+    'a memory 4': null
+};
+;
+const static_resource_names = {
+    'initial_world_prelude': null,
+    'puffer_index': null,
+    'global_lock': null,
+    'gist_renderer_index': null,
+    'initial_world_topic': null,
+    'topic_index': null,
+    'initial_world_metaphor': null,
+    'action_index': null,
+    'facet_index': null,
+    'initial_world_notes': null,
+    'note_index': null,
+    'memory_index': null,
+    'initial_world_narrascope': null,
+    'venience_world_spec': null
+};
+exports.resource_registry = new static_resources_1.StaticMap(static_resource_names);
+;
+exports.resource_registry.initialize('initial_world_prelude', { owner: null });
+const global_lock = exports.resource_registry.initialize('global_lock', lock_1.lock_builder({
+    owner: (w) => w.owner,
+    set_owner: (w, owner) => utils_1.update(w, { owner })
+}));
+const puffer_index = exports.resource_registry.initialize('puffer_index', new static_resources_1.StaticIndex([
+    function ensure_lock(puffer) {
+        if (puffer.role_brand === undefined) {
+            return lock_and_brand(null, puffer);
+        }
+        return puffer;
+    }
+]));
+exports.resource_registry.initialize('gist_renderer_index', gist_1.gist_renderer_index);
+exports.Puffers = utils_1.bound_method(puffer_index, 'add');
+function lock_and_brand(owner, puffer) {
+    return utils_1.update(puffer, global_lock(owner).lock_puffer, { role_brand: true });
+}
+exports.lock_and_brand = lock_and_brand;
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts":
+/*!*********************************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/supervenience_spec.ts ***!
+  \*********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
+const supervenience_1 = __webpack_require__(/*! ../../supervenience */ "./src/typescript/supervenience.ts");
+const world_1 = __webpack_require__(/*! ../../world */ "./src/typescript/world.tsx");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+exports.goals = [
+    w => !!w.has_chill,
+    w => !!w.has_recognized_something_wrong,
+    w => !!w.is_curious_about_history,
+    w => !!w.has_admitted_negligence,
+    w => !!w.has_unpacked_culpability,
+    w => !!w.has_volunteered,
+    w => w.end
+];
+const gist_pat = {
+    tag: 'impression',
+    children: {
+        subject: [
+            { tag: 'Sam' },
+            { tag: 'your history with Sam' }
+        ]
+    }
+};
+exports.space = [
+    w => {
+        if (w.owner !== 'Metaphor') {
+            return false;
+        }
+        let g = history_1.find_index(w, w.current_interpretation).gist;
+        if (g === null) {
+            return null;
+        }
+        if (gist_1.gist_matches(g, gist_pat)) {
+            return g;
+        }
+        return null;
+    },
+    w => w.has_considered,
+    w => w.has_acquired,
+    w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
+];
+exports.command_filter = (w, cmd) => {
+    if (cmd[0] && cmd[0].token === 'notes') {
+        return false;
+    }
+    return true;
+};
+function get_thread_maker() {
+    const venience_world_spec = prelude_1.resource_registry.get('venience_world_spec');
+    return world_1.update_thread_maker(venience_world_spec);
+}
+exports.get_thread_maker = get_thread_maker;
+function find_world_at(world, goals_met) {
+    const thread_maker = get_thread_maker();
+    let spec = {
+        thread_maker,
+        goals: exports.goals,
+        space: exports.space,
+        command_filter: exports.command_filter,
+        simulator_id: 'playtester',
+        search_id: 'reach-subgoal-' + goals_met
+    };
+    spec.goals = spec.goals.slice(0, goals_met);
+    return supervenience_1.search_future(spec, world);
+}
+exports.find_world_at = find_world_at;
+
+
+/***/ }),
+
+/***/ "./src/typescript/demo_worlds/narrascope/topic.ts":
+/*!********************************************************!*\
+  !*** ./src/typescript/demo_worlds/narrascope/topic.ts ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
+const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
+const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
+prelude_1.resource_registry.initialize('initial_world_topic', {
+    has_considered: utils_1.map()
+});
+gist_1.Gists({
+    tag: 'impression',
+    text: ({ subject }) => `your impression of ${subject}`,
+    command: ({ subject }) => ['my_impression of', subject]
+});
+function make_topic(spec) {
+    return {
+        handle_command: (world, parser) => {
+            if (!spec.can_consider(world)) {
+                return parser.eliminate();
+            }
+            return parser.consume({
+                tokens: ['consider', spec.cmd],
+                used: world.has_considered.get(spec.name)
+            }, () => parser.submit(() => utils_1.update(world, story_1.story_updater(spec.message(world)), {
+                gist: () => gist_1.gist('impression', { subject: gist_1.gist(spec.name) }),
+                has_considered: utils_1.map([spec.name, true])
+            }, ...utils_1.cond(!!spec.consider, () => spec.consider))));
+        },
+        post: (world2, world1) => {
+            if (spec.reconsider === undefined ||
+                world2.gist && gist_1.gists_equal(world2.gist, gist_1.gist('impression', { subject: gist_1.gist(spec.name) })) ||
+                !spec.reconsider(world2, world1)) {
+                return world2;
+            }
+            return utils_1.update(world2, {
+                has_considered: utils_1.map([spec.name, false])
+            });
+        }
+    };
+}
+exports.make_topic = make_topic;
+const topic_index = prelude_1.resource_registry.initialize('topic_index', new static_resources_1.StaticMap(prelude_1.StaticTopicIDs, [
+    function add_topic_to_puffers(spec) {
+        prelude_1.Puffers(make_topic(spec));
+        return spec;
+    },
+    function add_topic_to_gists(spec) {
+        gist_1.Gists({
+            tag: spec.name,
+            text: () => spec.name,
+            command: () => spec.cmd
+        });
+        return spec;
+    }
+]));
+exports.Topics = (spec) => topic_index.initialize(spec.name, spec);
 
 
 /***/ }),
@@ -18594,6 +19676,150 @@ function gensym_value(s) {
     return new_state;
 }
 exports.gensym_value = gensym_value;
+
+
+/***/ }),
+
+/***/ "./src/typescript/gist.ts":
+/*!********************************!*\
+  !*** ./src/typescript/gist.ts ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const static_resources_1 = __webpack_require__(/*! ./static_resources */ "./src/typescript/static_resources.ts");
+/* This will produce an error only if GistSpecs is invalid. */ const InvalidSpecs = null;
+exports.gist_renderer_index = new static_resources_1.StaticIndex();
+function render_gist_text(gist) {
+    let spec = exports.gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag;
+    });
+    if (spec === undefined) {
+        return gist.tag;
+    }
+    if (gist.children === undefined) {
+        return spec.text({});
+    }
+    else {
+        let sub_text = {};
+        for (const k in gist.children) {
+            sub_text[k] = render_gist_text(gist.children[k]);
+        }
+        return spec.text(sub_text);
+    }
+}
+exports.render_gist_text = render_gist_text;
+function render_gist_command(gist) {
+    let spec = exports.gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag;
+    });
+    if (spec === undefined) {
+        return gist.tag.replace(' ', '_');
+    }
+    let sub_commands = {};
+    if (gist.children === undefined) {
+        return spec.command({});
+    }
+    for (const k in gist.children) {
+        sub_commands[k] = render_gist_command(gist.children[k]);
+    }
+    return spec.command(sub_commands);
+}
+exports.render_gist_command = render_gist_command;
+function Gists(renderer) {
+    exports.gist_renderer_index.add(renderer);
+}
+exports.Gists = Gists;
+function gist(tag, children) {
+    return {
+        tag,
+        children
+    };
+}
+exports.gist = gist;
+function has_tag(gist, tag) {
+    return gist.tag === tag;
+}
+exports.has_tag = has_tag;
+function gist_to_string(gist) {
+    let result = gist.tag;
+    if (gist.children === undefined) {
+        return result;
+    }
+    result += ';';
+    for (let [k, v] of Object.entries(gist.children)) {
+        result += k + '|' + gist_to_string(v);
+    }
+    result += ';';
+    return result;
+}
+exports.gist_to_string = gist_to_string;
+function gists_equal(gist1, gist2) {
+    if (gist1.tag !== gist2.tag) {
+        return false;
+    }
+    if (typeof gist1.children !== typeof gist2.children) {
+        return false;
+    }
+    if (gist1.children === undefined) {
+        return true;
+    }
+    for (const k in gist1.children) {
+        if (!(k in gist2.children)) {
+            debugger;
+            return false;
+        }
+        if (!gists_equal(gist1.children[k], gist2.children[k])) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.gists_equal = gists_equal;
+function includes_tag(tag, gist) {
+    if (gist.tag === tag) {
+        return true;
+    }
+    if (gist.children === undefined) {
+        return false;
+    }
+    for (const k in gist.children) {
+        const g = gist.children[k];
+        if (includes_tag(tag, g)) {
+            return true;
+        }
+    }
+    return false;
+}
+exports.includes_tag = includes_tag;
+function gist_matches(gist, pattern) {
+    if (pattern === undefined) {
+        return true;
+    }
+    if (pattern instanceof Array) {
+        return pattern.some(pat => gist_matches(gist, pat));
+    }
+    if (gist.tag !== pattern.tag) {
+        return false;
+    }
+    if (pattern.children === undefined) {
+        return true;
+    }
+    if (gist.children === undefined) {
+        return false;
+    }
+    for (const k in pattern.children) {
+        if (!gist_matches(gist.children[k], pattern.children[k])) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.gist_matches = gist_matches;
+// TODO: includes subpattern
 
 
 /***/ }),
@@ -18757,6 +19983,57 @@ exports.keys = {
 
 /***/ }),
 
+/***/ "./src/typescript/lock.ts":
+/*!********************************!*\
+  !*** ./src/typescript/lock.ts ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
+const puffer_1 = __webpack_require__(/*! ./puffer */ "./src/typescript/puffer.ts");
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/index.ts");
+function lock_builder(spec) {
+    return (owner) => {
+        function has_permission(w) {
+            let o = spec.owner(w);
+            return o === null || o === owner;
+        }
+        function lock_puffer(puffer) {
+            return puffer_1.gate_puffer((w, old = false) => !old && has_permission(w), puffer);
+        }
+        function lock(world, start_index) {
+            if (start_index === undefined) {
+                start_index = world.index;
+            }
+            return utils_1.update(spec.set_owner(world, owner), story_1.css_updater(w => ({
+                unfocused: w.index < start_index
+            })));
+        }
+        function release(world) {
+            return utils_1.update(spec.set_owner(world, null), story_1.css_updater(() => ({ unfocused: false })));
+        }
+        function lock_parser_thread(world, thread) {
+            return parser_1.gate(has_permission(world), thread);
+        }
+        return {
+            lock,
+            release,
+            lock_puffer,
+            owner: spec.owner,
+            lock_parser_thread
+        };
+    };
+}
+exports.lock_builder = lock_builder;
+
+
+/***/ }),
+
 /***/ "./src/typescript/main.tsx":
 /*!*********************************!*\
   !*** ./src/typescript/main.tsx ***!
@@ -18767,20 +20044,20 @@ exports.keys = {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const bird_world_1 = __webpack_require__(/*! ./demo_worlds/bird_world */ "./src/typescript/demo_worlds/bird_world.tsx");
+// import { new_bird_world } from './demo_worlds/bird_world';
 // import { new_bird_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
-// import { new_venience_world } from './demo_worlds/narrascope/narrascope';
+const narrascope_1 = __webpack_require__(/*! ./demo_worlds/narrascope/narrascope */ "./src/typescript/demo_worlds/narrascope/narrascope.tsx");
 const UI_1 = __webpack_require__(/*! ./UI */ "./src/typescript/UI/index.ts");
 console.time('world_build');
-let { initial_result, update, css_rules } = bird_world_1.new_bird_world(); //new_venience_world();//new_hex_world();
+let { initial_result, update, css_rules } = narrascope_1.new_venience_world(); //new_bird_world();//new_hex_world();
 // Ability to start from a specific point in the demo:
-// const START_SOLVED = 7;
-// import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
-// import { raw } from './parser';
-// const starting_world = find_world_at(initial_result.world, START_SOLVED);
-// initial_result = update(starting_world.result!, raw('', false));
+const START_SOLVED = 7;
+const supervenience_spec_1 = __webpack_require__(/*! ./demo_worlds/narrascope/supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
+const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
+const starting_world = supervenience_spec_1.find_world_at(initial_result.world, START_SOLVED);
+initial_result = update(starting_world.result, parser_1.raw('', false));
 console.timeEnd('world_build');
 console.time('render');
 if (css_rules !== undefined) {
@@ -19429,6 +20706,169 @@ exports.traverse_thread = traverse_thread;
 
 /***/ }),
 
+/***/ "./src/typescript/puffer.ts":
+/*!**********************************!*\
+  !*** ./src/typescript/puffer.ts ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+/*
+    A puffer is a type of pattern described in Conway's Game of Life.
+    http://www.conwaylife.com/wiki/Puffer
+
+    It is an object that moves itself through the Life grid, and leaves behind debris where it has been.
+
+    Here, a Puffer is a bundle of world behaviors that run within the game world,
+    reading and updating game state, and leaving behind the "debris" of those updates.
+    Sometimes that "debris" is just incidental bits of state, sometimes it is
+    read or otherwise used by other Puffers sharing the world.
+*/
+Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+const world_1 = __webpack_require__(/*! ./world */ "./src/typescript/world.tsx");
+const stages_1 = __webpack_require__(/*! ./stages */ "./src/typescript/stages.ts");
+function normalize_puffer(puffer) {
+    return Object.assign({ pre: stages_1.normalize_stages(puffer.pre), handle_command: stages_1.normalize_stages(puffer.handle_command), post: stages_1.normalize_stages(puffer.post), css_rules: puffer.css_rules || [] }, utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules'));
+}
+exports.normalize_puffer = normalize_puffer;
+function map_puffer(mapper, puffer) {
+    let norm_puffer = normalize_puffer(puffer);
+    return Object.assign({ pre: mapper.pre ? stages_1.map_stages(norm_puffer.pre, mapper.pre) : norm_puffer.pre, handle_command: mapper.handle_command ? stages_1.map_stages(norm_puffer.handle_command, mapper.handle_command) : norm_puffer.handle_command, post: mapper.post ? stages_1.map_stages(norm_puffer.post, mapper.post) : norm_puffer.post, css_rules: norm_puffer.css_rules }, utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules'));
+}
+exports.map_puffer = map_puffer;
+function gate_puffer(cond, puffer) {
+    return map_puffer({
+        pre: (cb) => {
+            if (typeof cb !== 'function') {
+                debugger;
+            }
+            return (world) => {
+                if (cond(world)) {
+                    return cb(world);
+                }
+                return world;
+            };
+        },
+        handle_command: (cb) => {
+            return (world, parser) => {
+                if (!cond(world)) {
+                    return parser.eliminate();
+                }
+                return cb(world, parser);
+            };
+        },
+        post: (cb) => {
+            return (new_world, old_world) => {
+                if (cond(new_world, false) || cond(old_world, true)) {
+                    return cb(new_world, old_world);
+                }
+                return new_world;
+            };
+        }
+    }, puffer);
+}
+exports.gate_puffer = gate_puffer;
+function knit_puffers(puffers) {
+    let normalized = puffers.map(normalize_puffer);
+    let handler_stage_levels = {
+        pre: [],
+        handle_command: [],
+        post: []
+    };
+    for (let prop of ['pre', 'handle_command', 'post']) {
+        for (let puffer of normalized) {
+            handler_stage_levels[prop].push(...stages_1.stage_keys(puffer[prop]));
+        }
+        handler_stage_levels[prop] = [...new Set(handler_stage_levels[prop]).values()].sort((a, b) => a - b);
+    }
+    function iterate(prop, combine) {
+        let result = stages_1.stages();
+        for (let stage of handler_stage_levels[prop]) {
+            let cbs = [];
+            for (let p of normalized) {
+                if (p[prop].get(stage) !== undefined) {
+                    cbs.push(p[prop].get(stage));
+                }
+            }
+            result.set(stage, combine(cbs));
+        }
+        return result;
+    }
+    let result = {
+        pre: stages_1.stages(),
+        handle_command: stages_1.stages(),
+        post: stages_1.stages(),
+        css_rules: []
+    };
+    result.pre = iterate('pre', (pres) => (world) => {
+        return pres.reduce((acc, p) => p(acc), world);
+    });
+    result.handle_command = iterate('handle_command', (hcs) => (world, parser) => {
+        return parser.split(hcs.map((hc) => () => hc(world, parser)));
+    });
+    result.post = iterate('post', (posts) => (new_world, old_world) => {
+        return posts.reduce((acc, p) => p(acc, old_world), new_world);
+    });
+    result.css_rules = normalized.flatMap(p => p.css_rules);
+    return result;
+}
+exports.knit_puffers = knit_puffers;
+function bake_puffers(puffers) {
+    let normalized = puffers.map(normalize_puffer);
+    let all_stages = {
+        pre: [],
+        handle_command: [],
+        post: []
+    };
+    for (let prop of ['pre', 'handle_command', 'post']) {
+        for (let puffer of normalized) {
+            all_stages[prop].push(...stages_1.stage_keys(puffer[prop]));
+        }
+        all_stages[prop] = [...new Set(all_stages[prop]).values()].sort((a, b) => a - b);
+    }
+    function iterate(prop, combine) {
+        let result;
+        let cbs = [];
+        for (let stage of all_stages[prop]) {
+            for (let p of normalized) {
+                const cb = p[prop].get(stage);
+                if (cb !== undefined) {
+                    cbs.push(cb);
+                }
+            }
+        }
+        return combine(cbs);
+    }
+    let pre = iterate('pre', (cbs) => (world) => cbs.reduce((acc, cb) => {
+        if (typeof cb !== 'function') {
+            debugger;
+        }
+        return cb(acc);
+    }, world));
+    let handle_command = iterate('handle_command', (cbs) => (world, parser) => parser.split(cbs.map(cb => (p) => cb(world, p))));
+    let post = iterate('post', (cbs) => (new_world, old_world) => cbs.reduce((acc, cb) => cb(acc, old_world), new_world));
+    let css_rules = puffers.flatMap(p => p.css_rules || []);
+    let result = {
+        pre,
+        handle_command,
+        post,
+        css_rules
+    };
+    return result;
+}
+exports.bake_puffers = bake_puffers;
+function make_puffer_world_spec(initial_world, puffer_index) {
+    let spec = bake_puffers(puffer_index);
+    return world_1.make_world_spec(Object.assign({ initial_world }, spec));
+}
+exports.make_puffer_world_spec = make_puffer_world_spec;
+
+
+/***/ }),
+
 /***/ "./src/typescript/stages.ts":
 /*!**********************************!*\
   !*** ./src/typescript/stages.ts ***!
@@ -19705,10 +21145,6 @@ class StaticResource {
     }
 }
 exports.StaticResource = StaticResource;
-function static_names(...names) {
-    return null;
-}
-exports.static_names = static_names;
 class StaticMap {
     constructor(static_name_index, mappers = []) {
         this.static_name_index = static_name_index;
@@ -19956,8 +21392,8 @@ __export(__webpack_require__(/*! ./updates */ "./src/typescript/story/updates.ts
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story.ts");
 const static_resources_1 = __webpack_require__(/*! ../static_resources */ "./src/typescript/static_resources.ts");
+const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story.ts");
 exports.StoryQueryName = {
     // This object has to be edited when new entries are added to StoryQueryTypes
     // The editor will basically fill it in for you
@@ -20194,18 +21630,17 @@ exports.story_to_dom = story_to_dom;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const stages_1 = __webpack_require__(/*! ../stages */ "./src/typescript/stages.ts");
-const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story.ts");
-const create_1 = __webpack_require__(/*! ./create */ "./src/typescript/story/create.ts");
-const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
 const history_1 = __webpack_require__(/*! ../history */ "./src/typescript/history.ts");
+const stages_1 = __webpack_require__(/*! ../stages */ "./src/typescript/stages.ts");
 const parsed_text_1 = __webpack_require__(/*! ../UI/components/parsed_text */ "./src/typescript/UI/components/parsed_text.tsx");
+const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
+const create_1 = __webpack_require__(/*! ./create */ "./src/typescript/story/create.ts");
 const query_1 = __webpack_require__(/*! ./query */ "./src/typescript/story/query.ts");
+const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story.ts");
 query_1.StoryQueryIndex.initialize('story_root', () => story => [[story, []]]);
 query_1.StoryQueryIndex.initialize('story_hole', () => (story) => {
     const result = story_1.find_all_nodes(story, n => story_1.is_story_hole(n));
     if (result.length !== 1) {
-        debugger;
         throw new Error(`Found ${result.length} story holes. There should only ever be one.`);
     }
     return result;
@@ -20245,15 +21680,14 @@ exports.StoryUpdateOps = {
         if (children instanceof Array) {
             return children.reduce((p, c) => exports.StoryUpdateOps.add({ children: c })(p, effects), parent);
         }
+        if (story_1.is_story_node(children)) {
+            children = utils_1.update(children, {
+                classes: { ['eph-new']: true }
+            });
+        }
         if (effects) {
             effects.push(dom => {
-                let dom_children = children;
-                if (story_1.is_story_node(children)) {
-                    dom_children = utils_1.update(children, {
-                        classes: { ['eph-new']: true }
-                    });
-                }
-                const child_dom = story_1.story_to_dom(dom_children);
+                const child_dom = story_1.story_to_dom(children);
                 dom.appendChild(child_dom);
             });
         }
@@ -20261,19 +21695,20 @@ exports.StoryUpdateOps = {
             children: utils_1.append(children)
         });
     },
-    css: ({ updates }) => (elt, effects) => {
+    css: (updates) => (elt, effects) => {
         if (!story_1.is_story_node(elt)) {
             throw new Error('Tried to update CSS on non-StoryNode ' + JSON.stringify(elt));
         }
         updates = Object.assign({}, updates);
+        for (const [cls, on] of Object.entries(updates)) {
+            if (!!on !== !!elt.classes[cls]) {
+                updates[`eph-${on ? 'adding' : 'removing'}-${cls}`] = true;
+            }
+        }
         if (effects) {
             effects.push(dom => {
-                const dom_ = dom;
                 for (const [cls, on] of Object.entries(updates)) {
-                    dom_.classList.toggle(cls, on);
-                    if (!!on !== !!elt.classes[cls]) {
-                        dom_.classList.add(`eph-${on ? 'adding' : 'removing'}-${cls}`);
-                    }
+                    dom.classList.toggle(cls, on);
                 }
             });
         }
@@ -20288,8 +21723,10 @@ exports.StoryUpdateOps = {
         return utils_1.update(elt, {
             classes: _ => utils_1.map_values(_, (on, cls) => {
                 if (on && cls.startsWith('eph-')) {
-                    if (effects !== undefined) {
-                        effects.push(dom => dom.classList.remove(cls));
+                    if (effects) {
+                        effects.push(dom => {
+                            dom.classList.remove(cls);
+                        });
                     }
                     return false;
                 }
@@ -20399,7 +21836,7 @@ exports.css_updater = (f) => (world) => {
         if (Object.keys(updates).length === 0) {
             return [];
         }
-        return [story_update(query_1.query('frame', { index: w.index }), story_op('css', { updates: f(w) }))];
+        return [story_update(query_1.query('frame', { index: w.index }), story_op('css', f(w)))];
     });
     return utils_1.update(world, {
         story_updates: { effects: stages_1.stages([0, utils_1.append(...css_updates)]) }
@@ -20444,6 +21881,240 @@ function init_story_updates(new_index) {
     };
 }
 exports.init_story_updates = init_story_updates;
+
+
+/***/ }),
+
+/***/ "./src/typescript/supervenience.ts":
+/*!*****************************************!*\
+  !*** ./src/typescript/supervenience.ts ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const world_1 = __webpack_require__(/*! ./world */ "./src/typescript/world.tsx");
+const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+const history_1 = __webpack_require__(/*! ./history */ "./src/typescript/history.ts");
+function default_narrative_space() {
+    return [w => utils_1.drop_keys(w, 'previous', 'index', 'parsing', 'parent', 'child')];
+}
+function get_score(w, goals) {
+    return goals.map(g => g(w)).reduce((acc, goal_met) => acc + (goal_met ? 1 : 0), 0);
+}
+// do a breadth-first search of possible futures for some goal state
+function search_future(spec, world) {
+    if (is_simulated(spec.simulator_id, world)) {
+        // A future search for this world's timeline is already running.
+        // Recursive future searches are most likely too inefficient to allow, so
+        // we return null in this case, indicating to the caller who would have
+        // conducted the future search that she is already in a simulation, and should
+        // therefore only take atomic/non-recursive actions.
+        return {
+            kind: 'FutureSearchResult',
+            status: 'InSimulation',
+            result: null,
+            stats: null
+        };
+    }
+    if (spec.search_id !== undefined) {
+        let cached_result = lookup_cache(spec.search_id, world);
+        if (cached_result !== undefined) {
+            return cached_result;
+        }
+    }
+    try {
+        function cache(result) {
+            return cache_search_result(spec, world, result);
+        }
+        begin_search(spec.simulator_id, world);
+        if (spec.space === undefined) {
+            spec = Object.assign({}, spec, { space: default_narrative_space() });
+        }
+        let n_skipped = 0;
+        const visited = [[
+                world,
+                spec.space.map(dim => dim(world)),
+                get_score(world, spec.goals)
+            ]];
+        let i = 0;
+        let anchor = 0;
+        function make_stats(steps_in_solution) {
+            return {
+                iterations: i,
+                steps_in_solution,
+                states_enumerated: visited.length,
+                states_skipped: n_skipped
+            };
+        }
+        lup: while (spec.give_up_after === undefined || i < spec.give_up_after) {
+            const next_index = visited.length - 1 - i;
+            if (next_index < 0) {
+                // Failed future world search, goal is unreachable
+                // (If max_steps was set in the spec, it could be due to no solution being available in max_steps)
+                return cache({
+                    kind: 'FutureSearchResult',
+                    status: 'Unreachable',
+                    result: null,
+                    stats: make_stats()
+                });
+            }
+            const [w, pos, score] = visited[next_index];
+            if (score === spec.goals.length) {
+                let n_turns = w.index - world.index;
+                return cache({
+                    kind: 'FutureSearchResult',
+                    status: 'Found',
+                    result: w,
+                    stats: make_stats(n_turns)
+                });
+            }
+            if (spec.max_steps !== undefined && w.index - world.index >= spec.max_steps) {
+                i++;
+                continue;
+            }
+            const transitions = parser_1.traverse_thread(spec.thread_maker(w), spec.command_filter !== undefined
+                ? (cmd) => spec.command_filter(w, cmd)
+                : undefined);
+            const neighbor_states = Object.values(transitions);
+            if (neighbor_states.length === 0) {
+                throw new Error('Future search reached a non-goal terminal state');
+            }
+            for (let parse_result of neighbor_states) {
+                const dest = world_1.add_parsing(parse_result.result, parse_result.parsing); //{...parse_result.result, parsing: parse_result.parsing};
+                const dest_pos = spec.space.map(dim => dim(dest));
+                const dest_score = get_score(dest, spec.goals);
+                if (dest_score > score) {
+                    // skip ahead to only search from this node now
+                    visited.unshift([dest, dest_pos, dest_score]);
+                    n_skipped += visited.length - 1 - i;
+                    i = visited.length - 1;
+                    anchor = i;
+                    continue lup;
+                }
+                else if (dest_score < score) {
+                    n_skipped++;
+                }
+                else if (!visited.slice(0, visited.length - anchor).some(([, pos]) => dest_pos.every((d, j) => utils_1.deep_equal(d, pos[j])))) {
+                    visited.unshift([dest, dest_pos, dest_score]);
+                }
+                else {
+                    n_skipped++;
+                }
+            }
+            i++;
+        }
+        return cache({
+            kind: 'FutureSearchResult',
+            status: 'Timeout',
+            result: null,
+            stats: make_stats()
+        });
+    }
+    finally {
+        end_search(spec.simulator_id, world);
+    }
+}
+exports.search_future = search_future;
+const active_simulators = {};
+function is_simulated(simulator_id, world) {
+    if (!(simulator_id in active_simulators)) {
+        return false;
+    }
+    const entry = active_simulators[simulator_id];
+    return history_1.find_historical(world, w => entry.has(w)) !== null;
+}
+exports.is_simulated = is_simulated;
+function begin_search(simulator_id, world) {
+    let entry;
+    if (simulator_id in active_simulators) {
+        entry = active_simulators[simulator_id];
+    }
+    else {
+        entry = active_simulators[simulator_id] = new Set();
+    }
+    entry.add(world);
+}
+function end_search(simulator_id, world) {
+    let entry = active_simulators[simulator_id];
+    entry.delete(world);
+    if (entry.size === 0) {
+        delete active_simulators[simulator_id];
+    }
+}
+const cache_size = 1000;
+const cached_searches = {};
+function cache_search_result(search_spec, world, search_result) {
+    if (search_spec.search_id === undefined) {
+        return search_result;
+    }
+    let entry;
+    if (search_spec.search_id in cached_searches) {
+        entry = cached_searches[search_spec.search_id];
+    }
+    else {
+        entry = cached_searches[search_spec.search_id] = {
+            kind: 'CacheEntry',
+            spec: search_spec,
+            results: []
+        };
+    }
+    let position = get_position(search_spec, world);
+    let match = find_in_entry(entry, position);
+    if (match === undefined) {
+        entry.results.push({ world, position, result: search_result });
+        if (cached_searches[search_spec.search_id] === undefined) {
+            cached_searches[search_spec.search_id] = entry;
+        }
+    }
+    let search_ids = Object.keys(cached_searches);
+    if (search_ids.length > cache_size) {
+        for (let sid of search_ids.slice(0, search_ids.length - cache_size)) {
+            delete cached_searches[sid];
+        }
+    }
+    return search_result;
+}
+function find_in_entry(entry, world_position) {
+    for (let result of entry.results) {
+        if (utils_1.deep_equal(world_position, result.position)) {
+            return result;
+        }
+    }
+    return undefined;
+}
+function lookup_cache(search_id, world) {
+    let entry = cached_searches[search_id];
+    if (entry === undefined) {
+        return undefined;
+    }
+    let match = find_in_entry(entry, get_position(entry.spec, world));
+    if (match === undefined) {
+        return undefined;
+    }
+    return match.result;
+}
+function get_position(spec, world) {
+    let space;
+    if (spec.space === undefined) {
+        space = default_narrative_space();
+    }
+    else {
+        space = spec.space;
+    }
+    return space.map(d => d(world));
+}
+/*
+    TODO
+    For the narrative dimensions, each narrative dimension can be paired with a command filter.
+
+    This would be useful for fully automating the bright/dim text logic.
+
+    A command is bright if it participates in a shortest path to advancing in a narrative dimension
+*/ 
 
 
 /***/ }),

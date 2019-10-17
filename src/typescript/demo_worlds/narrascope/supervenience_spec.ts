@@ -1,5 +1,5 @@
 import { GistPattern, gist_matches } from '../../gist';
-import { find_index } from '../../interpretation';
+import { find_index } from '../../history';
 import { CommandFilter, FutureSearchSpec, NarrativeDimension, NarrativeGoal, search_future } from '../../supervenience';
 import { update_thread_maker } from '../../world';
 import { Venience, resource_registry } from './prelude';

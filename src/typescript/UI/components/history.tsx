@@ -1,12 +1,11 @@
+import { Effects } from "../../effect_utils";
+import { history_array } from "../../history";
+import { apply_story_updates_stage, query, remove_eph, ReversibleUpdateSpec, Story, story_op, story_to_dom, story_update } from "../../story";
+import { array_last, map_values, update } from "../../utils";
 import { World } from "../../world";
-import { createElement, Component, Renderer } from "../framework";
+import { animate, AnimationState, compute_possible_effects, final_story } from "../animation";
+import { Component, Renderer } from "../framework";
 import { ui_resources } from '../prelude';
-import { is_compound_world, MaybeCompoundWorld, group_compound_worlds, history_array } from "../../history";
-import { AnimationState, animate, final_story, compute_possible_effects } from "../animation";
-import { apply_story_updates_all, StoryUpdateSpec, apply_story_updates_stage, story_to_dom, ReversibleUpdateSpec, story_update, query, story_op, remove_eph, Story } from "../../story";
-import { merge_stages } from "../../stages";
-import { map_values, array_last, update } from "../../utils";
-import { Effects, request_animation_frame } from "../../effect_utils";
 
 type HistoryProps = {
     world: World,
@@ -18,9 +17,7 @@ type HistoryProps = {
 export type History = Component<HistoryProps>;  
 export const History: Renderer<HistoryProps> = (props, old?) => {
     const dispatch = ui_resources.get('dispatch');
-    const effect = ui_resources.get('effect');
-    const effect_promise = ui_resources.get('effect_promise');
-
+    
     let root: History;
 
     if (!old) {
@@ -34,56 +31,55 @@ export const History: Renderer<HistoryProps> = (props, old?) => {
     if (anim.current_stage !== undefined) {
         const dom_effects = new Effects(root);
         
-        let updated_story = apply_story_updates_stage(
+        let story = apply_story_updates_stage(
             anim.current_story!,
             anim.update_plan.get(anim.current_stage)!,
             dom_effects
         );
         
-        dom_effects.push(async dom => {
-            await effect_promise();
-            await animate(dom);
-            return dom;
-        })
-
-        updated_story = remove_eph(updated_story, dom_effects);
-
-        dom_effects.push(() => dispatch({ kind: 'AdvanceAnimation', next_story: updated_story }));
+        story = push_animation(story, dom_effects);
+        
+        dom_effects.push(() => dispatch({ kind: 'AdvanceAnimation', next_story: story }));
         return root;
     }
 
-    let story = final_story(props.world);
-    
-    if (!old || props.world.index < old.old_props.world.index) {
-        root = set_history_view_from_scratch(story, root) as History;
-    }
-
+    // compute any visual effects from a currently entered-but-not-yet-submitted command.
     const would_effects: ReversibleUpdateSpec[] = [];
     // dim the most recent frame if undo is selected.
     if (props.world.index === (old ? old.old_props.world.index : undefined) &&
         props.undo_selected !== (old ? old.old_props.undo_selected : undefined)) {
         would_effects.push(story_update(
             query('frame', { index: props.world.index }),
-            story_op('css', { updates: { 'would-undo': props.undo_selected }})
+            story_op('css', { 'would-undo': props.undo_selected })
         ));        
     }
 
     if (!old || show_possible_effects(old.old_props) !== show_possible_effects(props)) {
         if (old) {
             // reverse the old possible labels
-            const reversed_old_possible_effects = possible_effects(old.old_props)
-                .map(u => update(u, { op: { parameters: {
-                    updates: _ => map_values(_, v => !v)
-                } } }));
+            const old_possible_effects = possible_effects(old.old_props);
+            if (old_possible_effects.length > 0) {
+                debugger;
+            }
+            const reversed_old_possible_effects = old_possible_effects
+                .map(u => update(u, { op: {
+                    parameters: _ => map_values(_, v => !v)
+                } } ));
             would_effects.push(...reversed_old_possible_effects);
         }
         would_effects.push(...possible_effects(props));
     }
 
+    const story = final_story(props.world);
+    
+    if (!old || props.world.index < old.old_props.world.index) {
+        root = set_history_view_from_scratch(story, root) as History;
+    }
+
     if (would_effects.length > 0) {
         const dom_effects = new Effects(root);
-        story = apply_story_updates_stage(story, would_effects, dom_effects);
-        remove_eph(story, dom_effects);
+        const story_with_would_effects = apply_story_updates_stage(story, would_effects, dom_effects);
+        push_animation(story_with_would_effects, dom_effects);
     }
 
     return root;
@@ -97,6 +93,18 @@ export function set_history_view_from_scratch(story: Story, root?: History): His
 
     return result as History;
 }
+
+function push_animation(story: Story, dom_effects: Effects<History>) {
+    const effect_promise = ui_resources.get('effect_promise');
+
+    dom_effects.push(async dom => {
+        await effect_promise();
+        await animate(dom);
+        return dom;
+    });
+    return remove_eph(story, dom_effects);
+}
+
 
 function show_possible_effects(props: HistoryProps) {
     return props.undo_selected ? null : props.possible_world;

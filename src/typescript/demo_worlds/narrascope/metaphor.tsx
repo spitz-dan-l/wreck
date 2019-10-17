@@ -8,7 +8,7 @@ import { bound_method, map, update, Updater, append } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer, StaticActionIDs, StaticFacetIDs } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
 import { stages, find_and_move_to_stage } from '../../stages';
-import { css_updater, story_updater, frame_update, css_op, TextAddSpec } from '../../text';
+import { createElement, css_updater, story_updater, story_update, story_op, TextAddSpec, query, Fragment } from '../../story';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -139,10 +139,13 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
             return {};
         }),
         {
-            story_updates: _ => 
+            story_updates: { effects: _ =>
+                // TODO: condition becomes, all updates that would
+                // affect nodes occuring above/before the node with target frame-index
                 find_and_move_to_stage(_,
-                    u => u.index < world.index,
-                    () => -1),
+                    u => u.query.name === 'frame' && u.query.parameters.index < world.index,
+                    () => -1)
+            },
             has_tried: map([action.name, map([facet.name, true])])
         });
 
@@ -150,17 +153,17 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
     if (solved) {
         if (!already_solved) {
             return update(world, {
-                story_updates: stages([0, append(frame_update({
-                    index: interpretted_world.index,
-                    op: css_op({ [`interp-${facet.slug}`]: true })
-                }))])
-            });
+                story_updates: { effects: stages([0, append(story_update(
+                    query('frame', { index: interpretted_world.index }),
+                    story_op('css', { [`interp-${facet.slug}`]: true })
+                ))])
+            }});
         } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
             return update(world, {
-                story_updates: stages([0, append(frame_update({
-                    index: interpretted_world.index,
-                    op: css_op({ [`eph-interp-${facet.slug}-solved-blink`]: true })
-                }))])
+                story_updates: { effects: stages([0, append(story_update(
+                    query('frame', { index: interpretted_world.index }),
+                    story_op('css', { [`eph-interp-${facet.slug}-solved-blink`]: true })
+                ))]) }
             });
         }
     }
@@ -191,7 +194,7 @@ export const make_action_applicator = (world: Venience, facet_id: FacetID, actio
             parser.consume(
                 {
                     tokens: action.get_cmd(facet.noun_phrase_cmd),
-                    used: !!already_solved || (world.has_tried.has(action.name) && world.has_tried.get(action.name)![facet.name]),
+                    used: !!already_solved || (world.has_tried.has(action.name) && world.has_tried.get(action.name)!.get(facet.name)),
                     labels: { interp: true, filler: true }
                 }, () =>
             parser.submit(() => {
@@ -240,14 +243,14 @@ Puffers(lock_and_brand('Metaphor', {
 
                     const index = immediate_world.index;
                 
-                    let descriptions: HTMLElement[] = [];
+                    let descriptions: Fragment[] = [];
 
                     for (let facet of Object.values(facet_index.all())) {
                         if (!facet.can_recognize(world, immediate_world)) {
                             continue;
                         }
                         descriptions.push(
-                            <blockquote class={`descr-${facet.slug}`}>
+                            <blockquote className={`descr-${facet.slug}`}>
                                 {facet.noun_phrase}
                             </blockquote>
                         );
@@ -262,13 +265,13 @@ Puffers(lock_and_brand('Metaphor', {
                         w => metaphor_lock.lock(w, index),
                         { 
                             current_interpretation: index,
-                            story_updates: stages([0, append(frame_update({
-                                index,
-                                op: css_op({
+                            story_updates: { effects: stages([0, append(story_update(
+                                query('frame', { index }),
+                                story_op('css', {
                                     'interpretation-block': true,
                                     'interpretation-active': true
                                 })
-                            }))]),
+                            ))])},
                             gist: () => gist('contemplation', {subject: immediate_world.gist!})
                         },
                         story_updater({
@@ -349,10 +352,10 @@ Puffers(lock_and_brand('Metaphor', {
                     metaphor_lock.release,
                     {
                         current_interpretation: null,
-                        story_updates: stages([0, append(frame_update({
-                            index: world.current_interpretation!,
-                            op: css_op({'interpretation-active': false})
-                        }))]),
+                        story_updates: { effects: stages([0, append(story_update(
+                            query('frame', { index: world.current_interpretation! }),
+                            story_op('css', {'interpretation-active': false})
+                        ))])},
                         has_tried: () => new Map(),
                         
                     },
@@ -380,7 +383,7 @@ type FacetSpec = {
     solved: (world: Venience) => boolean | symbol,
     handle_action: (action: Action, world: Venience) => Venience,
 
-    content?: HTMLElement
+    content?: Fragment
 };
 
 export function RenderFacet(props: { name: FacetID }) {
@@ -435,7 +438,7 @@ const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaph
                 updates.push(story_updater({
                     prompt: <div>
                         You notice an aspect that you hadn't before:
-                        <blockquote class={`descr-${spec.slug}`}>
+                        <blockquote className={`descr-${spec.slug}`}>
                             {spec.noun_phrase}
                         </blockquote>
                     </div>}));
@@ -444,10 +447,10 @@ const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaph
 
         if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
             updates.push(
-                { story_updates: stages([0, append(frame_update({
-                    index: world2.index,
-                    op: css_op({ [`interp-${spec.slug}`]: true })
-                }))])}
+                { story_updates: {effects: stages([0, append(story_update(
+                    query('frame', {index: world2.index}),
+                    story_op('css', { [`interp-${spec.slug}`]: true })
+                ))])}}
             );
         }
         return update(world2, ...updates);

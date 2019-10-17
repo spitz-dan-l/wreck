@@ -1,9 +1,10 @@
-import { Story, StoryUpdatePlan, StoryUpdateSpec, apply_story_updates_all, apply_story_update, remove_eph, story_to_dom, Path, StoryOpSpec, StoryUpdate, compile_query, story_lookup_path, story_update, query, story_op, StoryNode, find_node, is_story_node, CSSUpdates, ReversibleUpdateSpec } from "../story";
+import { Story, StoryUpdatePlan, StoryUpdateSpec, apply_story_updates_all, apply_story_update, remove_eph, story_to_dom, Path, StoryOpSpec, StoryUpdate, compile_query, story_lookup_path, story_update, query, story_op, StoryNode, find_node, is_story_node, CSSUpdates, ReversibleUpdateSpec, Fragment } from "../story";
 import { World } from "../world";
 import { stage_entries, stages, map_stages, stage_keys, Stages, make_consecutive } from "../stages";
 import { update, included, array_last, key_union } from "../utils";
 import { history_array } from "../history";
 import { isEqual } from "lodash";
+import { P } from "ts-toolbelt/out/types/src/Object/_api";
 
 export type AnimationState = {
     update_plan: StoryUpdatePlan['effects'],

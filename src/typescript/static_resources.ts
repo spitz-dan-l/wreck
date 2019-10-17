@@ -39,17 +39,11 @@ export class StaticResource<ValueType> {
     }
 }
 
-export type StaticNameIndex = readonly string[] & { readonly 0: string };
+export type StaticNameIndex<Name extends keyof any> = { [K in Name]: null };
 
-export type NameOf<N extends StaticNameIndex> = N[number];
+export type NameOf<Index extends StaticNameIndex<any>> = Index extends StaticNameIndex<infer N> ? N : never;
 
-export type StaticNameIndexFor<T extends {}> = {
-    [K in keyof T]: null
-};
-
-export function static_names<T extends {}>(...names: (keyof StaticNameIndexFor<T>)[]): StaticNameIndexFor<T> {
-    return null as any;
-}
+export type StaticNameIndexFor<T extends {}> = { [K in keyof T]: null };
 
 export type ResourcesFor<T> = {
     [K in keyof T]: StaticResource<T[K]>
@@ -57,13 +51,15 @@ export type ResourcesFor<T> = {
 
 export type Mapper<T> = <K extends keyof T>(x: T[K]) => T[K];
 
+import {F} from 'ts-toolbelt';
+
 export class StaticMap<T extends {}> {
     kind: 'StaticResourceRegistry';
 
     sealed = false;
     resources: ResourcesFor<T>;
     
-    constructor(static_name_index: StaticNameIndexFor<T>, mappers?: Mapper<T>[]);
+    constructor(static_name_index: F.NoInfer<StaticNameIndexFor<T>>, mappers?: Mapper<T>[]);
     constructor(readonly static_name_index: Record<keyof T, null>, readonly mappers: Mapper<T>[]=[]) {
         this.resources = {} as ResourcesFor<T>;
         for (let name of keys(static_name_index)) {

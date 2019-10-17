@@ -6,37 +6,37 @@ import { FutureSearchSpec } from '../../supervenience';
 import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../static_resources';
 import { GistRenderer, gist_renderer_index } from '../../gist';
 
-export const StaticTopicIDs = [
-    'Sam',
-    'yourself',
-    'your notebook',
-    'your history with Sam'
-] as const;
+export const StaticTopicIDs = {
+    'Sam': null,
+    'yourself': null,
+    'your notebook': null,
+    'your history with Sam': null
+ };
 export type TopicID = NameOf<typeof StaticTopicIDs>;
 
-export const StaticActionIDs = [
-    'to attend',
-    'to scrutinize',
-    'to hammer',
-    'to volunteer'
-] as const;
+export const StaticActionIDs = {
+    'to attend': null,
+    'to scrutinize': null,
+    'to hammer': null,
+    'to volunteer': null
+};
 export type ActionID = NameOf<typeof StaticActionIDs>;
 
 export const StaticNoteIDs = StaticActionIDs;
 export type NoteID = ActionID;
 
-export const StaticFacetIDs = [
-    "Sam",
-    "Sam's demeanor",
-    "your friendship with Sam",
-    "your drifting apart",
-    "your culpability",
-    "the old affinity",
-    'a memory 1',
-    'a memory 2',
-    'a memory 3',
-    'a memory 4'
-] as const;
+export const StaticFacetIDs = {
+    "Sam": null,
+    "Sam's demeanor": null,
+    "your friendship with Sam": null,
+    "your drifting apart": null,
+    "your culpability": null,
+    "the old affinity": null,
+    'a memory 1': null,
+    'a memory 2': null,
+    'a memory 3': null,
+    'a memory 4': null
+ } as const;
 export type FacetID = NameOf<typeof StaticFacetIDs>;
 
 export type Owner =
@@ -54,32 +54,22 @@ export interface VeniencePuffer extends Puffer<Venience> {
 // SETUP STATIC RESOURCES
 export interface StaticResources {};
 
-const static_resource_names: StaticNameIndexFor<StaticResources> = [
-    'initial_world_prelude',
-    'puffer_index',
-    'global_lock',
-    'gist_renderer_index',
-    'initial_world_topic',
-    'topic_index',
-    'initial_world_metaphor',
-    'action_index',
-    'facet_index',
-    'initial_world_notes',
-    'note_index',
-    'memory_index',
-    'initial_world_narrascope',
-    'venience_world_spec',
-    // 'initial_world_metaphor',
-    // 'action_index',
-    // 'facet_index',
-    // 'initial_world_topic',
-    // 'topic_index',
-    // 'initial_world_notes',
-    // 'note_index',
-    // 'memory_index',
-    // 'initial_world_narrascope',
-    // 'venience_world_spec'
-]
+const static_resource_names: StaticNameIndexFor<StaticResources> = {
+    'initial_world_prelude': null,
+    'puffer_index': null,
+    'global_lock': null,
+    'gist_renderer_index': null,
+    'initial_world_topic': null,
+    'topic_index': null,
+    'initial_world_metaphor': null,
+    'action_index': null,
+    'facet_index': null,
+    'initial_world_notes': null,
+    'note_index': null,
+    'memory_index': null,
+    'initial_world_narrascope': null,
+    'venience_world_spec': null
+}
 
 export const resource_registry = new StaticMap<StaticResources>(static_resource_names);
 

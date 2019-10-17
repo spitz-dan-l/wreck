@@ -4,7 +4,7 @@ import { Puffer } from '../../puffer';
 import { StaticIndex, StaticMap } from '../../static_resources';
 import { bound_method, cond, update, map } from '../../utils';
 import { ActionID, Puffers, resource_registry, TopicID, Venience, StaticTopicIDs } from "./prelude";
-import { TextAddSpec, story_updater } from '../../text';
+import { TextAddSpec, story_updater } from '../../story';
 
 export interface Topics {
     has_considered: Map<TopicID, boolean>;

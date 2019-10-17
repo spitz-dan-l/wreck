@@ -11,13 +11,13 @@ import { History } from './history';
 export const ui = make_ui((state, old?) => App(state, old), app_reducer);
 export const initialize_app = ui.initialize
 
-const dispatch = ui.dispatch;
 ui_resources.initialize('initialize', ui.initialize)
-ui_resources.initialize('dispatch', dispatch);
+ui_resources.initialize('dispatch', ui.dispatch);
 ui_resources.initialize('effect', ui.effect);
 ui_resources.initialize('effect_promise', ui.effect_promise);
-
 ui_resources.seal();
+
+const dispatch = ui.dispatch;
 
 // VIEW LOGIC
 export type App = Component<AppState>;

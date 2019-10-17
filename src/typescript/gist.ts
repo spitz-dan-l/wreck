@@ -186,7 +186,7 @@ type ChildrenPattern<Tag extends keyof GistSpecs, Children extends GistSpecs[Tag
         [K in keyof Children]: GistPattern
     };
 
-export function gist_matches(gist: Gist, pattern: GistPattern) {
+export function gist_matches(gist: Gist, pattern: GistPattern): boolean {
     if (pattern === undefined) {
         return true;
     }
@@ -208,7 +208,7 @@ export function gist_matches(gist: Gist, pattern: GistPattern) {
     }
 
     for (const k in pattern.children as {}) {
-        if (!gist_matches(gist.children[k], pattern.children[k])) {
+        if (!gist_matches(gist.children[k], pattern.children[k as keyof (typeof pattern)['children']])) {
             return false;
         }
     }

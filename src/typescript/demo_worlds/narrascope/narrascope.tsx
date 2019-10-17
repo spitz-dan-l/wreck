@@ -1,4 +1,4 @@
-import { createElement } from '../../UI/framework/framework';
+import { createElement, story_updater, StoryQueryIndex } from '../../story';
 import { gist, Gists, gists_equal, includes_tag } from '../../gist';
 import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
@@ -10,7 +10,6 @@ import { find_world_at } from './supervenience_spec';
 import { Topics } from './topic';
 import { Memories } from './memory';
 import {add_to_notes} from './notes';
-import { story_updater } from '../../text';
 
 
 interface PuzzleState {
@@ -82,9 +81,9 @@ Facets({
         return world;
     },
 
-    content: <div class="memory-1">
+    content: <div className="memory-1">
         "Wake up, my dear. Attend to the world around you."
-        <blockquote class="interp-memory-1">
+        <blockquote className="interp-memory-1">
             Katya took you to the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
             <br/>
             There was to be little time to relax or sleep in; astronomers are busy folk.
@@ -165,24 +164,24 @@ Topics({
     name: 'Sam',
     cmd: 'sam',
     can_consider: () => true,
-    message: () => <div class="sam">
-        <div class="friendship-sam">
+    message: () => <div className="sam">
+        <div className="friendship-sam">
             An old friend on his way to work.
-            <blockquote class="interp-friendship-sam">
+            <blockquote className="interp-friendship-sam">
                 You realize how long it's been since you've seen him anywhere other than the bus.
             </blockquote>
         </div>
-        <div class="sam-demeanor">
+        <div className="sam-demeanor">
             He glances at you, smiling vaguely.
-            <blockquote class="interp-sam-demeanor">
+            <blockquote className="interp-sam-demeanor">
                 Something about his smile feels... false. A lie.
                 <br/>
                 And his eyes. Flicking here and there. Noncommital. Nervous.
             </blockquote>
         </div>
-        <div class="interp-sam affinity">
+        <div className="interp-sam affinity">
             ...Something is wrong.
-            <blockquote class="interp-affinity">
+            <blockquote className="interp-affinity">
                 Indeed. It's time to try to do something about it.
             </blockquote>
         </div>
@@ -285,15 +284,15 @@ Actions({
     description: "The ability to unpack details and look beyond your initial assumptions.",
     slug: 'scrutiny',
     get_cmd: (facet) => ['scrutinize', facet],
-    get_wrong_msg: (facet) => <div>`Despite your thorough scrutiny, ${facet} remains unresolved.`</div>
+    get_wrong_msg: (facet) => <div>Despite your thorough scrutiny, {facet} remains unresolved.</div>
 })
 
 Memories({
     action: 'to scrutinize',
     could_remember: world => !!world.has_chill,
-    description: () => <div class="memory-2">
+    description: () => <div className="memory-2">
         "Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance."
-        <blockquote class="interp-memory-2">
+        <blockquote className="interp-memory-2">
             She mentioned this while making a point about the intricacies of the <a target="_blank" href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">Observer Effect</a>.
         </blockquote>
     </div>
@@ -339,9 +338,9 @@ Actions({
 Memories({
     action: 'to hammer',
     could_remember: world => !!world.has_recognized_something_wrong,
-    description: () => <div class="memory-3">
+    description: () => <div className="memory-3">
         "Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble."
-        <blockquote class="interp-memory-3">
+        <blockquote className="interp-memory-3">
             She always pushed you.
             <br />
             Katya was always one to revel in the overturning of wrong ideas.
@@ -379,22 +378,22 @@ Topics({
     name: 'your history with Sam',
     cmd: 'my_history_with_Sam',
     can_consider: (w) => !!w.is_curious_about_history,
-    message: () => ({ description: [
-        `You've known Sam since you both arrived in Boston about 10 years ago.
+    message: () => ({ description: <div>
+        You've known Sam since you both arrived in Boston about 10 years ago.
         <br/>
         You were studying under Katya, and he was doing agricultural engineering a few buildings over.
-        <div class="falling-out">
+        <div className="falling-out">
             At some point along the way, you drifted apart.
-            <blockquote class="interp-falling-out culpability">
+            <blockquote className="interp-falling-out culpability">
                 It wasn't mutual. It was <i>you</i>.
-                <blockquote class="interp-culpability">
+                <blockquote className="interp-culpability">
                     After Katya left, you turned inward. Closed off.
                     <br/>
                     You stopped being curious about people like Sam.
                 </blockquote>
             </blockquote>
-        </div>`]
-    }),
+        </div>
+    </div>}),
     reconsider: (w2, w1) => {
         if (!w2.has_unpacked_culpability) {
             return true;
@@ -472,9 +471,9 @@ Actions({
 Memories({
     action: 'to volunteer',
     could_remember: world => !!world.has_unpacked_culpability,
-    description: () => <div class="memory-4">
+    description: () => <div className="memory-4">
         "Do more than merely receive and respond, my dear. We must participate, as best as we can. We must volunteer ourselves to the world."
-        <blockquote class="interp-memory-4">
+        <blockquote className="interp-memory-4">
             This is one of the last things she said to you, before she left.
         </blockquote>
     </div>
@@ -522,12 +521,12 @@ Puffers({
                     () => update(world,
                         { end: true },
                         story_updater(<div>
-                            <div class="interp">
+                            <div className="interp">
                                 VENIENCE WORLD
                             </div>
-                            A work of <span class="blue">interactive fiction</span>
+                            A work of <span className="blue">interactive fiction</span>
                             <br/>
-                            by <div class="interp-inline">Daniel Spitz</div>
+                            by <div className="interp-inline">Daniel Spitz</div>
                             <br/><br/>
                             Thank you for playing the demo!
                         </div>))));
@@ -585,4 +584,6 @@ declare module './prelude' {
 
 resource_registry.initialize('venience_world_spec', venience_world_spec);
 resource_registry.seal();
+
+StoryQueryIndex.seal();
 

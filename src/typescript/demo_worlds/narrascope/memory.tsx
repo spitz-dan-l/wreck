@@ -1,19 +1,18 @@
-import { createElement } from '../../UI/framework/framework';
 import { gist, Gists, render_gist_text } from '../../gist';
 import { find_historical } from '../../history';
 import { Puffer } from '../../puffer';
 import { StaticIndex } from '../../static_resources';
+import { createElement, story_updater, Fragment } from '../../story';
+import { capitalize } from '../../text_utils';
 import { bound_method, map, update } from '../../utils';
 import { add_to_notes, Notes } from './notes';
 import { ActionID, Puffers, resource_registry, Venience } from "./prelude";
-import { capitalize } from '../../text_utils';
-import { story_updater } from '../../text';
 
 
 export type MemorySpec = {
     action: ActionID,
     could_remember: (w: Venience) => boolean,
-    description: () => HTMLElement
+    description: () => Fragment
 }
 
 declare module './prelude' {
@@ -34,7 +33,7 @@ const action_index = resource_registry.get('action_index', false);
 function memory_description(spec: MemorySpec) {
     const action = action_index.get(spec.action);
     return <div>
-        <div class="interp">
+        <div className="interp">
             {spec.description()}
         </div>
         <br/>

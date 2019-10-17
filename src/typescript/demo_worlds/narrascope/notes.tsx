@@ -1,5 +1,5 @@
 import { gist, Gists, render_gist_command, render_gist_text } from '../../gist';
-import { createElement } from '../../UI/framework/framework';
+import { createElement, story_updater, Fragment } from '../../story';
 // import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
 import { StaticMap } from '../../static_resources';
@@ -9,7 +9,6 @@ import { map } from '../../utils';
 import { } from './metaphor';
 import { NoteID, Puffers, resource_registry, StaticNoteIDs, Venience } from './prelude';
 import { stages } from '../../stages';
-import { story_updater } from '../../text';
 
 type NoteGists = { [K in NoteID]: undefined };
 
@@ -34,7 +33,7 @@ Gists({
 
 export type NoteEntry = {
     note_id: NoteID,
-    description: () => HTMLElement
+    description: () => Fragment
 }
 
 interface Notes {
