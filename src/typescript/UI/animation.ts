@@ -1,10 +1,8 @@
-import { Story, StoryUpdatePlan, StoryUpdateSpec, apply_story_updates_all, apply_story_update, remove_eph, story_to_dom, Path, StoryOpSpec, StoryUpdate, compile_query, story_lookup_path, story_update, query, story_op, StoryNode, find_node, is_story_node, CSSUpdates, ReversibleUpdateSpec, Fragment } from "../story";
-import { World } from "../world";
-import { stage_entries, stages, map_stages, stage_keys, Stages, make_consecutive } from "../stages";
-import { update, included, array_last, key_union } from "../utils";
 import { history_array } from "../history";
-import { isEqual } from "lodash";
-import { P } from "ts-toolbelt/out/types/src/Object/_api";
+import { make_consecutive, stages, stage_keys } from "../stages";
+import { apply_story_updates_all, compile_query, find_node, is_story_node, query, ReversibleUpdateSpec, Story, StoryUpdatePlan, story_update } from "../story";
+import { update } from "../utils";
+import { World } from "../world";
 
 export type AnimationState = {
     update_plan: StoryUpdatePlan['effects'],
@@ -94,43 +92,38 @@ export function animate(comp_elt: HTMLElement) {
         if (comp_elt.dataset.isCollapsing == 1 as any) {
             walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
         }
-
         requestAnimationFrame(() => {
-        // If --is-collapsing wasn't set in the animation-pre-compute class,
-        // then apply the maxHeight update now.
-        // Websites technology keyboard mouse.
-        if (comp_elt.dataset.isCollapsing != 1 as any) {
-            walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
-        }
-
-        comp_elt.classList.add('animation-active');
-
-        async () => {
-            await new Promise((resolve) => {
-                setTimeout(resolve, 700);
-            });
-
-            
-        }
-        
-
-        setTimeout(() => {
-            comp_elt.classList.remove(
-                'animation-start',
-                'animation-active');
-
-            walkElt(comp_elt, (e) => {
-                e.style.maxHeight = null;
-                delete e.dataset.maxHeight;
-                delete e.dataset.isCollapsing;
-            });
-
-            if (comp_elt.classList.contains('eph-new')) {
-                scroll_down();
+            // If --is-collapsing wasn't set in the animation-pre-compute class,
+            // then apply the maxHeight update now.
+            // Websites technology keyboard mouse.
+            if (comp_elt.dataset.isCollapsing != 1 as any) {
+                walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
             }
-            resolve();
-        }, 700)
 
+            comp_elt.classList.add('animation-active');
+
+            setTimeout(() => {
+                comp_elt.classList.remove(
+                    'animation-start',
+                    'animation-active');
+
+                walkElt(comp_elt, (e) => {
+                    e.style.maxHeight = null;
+                    delete e.dataset.maxHeight;
+                    delete e.dataset.isCollapsing;
+                });
+
+                let anything_new = false;
+                walkElt(comp_elt, e => {
+                    if (e.classList.contains('eph-new')) {
+                        anything_new = true;
+                    }
+                });
+                if (anything_new) {
+                    scroll_down();
+                }
+                resolve();
+            }, 700)
         });
     });
 }

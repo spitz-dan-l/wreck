@@ -36,7 +36,7 @@ const app_history = app_child(
 )
 
 const app_prompt = app_child(
-    root => root.querySelector('.input-prompt')! as InputPrompt,
+    root => root.querySelector('#story-hole .input-prompt')! as InputPrompt,
     (props) => ({
         parsing: props.command_result.parsing,
         locked: props.animation_state.lock_input
@@ -45,7 +45,7 @@ const app_prompt = app_child(
 )
 
 const app_typeahead = app_child(
-    root => root.querySelector('.typeahead')! as Typeahead,
+    root => root.querySelector('#story-hole .typeahead')! as Typeahead,
     (props) => ({
         parsing: props.command_result.parsing,
         typeahead_index: props.typeahead_index,
@@ -55,7 +55,7 @@ const app_typeahead = app_child(
 )
 
 const app_undo_button = app_child(
-    (root) => root.querySelector('.undo-button')! as UndoButton,
+    (root) => root.querySelector('#story-hole .undo-button')! as UndoButton,
     (props) => ({
         world: props.command_result.world!,
         undo_selected: props.undo_selected
@@ -99,16 +99,21 @@ export const App: Renderer<AppState> = (state, old?) => {
             scroll_down();
         });
 
-        return <div className="app">
+        const root = <div className="app">
             <app_history.render {...state} />
-            <div>
-                <app_prompt.render {...state} />
-                <app_typeahead.render {...state} />
-                <app_undo_button.render {...state} />
-            </div>
         </div> as App;
-    }
 
+        const hole = root.querySelector('#story-hole');
+        if (hole === null) {
+            throw new Error('History element did not create its story hole');
+        }
+
+        hole.appendChild(<app_prompt.render {...state} />);
+        hole.appendChild(<app_typeahead.render {...state} />);
+        hole.appendChild(<app_undo_button.render {...state} />);
+        return root;
+    } 
+    
     app_history.render(state, old);
     app_prompt.render(state, old);
     app_typeahead.render(state, old);

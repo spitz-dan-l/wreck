@@ -1,33 +1,33 @@
-.history {
+.story {
     margin-top: 1em;
     display: block;
 }
 
-.history .compound .children {
+.story .compound .children {
     margin-top: 1em;
     margin-inline-start: 1em;
     margin-inline-end: 0em;
 }
 
-.history .output-text {
+.story .output-text {
     white-space: normal;
     margin-top: 1em;
     margin-bottom: 1em;
     line-height: 2em;
 }
 
-.history .output-text blockquote {
+.story .output-text blockquote {
     margin-block-start: 0em;
     margin-block-end: 0em;
 }
 
-.history .interpretation-block .output-text {
+.story .interpretation-block .output-text {
     outline: solid 2px ivory;
     outline-offset: 0.4em;
     transition: outline-color 400ms linear, background-color 400ms linear;
 }
 
-.history .interpretation-block.interpretation-active .output-text {
+.story .interpretation-block.interpretation-active .output-text {
     outline-color: ivory;
     animation-name: interpreting;
     animation-duration: 2s;
@@ -46,74 +46,74 @@
   }
 }
 
-.history .interpretation-block.interpretation-active.would-remove-interpretation-active .output-text {
+.story .interpretation-block.interpretation-active.would-remove-interpretation-active .output-text {
     /*outline-color: #f9dd04;*/
     animation: none !important;
 }
 
-.history .would-add-eph-new .output-text,
-.history .would-add-animation-new .output-text {
+.story .would-add-eph-new .output-text,
+.story .would-add-animation-new .output-text {
     display: none;
 }
 
-.history .eph-new.animation-start .output-text,
-.history .adding-animation-new.animation-start .output-text {
+.story.animation-start .eph-new,
+.story.animation-start .eph-new.output-text{
     opacity: 0.01;
     max-height: 0px;
 }
 
-.history .eph-new.animation-start.animation-active .output-text,
-.history .adding-animation-new.animation-start.animation-active .output-text {
+.story.animation-start.animation-active .eph-new,
+.story.animation-start.animation-active .eph-new.output-text {
     opacity: 1.0;
     transition: max-height 400ms linear, opacity 300ms ease-in;
     transition-delay: 0ms, 400ms;
 }
 
-.history .unfocused,
-.history .removing-unfocused.animation-start,
-.history .would-add-forgotten,
-.history .would-undo {
+.story .unfocused,
+.story .removing-unfocused.animation-start,
+.story .would-add-forgotten,
+.story .would-undo {
     opacity: 0.4;
 }
 
-.history .adding-unfocused.animation-start {
+.story .adding-unfocused.animation-start {
     opacity: inherit;
 }
 
-.history .removing-unfocused.animation-start.animation-active {
+.story .removing-unfocused.animation-start.animation-active {
     opacity: inherit;
     transition: opacity 700ms linear;
 }
 
-.history .adding-unfocused.animation-start.animation-active {
+.story .adding-unfocused.animation-start.animation-active {
     opacity: 0.4;
     transition: opacity 700ms linear;
 }
 
-.history .forgotten {
+.story .forgotten {
     display: none;
 }
 
-.history .forgotten.animation-pre-compute {
+.story .forgotten.animation-pre-compute {
     display: block;
     opacity: 0;
     --is-collapsing: 1;
 }
 
 /* AX2 */
-.history .adding-forgotten.animation-start {
+.story .adding-forgotten.animation-start {
     display: block;
     opacity: 0.4;
 }
 
-.history .adding-forgotten.animation-start.animation-active {
+.story .adding-forgotten.animation-start.animation-active {
     opacity: 0.01;
     max-height: 0px !important;
     transition: opacity 300ms ease-in, max-height 400ms linear;
     transition-delay: 0ms, 300ms;
 }
 
-.history .would-add-interpretation-block .output-text {
+.story .would-add-interpretation-block .output-text {
     outline: solid 2px #00000000;
     outline-offset: 0.4em;
     animation-name: would-add-interpretation-block !important;
@@ -158,26 +158,24 @@
 }
 
 
-.history .output-text .interp-inline {
+.story .output-text .interp-inline {
     color: gold;
     opacity: 1;
     display: inline;
 }
 
-.history .output-text .blue {
+.story .output-text .blue {
     color: aqua;
 }
 
-.history .output-text .interp
+.story .output-text .interp
 {
     display: block;
     color: gold;
     opacity: 1;
 }
 
-
-
-.history .output-text .alien-interp {
+.story .output-text .alien-interp {
     display: block;
     color: crimson;
     opacity: 1;

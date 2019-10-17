@@ -17276,10 +17276,10 @@ module.exports = function(module) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
-const stages_1 = __webpack_require__(/*! ../stages */ "./src/typescript/stages.ts");
-const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
 const history_1 = __webpack_require__(/*! ../history */ "./src/typescript/history.ts");
+const stages_1 = __webpack_require__(/*! ../stages */ "./src/typescript/stages.ts");
+const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
+const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
 exports.empty_animation_state = {
     update_plan: stages_1.stages(),
     current_stage: undefined,
@@ -17360,11 +17360,6 @@ function animate(comp_elt) {
                 walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight);
             }
             comp_elt.classList.add('animation-active');
-            async () => {
-                await new Promise((resolve) => {
-                    setTimeout(resolve, 700);
-                });
-            };
             setTimeout(() => {
                 comp_elt.classList.remove('animation-start', 'animation-active');
                 walkElt(comp_elt, (e) => {
@@ -17372,7 +17367,13 @@ function animate(comp_elt) {
                     delete e.dataset.maxHeight;
                     delete e.dataset.isCollapsing;
                 });
-                if (comp_elt.classList.contains('eph-new')) {
+                let anything_new = false;
+                walkElt(comp_elt, e => {
+                    if (e.classList.contains('eph-new')) {
+                        anything_new = true;
+                    }
+                });
+                if (anything_new) {
                     scroll_down();
                 }
                 resolve();
@@ -17592,16 +17593,16 @@ const app_history = app_child(root => root.querySelector('.story'), (props) => (
     animation_state: props.animation_state,
     undo_selected: props.undo_selected
 }), history_1.History);
-const app_prompt = app_child(root => root.querySelector('.input-prompt'), (props) => ({
+const app_prompt = app_child(root => root.querySelector('#story-hole .input-prompt'), (props) => ({
     parsing: props.command_result.parsing,
     locked: props.animation_state.lock_input
 }), input_prompt_1.InputPrompt);
-const app_typeahead = app_child(root => root.querySelector('.typeahead'), (props) => ({
+const app_typeahead = app_child(root => root.querySelector('#story-hole .typeahead'), (props) => ({
     parsing: props.command_result.parsing,
     typeahead_index: props.typeahead_index,
     undo_selected: props.undo_selected
 }), typeahead_1.Typeahead);
-const app_undo_button = app_child((root) => root.querySelector('.undo-button'), (props) => ({
+const app_undo_button = app_child((root) => root.querySelector('#story-hole .undo-button'), (props) => ({
     world: props.command_result.world,
     undo_selected: props.undo_selected
 }), undo_button_1.UndoButton);
@@ -17634,12 +17635,16 @@ exports.App = (state, old) => {
             document.addEventListener('keydown', handleKeyDown);
             animation_1.scroll_down();
         });
-        return framework_1.createElement("div", { className: "app" },
-            framework_1.createElement(app_history.render, Object.assign({}, state)),
-            framework_1.createElement("div", null,
-                framework_1.createElement(app_prompt.render, Object.assign({}, state)),
-                framework_1.createElement(app_typeahead.render, Object.assign({}, state)),
-                framework_1.createElement(app_undo_button.render, Object.assign({}, state))));
+        const root = framework_1.createElement("div", { className: "app" },
+            framework_1.createElement(app_history.render, Object.assign({}, state)));
+        const hole = root.querySelector('#story-hole');
+        if (hole === null) {
+            throw new Error('History element did not create its story hole');
+        }
+        hole.appendChild(framework_1.createElement(app_prompt.render, Object.assign({}, state)));
+        hole.appendChild(framework_1.createElement(app_typeahead.render, Object.assign({}, state)));
+        hole.appendChild(framework_1.createElement(app_undo_button.render, Object.assign({}, state)));
+        return root;
     }
     app_history.render(state, old);
     app_prompt.render(state, old);
@@ -21591,14 +21596,16 @@ function replace_in(parent, path, updated) {
     });
 }
 exports.replace_in = replace_in;
+// This is pretty ugly, but there's not a good enough reason to
+// do something fancier yet
+exports.StoryHoleDom = document.createElement('div');
+exports.StoryHoleDom.id = 'story-hole';
 function story_to_dom(story) {
     if (typeof story === 'string') {
         return document.createTextNode(story);
     }
     else if (is_story_hole(story)) {
-        const placeholder = document.createElement('div');
-        placeholder.id = 'story-hole';
-        return placeholder;
+        return exports.StoryHoleDom;
     }
     const elt = document.createElement(story.tag);
     for (const [class_name, on] of Object.entries(story.classes)) {
