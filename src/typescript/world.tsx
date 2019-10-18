@@ -24,15 +24,14 @@ import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from
 import { stages } from './stages';
 import { add_input_text, apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan } from './story';
 import { update } from './utils';
+import { find_index } from './history';
 
 export interface World {
     readonly parsing: Parsing | undefined,
     readonly previous: this | null,
     readonly index: number,
     readonly story: Story,
-    readonly story_updates: StoryUpdatePlan,
-    readonly parent: this | null,
-    readonly child: this | null
+    readonly story_updates: StoryUpdatePlan
 }
 
 export type WorldUpdater<W extends World> = (world: W) => W;
@@ -47,9 +46,7 @@ const INITIAL_WORLD: World = {
     story_updates: { effects: stages(), would_effects: [] },
     parsing: undefined,
     previous: null,
-    index: 0,
-    parent: null,
-    child: null
+    index: 0
 };
 
 // Helper to return INITIAL_WORLD constant as any kind of W type.
@@ -105,9 +102,7 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
         index: _ => new_index,
         story: _ => apply_story_updates_all(_, world.story_updates),
         story_updates: () => init_story_updates(new_index),
-        parsing: () => undefined,
-        parent: () => null,
-        child: () => null
+        parsing: () => undefined
     });
 
     if (spec.pre !== undefined) {
@@ -128,10 +123,25 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     }
 }
 
-export function add_parsing<W extends World>(world: W, parsing: Parsing): W {
-    return update(world as World,
-        { parsing: () => parsing },
-        _ => add_input_text(_, parsing)
+export function add_parsing<W extends World>(world: W, parsing: Parsing, index?: number): W {
+    if (index === undefined) {
+        index = world.index;
+    }
+    function rec(w: W) {
+        if (w.index === index) {
+            return update(w as World, {
+                parsing: () => parsing
+            }) as W;
+        }
+        return update(w as World, {
+            previous: rec
+        }) as W;
+    }
+    
+    const world2 = rec(world);
+
+    return update(world2 as World,
+        _ => add_input_text(_, parsing, index)
     ) as W;
 }
 
@@ -155,20 +165,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
 
     let w: World = result.result;
 
-    w = add_parsing(w, result.parsing);
-
-    // TODO no longer represent parent/child in the structure
-    // it will be purely a view thing.
-    // If this is a compound action, assign it as the parent to the children,
-    // and return the last child instead of the parent.
-    if (w.child !== null) {
-        let c = w.child;
-        while (c.index >= w.index) {
-            (c as O.Writable<World, 'parent'>).parent = w;
-            c = c.previous!;
-        }
-        w = w.child;
-    }
+    w = add_parsing(w, result.parsing, world.index + 1);
     
     let next_parsing = apply_command(spec, w, raw('', false)).parsing;
     return {

@@ -31,7 +31,8 @@
     ],
     "files": [
         "./src/typescript/main.tsx",
-        "./src/typescript/demo_worlds/bird_world.tsx"
+        "./src/typescript/demo_worlds/bird_world.tsx",
+        "./src/typescript/match.ts"
     ],
     "exclude": [
         // "./src/*",

@@ -8,7 +8,8 @@ import { bound_method, map, update, Updater, append } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer, StaticActionIDs, StaticFacetIDs } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
 import { stages, find_and_move_to_stage } from '../../stages';
-import { createElement, css_updater, story_updater, story_update, story_op, TextAddSpec, query, Fragment } from '../../story';
+import { createElement, css_updater, story_updater, story_update, story_op, TextAddSpec, query, Fragment, is_story_hole, StoryOpSpec, StoryUpdateSpec, Hole, apply_story_updates_all } from '../../story';
+import { match } from '../../match';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -305,24 +306,35 @@ Puffers(lock_and_brand('Metaphor', {
                             subject: has_tag(g, 'memory') ? gist('notes about', {topic: g.children.action}) : g
                         });
 
-                        const result = search_future(
-                            {
-                                thread_maker: get_thread_maker(),
-                                goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
-                                max_steps: 2,
-                                space: [w => w.gist && gist_to_string(w.gist)],
-                                search_id: indirect_search_id,
-                                simulator_id: indirect_simulator,
-                                command_filter: (w, cmd) => {
-                                    let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
+                        // move the next story hole inside the current frame
+                        world = update(world, {
+                            story_updates: { effects: stages([0, append<StoryUpdateSpec>(
+                                story_update(
+                                    query('story_hole', {}),
+                                    story_op('remove', {})
+                                ),
+                                story_update(
+                                    query('frame', { index: world.index }),
+                                    story_op('add', { children: <Hole />})
+                                )
+                            )])}});
 
-                                    if (w.gist && gists_equal(w.gist, target_gist.children.subject)) {
-                                        return would_contemplate;
-                                    }
-                                    return !would_contemplate;
+                        const result = search_future({
+                            thread_maker: get_thread_maker(),
+                            goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
+                            max_steps: 2,
+                            space: [w => w.gist && gist_to_string(w.gist)],
+                            search_id: indirect_search_id,
+                            simulator_id: indirect_simulator,
+                            command_filter: (w, cmd) => {
+                                let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
+
+                                if (w.gist && gists_equal(w.gist, target_gist.children.subject)) {
+                                    return would_contemplate;
                                 }
-                            },
-                            world);
+                                return !would_contemplate;
+                            }
+                        }, world);
                             //world.previous!);
                         if (result.result === null) {
                             return parser.eliminate();
@@ -332,8 +344,11 @@ Puffers(lock_and_brand('Metaphor', {
                             tokens: render_gist_command(g),
                             labels: {interp: true, filler: true}
                         }, () =>
-                        parser.submit(() =>
-                        update(world, { child: () => result.result! })));
+                        parser.submit(() => {
+                            return result.result!
+                        }
+                        ))
+                        //update(world, { child: () => result.result! })));
                     });
 
                     return parser.split(indirect_threads);

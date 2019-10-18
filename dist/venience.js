@@ -17290,6 +17290,9 @@ function new_animation_state(world, previous_world) {
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
     const index_threshold = previous_world ? previous_world.index : -1; //world.index - 1;
     const new_frames = history_1.history_array(world).filter(w => w.index > index_threshold).reverse();
+    if (new_frames.length > 1) {
+        debugger;
+    }
     const story_updates = stages_1.make_consecutive(new_frames.map(w => w.story_updates.effects));
     let stages = stages_1.stage_keys(story_updates);
     let current_stage = stages[0];
@@ -17485,9 +17488,9 @@ function update_animation_state(new_state, old_state) {
 function undo(state) {
     // find the beginning of the current (possibly-compound) world
     let w = state.command_result.world;
-    while (w.parent !== null) {
-        w = w.parent;
-    }
+    // while (w.parent !== null) {
+    //     w = w.parent;
+    // }
     let prev_command_result = state.updater(w.previous, utils_1.update(w.parsing.raw, { submit: false })
     // state.command_result.world.previous!,
     // update(state.command_result.world.parsing!.raw, { submit: false })
@@ -18668,6 +18671,10 @@ prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
                         const target_gist = gist_1.gist('contemplation', {
                             subject: gist_1.has_tag(g, 'memory') ? gist_1.gist('notes about', { topic: g.children.action }) : g
                         });
+                        // move the next story hole inside the current frame
+                        world = utils_1.update(world, {
+                            story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('story_hole', {}), story_1.story_op('remove', {})), story_1.story_update(story_1.query('frame', { index: world.index }), story_1.story_op('add', { children: story_1.createElement(story_1.Hole, null) })))]) }
+                        });
                         const result = supervenience_1.search_future({
                             thread_maker: supervenience_spec_1.get_thread_maker(),
                             goals: [w => !!w.gist && gist_1.gists_equal(w.gist, target_gist)],
@@ -18690,7 +18697,10 @@ prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
                         return parser.consume({
                             tokens: gist_1.render_gist_command(g),
                             labels: { interp: true, filler: true }
-                        }, () => parser.submit(() => utils_1.update(world, { child: () => result.result })));
+                        }, () => parser.submit(() => {
+                            return result.result;
+                        }));
+                        //update(world, { child: () => result.result! })));
                     });
                     return parser.split(indirect_threads);
                 }));
@@ -19866,57 +19876,60 @@ function history_array(world) {
     return result;
 }
 exports.history_array = history_array;
-function is_compound_world(x) {
-    return x.kind === 'CompoundWorld';
-}
-exports.is_compound_world = is_compound_world;
-function group_compound_worlds(world) {
-    let result = history_array(world).reverse();
-    let another_pass;
-    do {
-        another_pass = false;
-        const next_result = [];
-        let run_info = null;
-        function push_run(r_info, end) {
-            const run = result.slice(r_info.start, end);
-            next_result.push({
-                kind: 'CompoundWorld',
-                root: r_info.parent,
-                children: run
-            });
-            run_info = null;
-            another_pass = true;
-        }
-        for (let i = 0; i < result.length; i++) {
-            const w = result[i];
-            const parent = (is_compound_world(w) ? w.root : w).parent;
-            if (run_info !== null) {
-                if (parent !== run_info.parent) {
-                    // this is the end of a run
-                    push_run(run_info, i);
-                }
-                else {
-                    continue;
-                }
-            }
-            if (parent !== null) {
-                run_info = {
-                    start: i,
-                    parent: parent
-                };
-            }
-            else {
-                next_result.push(w);
-            }
-        }
-        if (run_info !== null) {
-            push_run(run_info, result.length);
-        }
-        result = next_result;
-    } while (another_pass);
-    return result;
-}
-exports.group_compound_worlds = group_compound_worlds;
+// export type CompoundWorld<W extends World> = {
+//     kind: 'CompoundWorld',
+//     root: W,
+//     children: MaybeCompoundWorld<W>[]
+// }
+// export type MaybeCompoundWorld<W extends World> = CompoundWorld<W> | W;
+// export function is_compound_world<W extends World>(x: MaybeCompoundWorld<W>): x is CompoundWorld<W> {
+//     return (x as any).kind === 'CompoundWorld'; 
+// }
+// export function group_compound_worlds<W extends World>(world: W) {
+//     type RunInfo = null | { start: number, parent: W };
+//     let result: MaybeCompoundWorld<W>[] = history_array(world).reverse();
+//     let another_pass: boolean;
+//     do {
+//         another_pass = false;
+//         const next_result: MaybeCompoundWorld<W>[] = [];
+//         let run_info: RunInfo = null;
+//         function push_run(r_info: Exclude<RunInfo, null>, end: number) {
+//             const run = result.slice(r_info.start, end);
+//             next_result.push({
+//                 kind: 'CompoundWorld',
+//                 root: r_info.parent,
+//                 children: run
+//             });
+//             run_info = null;
+//             another_pass = true;
+//         }
+//         for (let i = 0; i < result.length; i++) {
+//             const w = result[i];
+//             const parent = (is_compound_world(w) ? w.root : w).parent;
+//             if (run_info !== null) {
+//                 if (parent !== run_info.parent) {
+//                     // this is the end of a run
+//                     push_run(run_info, i);
+//                 } else {
+//                     continue;
+//                 }
+//             }
+//             if (parent !== null) {
+//                 run_info = {
+//                     start: i,
+//                     parent: parent
+//                 };            
+//             } else {
+//                 next_result.push(w);
+//             }
+//         }
+//         if (run_info !== null) {
+//             push_run(run_info, result.length);
+//         }
+//         result = next_result;
+//     } while (another_pass);
+//     return result;
+// }
 
 
 /***/ }),
@@ -20058,7 +20071,7 @@ const UI_1 = __webpack_require__(/*! ./UI */ "./src/typescript/UI/index.ts");
 console.time('world_build');
 let { initial_result, update, css_rules } = narrascope_1.new_venience_world(); //new_bird_world();//new_hex_world();
 // Ability to start from a specific point in the demo:
-const START_SOLVED = 7;
+const START_SOLVED = 0;
 const supervenience_spec_1 = __webpack_require__(/*! ./demo_worlds/narrascope/supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
 const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
 const starting_world = supervenience_spec_1.find_world_at(initial_result.world, START_SOLVED);
@@ -21596,6 +21609,31 @@ function replace_in(parent, path, updated) {
     });
 }
 exports.replace_in = replace_in;
+function splice_in(parent, path, updated) {
+    if (path.length === 0) {
+        if (updated.length > 1) {
+            throw new Error('Tried to replace single top-level node with a list of fragments.');
+        }
+        return updated[0];
+    }
+    if (!is_story_node(parent)) {
+        throw new Error('Tried to replace a child of a non-node.');
+    }
+    if (path.length === 1) {
+        return update_1.update(parent, {
+            children: _ => {
+                _.splice(path[0], 1, ...updated);
+                return _;
+            }
+        });
+    }
+    return update_1.update(parent, {
+        children: {
+            [path[0]]: _ => splice_in(_, path.slice(1), updated)
+        }
+    });
+}
+exports.splice_in = splice_in;
 // This is pretty ugly, but there's not a good enough reason to
 // do something fancier yet
 exports.StoryHoleDom = document.createElement('div');
@@ -21745,13 +21783,37 @@ exports.StoryUpdateOps = {
         if (effects) {
             effects.push(dom => dom.remove());
         }
-        return undefined;
+        return [];
     },
     replace: ({ replacement }) => (elt, effects) => {
         if (effects) {
-            effects.push(dom => dom.replaceWith(story_1.story_to_dom(replacement)));
+            effects.push(dom => {
+                if (replacement instanceof Array) {
+                    dom.replaceWith(...replacement.map(story_1.story_to_dom));
+                } //else {
+                //     dom.replaceWith(story_to_dom(replacement));
+                // }
+            });
         }
         return replacement;
+    },
+    insert_after: ({ nodes }) => (elt, effects) => {
+        if (effects) {
+            effects.push(dom => {
+                if (nodes instanceof Array) {
+                    dom.replaceWith(dom, ...nodes.map(story_1.story_to_dom));
+                }
+                else {
+                    dom.replaceWith(dom, story_1.story_to_dom(nodes));
+                }
+            });
+        }
+        if (nodes instanceof Array) {
+            return [elt, ...nodes];
+        }
+        else {
+            return [elt, nodes];
+        }
     }
 };
 function compile_story_update_op(op_spec) {
@@ -21778,7 +21840,13 @@ function compile_story_update(story_update) {
         const op = compile_story_update_op(story_update.op);
         for (const [target, path] of targets) {
             const updated_child = op(target, effects ? effects.then(dom => dom_lookup_path(dom, path)) : undefined);
-            const result = story_1.replace_in(story, path, updated_child);
+            let result;
+            if (updated_child instanceof Array) {
+                result = story_1.splice_in(story, path, updated_child);
+            }
+            else {
+                result = story_1.replace_in(story, path, updated_child);
+            }
             if (result === undefined) {
                 throw new Error('Update deleted the entire story: ' + JSON.stringify(story_update));
             }
@@ -21849,10 +21917,13 @@ exports.css_updater = (f) => (world) => {
         story_updates: { effects: stages_1.stages([0, utils_1.append(...css_updates)]) }
     });
 };
-exports.add_input_text = (world, parsing) => {
+exports.add_input_text = (world, parsing, index) => {
+    if (index === undefined) {
+        index = world.index;
+    }
     return utils_1.update(world, {
         story_updates: { effects: stages_1.stages([0, utils_1.append(story_update(query_1.query('frame', {
-                    index: world.index,
+                    index,
                     subquery: query_1.query('has_class', { class: 'input-text' })
                 }), story_op('add', { children: create_1.createElement(parsed_text_1.ParsedTextStory, { parsing: parsing }) })))]) }
     });
@@ -21864,9 +21935,16 @@ const empty_frame = create_1.createElement("div", { className: "frame" },
         create_1.createElement("div", { className: "consequence" }),
         create_1.createElement("div", { className: "description" }),
         create_1.createElement("div", { className: "prompt" })));
-exports.EmptyFrame = (props) => utils_1.update(empty_frame, {
-    data: { frame_index: props.index }
-});
+exports.EmptyFrame = (props) => create_1.createElement("div", { className: "frame", data: { frame_index: props.index } },
+    create_1.createElement("div", { className: "input-text" }),
+    create_1.createElement("div", { className: "output-text" },
+        create_1.createElement("div", { className: "action" }),
+        create_1.createElement("div", { className: "consequence" }),
+        create_1.createElement("div", { className: "description" }),
+        create_1.createElement("div", { className: "prompt" })));
+// update(empty_frame, {
+//     data: { frame_index: props.index }
+// });
 exports.make_frame = (frame_index) => {
     return utils_1.update(empty_frame, {
         data: { frame_index }
@@ -21882,12 +21960,15 @@ function init_story_updates(new_index) {
     return {
         would_effects: [],
         effects: stages_1.stages([0, [
-                story_update(query_1.query('story_hole', {}), story_op('replace', { replacement: create_1.createElement(exports.EmptyFrame, { index: new_index }) })),
-                story_update(query_1.query('story_root', {}), story_op('add', { children: create_1.createElement(exports.Hole, null) }))
+                story_update(query_1.query('story_hole', {}), story_op('replace', { replacement: [
+                        create_1.createElement(exports.EmptyFrame, { index: new_index }),
+                        create_1.createElement(exports.Hole, null)
+                    ] }))
             ]])
     };
 }
 exports.init_story_updates = init_story_updates;
+// consider using a pattern language for story transformations like this
 
 
 /***/ }),
@@ -21907,7 +21988,7 @@ const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
 const history_1 = __webpack_require__(/*! ./history */ "./src/typescript/history.ts");
 function default_narrative_space() {
-    return [w => utils_1.drop_keys(w, 'previous', 'index', 'parsing', 'parent', 'child')];
+    return [w => utils_1.drop_keys(w, 'previous', 'index', 'parsing')];
 }
 function get_score(w, goals) {
     return goals.map(g => g(w)).reduce((acc, goal_met) => acc + (goal_met ? 1 : 0), 0);
@@ -22307,12 +22388,13 @@ I strongly encourage you to stake your professional reputation on the behavior o
 */
 Object.defineProperty(exports, "__esModule", { value: true });
 ;
+const lodash_1 = __webpack_require__(/*! lodash */ "./node_modules/lodash/lodash.js");
 // The second generic type parameter is a hack to prevent typescript from using the contents of updater
 // to figure out the source and return types when doing type inference on calls to this function.
 function update1(source, updater) {
     // if updater is a function, call it and return the result
     if (updater instanceof Function) {
-        return updater(source);
+        return updater(lodash_1.clone(source));
     }
     // if updater is a non-traversible value
     // check for all types we don't intend to recursively traverse.
@@ -22767,9 +22849,7 @@ const INITIAL_WORLD = {
     story_updates: { effects: stages_1.stages(), would_effects: [] },
     parsing: undefined,
     previous: null,
-    index: 0,
-    parent: null,
-    child: null
+    index: 0
 };
 // Helper to return INITIAL_WORLD constant as any kind of W type.
 function get_initial_world() {
@@ -22792,9 +22872,7 @@ function make_update_thread(spec, world) {
         index: _ => new_index,
         story: _ => story_1.apply_story_updates_all(_, world.story_updates),
         story_updates: () => story_1.init_story_updates(new_index),
-        parsing: () => undefined,
-        parent: () => null,
-        child: () => null
+        parsing: () => undefined
     });
     if (spec.pre !== undefined) {
         next_state = spec.pre(next_state);
@@ -22811,8 +22889,22 @@ function make_update_thread(spec, world) {
     };
 }
 exports.make_update_thread = make_update_thread;
-function add_parsing(world, parsing) {
-    return utils_1.update(world, { parsing: () => parsing }, _ => story_1.add_input_text(_, parsing));
+function add_parsing(world, parsing, index) {
+    if (index === undefined) {
+        index = world.index;
+    }
+    function rec(w) {
+        if (w.index === index) {
+            return utils_1.update(w, {
+                parsing: () => parsing
+            });
+        }
+        return utils_1.update(w, {
+            previous: rec
+        });
+    }
+    const world2 = rec(world);
+    return utils_1.update(world2, _ => story_1.add_input_text(_, parsing, index));
 }
 exports.add_parsing = add_parsing;
 function apply_command(spec, world, command) {
@@ -22832,19 +22924,7 @@ function apply_command(spec, world, command) {
         };
     }
     let w = result.result;
-    w = add_parsing(w, result.parsing);
-    // TODO no longer represent parent/child in the structure
-    // it will be purely a view thing.
-    // If this is a compound action, assign it as the parent to the children,
-    // and return the last child instead of the parent.
-    if (w.child !== null) {
-        let c = w.child;
-        while (c.index >= w.index) {
-            c.parent = w;
-            c = c.previous;
-        }
-        w = w.child;
-    }
+    w = add_parsing(w, result.parsing, world.index + 1);
     let next_parsing = apply_command(spec, w, parser_1.raw('', false)).parsing;
     return {
         kind: 'CommandResult',

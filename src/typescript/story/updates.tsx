@@ -7,11 +7,11 @@ import { append, map_values, update } from '../utils';
 import { World } from '../world';
 import { createElement } from './create';
 import { compile_query, query, StoryQueryIndex, StoryQuerySpec } from './query';
-import { find_all_nodes, find_node, Fragment, is_story_hole, is_story_node, Path, replace_in, StoryHole, StoryNode, story_to_dom } from './story';
+import { find_all_nodes, find_node, Fragment, is_story_hole, is_story_node, Path, replace_in, StoryHole, StoryNode, story_to_dom, splice_in } from './story';
 
 export type Story = StoryNode & { __brand: 'Story' };
 
-export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | undefined
+export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | Fragment[]
 export type StoryUpdate = (story: Story, effects?: Effects<HTMLElement>) => Story;
 
 
@@ -89,7 +89,8 @@ export interface StoryOpTypes {
     remove: {};
     css: CSSUpdates;
     remove_eph: {};
-    replace: { replacement: Fragment };
+    replace: { replacement: Fragment[] };
+    insert_after: { nodes: Fragment | Fragment[] };
 }
 
 export type CSSUpdates = {
@@ -181,16 +182,36 @@ export const StoryUpdateOps: StoryOps = {
         if (effects) {
             effects.push(dom => dom.remove());
         }
-        return undefined;
+        return [];
     },
     replace: ({replacement}) => (elt, effects?) => {
         if (effects) {
-            effects.push(dom =>
-                dom.replaceWith(story_to_dom(replacement))
-            )
+            effects.push(dom => {
+                if (replacement instanceof Array) {
+                    dom.replaceWith(...replacement.map(story_to_dom));    
+                } //else {
+                //     dom.replaceWith(story_to_dom(replacement));
+                // }
+            })
         }
         return replacement;
-    } 
+    },
+    insert_after: ({nodes}) => (elt, effects?) => {
+        if (effects) {
+            effects.push(dom => {
+                if (nodes instanceof Array) {
+                    dom.replaceWith(dom, ...nodes.map(story_to_dom));    
+                } else {
+                    dom.replaceWith(dom, story_to_dom(nodes));
+                }
+            })
+        }
+        if (nodes instanceof Array) {
+            return [elt, ...nodes];
+        } else {
+            return [elt, nodes];
+        }
+    }
 }
 
 export function compile_story_update_op(op_spec: StoryOpSpec): StoryOp {
@@ -218,8 +239,12 @@ export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate
         const op = compile_story_update_op(story_update.op);
         for (const [target, path] of targets) {
             const updated_child = op(target, effects ? effects.then(dom => dom_lookup_path(dom, path)) : undefined);
-            
-            const result = replace_in(story, path, updated_child);
+            let result: Fragment | undefined;
+            if (updated_child instanceof Array) {
+                result = splice_in(story, path, updated_child);
+            } else {
+                result = replace_in(story, path, updated_child);
+            }
             
             if (result === undefined) {
                 throw new Error('Update deleted the entire story: '+JSON.stringify(story_update));
@@ -326,12 +351,15 @@ export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
         }) as W
     }
 
-export const add_input_text = (world: World, parsing: Parsing) => {
+export const add_input_text = (world: World, parsing: Parsing, index?: number) => {
+    if (index === undefined) {
+        index = world.index
+    }
     return update(world, {
         story_updates: { effects: stages([0, append(
             story_update(
                 query('frame', {
-                    index: world.index,
+                    index,
                     subquery: query('has_class', {class: 'input-text'})
                 }),
                 story_op('add', {children: <ParsedTextStory parsing={parsing} />}))
@@ -350,9 +378,18 @@ const empty_frame = <div className="frame">
 </div> as StoryNode;
 
 export const EmptyFrame = (props: { index: number }) => 
-    update(empty_frame, {
-        data: { frame_index: props.index }
-    });
+    <div className="frame" data={{frame_index: props.index}}>
+        <div className="input-text" />
+        <div className="output-text">
+            <div className="action"></div>
+            <div className="consequence"></div>
+            <div className="description"></div>
+            <div className="prompt"></div>
+        </div>
+    </div> as StoryNode;
+    // update(empty_frame, {
+    //     data: { frame_index: props.index }
+    // });
 
 export const make_frame = (frame_index: number) => {
     return update(empty_frame, {
@@ -360,7 +397,7 @@ export const make_frame = (frame_index: number) => {
     });
 };
 
-export const Hole = (props: {}): StoryHole => {
+export const Hole = (props?: {}): StoryHole => {
     return { kind: 'StoryHole' };
 }
 
@@ -375,12 +412,13 @@ export function init_story_updates(new_index: number): StoryUpdatePlan {
         effects: stages([0, [
             story_update(
                 query('story_hole', {}),
-                story_op('replace', { replacement: <EmptyFrame index={new_index} />})
-            ),
-            story_update(
-                query('story_root', {}),
-                story_op('add', {children: <Hole />})
+                story_op('replace', { replacement: [
+                    <EmptyFrame index={new_index} />,
+                    <Hole />
+                ]})
             )
         ]])
     };
 }
+
+// consider using a pattern language for story transformations like this

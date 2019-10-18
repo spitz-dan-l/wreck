@@ -176,6 +176,31 @@ export function replace_in(parent: Fragment, path: Path, updated: Fragment | und
     });
 }
 
+export function splice_in(parent: Fragment, path: Path, updated: Fragment[]): Fragment | undefined  {
+    if (path.length === 0) {
+        if (updated.length > 1) {
+            throw new Error('Tried to replace single top-level node with a list of fragments.');
+        }
+        return updated[0];
+    }
+    if (!is_story_node(parent)) {
+        throw new Error('Tried to replace a child of a non-node.');
+    }
+    if (path.length === 1) {
+        return update(parent, {
+            children: _ => {
+                _.splice(path[0], 1, ...updated);
+                return _;
+            }
+        })
+    }
+    return update(parent, {
+        children: {
+            [path[0]]: _ => splice_in(_, path.slice(1), updated)
+        }
+    });
+}
+
 // This is pretty ugly, but there's not a good enough reason to
 // do something fancier yet
 export const StoryHoleDom: HTMLElement = document.createElement('div');
