@@ -19,12 +19,10 @@
 
 
 */
-import { O } from 'ts-toolbelt';
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
 import { stages } from './stages';
 import { add_input_text, apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan } from './story';
 import { update } from './utils';
-import { find_index } from './history';
 
 export interface World {
     readonly parsing: Parsing | undefined,
@@ -124,25 +122,15 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
 }
 
 export function add_parsing<W extends World>(world: W, parsing: Parsing, index?: number): W {
-    if (index === undefined) {
-        index = world.index;
+    if (index === undefined || world.index === index) {
+        return update(world as World, 
+            { parsing: () => parsing },
+            _ => add_input_text(_, parsing)
+        ) as W;
     }
-    function rec(w: W) {
-        if (w.index === index) {
-            return update(w as World, {
-                parsing: () => parsing
-            }) as W;
-        }
-        return update(w as World, {
-            previous: rec
-        }) as W;
-    }
-    
-    const world2 = rec(world);
-
-    return update(world2 as World,
-        _ => add_input_text(_, parsing, index)
-    ) as W;
+    return update(world as World, {
+        previous: _ => add_parsing(_!, parsing, index)
+    }) as W;
 }
 
 export function apply_command<W extends World>(spec: WorldSpec<W>, world: W, command: RawInput): CommandResult<W>;

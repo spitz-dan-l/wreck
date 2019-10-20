@@ -15,7 +15,8 @@ export const StoryQueryName: StaticNameIndexFor<StoryQueryTypes> = {
     'frame': null,
     'has_class': null,
     'story_hole': null,
-    'story_root': null
+    'story_root': null,
+    first: null
 }
 
 export type StoryQuery = (story: Fragment) => FoundNode[];
@@ -38,27 +39,7 @@ export type StoryQuerySpec<Key extends keyof StoryQueryTypes=keyof StoryQueryTyp
 
 export function compile_query<K extends keyof StoryQueryTypes>(query_spec: StoryQuerySpec<K>): StoryQuery {
     const query = StoryQueryIndex.get(query_spec.name)(query_spec.parameters as any);
-
-    return (story: StoryNode) => {
-        const targets = query(story);
-    
-        // sort the deepest and last children first
-        // this guarantees that no parent will be updated before its children
-        // and no child array's indices will move before its children are updated
-        targets.sort(([,path1], [,path2]) => {
-            if (path2.length !== path1.length) {
-                return path2.length - path1.length;
-            }
-            for (let i = 0; i < path1.length; i++) {
-                if (path1[i] !== path2[i]) {
-                    return path2[i] - path1[i];
-                }
-            }
-            return 0;
-        });
-    
-        return targets;
-    }   
+    return (story: StoryNode) => query(story);   
 }
 
 export function query<Q extends keyof StoryQueryTypes>(name: Q, parameters: StoryQueryTypes[Q]): StoryQuerySpec<Q> {
@@ -69,6 +50,7 @@ export function query<Q extends keyof StoryQueryTypes>(name: Q, parameters: Stor
 export interface StoryQueryTypes {
     path: { path: Path };
     key: { key: Gensym };
+    first: { subquery: StoryQuerySpec }
 }
 StoryQueryIndex.initialize('path', ({path}) =>
     root => {
@@ -89,3 +71,9 @@ StoryQueryIndex.initialize('key', ({key}) =>
         }
         return result;
     });
+
+StoryQueryIndex.initialize('first', ({subquery}) =>
+    root => {
+        const results = compile_query(subquery)(root);
+        return results.slice(0,1);
+    })

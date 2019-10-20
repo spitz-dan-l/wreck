@@ -22,9 +22,6 @@ export function new_animation_state(world: World, previous_world: World | null):
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
     const index_threshold = previous_world ? previous_world.index : -1;//world.index - 1;
     const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();
-    if (new_frames.length > 1) {
-        debugger;
-    }
     const story_updates =  make_consecutive(new_frames.map(w => w.story_updates.effects));
     let stages = stage_keys(story_updates);
     let current_stage: number | undefined = stages[0];

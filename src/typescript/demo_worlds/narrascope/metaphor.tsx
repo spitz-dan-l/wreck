@@ -335,7 +335,7 @@ Puffers(lock_and_brand('Metaphor', {
                                 return !would_contemplate;
                             }
                         }, world);
-                            //world.previous!);
+
                         if (result.result === null) {
                             return parser.eliminate();
                         }
@@ -344,10 +344,7 @@ Puffers(lock_and_brand('Metaphor', {
                             tokens: render_gist_command(g),
                             labels: {interp: true, filler: true}
                         }, () =>
-                        parser.submit(() => {
-                            return result.result!
-                        }
-                        ))
+                        parser.submit(() => result.result!));
                         //update(world, { child: () => result.result! })));
                     });
 

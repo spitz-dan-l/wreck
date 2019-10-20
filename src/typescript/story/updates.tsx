@@ -1,13 +1,13 @@
 import { Effects } from '../effect_utils';
 import { history_array } from '../history';
 import { Parsing } from '../parser';
-import { Stages, stages, stage_entries } from '../stages';
+import { Stages, stages, stage_entries, stage_keys } from '../stages';
 import { ParsedTextStory } from '../UI/components/parsed_text';
 import { append, map_values, update } from '../utils';
 import { World } from '../world';
 import { createElement } from './create';
 import { compile_query, query, StoryQueryIndex, StoryQuerySpec } from './query';
-import { find_all_nodes, find_node, Fragment, is_story_hole, is_story_node, Path, replace_in, StoryHole, StoryNode, story_to_dom, splice_in } from './story';
+import { find_all_nodes, find_node, Fragment, is_story_hole, is_story_node, Path, replace_in, StoryHole, StoryNode, story_to_dom, splice_in, FoundNode } from './story';
 
 export type Story = StoryNode & { __brand: 'Story' };
 
@@ -85,7 +85,7 @@ export function story_update<Q extends StoryQuerySpec=StoryQuerySpec, O extends 
 }
 
 export interface StoryOpTypes {
-    add: { children: Fragment | Fragment[] };
+    add: { children: Fragment | Fragment[], no_animate?: boolean };
     remove: {};
     css: CSSUpdates;
     remove_eph: {};
@@ -113,7 +113,7 @@ export type StoryOps = {
 };
 
 export const StoryUpdateOps: StoryOps = {
-    add: ({children}) => (parent, effects?) => {
+    add: ({children, no_animate}) => (parent, effects?) => {
         if (!is_story_node(parent)) {
             throw new Error('Tried to append children to terminal node '+JSON.stringify(parent));
         }
@@ -121,7 +121,7 @@ export const StoryUpdateOps: StoryOps = {
             return children.reduce((p, c) => StoryUpdateOps.add({children: c})(p, effects), parent);
         }
         
-        if (is_story_node(children)){
+        if (!no_animate && is_story_node(children)){
             children = update(children, {
                 classes: { ['eph-new']: true }
             });
@@ -233,11 +233,29 @@ export function dom_lookup_path(elt: HTMLElement | Text, path: Path): HTMLElemen
     return dom_lookup_path(child, path.slice(1));
 }
 
+export function sort_targets(targets: FoundNode[]) {
+    // sort the deepest and last children first
+    // this guarantees that no parent will be updated before its children
+    // and no child array's indices will move before its children are updated
+    return [...targets].sort(([,path1], [,path2]) => {
+        if (path2.length !== path1.length) {
+            return path2.length - path1.length;
+        }
+        for (let i = 0; i < path1.length; i++) {
+            if (path1[i] !== path2[i]) {
+                return path2[i] - path1[i];
+            }
+        }
+        return 0;
+    });
+}
+
 export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate {
     return (story, effects?): Story => {
         const targets = compile_query(story_update.query)(story);        
         const op = compile_story_update_op(story_update.op);
-        for (const [target, path] of targets) {
+
+        for (const [target, path] of sort_targets(targets)) {
             const updated_child = op(target, effects ? effects.then(dom => dom_lookup_path(dom, path)) : undefined);
             let result: Fragment | undefined;
             if (updated_child instanceof Array) {
@@ -351,18 +369,16 @@ export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
         }) as W
     }
 
-export const add_input_text = (world: World, parsing: Parsing, index?: number) => {
-    if (index === undefined) {
-        index = world.index
-    }
+export const add_input_text = (world: World, parsing: Parsing) => {
+    const lowest_stage = stage_keys(world.story_updates.effects)[0] || 0;
     return update(world, {
-        story_updates: { effects: stages([0, append(
+        story_updates: { effects: stages([lowest_stage, append(
             story_update(
                 query('frame', {
-                    index,
-                    subquery: query('has_class', {class: 'input-text'})
+                    index: world.index,
+                    subquery: query('first', { subquery: query('has_class', {class: 'input-text'}) })
                 }),
-                story_op('add', {children: <ParsedTextStory parsing={parsing} />}))
+                story_op('add', {no_animate: true, children: <ParsedTextStory parsing={parsing} />}))
         )]) }
     });
 }
