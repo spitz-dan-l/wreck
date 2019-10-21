@@ -1,15 +1,15 @@
-import { Gist, gist, gists_equal, gist_to_string, render_gist_command, render_gist_text, has_tag, Gists } from '../../gist';
+import { Gist, gist, Gists, gists_equal, gist_to_string, has_tag, render_gist_command, render_gist_text } from '../../gist';
 import { find_historical, find_index, history_array } from "../../history";
-import { ConsumeSpec, ParserThread, Parser } from "../../parser";
+import { ConsumeSpec, Parser, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
-import { StaticIndex, StaticMap } from '../../static_resources';
+import { find_and_move_to_stage, stages } from '../../stages';
+import { StaticMap } from '../../static_resources';
+import { createElement, css_updater, Fragment, Hole, query, StoryUpdateSpec, story_op, story_update, story_updater, TextAddSpec } from '../../story';
 import { is_simulated, search_future } from '../../supervenience';
-import { bound_method, map, update, Updater, append } from "../../utils";
-import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, Venience, VeniencePuffer, StaticActionIDs, StaticFacetIDs } from "./prelude";
+import { append, begin, map, update, Updater } from "../../utils";
+import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, StaticActionIDs, StaticFacetIDs, Venience, VeniencePuffer } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
-import { stages, find_and_move_to_stage } from '../../stages';
-import { createElement, css_updater, story_updater, story_update, story_op, TextAddSpec, query, Fragment, is_story_hole, StoryOpSpec, StoryUpdateSpec, Hole, apply_story_updates_all } from '../../story';
-import { match } from '../../match';
+
 
 export interface Metaphors {
     gist: Gist | null,
@@ -143,9 +143,16 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
             story_updates: { effects: _ =>
                 // TODO: condition becomes, all updates that would
                 // affect nodes occuring above/before the node with target frame-index
-                find_and_move_to_stage(_,
+                begin(_)
+                .z(_ => find_and_move_to_stage(_,
+                    u => u.query.name === 'story_hole',
+                    () => -1))
+                .z(_ => find_and_move_to_stage(_,
                     u => u.query.name === 'frame' && u.query.parameters.index < world.index,
-                    () => -1)
+                    () => -1))
+                ()
+                
+
             },
             has_tried: map([action.name, map([facet.name, true])])
         });

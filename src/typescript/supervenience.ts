@@ -163,7 +163,7 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
                 throw new Error('Future search reached a non-goal terminal state');
             }
             for (let parse_result of neighbor_states) {
-                const dest = add_parsing(parse_result.result, parse_result.parsing); //{...parse_result.result, parsing: parse_result.parsing};
+                const dest = add_parsing(parse_result.result, parse_result.parsing);
                 const dest_pos = spec.space!.map(dim => dim(dest));
                 const dest_score = get_score(dest, spec.goals);
                 

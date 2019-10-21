@@ -17749,116 +17749,6 @@ function possible_effects(props) {
     }
     return animation_1.compute_possible_effects(props.world, props.possible_world);
 }
-//     let worlds: MaybeCompoundWorld<World>[] = group_compound_worlds(world); //history_array(world).reverse();
-//     let result = worlds.map((w, i) => {
-//       return <HistoryElt
-//             key={is_compound_world(w) ? w.root.index : w.index}
-//             world={w}
-//             current_frame={world.interpretations}
-//             possible_interpretations={possible_world === null ? {} : possible_world.interpretations}
-//             animation_state={animation_state}
-//             elt_index={elt_index}
-//             undo_selected={undo_selected}
-//             would_undo={i === worlds.length - 1}
-//         />;
-//     });
-//     return <div className="history">
-//       { result }
-//     </div>
-// };
-// type HistoryEltProps = {
-//     world: MaybeCompoundWorld<World>,
-//     current_frame: HTMLElement,
-//     possible_frame: HTMLElement, 
-//     animation_state: AnimationState,
-//     undo_selected: boolean,
-//     would_undo: boolean
-// }
-// const HistoryElt: React.FunctionComponent<HistoryEltProps> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index, undo_selected, would_undo}) => {
-//     if (is_compound_world(world)) {
-//         return <CompoundHistoryElt
-//             world={world}
-//             current_interpretations={current_interpretations}
-//             possible_interpretations={possible_interpretations}
-//             animation_state={animation_state}
-//             elt_index={elt_index}
-//             undo_selected={undo_selected}
-//             would_undo={would_undo}
-//         />
-//     } else {
-//         return <AtomicHistoryElt
-//             world={world}
-//             current_interpretations={current_interpretations}
-//             possible_interpretations={possible_interpretations}
-//             animation_state={animation_state}
-//             elt_index={elt_index}
-//             undo_selected={undo_selected}
-//             would_undo={would_undo}
-//         />
-//     }
-// };
-// const CompoundHistoryElt: React.FunctionComponent<HistoryEltProps & {world: CompoundWorld<World>}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index, undo_selected, would_undo}) => {
-//     return <div className="compound">
-//         { world.root.parsing !== undefined ? <ParsedText parsing={world.root.parsing} /> : '' }
-//         <div className="children">
-//             { world.children.map(w => <HistoryElt
-//                 key={is_compound_world(w) ? w.root.index : w.index}
-//                 world={w}
-//                 current_interpretations={current_interpretations}
-//                 possible_interpretations={possible_interpretations}
-//                 animation_state={animation_state}
-//                 elt_index={elt_index}
-//                 undo_selected={undo_selected}
-//                 would_undo={would_undo}
-//             />) }
-//         </div>
-//     </div>;
-// }
-// const AtomicHistoryElt: React.FunctionComponent<HistoryEltProps & {world: World}> = ({world, current_interpretations, possible_interpretations, animation_state, elt_index, undo_selected, would_undo}) => {
-//     const labels = current_interpretations[world.index] || {};
-//     const possible_labels = possible_interpretations[world.index] || {};
-//     let ref = React.useCallback((node: HTMLDivElement) => {
-//         elt_index.current[world.index] = node;
-//     }, []);
-//     let animation_stage = animation_state.current_stage;
-//     let class_labels: { [label: string]: boolean };
-//     if (animation_stage === undefined) {
-//         class_labels = map_values(filter_values(labels, v => typeof(v.value) !== 'symbol'), v => v.value as boolean);
-//     } else {
-//         if (
-//             animation_state.changes.base_state[world.index] &&
-//             animation_state.changes.base_state[world.index].get(animation_stage)
-//         ) {
-//             class_labels = animation_state.changes.base_state[world.index].get(animation_stage)!;
-//         } else {
-//             class_labels = {};
-//         }
-//     }
-//     if (possible_labels !== undefined) {
-//         for (let l of key_union(labels, possible_labels)) {
-//             if (label_value(possible_labels, l) &&
-//                 (!label_value(labels, l) ||
-//                 label_value(possible_labels, l) !== label_value(labels, l))) {
-//                 class_labels[`would-add-${l}`] = true;
-//             } else if (!label_value(possible_labels, l) && label_value(labels, l) === true) {
-//                 class_labels[`would-remove-${l}`] = true;
-//             }
-//         }
-//     }
-//     if (undo_selected && would_undo) {
-//         class_labels['would-add-forgotten'] = true;
-//     }
-//     let className = Object.entries(class_labels).filter(([k, v]) => v === true).map(([k, v]) => k).join(' ');
-//     let rendering= render_message(
-//         world,
-//         map_values(class_labels, v => ({ kind: 'Interpretation', value: v })),
-//         possible_labels
-//     );
-//     return <div ref={ref} className={className}>
-//         { world.parsing !== undefined ? <ParsedText parsing={world.parsing} /> : '' }
-//         <OutputText rendering={rendering} />
-//     </div>;
-//   }
 
 
 /***/ }),
@@ -18276,6 +18166,8 @@ function make_ui(renderer, reducer) {
                 old_root: component
             });
             old_state = new_state;
+            // for debugging
+            globalThis.ui_state = old_state;
         }
         requestAnimationFrame(() => {
             rendering = false;
@@ -18468,13 +18360,13 @@ exports.Memories = utils_1.bound_method(memory_index, 'add');
 Object.defineProperty(exports, "__esModule", { value: true });
 const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
 const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
+const stages_1 = __webpack_require__(/*! ../../stages */ "./src/typescript/stages.ts");
 const static_resources_1 = __webpack_require__(/*! ../../static_resources */ "./src/typescript/static_resources.ts");
+const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
 const supervenience_1 = __webpack_require__(/*! ../../supervenience */ "./src/typescript/supervenience.ts");
 const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
 const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
 const supervenience_spec_1 = __webpack_require__(/*! ./supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
-const stages_1 = __webpack_require__(/*! ../../stages */ "./src/typescript/stages.ts");
-const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
 prelude_1.resource_registry.initialize('initial_world_metaphor', {
     gist: null,
     owner: null,
@@ -18550,7 +18442,9 @@ function apply_action(world, facet, action) {
         story_updates: { effects: _ => 
             // TODO: condition becomes, all updates that would
             // affect nodes occuring above/before the node with target frame-index
-            stages_1.find_and_move_to_stage(_, u => u.query.name === 'frame' && u.query.parameters.index < world.index, () => -1)
+            utils_1.begin(_)
+                .z(_ => stages_1.find_and_move_to_stage(_, u => u.query.name === 'story_hole', () => -1))
+                .z(_ => stages_1.find_and_move_to_stage(_, u => u.query.name === 'frame' && u.query.parameters.index < world.index, () => -1))()
         },
         has_tried: utils_1.map([action.name, utils_1.map([facet.name, true])])
     });
@@ -21866,7 +21760,7 @@ exports.css_updater = (f) => (world) => {
     });
 };
 exports.add_input_text = (world, parsing) => {
-    const lowest_stage = stages_1.stage_keys(world.story_updates.effects)[0] || 0;
+    const lowest_stage = stages_1.stage_keys(world.story_updates.effects)[0];
     return utils_1.update(world, {
         story_updates: { effects: stages_1.stages([lowest_stage, utils_1.append(story_update(query_1.query('frame', {
                     index: world.index,
@@ -22018,7 +21912,7 @@ function search_future(spec, world) {
                 throw new Error('Future search reached a non-goal terminal state');
             }
             for (let parse_result of neighbor_states) {
-                const dest = world_1.add_parsing(parse_result.result, parse_result.parsing); //{...parse_result.result, parsing: parse_result.parsing};
+                const dest = world_1.add_parsing(parse_result.result, parse_result.parsing);
                 const dest_pos = spec.space.map(dim => dim(dest));
                 const dest_score = get_score(dest, spec.goals);
                 if (dest_score > score) {
@@ -22702,8 +22596,17 @@ function map_updater(x) {
     return (m) => new Map([...m, ...x]);
 }
 exports.map_updater = map_updater;
-function curry(f, arg0) {
-    return (...args) => f(arg0, ...args);
+function curry(f) {
+    return function _curry(f, ...accum_args) {
+        return function curried(...args) {
+            if (args.length === 0) {
+                return f(...accum_args);
+            }
+            else {
+                return _curry(f, ...accum_args, ...args);
+            }
+        };
+    }(f);
 }
 exports.curry = curry;
 function chain(f) {

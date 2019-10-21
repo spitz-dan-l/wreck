@@ -174,6 +174,8 @@ export function make_ui<State, Action>(
                 }
             );
             old_state = new_state;
+            // for debugging
+            (globalThis as any).ui_state = old_state;
         }
         
         requestAnimationFrame(() => {

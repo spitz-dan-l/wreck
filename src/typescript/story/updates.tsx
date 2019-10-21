@@ -20,6 +20,15 @@ export type StoryUpdateSpec<Q extends StoryQuerySpec=StoryQuerySpec, O extends S
     op: O
 };
 
+export interface StoryUpdateGroups {
+    init_frame: null;
+}
+
+export type StoryUpdateGroup<K extends keyof StoryUpdateGroups | undefined=keyof StoryUpdateGroups | undefined> = {
+    name: K,
+    updates: StoryUpdateSpec[]
+}
+
 export type ReversibleOpSpec = StoryOpSpec<'css'>;
 export type ReversibleUpdateSpec = StoryUpdateSpec<StoryQuerySpec, ReversibleOpSpec>;
 
@@ -370,7 +379,7 @@ export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
     }
 
 export const add_input_text = (world: World, parsing: Parsing) => {
-    const lowest_stage = stage_keys(world.story_updates.effects)[0] || 0;
+    const lowest_stage = stage_keys(world.story_updates.effects)[0];
     return update(world, {
         story_updates: { effects: stages([lowest_stage, append(
             story_update(

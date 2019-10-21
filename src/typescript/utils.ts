@@ -304,13 +304,23 @@ export function map_updater<K, V>(x: [K, V][]) {
 // };
 
 // Currying //
-export type FirstArg<F> = F extends (arg0: infer P, ...args: any) => any ? P : never;
-export type RestArgs<F> = F extends (arg0: any, ...args: infer Ps) => any ? Ps : never;
-export function curry
-    <F extends (arg0: any, ...args: any) => any>
-    (f: F, arg0: FirstArg<F>): (...args: RestArgs<F>) => ReturnType<F> {
-        return (...args: RestArgs<F>) => f(arg0, ...<any[]>args);
+export type Curried<F extends (...args: any) => any> =
+    F extends (arg: infer A, ...rest: infer Rest) => infer Ret
+        ? (arg: A) => Curried<(...args: Rest) => Ret>
+        : () => ReturnType<F>;
+
+export function curry<F extends (...args: any) => any>(f: F): Curried<F> {
+    return function _curry(f: F, ...accum_args: any[]): any {
+        return function curried(...args: any) {
+            if (args.length === 0) {
+                return f(...accum_args);
+            } else {
+                return _curry(f, ...accum_args, ...args);
+            }
+        }
+    }(f);
 }
+
 
 // Chain/Compose //
 
