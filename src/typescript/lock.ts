@@ -1,9 +1,7 @@
-import { World } from './world';
-import { Parser, ParserThread, ConsumeSpec, gate } from './parser';
+import { gate, ParserThread } from './parser';
 import { gate_puffer, Puffer } from './puffer';
-import { find_historical } from './history';
-import {update, Updater} from './utils';
-import { css_updater } from './story';
+import { update } from './utils';
+import { World } from './world';
 
 export type LockStatus = 'Unlocked' | 'Mine' | 'Locked';
 
@@ -20,7 +18,10 @@ export type Lock<W extends World, Owner extends string> = {
     lock_parser_thread<R>(world: W, thread: ParserThread<R>): ParserThread<R>
 }
 
-export function lock_builder<W extends World, Owner extends string>(spec: LockSpec<W, Owner>): (owner: Owner | null) => Lock<W, Owner> {
+export function lock_builder<
+    W extends World,
+    Owner extends string
+>(spec: LockSpec<W, Owner>): (owner: Owner | null) => Lock<W, Owner> {
     return (owner: Owner | null) => {
         function has_permission(w: W) {
             let o = spec.owner(w);
@@ -36,15 +37,12 @@ export function lock_builder<W extends World, Owner extends string>(spec: LockSp
                 start_index = world.index;
             }
 
-            return <W>update(<World>spec.set_owner(world, owner),
-                css_updater(w => ({
-                    unfocused: w.index < start_index!
-                })));
+            return <W>update(<World>spec.set_owner(world, owner));
         }
 
         function release(world: W) {
             return <W>update(<World>spec.set_owner(world, null),
-                css_updater(() => ({ unfocused: false})));
+                );
         }
 
         function lock_parser_thread<R>(world: W, thread: ParserThread<R>) {

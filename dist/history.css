@@ -3,9 +3,10 @@
     display: block;
 }
 
-.story .compound .children {
+.story .frame #story-hole,
+.story .frame .frame {
     margin-top: 1em;
-    margin-inline-start: 1em;
+    margin-inline-start: 40px;
     margin-inline-end: 0em;
 }
 
@@ -41,7 +42,7 @@
   50% {
     outline-color: #72d2e5;
   }
-  100 {
+  100% {
     outline-color: ivory;
   }
 }
@@ -69,25 +70,37 @@
     transition-delay: 0ms, 400ms;
 }
 
+.story .focused {
+    --alpha-color: 1;
+}
+
 .story .unfocused,
 .story .removing-unfocused.animation-start,
 .story .would-add-forgotten,
 .story .would-undo {
-    opacity: 0.4;
+    --alpha-color: 0.4;
+    /* opacity: 0.4; */
+    color: rgba(var(--rgb-color),var(--alpha-color));
 }
 
 .story .adding-unfocused.animation-start {
-    opacity: inherit;
+  color: inherit;
+  /* opacity: inherit; */
 }
 
 .story .removing-unfocused.animation-start.animation-active {
-    opacity: inherit;
-    transition: opacity 700ms linear;
+    /* opacity: inherit; */
+    color: inherit;
+    transition: color 700ms linear;
+    /* transition: opacity 700ms linear; */
 }
 
 .story .adding-unfocused.animation-start.animation-active {
-    opacity: 0.4;
-    transition: opacity 700ms linear;
+    --alpha-color: 0.4;
+    color: rgba(var(--rgb-color), var(--alpha-color));
+    transition: color 700ms linear;
+    /* opacity: 0.4; */
+    /* transition: opacity 700ms linear; */
 }
 
 .story .forgotten {
@@ -96,20 +109,26 @@
 
 .story .forgotten.animation-pre-compute {
     display: block;
-    opacity: 0;
+    --alpha-color: 0;
+    /* opacity: 0; */
     --is-collapsing: 1;
 }
 
 /* AX2 */
 .story .adding-forgotten.animation-start {
     display: block;
-    opacity: 0.4;
+    /* opacity: 0.4; */
+    --alpha-color: 0.4;
 }
 
 .story .adding-forgotten.animation-start.animation-active {
-    opacity: 0.01;
+    --alpha-color: 0.01;
+    color: rgba(var(--rgb-color), var(--alpha-color));
+    
+    /* opacity: 0.01; */
     max-height: 0px !important;
     transition: opacity 300ms ease-in, max-height 400ms linear;
+    /* transition: opacity 300ms ease-in, max-height 400ms linear; */
     transition-delay: 0ms, 300ms;
 }
 
@@ -128,7 +147,7 @@
   50% {
     outline-color: ivory;
   }
-  100 {
+  100% {
     outline-color: #00000000;
   }
 }
@@ -140,7 +159,7 @@
   50% {
     background-color: midnightblue;
   }
-  100 {
+  100% {
     background-color: black;
   }
 }
@@ -152,32 +171,39 @@
   50% {
     background-color: dimgray;
   }
-  100 {
+  100% {
     background-color: black;
   }
 }
 
 
 .story .output-text .interp-inline {
-    color: gold;
-    opacity: 1;
+    --rgb-color: 255, 215, 0;
+    /* color: gold; */
+    /* opacity: 1; */
+    /* --alpha-color: 1; */
     display: inline;
 }
 
 .story .output-text .blue {
-    color: aqua;
+    /* color: aqua; */
+    --rgb-color: 0, 255, 255;
 }
 
 .story .output-text .interp
 {
     display: block;
-    color: gold;
-    opacity: 1;
+    --rgb-color: 255, 215, 0;
+    /* color: gold; */
+    /* --alpha-color: 1; */
+    /* opacity: 1; */
 }
 
 .story .output-text .alien-interp {
     display: block;
-    color: crimson;
-    opacity: 1;
+    /* color: crimson; */
+    --rgb-color: 220, 20, 60;
+    /* opacity: 1; */
+    --alpha-color: 1;
 }
 

@@ -1,3 +1,10 @@
+/**
+ * TODO: Add Links to components, so that
+ *  - Don't need to keep getter logic in sync with structure changes
+ *  - When a component gets re-rendered, any links will auto update to the new version?
+ */
+
+
 export type Props = {};
 
 export type BaseProps = { children?: (HTMLElement | Text)[] };

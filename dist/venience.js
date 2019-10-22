@@ -17320,13 +17320,13 @@ function compute_possible_effects(world, possible_world) {
     const result = [];
     for (const p_world of p_worlds) {
         for (const w_ef of p_world.story_updates.would_effects) {
-            const matches = story_1.compile_query(w_ef.query)(p_world.story);
+            const matches = story_1.compile_story_query(w_ef.query)(p_world.story);
             for (const [m, p] of matches) {
                 if (!story_1.is_story_node(m)) {
                     continue;
                 }
                 if (story_1.find_node(world.story, (n => story_1.is_story_node(n) && n.key === m.key)) !== null) {
-                    result.push(story_1.story_update(story_1.query('key', { key: m.key }), w_ef.op));
+                    result.push(story_1.story_update(story_1.story_query('key', { key: m.key }), w_ef.op));
                 }
             }
         }
@@ -17695,7 +17695,7 @@ exports.History = (props, old) => {
     // dim the most recent frame if undo is selected.
     if (props.world.index === (old ? old.old_props.world.index : undefined) &&
         props.undo_selected !== (old ? old.old_props.undo_selected : undefined)) {
-        would_effects.push(story_1.story_update(story_1.query('frame', { index: props.world.index }), story_1.story_op('css', { 'would-undo': props.undo_selected })));
+        would_effects.push(story_1.story_update(story_1.story_query('frame', { index: props.world.index }), story_1.story_op('css', { 'would-undo': props.undo_selected })));
     }
     if (!old || show_possible_effects(old.old_props) !== show_possible_effects(props)) {
         if (old) {
@@ -18069,6 +18069,11 @@ exports.intrinsic_element_renderer = (tag, props) => {
 
 "use strict";
 
+/**
+ * TODO: Add Links to components, so that
+ *  - Don't need to keep getter logic in sync with structure changes
+ *  - When a component gets re-rendered, any links will auto update to the new version?
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 function update_component(renderer, props, old) {
     const result = renderer(props, old);
@@ -18452,13 +18457,13 @@ function apply_action(world, facet, action) {
     if (solved) {
         if (!already_solved) {
             return utils_1.update(world, {
-                story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: interpretted_world.index }), story_1.story_op('css', { [`interp-${facet.slug}`]: true })))])
+                story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.story_query('frame', { index: interpretted_world.index }), story_1.story_op('css', { [`interp-${facet.slug}`]: true })))])
                 }
             });
         }
         else if (solved !== already_solved) { // The player picked the right answer again. blink it.
             return utils_1.update(world, {
-                story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: interpretted_world.index }), story_1.story_op('css', { [`eph-interp-${facet.slug}-solved-blink`]: true })))]) }
+                story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.story_query('frame', { index: interpretted_world.index }), story_1.story_op('css', { [`eph-interp-${facet.slug}-solved-blink`]: true })))]) }
             });
         }
     }
@@ -18530,9 +18535,12 @@ prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
                         else {
                             descriptions.unshift(story_1.createElement("div", null, "You notice the following aspects:"));
                         }
-                        return utils_1.update(world, w => metaphor_lock.lock(w, index), {
+                        return utils_1.update(world, w => metaphor_lock.lock(w, index), story_1.css_updater(w => ({
+                            unfocused: w.index < index,
+                            focused: w.index >= index
+                        })), {
                             current_interpretation: index,
-                            story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index }), story_1.story_op('css', {
+                            story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.story_query('frame', { index }), story_1.story_op('css', {
                                         'interpretation-block': true,
                                         'interpretation-active': true
                                     })))]) },
@@ -18564,7 +18572,7 @@ prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
                         });
                         // move the next story hole inside the current frame
                         world = utils_1.update(world, {
-                            story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('story_hole', {}), story_1.story_op('remove', {})), story_1.story_update(story_1.query('frame', { index: world.index }), story_1.story_op('add', { children: story_1.createElement(story_1.Hole, null) })))]) }
+                            story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.story_query('story_hole', {}), story_1.story_op('remove', {})), story_1.story_update(story_1.story_query('frame', { index: world.index }), story_1.story_op('add', { children: story_1.createElement(story_1.Hole, null) })))]) }
                         });
                         const result = supervenience_1.search_future({
                             thread_maker: supervenience_spec_1.get_thread_maker(),
@@ -18599,9 +18607,12 @@ prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', {
                 return parser.consume({
                     tokens: 'end_contemplation',
                     labels: { interp: true, filler: true }
-                }, () => parser.submit(() => utils_1.update(world, metaphor_lock.release, {
+                }, () => parser.submit(() => utils_1.update(world, metaphor_lock.release, story_1.css_updater(() => ({
+                    unfocused: false,
+                    focused: false
+                })), {
                     current_interpretation: null,
-                    story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: world.current_interpretation }), story_1.story_op('css', { 'interpretation-active': false })))]) },
+                    story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.story_query('frame', { index: world.current_interpretation }), story_1.story_op('css', { 'interpretation-active': false })))]) },
                     has_tried: () => new Map(),
                 }, story_1.story_updater({
                     action: 'Your mind returns to a less focused state.'
@@ -18651,7 +18662,7 @@ const make_facet = (spec) => prelude_1.lock_and_brand('Metaphor', {
             }
         }
         if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
-            updates.push({ story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.query('frame', { index: world2.index }), story_1.story_op('css', { [`interp-${spec.slug}`]: true })))]) } });
+            updates.push({ story_updates: { effects: stages_1.stages([0, utils_1.append(story_1.story_update(story_1.story_query('frame', { index: world2.index }), story_1.story_op('css', { [`interp-${spec.slug}`]: true })))]) } });
         }
         return utils_1.update(world2, ...updates);
     },
@@ -19851,7 +19862,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
 const puffer_1 = __webpack_require__(/*! ./puffer */ "./src/typescript/puffer.ts");
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
-const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/index.ts");
 function lock_builder(spec) {
     return (owner) => {
         function has_permission(w) {
@@ -19865,12 +19875,10 @@ function lock_builder(spec) {
             if (start_index === undefined) {
                 start_index = world.index;
             }
-            return utils_1.update(spec.set_owner(world, owner), story_1.css_updater(w => ({
-                unfocused: w.index < start_index
-            })));
+            return utils_1.update(spec.set_owner(world, owner));
         }
         function release(world) {
-            return utils_1.update(spec.set_owner(world, null), story_1.css_updater(() => ({ unfocused: false })));
+            return utils_1.update(spec.set_owner(world, null));
         }
         function lock_parser_thread(world, thread) {
             return parser_1.gate(has_permission(world), thread);
@@ -21216,6 +21224,49 @@ const gensym_1 = __webpack_require__(/*! ../gensym */ "./src/typescript/gensym.t
 
 /***/ }),
 
+/***/ "./src/typescript/story/dom.ts":
+/*!*************************************!*\
+  !*** ./src/typescript/story/dom.ts ***!
+  \*************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story.ts");
+const jsx_utils_1 = __webpack_require__(/*! ../jsx_utils */ "./src/typescript/jsx_utils.ts");
+// This is pretty ugly, but there's not a good enough reason to
+// do something fancier yet
+exports.StoryHoleDom = document.createElement('div');
+exports.StoryHoleDom.id = 'story-hole';
+function story_to_dom(story) {
+    if (typeof story === 'string') {
+        return document.createTextNode(story);
+    }
+    else if (story_1.is_story_hole(story)) {
+        return exports.StoryHoleDom;
+    }
+    const elt = document.createElement(story.tag);
+    for (const [class_name, on] of Object.entries(story.classes)) {
+        if (on) {
+            elt.classList.add(class_name);
+        }
+    }
+    for (const [data_attr, val] of Object.entries(story.data)) {
+        elt.dataset[data_attr] = '' + val;
+    }
+    jsx_utils_1.set_attributes(elt, story.attributes);
+    for (const c of story.children) {
+        elt.appendChild(story_to_dom(c));
+    }
+    return elt;
+}
+exports.story_to_dom = story_to_dom;
+
+
+/***/ }),
+
 /***/ "./src/typescript/story/index.ts":
 /*!***************************************!*\
   !*** ./src/typescript/story/index.ts ***!
@@ -21233,6 +21284,7 @@ __export(__webpack_require__(/*! ./story */ "./src/typescript/story/story.ts"));
 __export(__webpack_require__(/*! ./create */ "./src/typescript/story/create.ts"));
 __export(__webpack_require__(/*! ./query */ "./src/typescript/story/query.ts"));
 __export(__webpack_require__(/*! ./updates */ "./src/typescript/story/updates.tsx"));
+__export(__webpack_require__(/*! ./dom */ "./src/typescript/story/dom.ts"));
 
 
 /***/ }),
@@ -21252,25 +21304,25 @@ const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story
 exports.StoryQueryName = {
     // This object has to be edited when new entries are added to StoryQueryTypes
     // The editor will basically fill it in for you
-    'key': null,
-    'path': null,
     'eph': null,
+    'first': null,
     'frame': null,
     'has_class': null,
+    'key': null,
+    'path': null,
     'story_hole': null,
-    'story_root': null,
-    first: null
+    'story_root': null
 };
 exports.StoryQueryIndex = new static_resources_1.StaticMap(exports.StoryQueryName);
-function compile_query(query_spec) {
+function compile_story_query(query_spec) {
     const query = exports.StoryQueryIndex.get(query_spec.name)(query_spec.parameters);
     return (story) => query(story);
 }
-exports.compile_query = compile_query;
-function query(name, parameters) {
+exports.compile_story_query = compile_story_query;
+function story_query(name, parameters) {
     return { name, parameters };
 }
-exports.query = query;
+exports.story_query = story_query;
 exports.StoryQueryIndex.initialize('path', ({ path }) => root => {
     const result = [];
     const found = story_1.story_lookup_path(root, path);
@@ -21288,7 +21340,7 @@ exports.StoryQueryIndex.initialize('key', ({ key }) => root => {
     return result;
 });
 exports.StoryQueryIndex.initialize('first', ({ subquery }) => root => {
-    const results = compile_query(subquery)(root);
+    const results = compile_story_query(subquery)(root);
     return results.slice(0, 1);
 });
 
@@ -21305,7 +21357,6 @@ exports.StoryQueryIndex.initialize('first', ({ subquery }) => root => {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const jsx_utils_1 = __webpack_require__(/*! ../jsx_utils */ "./src/typescript/jsx_utils.ts");
 const update_1 = __webpack_require__(/*! ../update */ "./src/typescript/update.ts");
 ;
 const InvalidStoryNodeTypes = null;
@@ -21459,33 +21510,6 @@ function splice_in(parent, path, updated) {
     });
 }
 exports.splice_in = splice_in;
-// This is pretty ugly, but there's not a good enough reason to
-// do something fancier yet
-exports.StoryHoleDom = document.createElement('div');
-exports.StoryHoleDom.id = 'story-hole';
-function story_to_dom(story) {
-    if (typeof story === 'string') {
-        return document.createTextNode(story);
-    }
-    else if (is_story_hole(story)) {
-        return exports.StoryHoleDom;
-    }
-    const elt = document.createElement(story.tag);
-    for (const [class_name, on] of Object.entries(story.classes)) {
-        if (on) {
-            elt.classList.add(class_name);
-        }
-    }
-    for (const [data_attr, val] of Object.entries(story.data)) {
-        elt.dataset[data_attr] = '' + val;
-    }
-    jsx_utils_1.set_attributes(elt, story.attributes);
-    for (const c of story.children) {
-        elt.appendChild(story_to_dom(c));
-    }
-    return elt;
-}
-exports.story_to_dom = story_to_dom;
 
 
 /***/ }),
@@ -21507,6 +21531,7 @@ const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts")
 const create_1 = __webpack_require__(/*! ./create */ "./src/typescript/story/create.ts");
 const query_1 = __webpack_require__(/*! ./query */ "./src/typescript/story/query.ts");
 const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story.ts");
+const dom_1 = __webpack_require__(/*! ./dom */ "./src/typescript/story/dom.ts");
 query_1.StoryQueryIndex.initialize('story_root', () => story => [[story, []]]);
 query_1.StoryQueryIndex.initialize('story_hole', () => (story) => {
     const result = story_1.find_all_nodes(story, n => story_1.is_story_hole(n));
@@ -21531,7 +21556,7 @@ query_1.StoryQueryIndex.initialize('frame', ({ index, subquery }) => (story) => 
         return [found];
     }
     const [frame, path] = found;
-    return query_1.compile_query(subquery)(frame)
+    return query_1.compile_story_query(subquery)(frame)
         .map(([n, p]) => [n, [...path, ...p]]);
 });
 function story_update(query, op) {
@@ -21557,13 +21582,47 @@ exports.StoryUpdateOps = {
         }
         if (effects) {
             effects.push(dom => {
-                const child_dom = story_1.story_to_dom(children);
+                const child_dom = dom_1.story_to_dom(children);
                 dom.appendChild(child_dom);
             });
         }
         return utils_1.update(parent, {
             children: utils_1.append(children)
         });
+    },
+    insert_after: ({ nodes, no_animate }) => (elt, effects) => {
+        if (!no_animate) {
+            const add_animation_class = (node) => {
+                if (!story_1.is_story_node(node)) {
+                    return node;
+                }
+                return utils_1.update(node, {
+                    classes: { ['eph-new']: true }
+                });
+            };
+            if (nodes instanceof Array) {
+                nodes = nodes.map(add_animation_class);
+            }
+            else {
+                nodes = add_animation_class(nodes);
+            }
+        }
+        if (effects) {
+            effects.push(dom => {
+                if (nodes instanceof Array) {
+                    dom.replaceWith(dom, ...nodes.map(dom_1.story_to_dom));
+                }
+                else {
+                    dom.replaceWith(dom, dom_1.story_to_dom(nodes));
+                }
+            });
+        }
+        if (nodes instanceof Array) {
+            return [elt, ...nodes];
+        }
+        else {
+            return [elt, nodes];
+        }
     },
     css: (updates) => (elt, effects) => {
         if (!story_1.is_story_node(elt)) {
@@ -21614,31 +21673,14 @@ exports.StoryUpdateOps = {
         if (effects) {
             effects.push(dom => {
                 if (replacement instanceof Array) {
-                    dom.replaceWith(...replacement.map(story_1.story_to_dom));
-                } //else {
-                //     dom.replaceWith(story_to_dom(replacement));
-                // }
+                    dom.replaceWith(...replacement.map(dom_1.story_to_dom));
+                }
+                else {
+                    dom.replaceWith(dom_1.story_to_dom(replacement));
+                }
             });
         }
         return replacement;
-    },
-    insert_after: ({ nodes }) => (elt, effects) => {
-        if (effects) {
-            effects.push(dom => {
-                if (nodes instanceof Array) {
-                    dom.replaceWith(dom, ...nodes.map(story_1.story_to_dom));
-                }
-                else {
-                    dom.replaceWith(dom, story_1.story_to_dom(nodes));
-                }
-            });
-        }
-        if (nodes instanceof Array) {
-            return [elt, ...nodes];
-        }
-        else {
-            return [elt, nodes];
-        }
     }
 };
 function compile_story_update_op(op_spec) {
@@ -21678,7 +21720,7 @@ function sort_targets(targets) {
 exports.sort_targets = sort_targets;
 function compile_story_update(story_update) {
     return (story, effects) => {
-        const targets = query_1.compile_query(story_update.query)(story);
+        const targets = query_1.compile_story_query(story_update.query)(story);
         const op = compile_story_update_op(story_update.op);
         for (const [target, path] of sort_targets(targets)) {
             const updated_child = op(target, effects ? effects.then(dom => dom_lookup_path(dom, path)) : undefined);
@@ -21706,7 +21748,7 @@ function apply_story_update(story, story_update, effects) {
 }
 exports.apply_story_update = apply_story_update;
 function remove_eph(story, effects) {
-    return apply_story_update(story, story_update(query_1.query('eph', {}), story_op('remove_eph', {})), effects);
+    return apply_story_update(story, story_update(query_1.story_query('eph', {}), story_op('remove_eph', {})), effects);
 }
 exports.remove_eph = remove_eph;
 function apply_story_updates_stage(story, story_updates, effects) {
@@ -21735,9 +21777,9 @@ exports.make_text_additions = (index, spec) => {
     for (const prop of ['action', 'consequence', 'description', 'prompt']) {
         const children = spec[prop];
         if (children !== undefined) {
-            result.push(story_update(query_1.query('frame', {
+            result.push(story_update(query_1.story_query('frame', {
                 index,
-                subquery: query_1.query('has_class', { class: prop })
+                subquery: query_1.story_query('has_class', { class: prop })
             }), story_op('add', { children })));
         }
     }
@@ -21753,7 +21795,7 @@ exports.css_updater = (f) => (world) => {
         if (Object.keys(updates).length === 0) {
             return [];
         }
-        return [story_update(query_1.query('frame', { index: w.index }), story_op('css', f(w)))];
+        return [story_update(query_1.story_query('frame', { index: w.index }), story_op('css', f(w)))];
     });
     return utils_1.update(world, {
         story_updates: { effects: stages_1.stages([0, utils_1.append(...css_updates)]) }
@@ -21762,9 +21804,9 @@ exports.css_updater = (f) => (world) => {
 exports.add_input_text = (world, parsing) => {
     const lowest_stage = stages_1.stage_keys(world.story_updates.effects)[0];
     return utils_1.update(world, {
-        story_updates: { effects: stages_1.stages([lowest_stage, utils_1.append(story_update(query_1.query('frame', {
+        story_updates: { effects: stages_1.stages([lowest_stage, utils_1.append(story_update(query_1.story_query('frame', {
                     index: world.index,
-                    subquery: query_1.query('first', { subquery: query_1.query('has_class', { class: 'input-text' }) })
+                    subquery: query_1.story_query('first', { subquery: query_1.story_query('has_class', { class: 'input-text' }) })
                 }), story_op('add', { no_animate: true, children: create_1.createElement(parsed_text_1.ParsedTextStory, { parsing: parsing }) })))]) }
     });
 };
@@ -21800,7 +21842,7 @@ function init_story_updates(new_index) {
     return {
         would_effects: [],
         effects: stages_1.stages([0, [
-                story_update(query_1.query('story_hole', {}), story_op('replace', { replacement: [
+                story_update(query_1.story_query('story_hole', {}), story_op('replace', { replacement: [
                         create_1.createElement(exports.EmptyFrame, { index: new_index }),
                         create_1.createElement(exports.Hole, null)
                     ] }))
@@ -22342,6 +22384,9 @@ exports.update_any = update_any;
 
 "use strict";
 
+/**
+ * TODO: move all x_utils files to a package
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };

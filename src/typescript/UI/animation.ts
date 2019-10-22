@@ -1,6 +1,6 @@
 import { history_array } from "../history";
 import { make_consecutive, stages, stage_keys } from "../stages";
-import { apply_story_updates_all, compile_query, find_node, is_story_node, query, ReversibleUpdateSpec, Story, StoryUpdatePlan, story_update } from "../story";
+import { apply_story_updates_all, compile_story_query, find_node, is_story_node, story_query, ReversibleUpdateSpec, Story, StoryUpdatePlan, story_update } from "../story";
 import { update } from "../utils";
 import { World } from "../world";
 
@@ -52,14 +52,14 @@ export function compute_possible_effects(world: World, possible_world: World): R
     const result: ReversibleUpdateSpec[] = [];
     for (const p_world of p_worlds) {
         for (const w_ef of p_world.story_updates.would_effects) {
-            const matches = compile_query(w_ef.query)(p_world.story);
+            const matches = compile_story_query(w_ef.query)(p_world.story);
             for (const [m, p] of matches) {
                 if (!is_story_node(m)) {
                     continue;
                 }
                 if (find_node(world.story, (n => is_story_node(n) && n.key === m.key)) !== null) {
                     result.push(story_update(
-                        query('key', { key: m.key }),
+                        story_query('key', { key: m.key }),
                         w_ef.op
                     ))
                 }

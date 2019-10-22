@@ -1,6 +1,6 @@
 import { Effects } from "../../effect_utils";
 import { history_array } from "../../history";
-import { apply_story_updates_stage, query, remove_eph, ReversibleUpdateSpec, Story, story_op, story_to_dom, story_update } from "../../story";
+import { apply_story_updates_stage, story_query, remove_eph, ReversibleUpdateSpec, Story, story_op, story_to_dom, story_update } from "../../story";
 import { array_last, map_values, update } from "../../utils";
 import { World } from "../../world";
 import { animate, AnimationState, compute_possible_effects, final_story } from "../animation";
@@ -49,7 +49,7 @@ export const History: Renderer<HistoryProps> = (props, old?) => {
     if (props.world.index === (old ? old.old_props.world.index : undefined) &&
         props.undo_selected !== (old ? old.old_props.undo_selected : undefined)) {
         would_effects.push(story_update(
-            query('frame', { index: props.world.index }),
+            story_query('frame', { index: props.world.index }),
             story_op('css', { 'would-undo': props.undo_selected })
         ));        
     }

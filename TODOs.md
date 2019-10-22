@@ -23,7 +23,7 @@ It is easy to just add some new updates to a new stage to the left of the earlie
 
 Proposals
     Assign names/identities to (groups of) updates. Then move the updates between stages by group key
-        Could cause a similar sort of brittleness as refactoring update spec format- change a grouping and this logic breaks
+        Could cause a similar sort of brittleness as refactoring update spec format- change a grouping and this logic breaks. However, in practice this could probably work.
     
     Switch to a constraint-based method of specifying story updates. So now you don't manually arrange your updates in a sequence of stages, instead you specify constraints about which updates must run before which other updates, and the system solves the timeline for you.
         Even this would have forms of the above problems- how would you specify what the prerequisite updates are for a given update?

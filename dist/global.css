@@ -6,10 +6,20 @@
       font-family: 'Roboto Mono';
       font-size: 0.75em;
       font-weight: 300;
-      color: ivory;
+      
       background: black;
       position: absolute;
       display: block;
+      --alpha-color: 1;
+      --rgb-color: 255, 255, 240;
+}
+
+* {
+      /**
+            Always do color using custom properties.
+            This lets us inherit alpha not just color
+      */
+      color: rgba(var(--rgb-color), var(--alpha-color));
 }
 
 #terminal>div {
@@ -35,9 +45,11 @@
 }
 
 a:link {
-      color: gold;
+      --rgb-color: 255, 215, 0;
+      /* color: gold; */
 }
 
 a:visited {
-      color: darkgoldenrod;
+      /* color: darkgoldenrod; */
+      --rgb-color: 184, 134, 11;
 }

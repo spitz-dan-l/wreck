@@ -39,11 +39,11 @@ export class StaticResource<ValueType> {
     }
 }
 
-export type StaticNameIndex<Name extends keyof any> = { [K in Name]: null };
+export type StaticNameIndex<Name extends keyof any> = { [K in Name]: unknown };
 
 export type NameOf<Index extends StaticNameIndex<any>> = Index extends StaticNameIndex<infer N> ? N : never;
 
-export type StaticNameIndexFor<T extends {}> = { [K in keyof T]: null };
+export type StaticNameIndexFor<T extends {}> = { [K in keyof T]: unknown };
 
 export type ResourcesFor<T> = {
     [K in keyof T]: StaticResource<T[K]>

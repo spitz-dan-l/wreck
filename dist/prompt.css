@@ -43,7 +43,9 @@ ul.typeahead {
       padding: 0;
       margin: 0;
       white-space: pre;
-      color: silver;
+      /* color: silver; */
+      --rgb-color: 192, 192, 192;
+
 }
 
 .typeahead li.option {
@@ -58,11 +60,13 @@ ul.typeahead {
 
 .typeahead .option.used .token,
 .typeahead .option.locked .token {
-      opacity: 0.4;
+      --alpha-color: 0.4;
+      /* opacity: 0.4; */
 }
 
 .typeahead .option.available .token {
-      opacity: 0.8;
+      --alpha-color: 0.8;
+      /* opacity: 0.8; */
 }
 
 .typeahead .option.selected .token {
@@ -86,35 +90,43 @@ ul.typeahead {
 }
 
 .parsed-text .command.error-match {
-      opacity: 0.6;
+      --alpha-color: 0.6;
+      /* opacity: 0.6; */
 }
 
 .parsed-text .token.partial-match {
-      color: silver;
+      /* color: silver; */
+      --rgb-color: 192, 192, 192;
 }
 
 .parsed-text .token.error-match {
-      color: red;
+      --rgb-color: 255, 0, 0;
+      /* color: red; */
 }
 
 .parsed-text .token.used,
 .parsed-text .token.locked {
-      opacity: 0.4;
+      --alpha-color: 0.4;
+      /* opacity: 0.4; */
 }
 
 .token {
-      color: ivory;
+      /* color: ivory; */
+      --rgb-color: 255, 255, 240;
 }
 
 .token.interp {
-      color: gold;
+      /* color: gold; */
+      --rgb-color: 255, 215, 0;
 }
 
 .token.keyword {
-      color: aqua;
+      --rgb-color: 0, 255, 255;
+      /* color: aqua; */
 }
 
 .token.option {
-      color: orange;
+      --rgb-color: 255, 165, 0;
+      /* color: orange; */
 }
 

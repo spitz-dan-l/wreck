@@ -4,7 +4,7 @@ import { ConsumeSpec, Parser, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
 import { find_and_move_to_stage, stages } from '../../stages';
 import { StaticMap } from '../../static_resources';
-import { createElement, css_updater, Fragment, Hole, query, StoryUpdateSpec, story_op, story_update, story_updater, TextAddSpec } from '../../story';
+import { createElement, css_updater, Fragment, Hole, story_query, StoryUpdateSpec, story_op, story_update, story_updater, TextAddSpec } from '../../story';
 import { is_simulated, search_future } from '../../supervenience';
 import { append, begin, map, update, Updater } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, StaticActionIDs, StaticFacetIDs, Venience, VeniencePuffer } from "./prelude";
@@ -162,14 +162,14 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
         if (!already_solved) {
             return update(world, {
                 story_updates: { effects: stages([0, append(story_update(
-                    query('frame', { index: interpretted_world.index }),
+                    story_query('frame', { index: interpretted_world.index }),
                     story_op('css', { [`interp-${facet.slug}`]: true })
                 ))])
             }});
         } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
             return update(world, {
                 story_updates: { effects: stages([0, append(story_update(
-                    query('frame', { index: interpretted_world.index }),
+                    story_query('frame', { index: interpretted_world.index }),
                     story_op('css', { [`eph-interp-${facet.slug}-solved-blink`]: true })
                 ))]) }
             });
@@ -271,10 +271,14 @@ Puffers(lock_and_brand('Metaphor', {
 
                     return update(world,
                         w => metaphor_lock.lock(w, index),
+                        css_updater(w => ({
+                            unfocused: w.index < index,
+                            focused: w.index >= index
+                        })),
                         { 
                             current_interpretation: index,
                             story_updates: { effects: stages([0, append(story_update(
-                                query('frame', { index }),
+                                story_query('frame', { index }),
                                 story_op('css', {
                                     'interpretation-block': true,
                                     'interpretation-active': true
@@ -317,11 +321,11 @@ Puffers(lock_and_brand('Metaphor', {
                         world = update(world, {
                             story_updates: { effects: stages([0, append<StoryUpdateSpec>(
                                 story_update(
-                                    query('story_hole', {}),
+                                    story_query('story_hole', {}),
                                     story_op('remove', {})
                                 ),
                                 story_update(
-                                    query('frame', { index: world.index }),
+                                    story_query('frame', { index: world.index }),
                                     story_op('add', { children: <Hole />})
                                 )
                             )])}});
@@ -369,10 +373,14 @@ Puffers(lock_and_brand('Metaphor', {
                 }, () => parser.submit(() =>
                 update(world,
                     metaphor_lock.release,
+                    css_updater(() => ({
+                        unfocused: false,
+                        focused: false
+                    })),
                     {
                         current_interpretation: null,
                         story_updates: { effects: stages([0, append(story_update(
-                            query('frame', { index: world.current_interpretation! }),
+                            story_query('frame', { index: world.current_interpretation! }),
                             story_op('css', {'interpretation-active': false})
                         ))])},
                         has_tried: () => new Map(),
@@ -467,7 +475,7 @@ const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaph
         if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
             updates.push(
                 { story_updates: {effects: stages([0, append(story_update(
-                    query('frame', {index: world2.index}),
+                    story_query('frame', {index: world2.index}),
                     story_op('css', { [`interp-${spec.slug}`]: true })
                 ))])}}
             );

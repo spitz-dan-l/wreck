@@ -1,26 +1,27 @@
 import { ConsumeSpec, Parser, ParserThread } from './parser';
 import { knit_puffers, map_puffer, Puffer, PufferMapper } from './puffer';
-import { MaybeStages, normalize_stages, Stages, stage_keys, stages } from './stages';
+import { MaybeStages, normalize_stages, Stages, stages, stage_keys } from './stages';
+import { CSSUpdates, css_updater, story_updater, TextAddSpec } from './story';
 import { update, Updater } from './utils';
 import { Narrator, World } from './world';
 
-export function narrative_fsa_builder
+export function narrative_state_machine
 <W extends World, StateID extends string=string>
 (
     get_state_id: (w: W) => StateID,
     transition_to: (w: W, state: StateID) => W
 ) {
-    type Transitions = Partial<Record<StateID, ConsumeSpec>>;//{ [K in StateID]: ConsumeSpec };
-    type Interpretations = Partial<Record<StateID, LocalInterpretationSpec>>;
+    type Transitions = Map<StateID, ConsumeSpec>;
+    type StateCSSUpdates = Map<StateID, CSSUpdates>;
 
     type PWUpdate<W> = (world: W) => W;
 
     type StateSpec<W1 extends W=W> = {
         id: StateID,
-        enter_message?: MessageUpdateSpec,
-        exit_message?: MessageUpdateSpec,
+        enter_message?: TextAddSpec,
+        exit_message?: TextAddSpec,
         transitions?: Transitions,
-        interpretations?: Interpretations,
+        css_updates?: StateCSSUpdates,
         enter?: MaybeStages<PWUpdate<W1>>,
         exit?: MaybeStages<PWUpdate<W1>>,
         here?: MaybeStages<PWUpdate<W1>>,
@@ -33,7 +34,7 @@ export function narrative_fsa_builder
     // the nodes specified in transitions.
     function make_transitioner(world: PW, transitions: Transitions, debug: boolean=false) {
         return (parser: Parser) => {
-            if (transitions === undefined || Object.keys(transitions).length === 0) {
+            if (transitions === undefined || transitions.size === 0) {
                 return parser.eliminate();
             }
             if (debug) {
@@ -41,7 +42,7 @@ export function narrative_fsa_builder
             }
             
             return parser.split(
-                Object.entries(transitions).map(([destination, consume_spec]) => () => {
+                [...transitions].map(([destination, consume_spec]) => () => {
                     parser.consume(<ConsumeSpec>consume_spec);
                     if (parser.failure) {
                         return parser.failure;
@@ -50,7 +51,7 @@ export function narrative_fsa_builder
                     if (parser.failure) {
                         return parser.failure;
                     }
-                    return transition_to(world, <StateID>destination);
+                    return transition_to(world, destination);
                 })
             );
         }
@@ -81,12 +82,12 @@ export function narrative_fsa_builder
                 if (get_state_id(world_2) !== spec.id &&
                     get_state_id(world_1) === spec.id) {
 
-                    if (exit[stage] !== undefined) {
-                        world_2 = exit[stage](world_2);
+                    if (exit.has(stage)) {
+                        world_2 = exit.get(stage)!(world_2);
                     }
 
                     if (stage === 0 && spec.exit_message !== undefined) {
-                        world_2 = update(world_2, <Updater<PW>> message_updater(spec.exit_message));
+                        world_2 = update(world_2, <Updater<PW>> story_updater(spec.exit_message));
                     }
                 }
 
@@ -94,24 +95,23 @@ export function narrative_fsa_builder
                 if (get_state_id(world_2) === spec.id &&
                     get_state_id(world_1) !== spec.id) {
                     
-                    if (enter[stage] !== undefined) {
-                        world_2 = enter[stage](world_2);
+                    if (enter.has(stage)) {
+                        world_2 = enter.get(stage)!(world_2);
                     }
 
                     if (stage === 0 && spec.enter_message !== undefined) {
-                        world_2 = update(world_2, <Updater<PW>> message_updater(spec.enter_message));
+                        world_2 = update(world_2, <Updater<PW>> story_updater(spec.enter_message));
                     }
                 }
 
                 // here
                 if (get_state_id(world_2) === spec.id) {
-                    if (spec.interpretations !== undefined) {
+                    if (spec.css_updates !== undefined) {
                         world_2 = <PW><unknown> update(<World><unknown>world_2,
-                            interpretation_updater(
-                                world_2, (w) => spec.interpretations![get_state_id(w)]!));
+                            css_updater((w: W) => spec.css_updates!.get(get_state_id(w)) || {}))
                     }
-                    if (here[stage] !== undefined) {
-                        world_2 = here[stage](world_2);
+                    if (here.has(stage)) {
+                        world_2 = here.get(stage)!(world_2);
                     }
                 }
 

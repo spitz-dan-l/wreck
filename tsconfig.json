@@ -21,6 +21,10 @@
         "noImplicitReturns": true
     },
     "include": [
+        // "./src/typescript/main.tsx",
+        // "./src/typescript/demo_worlds/bird_world.tsx",
+        // "./src/typescript/match.ts",
+        "./src/typescript/**/*"
         // "./src/typescript/main.tsx"
         // "./src/tests",
         // "./src/typescript/*",
@@ -29,26 +33,9 @@
         // "./src/typescript/demo_worlds/bird_world.tsx"
         
     ],
-    "files": [
-        "./src/typescript/main.tsx",
-        "./src/typescript/demo_worlds/bird_world.tsx",
-        "./src/typescript/match.ts"
-    ],
     "exclude": [
-        // "./src/*",
-        // "./src/**",
-        // "./src/**/*",
-        // "./src/**/**",
         "./src/tests",
         "./src/tests/*",
-        "./src/tests/**",
-        // "./src/typescript/demo_worlds/*",
-        // "./src/typescript/demo_worlds/**",
-        // "./src/typescript/demo_worlds/narrascope/*",
-        "./src/typescript/venience",
-        // "./src/typescript/lock.ts",
-        // "./src/typescript/narrative_fsa.ts",
-        "./src/typescript/UI/Terminal2.tsx",
-        "./src/typescript/UI/Terminal3.tsx",
+        "./src/tests/**"
     ]
 }

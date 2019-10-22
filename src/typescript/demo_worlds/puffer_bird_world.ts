@@ -1,8 +1,8 @@
 import { make_puffer_world_spec, Puffer } from '../puffer';
-import { random_choice } from '../text_tools';
-import { appender, update } from '../utils';
+import { random_choice } from '../text_utils';
+import { append, update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
-import { interpretation_updater } from '../interpretation';
+import { css_updater, story_updater } from '../story';
 import { failed, ParseValue } from '../parser';
 
 export interface BirdWorld extends World {}
@@ -30,19 +30,17 @@ let LocationPuffer: Puffer<BirdWorld> = {
                     let new_pos = !world.is_in_heaven;
                     let loc = new_pos ? 'in Heaven' : 'standing around on the ground';
                     
-                    return update(world, {
-                        message: {
-                            consequence: appender(`You are currently ${loc}.`)
-                        },
-                        is_in_heaven: new_pos
-                    });
+                    return update(world,
+                        story_updater(`You are currently ${loc}.`),
+                        { is_in_heaven: new_pos }
+                    );
                 })
             );   
         });
     },
 
     post: (new_world, old_world) => {
-        return update(new_world, interpretation_updater(new_world, (w) => {
+        return update(new_world, css_updater((w) => {
             if (w.is_in_heaven === new_world.is_in_heaven) {
                 return {happy: true };
             } else {
@@ -82,23 +80,25 @@ let ZarathustraPuffer: Puffer<BirdWorld> = {
             'Zerthes Threstine'
         ]
         let mispronunciation = random_choice(utterance_options);
-        return update(world, {
-            message: {
-                action: appender(`"${mispronunciation}," you say.`)
-            }
-        });
+        return update(world,
+            story_updater({
+                action: `"${mispronunciation}," you say.`
+            })
+        );
     },
 
     post: (new_world, old_world) => {
         if (old_world.is_in_heaven && !new_world.is_in_heaven) {
-            return update(new_world, { message:
-                { action: appender('You wave bye to Zarathustra.')}
-            });
+            return update(new_world,
+                story_updater({ 
+                    action: 'You wave bye to Zarathustra.'
+                })
+            );
         }
         if (!old_world.is_in_heaven && new_world.is_in_heaven) {
-            return update(new_world, {
-                message: {
-                    description: appender(
+            return update(new_world, 
+                story_updater({
+                    description: (
                         !new_world.has_seen_zarathustra ?
                         `There's a bird up here. His name is Zarathustra.
                          {{#vulnerable}}He is sexy.{{/vulnerable}}
@@ -106,9 +106,9 @@ let ZarathustraPuffer: Puffer<BirdWorld> = {
                         `Zarathustra is here.
                          {{#vulnerable}}(What a sexy bird.){{/vulnerable}}`
                     )
-                },
-                has_seen_zarathustra: true
-            });
+                }),
+                { has_seen_zarathustra: true }
+            );
         }
         return new_world;
     },
@@ -173,16 +173,14 @@ let RolePuffer: Puffer<BirdWorld> = {
             return parser.failure;
         }
 
-        return update(world, {
-            role: qualities[choice],
-            message: {
-                consequence: appender(`You feel ${qualities[choice]}.`)
-            }
-        });
+        return update(world,
+            { role: qualities[choice] },
+            story_updater(`You feel ${qualities[choice]}.`)
+        );
     },
 
     post: (new_world, old_world) =>
-        update(new_world, interpretation_updater(new_world, (w) => {
+        update(new_world, css_updater((w) => {
             if (new_world.role === 'vulnerable') {
                 return {vulnerable: true };
             } else {
