@@ -1,114 +1,82 @@
-import { createElement } from '../create';
-import { Fragment, is_story_node, is_story_hole, StoryNode, StoryHole } from "../story";
-
-import { story_query, StoryQueryTypes, StoryQuerySpec, StoryQueryName, StoryQuerySpecs } from './query';
-import { story_op, CSSUpdates, StoryOpTypes, StoryOpSpec, StoryOpSpecs, StoryUpdateOps, StoryOps, StoryOp } from './op';
-import { StoryUpdateSpec, story_update, Story, StoryUpdatePlan, StoryUpdateGroups, StoryUpdateStage, StoryUpdateGroup, ReversibleUpdateSpec } from "./update";
-
-import { World } from "../../world";
-import { stages, stage_keys, stage_entries, Stages } from "../../stages";
-
-import { append, update, map_values } from "../../utils";
-
+import { DSLProps, make_dsl, ReplaceReturn, DSL } from '../../dsl_utils';
 import { history_array } from "../../history";
-
 import { Parsing } from "../../parser";
-
+import { stages, Stages, stage_entries, stage_keys } from "../../stages";
 import { ParsedTextStory } from "../../UI/components/parsed_text";
-import { StaticNameIndexFor } from '../../static_resources';
-
-
-/** 
- * DSL ideas
- * 
- * shortened expressions for raw story_updates...
- *      builder.eph().remove_eph()     
- * 
- *      ['eph', 'remove_eph']
- *      ['story_hole', 'replace', ]
- * 
- * 
-*/
-
-export type DSLHelper<ParamTypes, Out> = {
-    [K in keyof ParamTypes]: (parameters: ParamTypes[K]) => Out
-};
-
-
-export function dsl_helper<
-    ParamTypes,
-    Out
->(
-    static_names: StaticNameIndexFor<ParamTypes>,
-    constructor: <K extends keyof ParamTypes>(name: K, parameters: ParamTypes[K]) => Out
-): DSLHelper<ParamTypes, Out> {
-    return map_values(static_names,
-        <K extends keyof ParamTypes>(x: unknown, name: K) => {
-            function _dsl_inner(parameters: ParamTypes[K]): Out {
-                return constructor(name, parameters);
-            }
-            return _dsl_inner
-        });
-}
-
-export const query_dsl = dsl_helper<StoryQueryTypes, StoryQuerySpec>(StoryQueryName, story_query);
-export const op_dsl = dsl_helper<StoryOpTypes, StoryOpSpec>(StoryUpdateOps, story_op)
-
-export const update_dsl = dsl_helper(StoryQueryName, (q_name, q_params) => {
-    return dsl_helper(StoryUpdateOps as StaticNameIndexFor<StoryOpTypes>, (op_name, op_params) =>
-        story_update(
-            story_query(q_name, q_params),
-            story_op(op_name, op_params)
-        )
-    ); 
-});
-
-const xxxd = update_dsl.has_class({class: 'buh'}).remove()
+import { append, update } from "../../utils";
+import { World } from "../../world";
+import { createElement } from '../create';
+import { Fragment, is_story_hole, is_story_node, StoryHole, StoryNode } from "../story";
+import { CSSUpdates, StoryOps, StoryOpSpec, story_op } from './op';
+import { StoryQueries, StoryQuerySpec, story_query } from './query';
+import { Story, StoryUpdatePlan, StoryUpdateSpec, StoryUpdateStage, story_update } from "./update";
 
 // TODO: Update Group dsl
 // - includes standard text shortcuts
 // - includes css applied to multiple indexes
 // - other arbitrary groups of updates
+/**
+ *  
+ * update(world, story_updates(u =>
+ * u.group()(
+ *      u.frame(5)(
+ *          u.action().add(<div>He does it</div>),
+ *          u.consequence().add('He is bad now.')
+ *      )
+ * )
+ * 
+ * group([
+ *      frame(5, [
+ *          action(<div>He does it</div>),
+ *          consequence('He is bad now')
+ *          css({butt: true})
+ *      )
+ *      
+ *      frame((w, f) => f().data.frame_index > 3)
+ *      has_class('butt').css()
+ * 
+ *      
+ * ])
+ * 
+ * 
+ */
+//
 
-export function push_group(plan: Stages<StoryUpdateStage>, group: StoryUpdateGroup, stage?: number) {
-    let group_index: number | undefined = undefined;
+type QuerySpecDomain = {
+    [K in keyof StoryQueries]: (...params: Parameters<StoryQueries[K]>) => StoryQuerySpec
+};
 
-    function find_group_index(groups: StoryUpdateStage) {
-        return groups.findIndex(g => g.name === group.name);
-    }
+export const query_dsl = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
+export const op_dsl = make_dsl<ReplaceReturn<StoryOps, StoryOpSpec>>(name => (...params) => story_op(name, ...params));
 
-    if (stage === undefined) {
-        for (const [s, groups] of stage_entries(plan)) {
-            const idx = find_group_index(groups);
-            if (idx !== -1) {
-                stage = s;
-                group_index = idx;
-            }
-        }
-    }
+type UpdateDSL = ReplaceReturn<StoryQueries, DSLProps<UpdateDSL2>>;
+type UpdateDSL2 = ReplaceReturn<StoryOps, StoryUpdateSpec>;
 
-    if (stage === undefined) {
-        stage = 0;
-    }
+export const update_dsl = make_dsl<UpdateDSL>(
+    (q_name) => (...q_params) =>
+        make_dsl<UpdateDSL2>(
+            (op_name) => (...op_params) =>
+                story_update(
+                    story_query(q_name, ...q_params),
+                    story_op(op_name, ...op_params)
+                )
+    )
+);
 
-    if (!plan.has(stage)) {
-        group_index = -1;
-    }
 
-    if (group_index === undefined) {
-        group_index = find_group_index(plan.get(stage)!);
-    }
-
-    if (group_index === -1) {
-        return update(plan, stages([stage, append(group)]));
-    } else {
-        return update(plan, stages([stage, {
-            [group_index]: {
-                updates: append(...group.updates)
-            }
-        }]));
-    }
+export interface StoryUpdateBuilders {
+    frame(index: number, updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
+    frame(index: number[], updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
+    frame(f: (w: World, frame_thunk: () => StoryNode) => boolean, updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
+    
+    actions: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
+    consequences: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
+    description: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
+    prompt: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
+    
 }
+
+
 
 // Helpers for doing common story updates
 export type TextAddSpec = {

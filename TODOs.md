@@ -29,3 +29,15 @@ Proposals
         Even this would have forms of the above problems- how would you specify what the prerequisite updates are for a given update?
         A: You wouldn't? You'd specify a necessary *state of the story*, not an explicit set of updates to have run.
 
+
+TODOs optimizations
+- try using itiriri instead of array map/filter
+- story trees
+    - find a way to avoid even building the full tree each frame
+        - would only really help in future search
+    - hold onto a map of keys to [node, Path] at the root of each story tree
+        Faster to do find_node
+- parser
+    - Avoid repeat walks by cloning the parser at each split
+        If the repeat bits are slow, or cause a lot of gc, this could help
+        Might have to ban variable reassignments to outer scopes from inside parser threads... hard to enforce

@@ -258,6 +258,11 @@ export function map_values<V1 extends { [K in keyof any]: any }, V2 extends { [K
     return <V2>from_entries(entries(obj).map(([k, v]) => [k, f(v, k)]));
 }
 
+export function lazy_map_values<V1 extends { [K in keyof any]: any }, V2 extends { readonly [K in keyof V1]: any }=V1>(obj: V1, f: <K extends keyof V1>(v: V1[K], k: K) => V2[K]): V2 {
+    return new Proxy(obj, {
+        get: (a, b: keyof V1) => f(a[b], b)
+    });
+}
 
 // export function map_values<K extends keyof any, V1 extends { [k in K]: any }, V2 extends { [k in K]: any }=V1>(obj: V1, f: <k extends K>(v: V1[k]) => V2[k]): V2 {
 //     return from_entries(entries(obj).map(([k, v]) => [k, f(v)]));

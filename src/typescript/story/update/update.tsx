@@ -7,8 +7,9 @@ import { append, update } from '../../utils';
 import { World } from '../../world';
 import { createElement } from '../create';
 import { find_all_nodes, find_node, FoundNode, Fragment, is_story_hole, is_story_node, Path, replace_in, splice_in, StoryHole, StoryNode } from '../story';
-import { compile_story_update_op, StoryOpSpec, story_op, StoryOpTypes, StoryOpSpecs } from './op';
-import { compile_story_query, StoryQueryIndex, StoryQuerySpec, story_query, StoryQueryTypes, StoryQuerySpecs } from './query';
+import { compile_story_update_op, StoryOpSpec, story_op, StoryOpSpecs } from './op';
+import { compile_story_query, StoryQueryIndex, StoryQuerySpec, story_query, StoryQueries, StoryQuerySpecs } from './query';
+import { StoryUpdateGroup } from './update_group';
 
 export type Story = StoryNode & { __brand: 'Story' };
 
@@ -19,22 +20,6 @@ export type StoryUpdateSpec = {
     query: StoryQuerySpec,
     op: StoryOpSpec
 };
-
-export interface StoryUpdateGroups {
-    init_frame: 'Updates that initialize the new frame and move the storyhole forward';
-    updates: "Generic updates that you don't need a distinct group for.";
-}
-
-export type StoryUpdateGroup<K extends keyof StoryUpdateGroups=keyof StoryUpdateGroups> = {
-    name: K,
-    updates: StoryUpdateSpec[]
-}
-
-export function story_update_group(updates: StoryUpdateSpec[]): StoryUpdateGroup<'updates'>;
-export function story_update_group<K extends keyof StoryUpdateGroups>(updates: StoryUpdateSpec[], name: K): StoryUpdateGroup<K>;
-export function story_update_group(updates: StoryUpdateSpec[], name: keyof StoryUpdateGroups='updates'): StoryUpdateGroup {
-    return { name, updates };
-}
 
 export type ReversibleOpSpec = StoryOpSpec & { name: 'css' };
 export type ReversibleUpdateSpec = StoryUpdateSpec & { op: ReversibleOpSpec };

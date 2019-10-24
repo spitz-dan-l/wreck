@@ -4,46 +4,45 @@ import { story_to_dom } from '../dom';
 import { Effects } from "../../effect_utils";
 
 import { update, append, map_values } from "../../utils";
+import { ParametersFor } from "../../dsl_utils";
 
 export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | Fragment[]
 
-export interface StoryOpTypes {
-    add: { children: Fragment | Fragment[], no_animate?: boolean };
-    remove: void;
-    css: CSSUpdates;
-    remove_eph: void;
-    replace: { replacement: Fragment[] };
-    insert_after: { nodes: Fragment | Fragment[], no_animate?: boolean };
+export interface StoryOps {
+    add: (children: Fragment | Fragment[], no_animate?: boolean) => StoryOp;
+    remove: () => StoryOp;
+    css: (updates: CSSUpdates) => StoryOp;
+    remove_eph: () => StoryOp;
+    replace: (replacement: Fragment[]) => StoryOp;
+    insert_after: (siblings: Fragment | Fragment[], no_animate?: boolean) => StoryOp;
 }
 
 export type CSSUpdates = {
     [class_name: string]: boolean;
 };
 
+export type StoryOpParams = ParametersFor<StoryOps>;
+
 export type StoryOpSpecs = {
-    [K in keyof StoryOpTypes]: {
+    [K in keyof StoryOpParams]: {
         name: K,
-        parameters: StoryOpTypes[K]
+        parameters: StoryOpParams[K]
     }
 };
 
 export type StoryOpSpec = StoryOpSpecs[keyof StoryOpSpecs];
 
-export function story_op<O extends keyof StoryOpTypes>(name: O, parameters: StoryOpTypes[O]): StoryOpSpec {
+export function story_op<O extends keyof StoryOpParams>(name: O, ...parameters: StoryOpParams[O]): StoryOpSpec {
     return  { name, parameters } as StoryOpSpecs[O];
 }
 
-export type StoryOps = {
-    [K in keyof StoryOpTypes]: (parameters: StoryOpTypes[K]) => StoryOp
-};
-
 export const StoryUpdateOps: StoryOps = {
-    add: ({children, no_animate}) => (parent, effects?) => {
+    add: (children, no_animate?) => (parent, effects?) => {
         if (!is_story_node(parent)) {
             throw new Error('Tried to append children to terminal node '+JSON.stringify(parent));
         }
         if (children instanceof Array) {
-            return children.reduce((p, c) => StoryUpdateOps.add({children: c})(p, effects), parent);
+            return children.reduce((p, c) => StoryUpdateOps.add(c, no_animate)(p, effects), parent);
         }
         
         if (!no_animate && is_story_node(children)){
@@ -62,7 +61,7 @@ export const StoryUpdateOps: StoryOps = {
             children: append(children)
         });
     },
-    insert_after: ({nodes, no_animate}) => (elt, effects?) => {
+    insert_after: (nodes, no_animate?) => (elt, effects?) => {
         if (!no_animate) {
             const add_animation_class = (node: Fragment) => {
                 if (!is_story_node(node)) {
@@ -141,7 +140,7 @@ export const StoryUpdateOps: StoryOps = {
         }
         return [];
     },
-    replace: ({replacement}) => (elt, effects?) => {
+    replace: (replacement) => (elt, effects?) => {
         if (effects) {
             effects.push(dom => {
                 if (replacement instanceof Array) {
