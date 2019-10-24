@@ -69,11 +69,13 @@ export interface StoryUpdateBuilders {
     frame(index: number[], updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
     frame(f: (w: World, frame_thunk: () => StoryNode) => boolean, updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
     
-    actions: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
-    consequences: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
-    description: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
-    prompt: (children: Fragment | Fragment[], index?: number) => StoryUpdateSpec;
-    
+    actions: (children: Fragment | Fragment[]) => StoryUpdateSpec;
+    consequences: (children: Fragment | Fragment[]) => StoryUpdateSpec;
+    description: (children: Fragment | Fragment[]) => StoryUpdateSpec;
+    prompt: (children: Fragment | Fragment[]) => StoryUpdateSpec;
+
+    css: (updates: CSSUpdates) => StoryUpdateSpec;
+
 }
 
 
