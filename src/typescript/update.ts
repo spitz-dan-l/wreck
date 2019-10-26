@@ -119,14 +119,13 @@ export type ObjectUpdater<T> = {
 };
 
 import {F} from 'ts-toolbelt';
-import {clone} from 'lodash';
 
 // The second generic type parameter is a hack to prevent typescript from using the contents of updater
 // to figure out the source and return types when doing type inference on calls to this function.
 export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
     // if updater is a function, call it and return the result
     if (updater instanceof Function) {
-        return <S>(<Function> updater)(clone(source));
+        return <S>(<Function> updater)(source);
     }
 
     // if updater is a non-traversible value

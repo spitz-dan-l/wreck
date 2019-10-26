@@ -1,15 +1,18 @@
-import { DSLProps, make_dsl, ReplaceReturn, DSL } from '../../dsl_utils';
+import { DSLProps, make_dsl, ReplaceReturn, DSL, ContextualFunction, contextual_function, with_context, bind, bind_all } from '../../dsl_utils';
 import { history_array } from "../../history";
 import { Parsing } from "../../parser";
 import { stages, Stages, stage_entries, stage_keys } from "../../stages";
 import { ParsedTextStory } from "../../UI/components/parsed_text";
-import { append, update } from "../../utils";
+import { append, update, lazy_map_values, Updater } from "../../utils";
 import { World } from "../../world";
 import { createElement } from '../create';
 import { Fragment, is_story_hole, is_story_node, StoryHole, StoryNode } from "../story";
 import { CSSUpdates, StoryOps, StoryOpSpec, story_op } from './op';
 import { StoryQueries, StoryQuerySpec, story_query } from './query';
 import { Story, StoryUpdatePlan, StoryUpdateSpec, StoryUpdateStage, story_update } from "./update";
+import { StoryUpdateGroups } from './update_group';
+import { Update } from 'ts-toolbelt/out/types/src/Tuple/_api';
+import { F } from 'ts-toolbelt';
 
 // TODO: Update Group dsl
 // - includes standard text shortcuts
@@ -42,17 +45,93 @@ import { Story, StoryUpdatePlan, StoryUpdateSpec, StoryUpdateStage, story_update
  */
 //
 
+type UpdateSpecs = StoryUpdateSpec | UpdateSpecArray;
+interface UpdateSpecArray extends Array<UpdateSpecs> {};
+
+type StoryUpdateBuilderContext = {
+    query?: StoryQuerySpec;
+    op?: StoryOpSpec;
+
+    group_name?: keyof StoryUpdateGroups;
+    stage?: number;
+};
+
+interface UpdatesConstructor<T extends Updates_> {
+    new(context?: StoryUpdateBuilderContext): T
+}
+
+class Updates_ {
+    constructor(public context: StoryUpdateBuilderContext = {}) {};
+
+    update_context(updater: Updater<StoryUpdateBuilderContext>): this {    
+        return new (this.constructor as UpdatesConstructor<this>)(update(this.context, updater));
+    }
+
+    frame(index?: number | number[] | undefined): this {
+        return this.update_context({
+            query: (q) => {
+                if (q === undefined) {
+                    return Queries.frame(index)
+                }
+                return Queries.chain(q, Queries.frame(index))
+            }
+        });
+    }
+
+    css(updates: CSSUpdates): StoryUpdateSpec {
+        let builder: this = this;
+        if (this.context.query === undefined) {
+            builder = this.update_context({
+                query: Queries.frame()
+            })
+        }
+        return story_update(builder.context.query!, Ops.css(updates));
+    }
+
+    apply(f: (builder: this) => UpdateSpecs): UpdateSpecs {
+        return f(this);
+    }
+}
+
+const text_methods = ['actions', 'consequences', 'description', 'prompt'] as const;
+type TextMethodNames = (typeof text_methods)[number];
+
+type TextAddMethods = {
+    [K in TextMethodNames]:
+        (this: Updates_, children: Fragment | Fragment[]) => StoryUpdateSpec
+}
+
+// Merge in the text add methods to the interface
+interface Updates_ extends TextAddMethods {}
+
+// Merge in the implementations to the class proto
+for (const prop of text_methods) {
+    Updates_.prototype[prop] = function(children) {
+        let base_query = this.context.query;
+        if (base_query === undefined) {
+            base_query = Queries.frame();
+        }
+        return story_update(
+            Queries.chain(base_query, Queries.has_class(prop)),
+            Ops.add(children)
+        );
+    }
+}
+
+const u1 = new Updates_();
+const ccc = u1.constructor
+
 type QuerySpecDomain = {
     [K in keyof StoryQueries]: (...params: Parameters<StoryQueries[K]>) => StoryQuerySpec
 };
 
-export const query_dsl = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
-export const op_dsl = make_dsl<ReplaceReturn<StoryOps, StoryOpSpec>>(name => (...params) => story_op(name, ...params));
+export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
+export const Ops = make_dsl<ReplaceReturn<StoryOps, StoryOpSpec>>(name => (...params) => story_op(name, ...params));
 
 type UpdateDSL = ReplaceReturn<StoryQueries, DSLProps<UpdateDSL2>>;
 type UpdateDSL2 = ReplaceReturn<StoryOps, StoryUpdateSpec>;
 
-export const update_dsl = make_dsl<UpdateDSL>(
+export const Updates = make_dsl<UpdateDSL>(
     (q_name) => (...q_params) =>
         make_dsl<UpdateDSL2>(
             (op_name) => (...op_params) =>
@@ -64,11 +143,11 @@ export const update_dsl = make_dsl<UpdateDSL>(
 );
 
 
+
+
 export interface StoryUpdateBuilders {
-    frame(index: number, updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
-    frame(index: number[], updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
-    frame(f: (w: World, frame_thunk: () => StoryNode) => boolean, updates: (StoryUpdateSpec | StoryOpSpec)[]): StoryUpdateSpec[];
-    
+    frame(index: number | number[] | undefined, update_f: (dsl: DSL<Buh>) => FrameUpdates): StoryUpdateSpec[];
+
     actions: (children: Fragment | Fragment[]) => StoryUpdateSpec;
     consequences: (children: Fragment | Fragment[]) => StoryUpdateSpec;
     description: (children: Fragment | Fragment[]) => StoryUpdateSpec;
@@ -76,9 +155,62 @@ export interface StoryUpdateBuilders {
 
     css: (updates: CSSUpdates) => StoryUpdateSpec;
 
+    story_update: () => UpdateDSL;
 }
 
+export type Buh = {
+    [K in keyof StoryUpdateBuilders]: ContextualFunction<StoryQuerySpec, StoryUpdateBuilders[K]>
+}
 
+export declare const BuhImpls: Buh;
+
+type BuhDSL = DSL<Buh>;
+declare let buh_dsl: BuhDSL;
+
+const x = buh_dsl.css({a: true});
+const x1 = buh_dsl.frame(5, bind_all(buh_dsl, (dsl) => [
+    dsl.css({a:true}),
+    dsl.frame(3, (dsl) => []),
+    dsl.story_update().has_class('steve').add('buh'),
+    dsl.actions('sef')
+]))
+
+
+const css = contextual_function(
+    ((ctx) => (updates: CSSUpdates) =>
+        story_update(ctx(), Ops.css(updates))),
+    Queries.frame());
+// const zzz = css({a: true});
+
+const frame: Buh['frame'] = contextual_function((ctx: () => StoryQuerySpec) => {
+    
+    function _frame(index: number | number[] | undefined, update_f: (dsl: DSL<Buh>) => FrameUpdates): StoryUpdateSpec[] {
+        const q = Queries.chain(ctx(), Queries.frame(index));
+        const dsl = lazy_map_values(BuhImpls, (x: ContextualFunction<StoryQuerySpec, any>) => with_context(x, q))
+        const result = update_f(dsl);
+        if (result instanceof Array) {
+            return result.flat(Infinity);
+        }
+        return [result];
+    }
+    return _frame;
+}, Queries.story_root()
+);
+
+with_context(css, Queries.eph())({a: true})
+
+frame(undefined, contextual_function((ctx) => () => [with_context(css, ctx())({a: true})]))
+
+frame(undefined, bind(css, (css) => [css({'a': true})]));
+
+frame(undefined, (dsl) => [
+    dsl.description('horse')
+]);
+
+const zzz = bind_all({css, frame}, ({css, frame}) => [css({'a': true})]);
+zzz()
+
+let xxx1 = with_context(() => 4, 15);
 
 // Helpers for doing common story updates
 export type TextAddSpec = {

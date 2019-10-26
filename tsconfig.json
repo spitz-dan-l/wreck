@@ -16,7 +16,7 @@
         "extendedDiagnostics": true,
         "skipDefaultLibCheck": true,
         "strictNullChecks": true,
-        "strictBindCallApply": false,
+        "strictBindCallApply": true,
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true
     },
