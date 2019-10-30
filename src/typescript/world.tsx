@@ -21,7 +21,7 @@
 */
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
 import { stages } from './stages';
-import { add_input_text, apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan } from './story';
+import { apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan, add_input_text } from './story';
 import { update } from './utils';
 
 export interface World {

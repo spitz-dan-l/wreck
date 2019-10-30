@@ -155,6 +155,6 @@ export const StoryUpdateOps: StoryOps = {
 }
 
 export function compile_story_update_op(op_spec: StoryOpSpec): StoryOp {
-    return StoryUpdateOps[op_spec.name](op_spec.parameters as any);
+    return (StoryUpdateOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp)(...op_spec.parameters);
 }
 

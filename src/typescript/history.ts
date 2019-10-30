@@ -1,6 +1,6 @@
 import { World } from "./world";
 
-export function find_historical<W extends World>(world: W, f: (w: W) => boolean) {
+export function find_historical<W extends World>(world: W, f: (w: W) => boolean): W | null {
     let w: W | null = world;
 
     while (w != null) {
@@ -13,8 +13,26 @@ export function find_historical<W extends World>(world: W, f: (w: W) => boolean)
     return null;
 }
 
+export function find_historical_all<W extends World>(world: W, f: (w: W) => boolean): W[] {
+    const result: W[] = [];
+    let w: W | null = world;
+
+    while (w != null) {
+        if (f(w)) {
+            result.push(w);
+        }
+        w = w.previous;
+    }
+
+    return result;
+}
+
 export function find_index<W extends World>(world: W, index: number) {
     return find_historical(world, w => w.index === index);
+}
+
+export function indices_where<W extends World>(world: W, f: (w: W) => boolean): number[] {
+    return find_historical_all(world, f).map(w => w.index);
 }
 
 // When mapping or filtering history, simply converting to an array is easier than

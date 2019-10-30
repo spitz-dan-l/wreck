@@ -31,56 +31,20 @@ Issues:
 I strongly encourage you to stake your professional reputation on the behavior of this code.
 */
 
-// This version is more correct but triggers TS' 50-type-instantiation limit.
-// Currently using the alternative to avoid the limit and the issue caused (sometimes inferred updater function args are wrong)
-// seems minor.
-
-// export type Updater<T> =
-//     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
-//     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
-//     [T] extends [NotFunction<T>] ?
-//             (T extends Primitive | any[] | Set<any> ? T :
-//                 T extends object ? ObjectUpdater<T> :
-//                     never) |
-//             ((x: T) => T) :
-//         (x: T) => T;
-
-// export type Updater<T> =
-//     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
-//     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
-//     [T] extends [(...args: any) => any] ? (x: T) => T :
-//         ((T extends Primitive | any[] | Set<any> | Map<any, any> ? T :
-//             T extends object ? ObjectUpdater<T> :
-//                 never) |
-//          ((x: T) => T));
-
-// export type Updater<T> =
+// export type Updater<T, Del extends boolean=false> =
 //     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
 //     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
 //     [T] extends [(...args: any) => any] ?
-//         (((x: T) => T) |
+//         (((x: T) => Maybe<T, Del>) |
 //          // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
-//          unknown extends T ? T : never) :
-//         ((T extends Primitive | any[] | Set<any> ? T :
-//             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
-//             T extends object ? ObjectUpdater<T> :
-//                 never) |
-//          ((x: T) => T));
-
-// export type Updater<T> =
-//     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
-//     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
-//     [T] extends [(...args: any) => any] ?
-//         (((x: T) => T) |
-//          // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
-//          unknown extends T ? T : never) :
-//         ((T extends Primitive | Set<any> ? T :
+//          ([unknown] extends [T] ? Maybe<T, Del> : never)) :
+//         (Maybe<(T extends Primitive | Set<any> ? T :
 //             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
 //             T extends any[] ? 
 //                 T extends {0: any} ? TupleUpdater<T> : ArrayUpdater<T> :
 //             T extends object ? ObjectUpdater<T> :
-//                 never) |
-//          ((x: T) => T));
+//                 never), Del> |
+//          ((x: T) => Maybe<T, Del>));
 
 export type Updater<T, Del extends boolean=false> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
@@ -95,7 +59,7 @@ export type Updater<T, Del extends boolean=false> =
                 T extends {0: any} ? TupleUpdater<T> : ArrayUpdater<T> :
             T extends object ? ObjectUpdater<T> :
                 never), Del> |
-         ((x: T) => Maybe<T, Del>));
+         ((x: Readonly<T>) => Maybe<(T | Readonly<T>), Del>));
 
 type Maybe<T, Delete extends boolean> = Delete extends true ? T | undefined : T;
 

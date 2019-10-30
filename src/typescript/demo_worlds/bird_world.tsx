@@ -1,8 +1,9 @@
 import { failed } from '../parser';
-import { createElement, css_updater, story_updater, StoryQueryIndex } from '../story';
+import { createElement, story_updater, StoryQueryIndex, Groups, Updates } from '../story';
 import { random_choice } from '../text_utils';
 import { update } from '../utils';
 import { CommandHandler, get_initial_world, make_world_spec, Narrator, World, world_driver } from '../world';
+import { indices_where } from '../history';
 
 StoryQueryIndex.seal();
 
@@ -26,14 +27,14 @@ export function new_bird_world() {
 }
 
 let post: Narrator<BirdWorld> = (new_world, old_world) => {
+    function is_happy(w: BirdWorld) {
+        return w.is_in_heaven === new_world.is_in_heaven;
+    }
     return update(new_world,
-        css_updater(w => {
-            if (w.is_in_heaven === new_world.is_in_heaven) {
-                return { happy: true };
-            } else {
-                return { happy: false };
-            }    
-        })
+        story_updater(Groups.push(
+            Updates.map_worlds(new_world,
+                (w, frame) => frame.css({happy: is_happy(w)}))
+        ))
     );
 }
 
@@ -76,9 +77,9 @@ let go_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     }
 
     return update(world,
-        story_updater({
-            consequence: <div>You are currently {dir}.</div>
-        }),
+        story_updater(
+            Updates.consequence(<div>You are currently {dir}.</div>)
+        ),
         { is_in_heaven: _ => !_}
     );
 }
@@ -108,9 +109,9 @@ let mispronounce_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     let message = `"${random_choice(utterance_options)}," you say.`;
 
     return update(world,
-        story_updater({
-            action: <div>{message}</div>
-        })
+        story_updater(
+            Updates.action(<div>{message}</div>)
+        )
     );
 }
 
@@ -160,8 +161,8 @@ let be_cmd: CommandHandler<BirdWorld> = (world, parser) => {
     }
 
     return update(world,
-        story_updater({
-            consequence: <div>You feel {quality}.</div>
-        })
+        story_updater(
+            Updates.consequence(<div>You feel {quality}.</div>)
+        )
     );
 }

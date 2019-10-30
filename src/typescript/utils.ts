@@ -120,12 +120,10 @@ export function infer_literal_array<T extends string>(...arr: T[]): T[] {
 
 export function append<T>(...elts: T[]){
     function _append(arr: T[]): T[];
-    // function _append(arr?: T[]): T[];
     function _append(arr?: T[]): T[] {
         return [...(arr || []), ...elts];
     }
     return _append;
-    return (arr?: T[]) => [...(arr || []), ...elts];
 }
 
 export function appender_uniq<T>(...elts: T[]) {
@@ -204,9 +202,20 @@ export function merge_objects<T extends {}>(arr: T[]): T {
     return arr.reduce((acc, cur) => ({...acc, ...cur}), {} as T);
 }
 
-export type Entry<Obj extends {}> = Exclude<{
-    [K in keyof Obj]: [K, Exclude<Obj[K], undefined>]
-}[keyof Obj], undefined>;
+// export type Entry<Obj extends {}> = Exclude<{
+//     [K in keyof Obj]: [K, Exclude<Obj[K], undefined>]
+// }[keyof Obj], undefined>;
+
+export type Entry<Obj extends {}> = {
+    [K in keyof Obj]-?: [K, NonNullable<Obj[K]>]
+}[keyof Obj];
+
+// export type Entry<Obj extends {}> =
+//     Required<Obj> extends infer T
+//         ? {
+//             [K in keyof T]: [K, T[K]]
+//         }[keyof T]
+//         : never;
 
 export function entries<Obj extends {}>(obj: Obj): Entry<Obj>[] {
     return <Entry<Obj>[]> Object.entries(obj);
@@ -235,9 +244,8 @@ export function drop_keys<O extends {}, K extends keyof O>(obj: O, ...keys: K[])
     return result;
 }
 
-export function from_entries<K extends keyof any, V>(entries: ReadonlyArray<readonly [K, V]>): {[k in K]: V} {
+export function from_entries<M extends {}>(entries: ReadonlyArray<Entry<M>>): M {
     let result: any = {};
-
     entries.forEach(([k, v]) => {
         result[k] = v;
     });
@@ -264,6 +272,21 @@ export function lazy_map_values<V1 extends { [K in keyof any]: any }, V2 extends
     });
 }
 
+export function map_values_entries<M1 extends { [K in keyof any]: any }, M2 extends { [K in keyof M1]: any }=M1>(obj: M1, f: <K extends keyof M1>(v: M1[K], k: K) => M2[K]): Entry<M2>[] {
+    return entries(obj).map(([k, v]): Entry<M2> => [k, f(v, k)]);
+}
+
+export function for_each_entries<O extends { [K in keyof any]: any }>(obj: O, f: <K extends keyof O>(e: [K, O[K]]) => void): void {
+    for (const e of entries(obj)) {
+        f(e);
+    }
+}
+
+export function entry_set<M1 extends { [K in keyof any]: any}, M2 extends M1=M1>(obj: M1, entry: Entry<M2>): void {
+    const [k, v] = entry;
+    obj[k] = v;
+}
+
 // export function map_values<K extends keyof any, V1 extends { [k in K]: any }, V2 extends { [k in K]: any }=V1>(obj: V1, f: <k extends K>(v: V1[k]) => V2[k]): V2 {
 //     return from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
 // }
@@ -272,8 +295,12 @@ export function lazy_map_values<V1 extends { [K in keyof any]: any }, V2 extends
 //     return from_entries(entries(obj).map(([k, v]) => [k, f(v)]));
 // }
 
-export function filter_values<K extends keyof any, V1>(obj: Partial<Record<K, V1>>, f: (v: V1) => boolean): Record<K, V1> {
-    return from_entries(entries(obj).filter(([k, v]) => f(v)));
+// export function filter_values<K extends keyof any, V1>(obj: Partial<Record<K, V1>>, f: (v: V1) => boolean): Record<K, V1> {
+//     return from_entries(entries(obj).filter(([k, v]) => f(v)));
+// }
+
+export function filter_values<M1 extends { [K in keyof any]: any }, K2 extends keyof M1=keyof M1>(obj: M1, f: (v: M1[keyof M1], k: keyof M1) => k is K2): {[K in K2]: M1[K]} {
+    return from_entries(entries(obj).filter((e): e is Entry<{[K in K2]: M1[K]}> => f(e[1], e[0])))
 }
 
 export function key_union(a: {}, b: {}) {
@@ -292,6 +319,7 @@ export function copy_map<K, V>(m: Map<K, V>) {
 export function map_updater<K, V>(x: [K, V][]) {
     return (m: Map<K, V>) => new Map([...m, ...x]);
 }
+
 
 // Helper for declaring values with tuple types.
 // "as const" would nearly make this unnecessary but @babel/preset-typescript 3.7.7 doesn't parse as const
@@ -469,4 +497,9 @@ export function with_context<C, R>(f: (set: (c: C) => void) => R): [R, C | undef
     const result = f(setter);
 
     return [result, context];
+}
+
+export type Writable<T> = T extends Readonly<infer W> ? W : T;
+export function writable<T>(t: T) {
+    return t as Writable<T>;
 }

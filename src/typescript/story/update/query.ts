@@ -26,7 +26,8 @@ export const StoryQueryName: StaticNameIndexFor<StoryQueries> = {
     'path': null,
     'story_hole': null,
     'story_root': null,
-    'chain': null
+    'chain': null,
+    'children': null
 }
 
 export const StoryQueryIndex = new StaticMap<StoryQueries>(StoryQueryName);

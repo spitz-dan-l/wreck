@@ -18,13 +18,12 @@
         "strictNullChecks": true,
         "strictBindCallApply": true,
         "noFallthroughCasesInSwitch": true,
-        "noImplicitReturns": true
+        "noImplicitReturns": true,
+        "noImplicitThis": true
     },
     "include": [
-        // "./src/typescript/main.tsx",
-        // "./src/typescript/demo_worlds/bird_world.tsx",
-        // "./src/typescript/match.ts",
-        "./src/typescript/**/*"
+        "./src/typescript/main.tsx",
+        // "./src/typescript/**/*"
         // "./src/typescript/main.tsx"
         // "./src/tests",
         // "./src/typescript/*",

@@ -1,6 +1,6 @@
 import { history_array } from "../history";
 import { make_consecutive, stages, stage_keys } from "../stages";
-import { apply_story_updates_all, compile_story_query, find_node, is_story_node, story_query, ReversibleUpdateSpec, Story, StoryUpdatePlan, story_update } from "../story";
+import { apply_story_updates_all, compile_story_query, find_node, is_story_node, story_query, ReversibleUpdateSpec, Story, StoryUpdatePlan, story_update, ReversibleOpSpec, StoryUpdateSpec } from "../story";
 import { update } from "../utils";
 import { World } from "../world";
 
@@ -46,28 +46,33 @@ export function final_story(world: World) {
     return apply_story_updates_all(world.story, world.story_updates);
 }
 
-export function compute_possible_effects(world: World, possible_world: World): ReversibleUpdateSpec[] {
+export function compute_possible_effects(world: World, possible_world: World): StoryUpdateSpec[] {
     const p_worlds = history_array(possible_world).filter(w => w.index > world.index);
+    return p_worlds.reverse().flatMap(p => p.story_updates.would_effects);
+} 
 
-    const result: ReversibleUpdateSpec[] = [];
-    for (const p_world of p_worlds) {
-        for (const w_ef of p_world.story_updates.would_effects) {
-            const matches = compile_story_query(w_ef.query)(p_world.story);
-            for (const [m, p] of matches) {
-                if (!is_story_node(m)) {
-                    continue;
-                }
-                if (find_node(world.story, (n => is_story_node(n) && n.key === m.key)) !== null) {
-                    result.push(story_update(
-                        story_query('key', { key: m.key }),
-                        w_ef.op
-                    ))
-                }
-            }
-        }
-    }
-    return result;
-}
+// export function compute_possible_effects(world: World, possible_world: World): ReversibleUpdateSpec[] {
+//     const p_worlds = history_array(possible_world).filter(w => w.index > world.index);
+
+//     const result: StoryUpdateSpec[] = [];
+//     for (const p_world of p_worlds) {
+//         for (const w_ef of p_world.story_updates.would_effects) {
+//             const matches = compile_story_query(w_ef.query)(p_world.story);
+//             for (const [m, p] of matches) {
+//                 if (!is_story_node(m)) {
+//                     continue;
+//                 }
+//                 if (find_node(world.story, (n => is_story_node(n) && n.key === m.key)) !== null) {
+//                     result.push(story_update(
+//                         story_query('key', m.key),
+//                         w_ef.op
+//                     ))
+//                 }
+//             }
+//         }
+//     }
+//     return result;
+// }
 
 export function animate(comp_elt: HTMLElement) {
     return new Promise<void>((resolve) => {

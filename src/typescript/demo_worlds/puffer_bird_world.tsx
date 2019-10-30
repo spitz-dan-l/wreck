@@ -2,8 +2,11 @@ import { make_puffer_world_spec, Puffer } from '../puffer';
 import { random_choice } from '../text_utils';
 import { append, update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
-import { css_updater, story_updater } from '../story';
+import { story_updater, Updates, createElement, StoryQueryIndex } from '../story';
 import { failed, ParseValue } from '../parser';
+import {gensym} from '../gensym';
+
+import csstype from 'csstype';
 
 export interface BirdWorld extends World {}
 
@@ -12,6 +15,8 @@ interface Location {
 }
 
 export interface BirdWorld extends Location {}
+
+StoryQueryIndex.seal();
 
 let LocationPuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
@@ -31,7 +36,7 @@ let LocationPuffer: Puffer<BirdWorld> = {
                     let loc = new_pos ? 'in Heaven' : 'standing around on the ground';
                     
                     return update(world,
-                        story_updater(`You are currently ${loc}.`),
+                        story_updater(Updates.consequence(`You are currently ${loc}.`)),
                         { is_in_heaven: new_pos }
                     );
                 })
@@ -40,13 +45,11 @@ let LocationPuffer: Puffer<BirdWorld> = {
     },
 
     post: (new_world, old_world) => {
-        return update(new_world, css_updater((w) => {
-            if (w.is_in_heaven === new_world.is_in_heaven) {
-                return {happy: true };
-            } else {
-                return {happy: false };
-            }
-        }));
+        return update(new_world, story_updater(
+            Updates.map_worlds(new_world, (w, frame) =>
+                frame.css({happy: w.is_in_heaven === new_world.is_in_heaven})
+            )
+        ));
     }
 };
 
@@ -81,32 +84,34 @@ let ZarathustraPuffer: Puffer<BirdWorld> = {
         ]
         let mispronunciation = random_choice(utterance_options);
         return update(world,
-            story_updater({
-                action: `"${mispronunciation}," you say.`
-            })
+            story_updater(Updates.action(`"${mispronunciation}," you say.`))
         );
     },
 
     post: (new_world, old_world) => {
         if (old_world.is_in_heaven && !new_world.is_in_heaven) {
             return update(new_world,
-                story_updater({ 
-                    action: 'You wave bye to Zarathustra.'
-                })
+                story_updater(
+                    Updates.action('You wave bye to Zarathustra.')
+                )
             );
         }
         if (!old_world.is_in_heaven && new_world.is_in_heaven) {
             return update(new_world, 
-                story_updater({
-                    description: (
+                story_updater(
+                    Updates.description(
                         !new_world.has_seen_zarathustra ?
-                        `There's a bird up here. His name is Zarathustra.
-                         {{#vulnerable}}He is sexy.{{/vulnerable}}
-                         {{^vulnerable}}He is ugly.{{/vulnerable}}` :
-                        `Zarathustra is here.
-                         {{#vulnerable}}(What a sexy bird.){{/vulnerable}}`
+                            <div>
+                                There's a bird up here. His name is Zarathustra.
+                                <span className="vulnerable">&nbsp;He is sexy.</span>
+                                <span className="no-vulnerable">&nbsp;He is ugly.</span>
+                            </div> :
+                            <div>
+                                Zarathustra is here.
+                                <span className="vulnerable">&nbsp;(What a sexy bird.)</span>
+                            </div>
                     )
-                }),
+                ),
                 { has_seen_zarathustra: true }
             );
         }
@@ -148,6 +153,8 @@ interface Roles {
 
 export interface BirdWorld extends Roles {}
 
+const hidden_class = gensym();
+
 let RolePuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
         if (world.is_in_heaven) {
@@ -175,18 +182,22 @@ let RolePuffer: Puffer<BirdWorld> = {
 
         return update(world,
             { role: qualities[choice] },
-            story_updater(`You feel ${qualities[choice]}.`)
+            story_updater(Updates.consequence(`You feel ${qualities[choice]}.`))
         );
     },
 
     post: (new_world, old_world) =>
-        update(new_world, css_updater((w) => {
-            if (new_world.role === 'vulnerable') {
-                return {vulnerable: true };
-            } else {
-                return {vulnerable: false };
-            }        
-        }))
+        update(new_world, story_updater(
+            Updates.map_worlds(new_world, (w, frame) => [
+                frame.has_class('vulnerable').css({[hidden_class]: new_world.role !== 'vulnerable'}),
+                frame.has_class('no-vulnerable').css({[hidden_class]: new_world.role === 'vulnerable'})
+            ]))),
+
+    css_rules: [ // TODO use typed-css for rule creation
+        `.${hidden_class} {
+            display: none;
+        }`
+    ]
 };
 
 export interface BirdWorld extends World
@@ -217,8 +228,6 @@ const initial_bird_world: BirdWorld = {
 };
 
 export const bird_world_spec = make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);
-
-import {WorldUpdater} from '../world';
 
 export function new_bird_world() {
     return world_driver(bird_world_spec);

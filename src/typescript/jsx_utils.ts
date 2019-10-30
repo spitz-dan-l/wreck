@@ -1,5 +1,5 @@
 import * as CSS from 'csstype';
-import { entries, keys, set_prop } from './utils';
+import { entries, keys, set_prop, Entry } from './utils';
 
 
 export type EventHandler<E extends Event> = (this: HTMLElement, ev: E) => any;

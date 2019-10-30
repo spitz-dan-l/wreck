@@ -10,10 +10,9 @@
     read or otherwise used by other Puffers sharing the world.
 */
 
-import { Parser, ParserThread, gate } from './parser';
-import { IntersectTupleTypes, drop_keys, from_entries } from './utils';
-import { make_world_spec, World, WorldSpec, WorldUpdater, CommandHandler, Narrator } from './world';
-import {normalize_stages, Stages, MaybeStages, map_stages, stage_keys, stages} from './stages';
+import { map_stages, MaybeStages, normalize_stages, Stages, stages, stage_keys } from './stages';
+import { drop_keys, IntersectTupleTypes } from './utils';
+import { CommandHandler, make_world_spec, Narrator, World, WorldSpec, WorldUpdater } from './world';
 
 
 type PufferSpec<W extends World> = {

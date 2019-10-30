@@ -118,8 +118,8 @@ export function remove_eph(story: Story, effects?: Effects<HTMLElement>) {
     return apply_story_update(
         story,
         story_update(
-            story_query('eph', {}),
-            story_op('remove_eph', {})
+            story_query('eph'),
+            story_op('remove_eph')
         ),
         effects
     );

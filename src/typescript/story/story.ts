@@ -187,8 +187,9 @@ export function splice_in(parent: Fragment, path: Path, updated: Fragment[]): Fr
     if (path.length === 1) {
         return update(parent, {
             children: _ => {
-                _.splice(path[0], 1, ...updated);
-                return _;
+                const r = [..._];
+                r.splice(path[0], 1, ...updated);
+                return r;
             }
         })
     }

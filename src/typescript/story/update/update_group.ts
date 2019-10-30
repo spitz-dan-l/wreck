@@ -1,6 +1,6 @@
 import { StoryUpdateSpec, StoryUpdateStage } from "./update";
 import { Stages, stage_entries, stages } from "../../stages";
-import { append, update } from "../../utils";
+import { append, update, Updater } from "../../utils";
 
 export interface StoryUpdateGroups {
     init_frame: 'Updates that initialize the new frame and move the storyhole forward';
@@ -8,18 +8,15 @@ export interface StoryUpdateGroups {
 }
 
 export type StoryUpdateGroup = {
+    kind: 'StoryUpdateGroup',
     name: keyof StoryUpdateGroups,
+    stage?: number,
     updates: StoryUpdateSpec[]
 }
 
-export function story_update_group(updates: StoryUpdateSpec[]): StoryUpdateGroup;
-export function story_update_group<K extends keyof StoryUpdateGroups>(updates: StoryUpdateSpec[], name: K): StoryUpdateGroup;
-export function story_update_group(updates: StoryUpdateSpec[], name: keyof StoryUpdateGroups='updates'): StoryUpdateGroup {
-    return { name, updates };
-}
-
-export function push_group(plan: Stages<StoryUpdateStage>, group: StoryUpdateGroup, stage?: number) {
+export function push_group(plan: Stages<StoryUpdateStage>, group: StoryUpdateGroup) {
     let group_index: number | undefined = undefined;
+    let stage = group.stage;
 
     function find_group_index(groups: StoryUpdateStage) {
         return groups.findIndex(g => g.name === group.name);

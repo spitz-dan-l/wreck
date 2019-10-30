@@ -1,18 +1,16 @@
-import { DSLProps, make_dsl, ReplaceReturn, DSL, ContextualFunction, contextual_function, with_context, bind, bind_all } from '../../dsl_utils';
+import { make_dsl, ParametersFor, ReplaceReturn } from '../../dsl_utils';
 import { history_array } from "../../history";
-import { Parsing } from "../../parser";
-import { stages, Stages, stage_entries, stage_keys } from "../../stages";
-import { ParsedTextStory } from "../../UI/components/parsed_text";
-import { append, update, lazy_map_values, Updater } from "../../utils";
+import { stages } from "../../stages";
+import { keys, update, Updater, writable } from "../../utils";
 import { World } from "../../world";
 import { createElement } from '../create';
-import { Fragment, is_story_hole, is_story_node, StoryHole, StoryNode } from "../story";
-import { CSSUpdates, StoryOps, StoryOpSpec, story_op } from './op';
-import { StoryQueries, StoryQuerySpec, story_query } from './query';
-import { Story, StoryUpdatePlan, StoryUpdateSpec, StoryUpdateStage, story_update } from "./update";
-import { StoryUpdateGroups } from './update_group';
-import { Update } from 'ts-toolbelt/out/types/src/Tuple/_api';
-import { F } from 'ts-toolbelt';
+import { Fragment, StoryHole, StoryNode } from "../story";
+import { StoryOps, StoryOpSpec, StoryUpdateOps, story_op } from './op';
+import { StoryQueries, StoryQueryName, StoryQuerySpec, story_query } from './query';
+import { Story, StoryUpdatePlan, StoryUpdateSpec, story_update } from "./update";
+import { push_group, StoryUpdateGroup, StoryUpdateGroups } from './update_group';
+import { ParsedTextStory } from '../../UI/components/parsed_text';
+import { Parsing } from '../../parser';
 
 // TODO: Update Group dsl
 // - includes standard text shortcuts
@@ -45,68 +43,63 @@ import { F } from 'ts-toolbelt';
  */
 //
 
+type QuerySpecDomain = ReplaceReturn<StoryQueries, StoryQuerySpec>;
+export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
+
+type OpSpecDomain = ReplaceReturn<StoryOps, StoryOpSpec>;
+export const Ops = make_dsl<OpSpecDomain>(name => (...params) => story_op(name, ...params));
+
+
+
 type UpdateSpecs = StoryUpdateSpec | UpdateSpecArray;
 interface UpdateSpecArray extends Array<UpdateSpecs> {};
 
 type StoryUpdateBuilderContext = {
     query?: StoryQuerySpec;
-    op?: StoryOpSpec;
-
-    group_name?: keyof StoryUpdateGroups;
-    stage?: number;
 };
 
-interface UpdatesConstructor<T extends Updates_> {
-    new(context?: StoryUpdateBuilderContext): T
-}
-
-class Updates_ {
+class UpdatesBuilder {
     constructor(public context: StoryUpdateBuilderContext = {}) {};
 
-    update_context(updater: Updater<StoryUpdateBuilderContext>): this {    
-        return new (this.constructor as UpdatesConstructor<this>)(update(this.context, updater));
+    update_context(updater: Updater<StoryUpdateBuilderContext>): UpdatesBuilder {
+        return new UpdatesBuilder(update(this.context, updater));
     }
 
-    frame(index?: number | number[] | undefined): this {
-        return this.update_context({
-            query: (q) => {
-                if (q === undefined) {
-                    return Queries.frame(index)
-                }
-                return Queries.chain(q, Queries.frame(index))
-            }
-        });
+    apply(f: (builder: UpdatesBuilder) => UpdateSpecs): StoryUpdateSpec[] {
+        return [f(this)].flat(Infinity);
     }
 
-    css(updates: CSSUpdates): StoryUpdateSpec {
-        let builder: this = this;
+    to_query(): StoryQuerySpec {
         if (this.context.query === undefined) {
-            builder = this.update_context({
-                query: Queries.frame()
-            })
+            throw new Error("Tried to convert an UpdatesBuilder to query before any query methods were called");
         }
-        return story_update(builder.context.query!, Ops.css(updates));
+        return this.context.query;
     }
 
-    apply(f: (builder: this) => UpdateSpecs): UpdateSpecs {
-        return f(this);
+    map_worlds<W extends World>(world: W, f: (w: W, frame: UpdatesBuilder) => UpdateSpecs): StoryUpdateSpec[] {
+        const results: UpdateSpecs[] = [];
+        for (const w of history_array(world).reverse()) {
+            const w_frame = this.frame(w.index);
+            results.push(f(w, w_frame));
+        }
+        return results.flat(Infinity);
     }
 }
 
-const text_methods = ['actions', 'consequences', 'description', 'prompt'] as const;
-type TextMethodNames = (typeof text_methods)[number];
+const TEXT_CATEGORY_NAMES = ['action', 'consequence', 'description', 'prompt'] as const;
+type TextMethodNames = (typeof TEXT_CATEGORY_NAMES)[number];
 
 type TextAddMethods = {
     [K in TextMethodNames]:
-        (this: Updates_, children: Fragment | Fragment[]) => StoryUpdateSpec
+        (children: Fragment | Fragment[]) => StoryUpdateSpec
 }
 
 // Merge in the text add methods to the interface
-interface Updates_ extends TextAddMethods {}
+interface UpdatesBuilder extends TextAddMethods {}
 
 // Merge in the implementations to the class proto
-for (const prop of text_methods) {
-    Updates_.prototype[prop] = function(children) {
+for (const prop of TEXT_CATEGORY_NAMES) {
+    UpdatesBuilder.prototype[prop] = function(children) {
         let base_query = this.context.query;
         if (base_query === undefined) {
             base_query = Queries.frame();
@@ -118,204 +111,218 @@ for (const prop of text_methods) {
     }
 }
 
-const u1 = new Updates_();
-const ccc = u1.constructor
-
-type QuerySpecDomain = {
-    [K in keyof StoryQueries]: (...params: Parameters<StoryQueries[K]>) => StoryQuerySpec
-};
-
-export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
-export const Ops = make_dsl<ReplaceReturn<StoryOps, StoryOpSpec>>(name => (...params) => story_op(name, ...params));
-
-type UpdateDSL = ReplaceReturn<StoryQueries, DSLProps<UpdateDSL2>>;
-type UpdateDSL2 = ReplaceReturn<StoryOps, StoryUpdateSpec>;
-
-export const Updates = make_dsl<UpdateDSL>(
-    (q_name) => (...q_params) =>
-        make_dsl<UpdateDSL2>(
-            (op_name) => (...op_params) =>
-                story_update(
-                    story_query(q_name, ...q_params),
-                    story_op(op_name, ...op_params)
-                )
-    )
-);
-
-
-
-
-export interface StoryUpdateBuilders {
-    frame(index: number | number[] | undefined, update_f: (dsl: DSL<Buh>) => FrameUpdates): StoryUpdateSpec[];
-
-    actions: (children: Fragment | Fragment[]) => StoryUpdateSpec;
-    consequences: (children: Fragment | Fragment[]) => StoryUpdateSpec;
-    description: (children: Fragment | Fragment[]) => StoryUpdateSpec;
-    prompt: (children: Fragment | Fragment[]) => StoryUpdateSpec;
-
-    css: (updates: CSSUpdates) => StoryUpdateSpec;
-
-    story_update: () => UpdateDSL;
+type QueryMethods = {
+    [K in keyof QuerySpecDomain]:
+        ((...params: ParametersFor<QuerySpecDomain>[K]) => UpdatesBuilder)
 }
 
-export type Buh = {
-    [K in keyof StoryUpdateBuilders]: ContextualFunction<StoryQuerySpec, StoryUpdateBuilders[K]>
-}
+interface UpdatesBuilder extends QueryMethods {}
 
-export declare const BuhImpls: Buh;
-
-type BuhDSL = DSL<Buh>;
-declare let buh_dsl: BuhDSL;
-
-const x = buh_dsl.css({a: true});
-const x1 = buh_dsl.frame(5, bind_all(buh_dsl, (dsl) => [
-    dsl.css({a:true}),
-    dsl.frame(3, (dsl) => []),
-    dsl.story_update().has_class('steve').add('buh'),
-    dsl.actions('sef')
-]))
-
-
-const css = contextual_function(
-    ((ctx) => (updates: CSSUpdates) =>
-        story_update(ctx(), Ops.css(updates))),
-    Queries.frame());
-// const zzz = css({a: true});
-
-const frame: Buh['frame'] = contextual_function((ctx: () => StoryQuerySpec) => {
+function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<QueryMethods>[K]): UpdatesBuilder {
+    const q = story_query(k, ...params);
+    const base_query = this.context.query;
     
-    function _frame(index: number | number[] | undefined, update_f: (dsl: DSL<Buh>) => FrameUpdates): StoryUpdateSpec[] {
-        const q = Queries.chain(ctx(), Queries.frame(index));
-        const dsl = lazy_map_values(BuhImpls, (x: ContextualFunction<StoryQuerySpec, any>) => with_context(x, q))
-        const result = update_f(dsl);
-        if (result instanceof Array) {
-            return result.flat(Infinity);
-        }
-        return [result];
-    }
-    return _frame;
-}, Queries.story_root()
-);
-
-with_context(css, Queries.eph())({a: true})
-
-frame(undefined, contextual_function((ctx) => () => [with_context(css, ctx())({a: true})]))
-
-frame(undefined, bind(css, (css) => [css({'a': true})]));
-
-frame(undefined, (dsl) => [
-    dsl.description('horse')
-]);
-
-const zzz = bind_all({css, frame}, ({css, frame}) => [css({'a': true})]);
-zzz()
-
-let xxx1 = with_context(() => 4, 15);
-
-// Helpers for doing common story updates
-export type TextAddSpec = {
-    action?: Fragment | Fragment[]
-    consequence?: Fragment | Fragment[]
-    description?: Fragment | Fragment[]
-    prompt?: Fragment | Fragment[]
-} | Fragment | Fragment[];
-
-function is_fragment(spec: TextAddSpec): spec is Fragment | Fragment[] {
-    return (typeof spec === 'string' || spec instanceof Array || is_story_node(spec as Fragment) || is_story_hole(spec as Fragment));
-}
-
-export const make_text_additions = (index: number, spec: TextAddSpec) => {
-    if (is_fragment(spec)) {
-        spec = {
-            consequence: spec
-        };
-    }
-    const result: StoryUpdateSpec[] = [];
-    for (const prop of ['action', 'consequence', 'description', 'prompt'] as const) {
-        const children = spec[prop];
-        if (children !== undefined) {
-            result.push(
-                story_update(
-                    story_query('frame', {
-                        index,
-                        subquery: story_query('has_class', { class: prop }) }),
-                    story_op('add', { children })
-                )
-            );
-        }
-    }
-    return result;
-}
-
-export const story_updater = (spec: TextAddSpec, stage=0) =>
-    <W extends World>(world: W) => update(world as World, {
-        story_updates: { effects: stages([stage, append(...make_text_additions(world.index, spec))]) }
-    }) as W;
-
-export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
-    (world: W) => {
-        const history = history_array(world);
-        const css_updates: StoryUpdateSpec[] = history.flatMap(w => {
-            const updates = f(w);
-
-            if (Object.keys(updates).length === 0) {
-                return [];
-            }
-
-            return [story_update(
-                story_query('frame', { index: w.index }),
-                story_op('css', f(w))
-            )]
+    if (base_query === undefined) {
+        return this.update_context({
+            query: q
         });
-
-        return update(world as World, {
-            story_updates: { effects: stages([0, append(...css_updates)]) }
-        }) as W
     }
-
-export const add_input_text = (world: World, parsing: Parsing) => {
-    const lowest_stage = stage_keys(world.story_updates.effects)[0];
-    return update(world, {
-        story_updates: { effects: stages([lowest_stage, append(
-            story_update(
-                story_query('frame', {
-                    index: world.index,
-                    subquery: story_query('first', { subquery: story_query('has_class', {class: 'input-text'}) })
-                }),
-                story_op('add', {no_animate: true, children: <ParsedTextStory parsing={parsing} />}))
-        )]) }
+    return this.update_context({
+        query: _ => Queries.chain(_!, q)
     });
 }
 
-const empty_frame = <div className="frame">
-    <div className="input-text" />
-    <div className="output-text">
-        <div className="action"></div>
-        <div className="consequence"></div>
-        <div className="description"></div>
-        <div className="prompt"></div>
-    </div>
-</div> as StoryNode;
+for (const k of keys(StoryQueryName)) {
+    UpdatesBuilder.prototype[k] = function(...params: any[]) {
+        return query_method.call(this, k, ...params);
+    }
+}
+
+type OpMethods = {
+    [K in keyof StoryOps]:
+        (...params: ParametersFor<StoryOps>[K]) => StoryUpdateSpec
+}
+
+interface UpdatesBuilder extends OpMethods {}
+
+function op_method<K extends keyof StoryOps>(this: UpdatesBuilder, k: K, ...params: ParametersFor<StoryOps>[K]): StoryUpdateSpec {
+    const op = story_op(k, ...params);
+    let q: StoryQuerySpec;
+    if (this.context.query === undefined) {
+        q = Queries.story_root();
+    } else {
+        q = this.context.query;
+    }
+    return story_update(q, op);
+}
+
+for (const k of keys(StoryUpdateOps)){
+    UpdatesBuilder.prototype[k] = function(...params: any[]) {
+        return op_method.call(this, k, ...params);
+    }
+}
+
+export const Updates = new UpdatesBuilder();
+
+type GroupBuilderContext = {
+    name?: keyof StoryUpdateGroups,
+    stage?: number
+}
+
+class GroupBuilder {
+    constructor(public context: GroupBuilderContext = {}) {  
+    }
+
+    update_context(updater: Updater<GroupBuilderContext>) {
+        return new GroupBuilder(update(this.context, updater));
+    }
+
+    name(name: keyof StoryUpdateGroups) {
+        if (this.context.name !== undefined) {
+            throw new Error('Tried to redefine the group name which is probably a mistake.');
+        }
+        return this.update_context({ name }) as Omit<GroupBuilder, 'name'>;
+    }
+
+    stage(stage: number) {
+        if (this.context.stage !== undefined) {
+            throw new Error('Tried to redefine the group stage which is probably a mistake.');
+        }
+        return this.update_context({ stage }) as Omit<GroupBuilder, 'stage'>;
+    }
+
+    push(...update_specs: UpdateSpecs[]): StoryUpdateGroup {
+        return {
+            kind: 'StoryUpdateGroup',
+            name: this.context.name || 'updates',
+            stage: this.context.stage,
+            updates: update_specs.flat(Infinity)
+        };
+    }
+}
+
+export const Groups = new GroupBuilder();
+
+type StoryUpdaterSpec = StoryUpdateGroup | StoryUpdateSpec | StoryUpdaterSpecArray;
+interface StoryUpdaterSpecArray extends Array<StoryUpdaterSpec> {}
+
+function is_group(x: StoryUpdateGroup | StoryUpdateSpec): x is StoryUpdateGroup {
+    return (x as any).kind === 'StoryUpdateGroup';
+}
+
+export function story_updater(...updates: StoryUpdaterSpec[]) {
+    const flat_updates = updates.flat(Infinity) as (StoryUpdateGroup | StoryUpdateSpec)[];
+    
+    const groups: StoryUpdateGroup[] = []
+    let default_group_updates: StoryUpdateSpec[] = [];
+    
+    function flush_default_group() {
+        if (default_group_updates.length > 0) {
+            groups.push(Groups.push(...default_group_updates));
+            default_group_updates = [];
+        }
+    }
+
+    for (const up of flat_updates) {
+        if (is_group(up)) {
+            flush_default_group();
+            groups.push(up);
+        } else {
+            default_group_updates.push(up);
+        }
+    }
+    flush_default_group();
+
+    return <W extends World>(world: W) => update(world as World, {
+        story_updates: { 
+            effects: _ => groups.reduce((eff, grp) => push_group(writable(eff), grp), _)
+        } 
+    }) as W;
+}
+
+// // Helpers for doing common story updates
+// export type TextAddSpec = {
+//     action?: Fragment | Fragment[]
+//     consequence?: Fragment | Fragment[]
+//     description?: Fragment | Fragment[]
+//     prompt?: Fragment | Fragment[]
+// } | Fragment | Fragment[];
+
+// function is_fragment(spec: TextAddSpec): spec is Fragment | Fragment[] {
+//     return (typeof spec === 'string' || spec instanceof Array || is_story_node(spec as Fragment) || is_story_hole(spec as Fragment));
+// }
+
+// export const make_text_additions = (index: number, spec: TextAddSpec) => {
+//     if (is_fragment(spec)) {
+//         spec = {
+//             consequence: spec
+//         };
+//     }
+//     const result: StoryUpdateSpec[] = [];
+//     for (const prop of ['action', 'consequence', 'description', 'prompt'] as const) {
+//         const children = spec[prop];
+//         if (children !== undefined) {
+//             result.push(
+//                 story_update(
+//                     story_query('frame', {
+//                         index,
+//                         subquery: story_query('has_class', { class: prop }) }),
+//                     story_op('add', { children })
+//                 )
+//             );
+//         }
+//     }
+//     return result;
+// }
+
+// export const story_updater = (spec: TextAddSpec, stage=0) =>
+//     <W extends World>(world: W) => update(world as World, {
+//         story_updates: { effects: stages([stage, append(...make_text_additions(world.index, spec))]) }
+//     }) as W;
+
+// export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
+//     (world: W) => {
+//         const history = history_array(world);
+//         const css_updates: StoryUpdateSpec[] = history.flatMap(w => {
+//             const updates = f(w);
+
+//             if (Object.keys(updates).length === 0) {
+//                 return [];
+//             }
+
+//             return [story_update(
+//                 story_query('frame', { index: w.index }),
+//                 story_op('css', f(w))
+//             )]
+//         });
+
+//         return update(world as World, {
+//             story_updates: { effects: stages([0, append(...css_updates)]) }
+//         }) as W
+//     }
+
+export const add_input_text = (world: World, parsing: Parsing) => {
+    return update(world,
+        story_updater(
+            Groups.name('init_frame').push(
+                Updates
+                    .frame().first(Updates.has_class('input-text').to_query())
+                    .add(<ParsedTextStory parsing={parsing} />, true)
+            )
+        )
+    );
+}
 
 export const EmptyFrame = (props: { index: number }) => 
     <div className="frame" data={{frame_index: props.index}}>
         <div className="input-text" />
         <div className="output-text">
-            <div className="action"></div>
-            <div className="consequence"></div>
-            <div className="description"></div>
-            <div className="prompt"></div>
+            <div className={TEXT_CATEGORY_NAMES[0]}></div>
+            <div className={TEXT_CATEGORY_NAMES[1]}></div>
+            <div className={TEXT_CATEGORY_NAMES[2]}></div>
+            <div className={TEXT_CATEGORY_NAMES[3]}></div>
         </div>
     </div> as StoryNode;
-    // update(empty_frame, {
-    //     data: { frame_index: props.index }
-    // });
-
-export const make_frame = (frame_index: number) => {
-    return update(empty_frame, {
-        data: { frame_index }
-    });
-};
 
 export const Hole = (props?: {}): StoryHole => {
     return { kind: 'StoryHole' };
@@ -329,15 +336,15 @@ export const init_story = <div className="story">
 export function init_story_updates(new_index: number): StoryUpdatePlan {
     return {
         would_effects: [],
-        effects: stages([0, [
-            story_update(
-                story_query('story_hole', {}),
-                story_op('replace', { replacement: [
+        effects: push_group(
+            stages(),
+            Groups.name('init_frame').push(
+                Updates.story_hole().replace([
                     <EmptyFrame index={new_index} />,
                     <Hole />
-                ]})
+                ])
             )
-        ]])
+        )
     };
 }
 

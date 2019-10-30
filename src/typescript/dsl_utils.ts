@@ -95,79 +95,39 @@ export type ContextOf<CF extends ContextualFunction<any, any>> = CF extends Cont
 
 // Typescript doesn't seem to support symbols as object keys in this way.
 // But it's the fastest way to do it so we're doing it.
-const CONTEXT_MAP = {} as Record<any, unknown>;
+type ContextKey = {} & { __brand: 'ContextKey' };
+const CONTEXT_MAP = new WeakMap<ContextKey, unknown>()
 
-// export function contextual_function<Context>(init_context?: Context) {
-//     return <F extends Func>(decl: (get_context: () => Context) => F) => {
-//         const with_context = ((init_context: Context | undefined): ContextualFunction<Context, F> => {
-//             if (init_context === undefined) {
-//                 throw new Error('Contextual Function was invoked without binding it to a context.');
-//             }
-//             let key: symbol;
-
-//             function set_context(c: Context, pre_init=false) {
-//                 if (!pre_init && !Object.getOwnPropertySymbols(CONTEXT_MAP).includes(key)) {
-//                     throw new Error('Funny business detected. Called set_context outside the call of the contextual function.');
-//                 }
-//                 CONTEXT_MAP[key as any] = c;
-//                 return c;
-//             }
-
-//             function get_context(): Context {
-//                 if (!Object.getOwnPropertySymbols(CONTEXT_MAP).includes(key)) {
-//                     throw new Error('Funny business detected. Called get_context outside the call of the contextual function.');
-//                 }
-//                 return CONTEXT_MAP[key as any] as Context;
-//             }
-
-//             const contextual_function = ((...params: Parameters<F>) => {
-//                 key = Symbol();
-//                 set_context(init_context, true);
-                
-//                 const f = decl(get_context);
-                
-//                 const result = f(...params) as ReturnType<F>;
-//                 // const context = CONTEXT_MAP[key as any] as Context | undefined;
-//                 delete CONTEXT_MAP[key as any];
-//                 return result;
-//             }) as ContextualFunction<Context, F>;
-//             contextual_function.with_context = with_context;
-//             return contextual_function;
-//         });
-//         return with_context(init_context);
-//     }
-// } 
 export function contextual_function<Context, F extends Func>(decl: (get_context: () => Context) => F, init_context?: Context) {
     const with_context = ((init_context: Context | undefined): ContextualFunction<Context, F> => {
         if (init_context === undefined) {
             throw new Error('Contextual Function was invoked without binding it to a context.');
         }
-        let key: symbol;
+        let key: ContextKey;
 
-        function set_context(c: Context, pre_init=false) {
-            if (!pre_init && !Object.getOwnPropertySymbols(CONTEXT_MAP).includes(key)) {
-                throw new Error('Funny business detected. Called set_context outside the call of the contextual function.');
+        function set_context(c: Context) {
+            if (!CONTEXT_MAP.has(key)) {
+                throw new Error('Funny business detected. Called set_context before the call of the contextual function.');
             }
-            CONTEXT_MAP[key as any] = c;
+            CONTEXT_MAP.set(key, c);
             return c;
         }
 
         function get_context(): Context {
-            if (!Object.getOwnPropertySymbols(CONTEXT_MAP).includes(key)) {
-                throw new Error('Funny business detected. Called get_context outside the call of the contextual function.');
+            if (!CONTEXT_MAP.has(key)) {
+                throw new Error('Funny business detected. Called get_context before the call of the contextual function.');
             }
-            return CONTEXT_MAP[key as any] as Context;
+            return CONTEXT_MAP.get(key) as Context;
         }
 
         const contextual_function = ((...params: Parameters<F>) => {
-            key = Symbol();
-            set_context(init_context, true);
+            key = {} as ContextKey;
+            set_context(init_context);
             
             const f = decl(get_context);
             
             const result = f(...params) as ReturnType<F>;
-            // const context = CONTEXT_MAP[key as any] as Context | undefined;
-            delete CONTEXT_MAP[key as any];
+            
             return result;
         }) as ContextualFunction<Context, F>;
         contextual_function.with_context = with_context;

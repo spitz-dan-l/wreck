@@ -21,9 +21,15 @@ export type AppAction =
     { kind: 'Submit' } |
     { kind: 'AdvanceAnimation', next_story: Story };
 
+
+export function app_reducer(state: AppState, action: AppAction): AppState {
+    const result = app_reducer_(state, action);
+
+    return result;
+}
 // "reducer" function which returns updated state according to the
 // "kind" of the action passed to it
-export function app_reducer(state: AppState, action: AppAction): AppState {
+export function app_reducer_(state: AppState, action: AppAction): AppState {
     if (state.animation_state.lock_input && action.kind !== 'AdvanceAnimation') {
         return state;
     }
@@ -69,7 +75,7 @@ export function app_reducer(state: AppState, action: AppAction): AppState {
                     result = update(state, {
                         command_result: () =>
                             state.updater(
-                                state.command_result.world!,
+                                state.command_result.world,
                                 update(state.command_result.parsing.raw, {
                                     submit: state.command_result.parsing.view.submittable
                                 })
