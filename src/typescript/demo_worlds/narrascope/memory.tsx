@@ -2,7 +2,7 @@ import { gist, Gists, render_gist_text } from '../../gist';
 import { find_historical } from '../../history';
 import { Puffer } from '../../puffer';
 import { StaticIndex } from '../../static_resources';
-import { createElement, story_updater, Fragment } from '../../story';
+import { createElement, story_updater, Fragment, Updates } from '../../story';
 import { capitalize } from '../../text_utils';
 import { bound_method, map, update } from '../../utils';
 import { add_to_notes, Notes } from './notes';
@@ -64,10 +64,10 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
                     gist: () => gist('memory', { action: gist(action.name)})
                 },
                 w => add_to_notes(w, spec.action),
-                story_updater(<div>
+                story_updater(Updates.consequence(<div>
                     You close your eyes, and hear Katya's voice:
                     {memory_description(spec)}
-                </div>)
+                </div>))
             );
         },
         post: (world2, world1) => {
@@ -80,11 +80,10 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
 
             if (!spec.could_remember(world1)) {
                 return update(world2,
-                    story_updater({
-                        prompt: <div>
+                    story_updater(Updates.prompt(<div>
                             You feel as though you might <strong>remember something...</strong>
                         </div>
-                    })
+                    ))
                 );
             }
             return world2;

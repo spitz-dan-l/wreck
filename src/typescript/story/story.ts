@@ -2,6 +2,7 @@ import { Gensym } from '../gensym';
 import { HTMLAttributesWithout } from '../jsx_utils';
 import { update } from '../update';
 import { NodeProps } from './create';
+import produce from 'immer';
 
 
 export type StoryHole = { kind: 'StoryHole' };
@@ -186,11 +187,9 @@ export function splice_in(parent: Fragment, path: Path, updated: Fragment[]): Fr
     }
     if (path.length === 1) {
         return update(parent, {
-            children: _ => {
-                const r = [..._];
-                r.splice(path[0], 1, ...updated);
-                return r;
-            }
+            children: produce(_ => {
+                _.splice(path[0], 1, ...updated);
+            })
         })
     }
     return update(parent, {

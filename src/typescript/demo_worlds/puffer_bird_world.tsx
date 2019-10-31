@@ -1,12 +1,10 @@
 import { make_puffer_world_spec, Puffer } from '../puffer';
 import { random_choice } from '../text_utils';
-import { append, update } from '../utils';
+import { update } from '../utils';
 import { get_initial_world, World, world_driver } from '../world';
 import { story_updater, Updates, createElement, StoryQueryIndex } from '../story';
-import { failed, ParseValue } from '../parser';
-import {gensym} from '../gensym';
-
-import csstype from 'csstype';
+import { failed } from '../parser';
+import * as TypeStyle from 'typestyle';
 
 export interface BirdWorld extends World {}
 
@@ -153,7 +151,9 @@ interface Roles {
 
 export interface BirdWorld extends Roles {}
 
-const hidden_class = gensym();
+const hidden_class = TypeStyle.style({
+    display: 'none'
+});
 
 let RolePuffer: Puffer<BirdWorld> = {
     handle_command: (world, parser) => {
@@ -191,13 +191,7 @@ let RolePuffer: Puffer<BirdWorld> = {
             Updates.map_worlds(new_world, (w, frame) => [
                 frame.has_class('vulnerable').css({[hidden_class]: new_world.role !== 'vulnerable'}),
                 frame.has_class('no-vulnerable').css({[hidden_class]: new_world.role === 'vulnerable'})
-            ]))),
-
-    css_rules: [ // TODO use typed-css for rule creation
-        `.${hidden_class} {
-            display: none;
-        }`
-    ]
+            ])))
 };
 
 export interface BirdWorld extends World

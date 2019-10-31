@@ -86,6 +86,2199 @@
 /************************************************************************/
 /******/ ({
 
+/***/ "./node_modules/free-style/dist/free-style.js":
+/*!****************************************************!*\
+  !*** ./node_modules/free-style/dist/free-style.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+/* WEBPACK VAR INJECTION */(function(process) {
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * The unique id is used for unique hashes.
+ */
+var uniqueId = 0;
+/**
+ * Tag styles with this string to get unique hashes.
+ */
+exports.IS_UNIQUE = '__DO_NOT_DEDUPE_STYLE__';
+var upperCasePattern = /[A-Z]/g;
+var msPattern = /^ms-/;
+var interpolatePattern = /&/g;
+var escapePattern = /[ !#$%&()*+,./;<=>?@[\]^`{|}~"'\\]/g;
+var propLower = function (m) { return "-" + m.toLowerCase(); };
+/**
+ * CSS properties that are valid unit-less numbers.
+ *
+ * Ref: https://github.com/facebook/react/blob/master/packages/react-dom/src/shared/CSSProperty.js
+ */
+var CSS_NUMBER = {
+    'animation-iteration-count': true,
+    'border-image-outset': true,
+    'border-image-slice': true,
+    'border-image-width': true,
+    'box-flex': true,
+    'box-flex-group': true,
+    'box-ordinal-group': true,
+    'column-count': true,
+    'columns': true,
+    'counter-increment': true,
+    'counter-reset': true,
+    'flex': true,
+    'flex-grow': true,
+    'flex-positive': true,
+    'flex-shrink': true,
+    'flex-negative': true,
+    'flex-order': true,
+    'font-weight': true,
+    'grid-area': true,
+    'grid-column': true,
+    'grid-column-end': true,
+    'grid-column-span': true,
+    'grid-column-start': true,
+    'grid-row': true,
+    'grid-row-end': true,
+    'grid-row-span': true,
+    'grid-row-start': true,
+    'line-clamp': true,
+    'line-height': true,
+    'opacity': true,
+    'order': true,
+    'orphans': true,
+    'tab-size': true,
+    'widows': true,
+    'z-index': true,
+    'zoom': true,
+    // SVG properties.
+    'fill-opacity': true,
+    'flood-opacity': true,
+    'stop-opacity': true,
+    'stroke-dasharray': true,
+    'stroke-dashoffset': true,
+    'stroke-miterlimit': true,
+    'stroke-opacity': true,
+    'stroke-width': true
+};
+// Add vendor prefixes to all unit-less properties.
+for (var _i = 0, _a = Object.keys(CSS_NUMBER); _i < _a.length; _i++) {
+    var property = _a[_i];
+    for (var _b = 0, _c = ['-webkit-', '-ms-', '-moz-', '-o-', '']; _b < _c.length; _b++) {
+        var prefix = _c[_b];
+        CSS_NUMBER[prefix + property] = true;
+    }
+}
+/**
+ * Escape a CSS class name.
+ */
+exports.escape = function (str) { return str.replace(escapePattern, '\\$&'); };
+/**
+ * Transform a JavaScript property into a CSS property.
+ */
+function hyphenate(propertyName) {
+    return propertyName
+        .replace(upperCasePattern, propLower)
+        .replace(msPattern, '-ms-'); // Internet Explorer vendor prefix.
+}
+exports.hyphenate = hyphenate;
+/**
+ * Generate a hash value from a string.
+ */
+function stringHash(str) {
+    var value = 5381;
+    var len = str.length;
+    while (len--)
+        value = (value * 33) ^ str.charCodeAt(len);
+    return (value >>> 0).toString(36);
+}
+exports.stringHash = stringHash;
+/**
+ * Transform a style string to a CSS string.
+ */
+function styleToString(key, value) {
+    if (typeof value === 'number' && value !== 0 && !CSS_NUMBER.hasOwnProperty(key)) {
+        return key + ":" + value + "px";
+    }
+    return key + ":" + value;
+}
+/**
+ * Sort an array of tuples by first value.
+ */
+function sortTuples(value) {
+    return value.sort(function (a, b) { return a[0] > b[0] ? 1 : -1; });
+}
+/**
+ * Categorize user styles.
+ */
+function parseStyles(styles, hasNestedStyles) {
+    var properties = [];
+    var nestedStyles = [];
+    var isUnique = false;
+    // Sort keys before adding to styles.
+    for (var _i = 0, _a = Object.keys(styles); _i < _a.length; _i++) {
+        var key = _a[_i];
+        var value = styles[key];
+        if (value !== null && value !== undefined) {
+            if (key === exports.IS_UNIQUE) {
+                isUnique = true;
+            }
+            else if (typeof value === 'object' && !Array.isArray(value)) {
+                nestedStyles.push([key.trim(), value]);
+            }
+            else {
+                properties.push([hyphenate(key.trim()), value]);
+            }
+        }
+    }
+    return {
+        style: stringifyProperties(sortTuples(properties)),
+        nested: hasNestedStyles ? nestedStyles : sortTuples(nestedStyles),
+        isUnique: isUnique
+    };
+}
+/**
+ * Stringify an array of property tuples.
+ */
+function stringifyProperties(properties) {
+    return properties.map(function (_a) {
+        var name = _a[0], value = _a[1];
+        if (!Array.isArray(value))
+            return styleToString(name, value);
+        return value.map(function (x) { return styleToString(name, x); }).join(';');
+    }).join(';');
+}
+/**
+ * Interpolate CSS selectors.
+ */
+function interpolate(selector, parent) {
+    if (selector.indexOf('&') === -1)
+        return parent + " " + selector;
+    return selector.replace(interpolatePattern, parent);
+}
+/**
+ * Recursive loop building styles with deferred selectors.
+ */
+function stylize(selector, styles, rulesList, stylesList, parent) {
+    var _a = parseStyles(styles, selector !== ''), style = _a.style, nested = _a.nested, isUnique = _a.isUnique;
+    var pid = style;
+    if (selector.charCodeAt(0) === 64 /* @ */) {
+        var child = { selector: selector, styles: [], rules: [], style: parent ? '' : style };
+        rulesList.push(child);
+        // Nested styles support (e.g. `.foo > @media > .bar`).
+        if (style && parent)
+            child.styles.push({ selector: parent, style: style, isUnique: isUnique });
+        for (var _i = 0, nested_1 = nested; _i < nested_1.length; _i++) {
+            var _b = nested_1[_i], name = _b[0], value = _b[1];
+            pid += name + stylize(name, value, child.rules, child.styles, parent);
+        }
+    }
+    else {
+        var key = parent ? interpolate(selector, parent) : selector;
+        if (style)
+            stylesList.push({ selector: key, style: style, isUnique: isUnique });
+        for (var _c = 0, nested_2 = nested; _c < nested_2.length; _c++) {
+            var _d = nested_2[_c], name = _d[0], value = _d[1];
+            pid += name + stylize(name, value, rulesList, stylesList, key);
+        }
+    }
+    return pid;
+}
+/**
+ * Transform `stylize` tree into style objects.
+ */
+function composeStylize(cache, pid, rulesList, stylesList, className, isStyle) {
+    for (var _i = 0, stylesList_1 = stylesList; _i < stylesList_1.length; _i++) {
+        var _a = stylesList_1[_i], selector = _a.selector, style = _a.style, isUnique = _a.isUnique;
+        var key = isStyle ? interpolate(selector, className) : selector;
+        var id = isUnique ? "u\0" + (++uniqueId).toString(36) : "s\0" + pid + "\0" + style;
+        var item = new Style(style, id);
+        item.add(new Selector(key, "k\0" + pid + "\0" + key));
+        cache.add(item);
+    }
+    for (var _b = 0, rulesList_1 = rulesList; _b < rulesList_1.length; _b++) {
+        var _c = rulesList_1[_b], selector = _c.selector, style = _c.style, rules = _c.rules, styles = _c.styles;
+        var item = new Rule(selector, style, "r\0" + pid + "\0" + selector + "\0" + style);
+        composeStylize(item, pid, rules, styles, className, isStyle);
+        cache.add(item);
+    }
+}
+/**
+ * Cache to list to styles.
+ */
+function join(arr) {
+    var res = '';
+    for (var i = 0; i < arr.length; i++)
+        res += arr[i];
+    return res;
+}
+/**
+ * Noop changes.
+ */
+var noopChanges = {
+    add: function () { return undefined; },
+    change: function () { return undefined; },
+    remove: function () { return undefined; }
+};
+/**
+ * Implement a cache/event emitter.
+ */
+var Cache = /** @class */ (function () {
+    function Cache(changes) {
+        if (changes === void 0) { changes = noopChanges; }
+        this.changes = changes;
+        this.sheet = [];
+        this.changeId = 0;
+        this._keys = [];
+        this._children = Object.create(null);
+        this._counters = Object.create(null);
+    }
+    Cache.prototype.add = function (style) {
+        var count = this._counters[style.id] || 0;
+        var item = this._children[style.id] || style.clone();
+        this._counters[style.id] = count + 1;
+        if (count === 0) {
+            this._children[item.id] = item;
+            this._keys.push(item.id);
+            this.sheet.push(item.getStyles());
+            this.changeId++;
+            this.changes.add(item, this._keys.length - 1);
+        }
+        else if (item instanceof Cache && style instanceof Cache) {
+            var curIndex = this._keys.indexOf(style.id);
+            var prevItemChangeId = item.changeId;
+            item.merge(style);
+            if (item.changeId !== prevItemChangeId) {
+                this.sheet.splice(curIndex, 1, item.getStyles());
+                this.changeId++;
+                this.changes.change(item, curIndex, curIndex);
+            }
+        }
+        return item;
+    };
+    Cache.prototype.remove = function (style) {
+        var count = this._counters[style.id];
+        if (count !== undefined && count > 0) {
+            this._counters[style.id] = count - 1;
+            var item = this._children[style.id];
+            var index = this._keys.indexOf(item.id);
+            if (count === 1) {
+                delete this._counters[style.id];
+                delete this._children[style.id];
+                this._keys.splice(index, 1);
+                this.sheet.splice(index, 1);
+                this.changeId++;
+                this.changes.remove(item, index);
+            }
+            else if (item instanceof Cache && style instanceof Cache) {
+                var prevChangeId = item.changeId;
+                item.unmerge(style);
+                if (item.changeId !== prevChangeId) {
+                    this.sheet.splice(index, 1, item.getStyles());
+                    this.changeId++;
+                    this.changes.change(item, index, index);
+                }
+            }
+        }
+    };
+    Cache.prototype.values = function () {
+        var _this = this;
+        return this._keys.map(function (key) { return _this._children[key]; });
+    };
+    Cache.prototype.merge = function (cache) {
+        for (var _i = 0, _a = cache.values(); _i < _a.length; _i++) {
+            var item = _a[_i];
+            this.add(item);
+        }
+        return this;
+    };
+    Cache.prototype.unmerge = function (cache) {
+        for (var _i = 0, _a = cache.values(); _i < _a.length; _i++) {
+            var item = _a[_i];
+            this.remove(item);
+        }
+        return this;
+    };
+    Cache.prototype.clone = function () {
+        return new Cache().merge(this);
+    };
+    return Cache;
+}());
+exports.Cache = Cache;
+/**
+ * Selector is a dumb class made to represent nested CSS selectors.
+ */
+var Selector = /** @class */ (function () {
+    function Selector(selector, id) {
+        this.selector = selector;
+        this.id = id;
+    }
+    Selector.prototype.getStyles = function () {
+        return this.selector;
+    };
+    Selector.prototype.clone = function () {
+        return new Selector(this.selector, this.id);
+    };
+    return Selector;
+}());
+exports.Selector = Selector;
+/**
+ * The style container registers a style string with selectors.
+ */
+var Style = /** @class */ (function (_super) {
+    __extends(Style, _super);
+    function Style(style, id) {
+        var _this = _super.call(this) || this;
+        _this.style = style;
+        _this.id = id;
+        return _this;
+    }
+    Style.prototype.getStyles = function () {
+        return this.sheet.join(',') + "{" + this.style + "}";
+    };
+    Style.prototype.clone = function () {
+        return new Style(this.style, this.id).merge(this);
+    };
+    return Style;
+}(Cache));
+exports.Style = Style;
+/**
+ * Implement rule logic for style output.
+ */
+var Rule = /** @class */ (function (_super) {
+    __extends(Rule, _super);
+    function Rule(rule, style, id) {
+        var _this = _super.call(this) || this;
+        _this.rule = rule;
+        _this.style = style;
+        _this.id = id;
+        return _this;
+    }
+    Rule.prototype.getStyles = function () {
+        return this.rule + "{" + this.style + join(this.sheet) + "}";
+    };
+    Rule.prototype.clone = function () {
+        return new Rule(this.rule, this.style, this.id).merge(this);
+    };
+    return Rule;
+}(Cache));
+exports.Rule = Rule;
+/**
+ * The FreeStyle class implements the API for everything else.
+ */
+var FreeStyle = /** @class */ (function (_super) {
+    __extends(FreeStyle, _super);
+    function FreeStyle(hash, debug, id, changes) {
+        var _this = _super.call(this, changes) || this;
+        _this.hash = hash;
+        _this.debug = debug;
+        _this.id = id;
+        return _this;
+    }
+    FreeStyle.prototype.registerStyle = function (styles, displayName) {
+        var rulesList = [];
+        var stylesList = [];
+        var pid = stylize('&', styles, rulesList, stylesList);
+        var hash = "f" + this.hash(pid);
+        var id = this.debug && displayName ? displayName + "_" + hash : hash;
+        composeStylize(this, pid, rulesList, stylesList, "." + exports.escape(id), true);
+        return id;
+    };
+    FreeStyle.prototype.registerKeyframes = function (keyframes, displayName) {
+        return this.registerHashRule('@keyframes', keyframes, displayName);
+    };
+    FreeStyle.prototype.registerHashRule = function (prefix, styles, displayName) {
+        var rulesList = [];
+        var stylesList = [];
+        var pid = stylize('', styles, rulesList, stylesList);
+        var hash = "f" + this.hash(pid);
+        var id = this.debug && displayName ? displayName + "_" + hash : hash;
+        var rule = new Rule(prefix + " " + exports.escape(id), '', "h\0" + pid + "\0" + prefix);
+        composeStylize(rule, pid, rulesList, stylesList, '', false);
+        this.add(rule);
+        return id;
+    };
+    FreeStyle.prototype.registerRule = function (rule, styles) {
+        var rulesList = [];
+        var stylesList = [];
+        var pid = stylize(rule, styles, rulesList, stylesList);
+        composeStylize(this, pid, rulesList, stylesList, '', false);
+    };
+    FreeStyle.prototype.registerCss = function (styles) {
+        return this.registerRule('', styles);
+    };
+    FreeStyle.prototype.getStyles = function () {
+        return join(this.sheet);
+    };
+    FreeStyle.prototype.clone = function () {
+        return new FreeStyle(this.hash, this.debug, this.id, this.changes).merge(this);
+    };
+    return FreeStyle;
+}(Cache));
+exports.FreeStyle = FreeStyle;
+/**
+ * Exports a simple function to create a new instance.
+ */
+function create(hash, debug, changes) {
+    if (hash === void 0) { hash = stringHash; }
+    if (debug === void 0) { debug = typeof process !== 'undefined' && "development" !== 'production'; }
+    if (changes === void 0) { changes = noopChanges; }
+    return new FreeStyle(hash, debug, "f" + (++uniqueId).toString(36), changes);
+}
+exports.create = create;
+//# sourceMappingURL=free-style.js.map
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../process/browser.js */ "./node_modules/process/browser.js")))
+
+/***/ }),
+
+/***/ "./node_modules/immer/dist/immer.module.js":
+/*!*************************************************!*\
+  !*** ./node_modules/immer/dist/immer.module.js ***!
+  \*************************************************/
+/*! exports provided: default, Immer, applyPatches, createDraft, finishDraft, immerable, isDraft, isDraftable, nothing, original, produce, produceWithPatches, setAutoFreeze, setUseProxies */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* WEBPACK VAR INJECTION */(function(process) {/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Immer", function() { return Immer; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "applyPatches", function() { return applyPatches$1; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "createDraft", function() { return createDraft; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "finishDraft", function() { return finishDraft; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "immerable", function() { return DRAFTABLE; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "isDraft", function() { return isDraft; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "isDraftable", function() { return isDraftable; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "nothing", function() { return NOTHING; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "original", function() { return original; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "produce", function() { return produce; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "produceWithPatches", function() { return produceWithPatches; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setAutoFreeze", function() { return setAutoFreeze; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setUseProxies", function() { return setUseProxies; });
+var obj;
+var NOTHING = typeof Symbol !== "undefined" ? Symbol("immer-nothing") : ( obj = {}, obj["immer-nothing"] = true, obj );
+var DRAFTABLE = typeof Symbol !== "undefined" && Symbol.for ? Symbol.for("immer-draftable") : "__$immer_draftable";
+var DRAFT_STATE = typeof Symbol !== "undefined" && Symbol.for ? Symbol.for("immer-state") : "__$immer_state";
+function isDraft(value) {
+  return !!value && !!value[DRAFT_STATE];
+}
+function isDraftable(value) {
+  if (!value) { return false; }
+  return isPlainObject(value) || !!value[DRAFTABLE] || !!value.constructor[DRAFTABLE] || isMap(value) || isSet(value);
+}
+function isPlainObject(value) {
+  if (!value || typeof value !== "object") { return false; }
+  if (Array.isArray(value)) { return true; }
+  var proto = Object.getPrototypeOf(value);
+  return !proto || proto === Object.prototype;
+}
+function original(value) {
+  if (value && value[DRAFT_STATE]) {
+    return value[DRAFT_STATE].base;
+  } // otherwise return undefined
+
+} // We use Maps as `drafts` for Sets, not Objects
+// See proxy.js
+
+function assignSet(target, override) {
+  override.forEach(function (value) {
+    // When we add new drafts we have to remove their originals if present
+    var prev = original(value);
+    if (prev) { target.delete(prev); }
+    target.add(value);
+  });
+  return target;
+} // We use Maps as `drafts` for Maps, not Objects
+// See proxy.js
+
+function assignMap(target, override) {
+  override.forEach(function (value, key) { return target.set(key, value); });
+  return target;
+}
+var assign = Object.assign || (function (target) {
+  var overrides = [], len = arguments.length - 1;
+  while ( len-- > 0 ) overrides[ len ] = arguments[ len + 1 ];
+
+  overrides.forEach(function (override) { return Object.keys(override).forEach(function (key) { return target[key] = override[key]; }); });
+  return target;
+});
+var ownKeys = typeof Reflect !== "undefined" && Reflect.ownKeys ? Reflect.ownKeys : typeof Object.getOwnPropertySymbols !== "undefined" ? function (obj) { return Object.getOwnPropertyNames(obj).concat(Object.getOwnPropertySymbols(obj)); } : Object.getOwnPropertyNames;
+function shallowCopy(base, invokeGetters) {
+  if ( invokeGetters === void 0 ) invokeGetters = false;
+
+  if (Array.isArray(base)) { return base.slice(); }
+  if (isMap(base)) { return new Map(base); }
+  if (isSet(base)) { return new Set(base); }
+  var clone = Object.create(Object.getPrototypeOf(base));
+  ownKeys(base).forEach(function (key) {
+    if (key === DRAFT_STATE) {
+      return; // Never copy over draft state.
+    }
+
+    var desc = Object.getOwnPropertyDescriptor(base, key);
+    var value = desc.value;
+
+    if (desc.get) {
+      if (!invokeGetters) {
+        throw new Error("Immer drafts cannot have computed properties");
+      }
+
+      value = desc.get.call(base);
+    }
+
+    if (desc.enumerable) {
+      clone[key] = value;
+    } else {
+      Object.defineProperty(clone, key, {
+        value: value,
+        writable: true,
+        configurable: true
+      });
+    }
+  });
+  return clone;
+}
+function each(obj, iter) {
+  if (Array.isArray(obj) || isMap(obj) || isSet(obj)) {
+    obj.forEach(function (entry, index) { return iter(index, entry, obj); });
+  } else {
+    ownKeys(obj).forEach(function (key) { return iter(key, obj[key], obj); });
+  }
+}
+function isEnumerable(base, prop) {
+  var desc = Object.getOwnPropertyDescriptor(base, prop);
+  return !!desc && desc.enumerable;
+}
+function has(thing, prop) {
+  return isMap(thing) ? thing.has(prop) : Object.prototype.hasOwnProperty.call(thing, prop);
+}
+function get(thing, prop) {
+  return isMap(thing) ? thing.get(prop) : thing[prop];
+}
+function is(x, y) {
+  // From: https://github.com/facebook/fbjs/blob/c69904a511b900266935168223063dd8772dfc40/packages/fbjs/src/core/shallowEqual.js
+  if (x === y) {
+    return x !== 0 || 1 / x === 1 / y;
+  } else {
+    return x !== x && y !== y;
+  }
+}
+var hasSymbol = typeof Symbol !== "undefined";
+var hasMap = typeof Map !== "undefined";
+function isMap(target) {
+  return hasMap && target instanceof Map;
+}
+var hasSet = typeof Set !== "undefined";
+function isSet(target) {
+  return hasSet && target instanceof Set;
+}
+function makeIterable(next) {
+  var obj;
+
+  var self;
+  return self = ( obj = {}, obj[Symbol.iterator] = function () { return self; }, obj.next = next, obj );
+}
+/** Map.prototype.values _-or-_ Map.prototype.entries */
+
+function iterateMapValues(state, prop, receiver) {
+  var isEntries = prop !== "values";
+  return function () {
+    var iterator = latest(state)[Symbol.iterator]();
+    return makeIterable(function () {
+      var result = iterator.next();
+
+      if (!result.done) {
+        var ref = result.value;
+        var key = ref[0];
+        var value = receiver.get(key);
+        result.value = isEntries ? [key, value] : value;
+      }
+
+      return result;
+    });
+  };
+}
+function makeIterateSetValues(createProxy) {
+  function iterateSetValues(state, prop) {
+    var isEntries = prop === "entries";
+    return function () {
+      var iterator = latest(state)[Symbol.iterator]();
+      return makeIterable(function () {
+        var result = iterator.next();
+
+        if (!result.done) {
+          var value = wrapSetValue(state, result.value);
+          result.value = isEntries ? [value, value] : value;
+        }
+
+        return result;
+      });
+    };
+  }
+
+  function wrapSetValue(state, value) {
+    var key = original(value) || value;
+    var draft = state.drafts.get(key);
+
+    if (!draft) {
+      if (state.finalized || !isDraftable(value) || state.finalizing) {
+        return value;
+      }
+
+      draft = createProxy(value, state);
+      state.drafts.set(key, draft);
+
+      if (state.modified) {
+        state.copy.add(draft);
+      }
+    }
+
+    return draft;
+  }
+
+  return iterateSetValues;
+}
+
+function latest(state) {
+  return state.copy || state.base;
+}
+
+function clone(obj) {
+  if (!isDraftable(obj)) { return obj; }
+  if (Array.isArray(obj)) { return obj.map(clone); }
+  if (isMap(obj)) { return new Map(obj); }
+  if (isSet(obj)) { return new Set(obj); }
+  var cloned = Object.create(Object.getPrototypeOf(obj));
+
+  for (var key in obj) { cloned[key] = clone(obj[key]); }
+
+  return cloned;
+}
+function freeze(obj, deep) {
+  if ( deep === void 0 ) deep = false;
+
+  if (!isDraftable(obj) || isDraft(obj) || Object.isFrozen(obj)) { return; }
+
+  if (isSet(obj)) {
+    obj.add = obj.clear = obj.delete = dontMutateFrozenCollections;
+  } else if (isMap(obj)) {
+    obj.set = obj.clear = obj.delete = dontMutateFrozenCollections;
+  }
+
+  Object.freeze(obj);
+  if (deep) { each(obj, function (_, value) { return freeze(value, true); }); }
+}
+
+function dontMutateFrozenCollections() {
+  throw new Error("This object has been frozen and should not be mutated");
+}
+
+/** Each scope represents a `produce` call. */
+
+var ImmerScope = function ImmerScope(parent) {
+  this.drafts = [];
+  this.parent = parent; // Whenever the modified draft contains a draft from another scope, we
+  // need to prevent auto-freezing so the unowned draft can be finalized.
+
+  this.canAutoFreeze = true; // To avoid prototype lookups:
+
+  this.patches = null;
+};
+
+ImmerScope.prototype.usePatches = function usePatches (patchListener) {
+  if (patchListener) {
+    this.patches = [];
+    this.inversePatches = [];
+    this.patchListener = patchListener;
+  }
+};
+
+ImmerScope.prototype.revoke = function revoke$1 () {
+  this.leave();
+  this.drafts.forEach(revoke);
+  this.drafts = null; // Make draft-related methods throw.
+};
+
+ImmerScope.prototype.leave = function leave () {
+  if (this === ImmerScope.current) {
+    ImmerScope.current = this.parent;
+  }
+};
+ImmerScope.current = null;
+
+ImmerScope.enter = function () {
+  return this.current = new ImmerScope(this.current);
+};
+
+function revoke(draft) {
+  draft[DRAFT_STATE].revoke();
+}
+
+function willFinalize(scope, result, isReplaced) {
+  scope.drafts.forEach(function (draft) {
+    draft[DRAFT_STATE].finalizing = true;
+  });
+
+  if (!isReplaced) {
+    if (scope.patches) {
+      markChangesRecursively(scope.drafts[0]);
+    } // This is faster when we don't care about which attributes changed.
+
+
+    markChangesSweep(scope.drafts);
+  } // When a child draft is returned, look for changes.
+  else if (isDraft(result) && result[DRAFT_STATE].scope === scope) {
+      markChangesSweep(scope.drafts);
+    }
+}
+function createProxy(base, parent) {
+  var isArray = Array.isArray(base);
+  var draft = clonePotentialDraft(base);
+
+  if (isMap(base)) {
+    proxyMap(draft);
+  } else if (isSet(base)) {
+    proxySet(draft);
+  } else {
+    each(draft, function (prop) {
+      proxyProperty(draft, prop, isArray || isEnumerable(base, prop));
+    });
+  } // See "proxy.js" for property documentation.
+
+
+  var scope = parent ? parent.scope : ImmerScope.current;
+  var state = {
+    scope: scope,
+    modified: false,
+    finalizing: false,
+    // es5 only
+    finalized: false,
+    assigned: isMap(base) ? new Map() : {},
+    parent: parent,
+    base: base,
+    draft: draft,
+    drafts: isSet(base) ? new Map() : null,
+    copy: null,
+    revoke: revoke$1,
+    revoked: false // es5 only
+
+  };
+  createHiddenProperty(draft, DRAFT_STATE, state);
+  scope.drafts.push(draft);
+  return draft;
+}
+
+function revoke$1() {
+  this.revoked = true;
+}
+
+function latest$1(state) {
+  return state.copy || state.base;
+} // Access a property without creating an Immer draft.
+
+
+function peek(draft, prop) {
+  var state = draft[DRAFT_STATE];
+
+  if (state && !state.finalizing) {
+    state.finalizing = true;
+    var value = draft[prop];
+    state.finalizing = false;
+    return value;
+  }
+
+  return draft[prop];
+}
+
+function get$1(state, prop) {
+  assertUnrevoked(state);
+  var value = peek(latest$1(state), prop);
+  if (state.finalizing) { return value; } // Create a draft if the value is unmodified.
+
+  if (value === peek(state.base, prop) && isDraftable(value)) {
+    prepareCopy(state);
+    return state.copy[prop] = createProxy(value, state);
+  }
+
+  return value;
+}
+
+function set(state, prop, value) {
+  assertUnrevoked(state);
+  state.assigned[prop] = true;
+
+  if (!state.modified) {
+    if (is(value, peek(latest$1(state), prop))) { return; }
+    markChanged(state);
+    prepareCopy(state);
+  }
+
+  state.copy[prop] = value;
+}
+
+function markChanged(state) {
+  if (!state.modified) {
+    state.modified = true;
+    if (state.parent) { markChanged(state.parent); }
+  }
+}
+
+function prepareCopy(state) {
+  if (!state.copy) { state.copy = clonePotentialDraft(state.base); }
+}
+
+function clonePotentialDraft(base) {
+  var state = base && base[DRAFT_STATE];
+
+  if (state) {
+    state.finalizing = true;
+    var draft = shallowCopy(state.draft, true);
+    state.finalizing = false;
+    return draft;
+  }
+
+  return shallowCopy(base);
+} // property descriptors are recycled to make sure we don't create a get and set closure per property,
+// but share them all instead
+
+
+var descriptors = {};
+
+function proxyProperty(draft, prop, enumerable) {
+  var desc = descriptors[prop];
+
+  if (desc) {
+    desc.enumerable = enumerable;
+  } else {
+    descriptors[prop] = desc = {
+      configurable: true,
+      enumerable: enumerable,
+
+      get: function get$1$1() {
+        return get$1(this[DRAFT_STATE], prop);
+      },
+
+      set: function set$1(value) {
+        set(this[DRAFT_STATE], prop, value);
+      }
+
+    };
+  }
+
+  Object.defineProperty(draft, prop, desc);
+}
+
+function proxyMap(target) {
+  Object.defineProperties(target, mapTraps);
+
+  if (hasSymbol) {
+    Object.defineProperty(target, Symbol.iterator, proxyMethod(iterateMapValues));
+  }
+}
+
+var mapTraps = finalizeTraps({
+  size: function (state) { return latest$1(state).size; },
+  has: function (state) { return function (key) { return latest$1(state).has(key); }; },
+  set: function (state) { return function (key, value) {
+    if (latest$1(state).get(key) !== value) {
+      prepareCopy(state);
+      markChanged(state);
+      state.assigned.set(key, true);
+      state.copy.set(key, value);
+    }
+
+    return state.draft;
+  }; },
+  delete: function (state) { return function (key) {
+    prepareCopy(state);
+    markChanged(state);
+    state.assigned.set(key, false);
+    state.copy.delete(key);
+    return false;
+  }; },
+  clear: function (state) { return function () {
+    if (!state.copy) {
+      prepareCopy(state);
+    }
+
+    markChanged(state);
+    state.assigned = new Map();
+
+    for (var i = 0, list = latest$1(state).keys(); i < list.length; i += 1) {
+      var key = list[i];
+
+      state.assigned.set(key, false);
+    }
+
+    return state.copy.clear();
+  }; },
+  forEach: function (state, key, reciever) { return function (cb) {
+    latest$1(state).forEach(function (value, key, map) {
+      cb(reciever.get(key), key, map);
+    });
+  }; },
+  get: function (state) { return function (key) {
+    var value = latest$1(state).get(key);
+
+    if (state.finalizing || state.finalized || !isDraftable(value)) {
+      return value;
+    }
+
+    if (value !== state.base.get(key)) {
+      return value;
+    }
+
+    var draft = createProxy(value, state);
+    prepareCopy(state);
+    state.copy.set(key, draft);
+    return draft;
+  }; },
+  keys: function (state) { return function () { return latest$1(state).keys(); }; },
+  values: iterateMapValues,
+  entries: iterateMapValues
+});
+
+function proxySet(target) {
+  Object.defineProperties(target, setTraps);
+
+  if (hasSymbol) {
+    Object.defineProperty(target, Symbol.iterator, proxyMethod(iterateSetValues));
+  }
+}
+
+var iterateSetValues = makeIterateSetValues(createProxy);
+var setTraps = finalizeTraps({
+  size: function (state) {
+    return latest$1(state).size;
+  },
+  add: function (state) { return function (value) {
+    if (!latest$1(state).has(value)) {
+      markChanged(state);
+
+      if (!state.copy) {
+        prepareCopy(state);
+      }
+
+      state.copy.add(value);
+    }
+
+    return state.draft;
+  }; },
+  delete: function (state) { return function (value) {
+    markChanged(state);
+
+    if (!state.copy) {
+      prepareCopy(state);
+    }
+
+    return state.copy.delete(value);
+  }; },
+  has: function (state) { return function (key) {
+    return latest$1(state).has(key);
+  }; },
+  clear: function (state) { return function () {
+    markChanged(state);
+
+    if (!state.copy) {
+      prepareCopy(state);
+    }
+
+    return state.copy.clear();
+  }; },
+  keys: iterateSetValues,
+  entries: iterateSetValues,
+  values: iterateSetValues,
+  forEach: function (state) { return function (cb, thisArg) {
+    var iterator = iterateSetValues(state)();
+    var result = iterator.next();
+
+    while (!result.done) {
+      cb.call(thisArg, result.value, result.value, state.draft);
+      result = iterator.next();
+    }
+  }; }
+});
+
+function finalizeTraps(traps) {
+  return Object.keys(traps).reduce(function (acc, key) {
+    var builder = key === "size" ? proxyAttr : proxyMethod;
+    acc[key] = builder(traps[key], key);
+    return acc;
+  }, {});
+}
+
+function proxyAttr(fn) {
+  return {
+    get: function get() {
+      var state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      return fn(state);
+    }
+
+  };
+}
+
+function proxyMethod(trap, key) {
+  return {
+    get: function get() {
+      return function () {
+        var args = [], len = arguments.length;
+        while ( len-- ) args[ len ] = arguments[ len ];
+
+        var state = this[DRAFT_STATE];
+        assertUnrevoked(state);
+        return trap(state, key, state.draft).apply(void 0, args);
+      };
+    }
+
+  };
+}
+
+function assertUnrevoked(state) {
+  if (state.revoked === true) { throw new Error("Cannot use a proxy that has been revoked. Did you pass an object from inside an immer function to an async process? " + JSON.stringify(latest$1(state))); }
+} // This looks expensive, but only proxies are visited, and only objects without known changes are scanned.
+
+
+function markChangesSweep(drafts) {
+  // The natural order of drafts in the `scope` array is based on when they
+  // were accessed. By processing drafts in reverse natural order, we have a
+  // better chance of processing leaf nodes first. When a leaf node is known to
+  // have changed, we can avoid any traversal of its ancestor nodes.
+  for (var i = drafts.length - 1; i >= 0; i--) {
+    var state = drafts[i][DRAFT_STATE];
+
+    if (!state.modified) {
+      if (Array.isArray(state.base)) {
+        if (hasArrayChanges(state)) { markChanged(state); }
+      } else if (isMap(state.base)) {
+        if (hasMapChanges(state)) { markChanged(state); }
+      } else if (isSet(state.base)) {
+        if (hasSetChanges(state)) { markChanged(state); }
+      } else if (hasObjectChanges(state)) {
+        markChanged(state);
+      }
+    }
+  }
+}
+
+function markChangesRecursively(object) {
+  if (!object || typeof object !== "object") { return; }
+  var state = object[DRAFT_STATE];
+  if (!state) { return; }
+  var base = state.base;
+  var draft = state.draft;
+  var assigned = state.assigned;
+
+  if (!Array.isArray(object)) {
+    // Look for added keys.
+    Object.keys(draft).forEach(function (key) {
+      // The `undefined` check is a fast path for pre-existing keys.
+      if (base[key] === undefined && !has(base, key)) {
+        assigned[key] = true;
+        markChanged(state);
+      } else if (!assigned[key]) {
+        // Only untouched properties trigger recursion.
+        markChangesRecursively(draft[key]);
+      }
+    }); // Look for removed keys.
+
+    Object.keys(base).forEach(function (key) {
+      // The `undefined` check is a fast path for pre-existing keys.
+      if (draft[key] === undefined && !has(draft, key)) {
+        assigned[key] = false;
+        markChanged(state);
+      }
+    });
+  } else if (hasArrayChanges(state)) {
+    markChanged(state);
+    assigned.length = true;
+
+    if (draft.length < base.length) {
+      for (var i = draft.length; i < base.length; i++) { assigned[i] = false; }
+    } else {
+      for (var i$1 = base.length; i$1 < draft.length; i$1++) { assigned[i$1] = true; }
+    }
+
+    for (var i$2 = 0; i$2 < draft.length; i$2++) {
+      // Only untouched indices trigger recursion.
+      if (assigned[i$2] === undefined) { markChangesRecursively(draft[i$2]); }
+    }
+  }
+}
+
+function hasObjectChanges(state) {
+  var base = state.base;
+  var draft = state.draft; // Search for added keys and changed keys. Start at the back, because
+  // non-numeric keys are ordered by time of definition on the object.
+
+  var keys = Object.keys(draft);
+
+  for (var i = keys.length - 1; i >= 0; i--) {
+    var key = keys[i];
+    var baseValue = base[key]; // The `undefined` check is a fast path for pre-existing keys.
+
+    if (baseValue === undefined && !has(base, key)) {
+      return true;
+    } // Once a base key is deleted, future changes go undetected, because its
+    // descriptor is erased. This branch detects any missed changes.
+    else {
+        var value = draft[key];
+        var state$1 = value && value[DRAFT_STATE];
+
+        if (state$1 ? state$1.base !== baseValue : !is(value, baseValue)) {
+          return true;
+        }
+      }
+  } // At this point, no keys were added or changed.
+  // Compare key count to determine if keys were deleted.
+
+
+  return keys.length !== Object.keys(base).length;
+}
+
+function hasArrayChanges(state) {
+  var draft = state.draft;
+  if (draft.length !== state.base.length) { return true; } // See #116
+  // If we first shorten the length, our array interceptors will be removed.
+  // If after that new items are added, result in the same original length,
+  // those last items will have no intercepting property.
+  // So if there is no own descriptor on the last position, we know that items were removed and added
+  // N.B.: splice, unshift, etc only shift values around, but not prop descriptors, so we only have to check
+  // the last one
+
+  var descriptor = Object.getOwnPropertyDescriptor(draft, draft.length - 1); // descriptor can be null, but only for newly created sparse arrays, eg. new Array(10)
+
+  if (descriptor && !descriptor.get) { return true; } // For all other cases, we don't have to compare, as they would have been picked up by the index setters
+
+  return false;
+}
+
+function hasMapChanges(state) {
+  var base = state.base;
+  var draft = state.draft;
+  if (base.size !== draft.size) { return true; } // IE11 supports only forEach iteration
+
+  var hasChanges = false;
+  draft.forEach(function (value, key) {
+    if (!hasChanges) {
+      hasChanges = isDraftable(value) ? value.modified : value !== base.get(key);
+    }
+  });
+  return hasChanges;
+}
+
+function hasSetChanges(state) {
+  var base = state.base;
+  var draft = state.draft;
+  if (base.size !== draft.size) { return true; } // IE11 supports only forEach iteration
+
+  var hasChanges = false;
+  draft.forEach(function (value, key) {
+    if (!hasChanges) {
+      hasChanges = isDraftable(value) ? value.modified : !base.has(key);
+    }
+  });
+  return hasChanges;
+}
+
+function createHiddenProperty(target, prop, value) {
+  Object.defineProperty(target, prop, {
+    value: value,
+    enumerable: false,
+    writable: true
+  });
+}
+
+var legacyProxy = /*#__PURE__*/Object.freeze({
+	willFinalize: willFinalize,
+	createProxy: createProxy
+});
+
+var obj$1, obj$1$1;
+
+function willFinalize$1() {}
+/**
+ * Returns a new draft of the `base` object.
+ *
+ * The second argument is the parent draft-state (used internally).
+ */
+
+function createProxy$1(base, parent) {
+  var scope = parent ? parent.scope : ImmerScope.current;
+  var state = {
+    // Track which produce call this is associated with.
+    scope: scope,
+    // True for both shallow and deep changes.
+    modified: false,
+    // Used during finalization.
+    finalized: false,
+    // Track which properties have been assigned (true) or deleted (false).
+    assigned: {},
+    // The parent draft state.
+    parent: parent,
+    // The base state.
+    base: base,
+    // The base proxy.
+    draft: null,
+    // Any property proxies.
+    drafts: {},
+    // The base copy with any updated values.
+    copy: null,
+    // Called by the `produce` function.
+    revoke: null
+  };
+  var target = state;
+  var traps = objectTraps;
+
+  if (Array.isArray(base)) {
+    target = [state];
+    traps = arrayTraps;
+  } // Map drafts must support object keys, so we use Map objects to track changes.
+  else if (isMap(base)) {
+      traps = mapTraps$1;
+      state.drafts = new Map();
+      state.assigned = new Map();
+    } // Set drafts use a Map object to track which of its values are drafted.
+    // And we don't need the "assigned" property, because Set objects have no keys.
+    else if (isSet(base)) {
+        traps = setTraps$1;
+        state.drafts = new Map();
+      }
+
+  var ref = Proxy.revocable(target, traps);
+  var revoke = ref.revoke;
+  var proxy = ref.proxy;
+  state.draft = proxy;
+  state.revoke = revoke;
+  scope.drafts.push(proxy);
+  return proxy;
+}
+/**
+ * Object drafts
+ */
+
+var objectTraps = {
+  get: function get(state, prop) {
+    if (prop === DRAFT_STATE) { return state; }
+    var drafts = state.drafts; // Check for existing draft in unmodified state.
+
+    if (!state.modified && has(drafts, prop)) {
+      return drafts[prop];
+    }
+
+    var value = latest$2(state)[prop];
+
+    if (state.finalized || !isDraftable(value)) {
+      return value;
+    } // Check for existing draft in modified state.
+
+
+    if (state.modified) {
+      // Assigned values are never drafted. This catches any drafts we created, too.
+      if (value !== peek$1(state.base, prop)) { return value; } // Store drafts on the copy (when one exists).
+
+      drafts = state.copy;
+    }
+
+    return drafts[prop] = createProxy$1(value, state);
+  },
+
+  has: function has(state, prop) {
+    return prop in latest$2(state);
+  },
+
+  ownKeys: function ownKeys(state) {
+    return Reflect.ownKeys(latest$2(state));
+  },
+
+  set: function set(state, prop, value) {
+    if (!state.modified) {
+      var baseValue = peek$1(state.base, prop); // Optimize based on value's truthiness. Truthy values are guaranteed to
+      // never be undefined, so we can avoid the `in` operator. Lastly, truthy
+      // values may be drafts, but falsy values are never drafts.
+
+      var isUnchanged = value ? is(baseValue, value) || value === state.drafts[prop] : is(baseValue, value) && prop in state.base;
+      if (isUnchanged) { return true; }
+      markChanged$1(state);
+    }
+
+    state.assigned[prop] = true;
+    state.copy[prop] = value;
+    return true;
+  },
+
+  deleteProperty: function deleteProperty(state, prop) {
+    // The `undefined` check is a fast path for pre-existing keys.
+    if (peek$1(state.base, prop) !== undefined || prop in state.base) {
+      state.assigned[prop] = false;
+      markChanged$1(state);
+    } else if (state.assigned[prop]) {
+      // if an originally not assigned property was deleted
+      delete state.assigned[prop];
+    }
+
+    if (state.copy) { delete state.copy[prop]; }
+    return true;
+  },
+
+  // Note: We never coerce `desc.value` into an Immer draft, because we can't make
+  // the same guarantee in ES5 mode.
+  getOwnPropertyDescriptor: function getOwnPropertyDescriptor(state, prop) {
+    var owner = latest$2(state);
+    var desc = Reflect.getOwnPropertyDescriptor(owner, prop);
+
+    if (desc) {
+      desc.writable = true;
+      desc.configurable = !Array.isArray(owner) || prop !== "length";
+    }
+
+    return desc;
+  },
+
+  defineProperty: function defineProperty() {
+    throw new Error("Object.defineProperty() cannot be used on an Immer draft"); // prettier-ignore
+  },
+
+  getPrototypeOf: function getPrototypeOf(state) {
+    return Object.getPrototypeOf(state.base);
+  },
+
+  setPrototypeOf: function setPrototypeOf() {
+    throw new Error("Object.setPrototypeOf() cannot be used on an Immer draft"); // prettier-ignore
+  }
+
+};
+/**
+ * Array drafts
+ */
+
+var arrayTraps = {};
+each(objectTraps, function (key, fn) {
+  arrayTraps[key] = function () {
+    arguments[0] = arguments[0][0];
+    return fn.apply(this, arguments);
+  };
+});
+
+arrayTraps.deleteProperty = function (state, prop) {
+  if (isNaN(parseInt(prop))) {
+    throw new Error("Immer only supports deleting array indices"); // prettier-ignore
+  }
+
+  return objectTraps.deleteProperty.call(this, state[0], prop);
+};
+
+arrayTraps.set = function (state, prop, value) {
+  if (prop !== "length" && isNaN(parseInt(prop))) {
+    throw new Error("Immer only supports setting array indices and the 'length' property"); // prettier-ignore
+  }
+
+  return objectTraps.set.call(this, state[0], prop, value);
+}; // Used by Map and Set drafts
+
+
+var reflectTraps = makeReflectTraps(["ownKeys", "has", "set", "deleteProperty", "defineProperty", "getOwnPropertyDescriptor", "preventExtensions", "isExtensible", "getPrototypeOf"]);
+/**
+ * Map drafts
+ */
+
+var mapTraps$1 = makeTrapsForGetters(( obj$1 = {}, obj$1[DRAFT_STATE] = function (state) { return state; }, obj$1.size = function (state) { return latest$2(state).size; }, obj$1.has = function (state) { return function (key) { return latest$2(state).has(key); }; }, obj$1.set = function (state) { return function (key, value) {
+    var values = latest$2(state);
+
+    if (!values.has(key) || values.get(key) !== value) {
+      markChanged$1(state);
+      state.assigned.set(key, true);
+      state.copy.set(key, value);
+    }
+
+    return state.draft;
+  }; }, obj$1.delete = function (state) { return function (key) {
+    if (latest$2(state).has(key)) {
+      markChanged$1(state);
+      state.assigned.set(key, false);
+      return state.copy.delete(key);
+    }
+
+    return false;
+  }; }, obj$1.clear = function (state) { return function () {
+    markChanged$1(state);
+    state.assigned = new Map();
+
+    for (var i = 0, list = latest$2(state).keys(); i < list.length; i += 1) {
+      var key = list[i];
+
+      state.assigned.set(key, false);
+    }
+
+    return state.copy.clear();
+  }; }, obj$1.forEach = function (state, _, receiver) { return function (cb, thisArg) { return latest$2(state).forEach(function (_, key, map) {
+    var value = receiver.get(key);
+    cb.call(thisArg, value, key, map);
+  }); }; }, obj$1.get = function (state) { return function (key) {
+    var drafts = state[state.modified ? "copy" : "drafts"];
+
+    if (drafts.has(key)) {
+      return drafts.get(key);
+    }
+
+    var value = latest$2(state).get(key);
+
+    if (state.finalized || !isDraftable(value)) {
+      return value;
+    }
+
+    var draft = createProxy$1(value, state);
+    drafts.set(key, draft);
+    return draft;
+  }; }, obj$1.keys = function (state) { return function () { return latest$2(state).keys(); }; }, obj$1.values = iterateMapValues, obj$1.entries = iterateMapValues, obj$1[hasSymbol ? Symbol.iterator : "@@iterator"] = iterateMapValues, obj$1 ));
+var iterateSetValues$1 = makeIterateSetValues(createProxy$1);
+/**
+ * Set drafts
+ */
+
+var setTraps$1 = makeTrapsForGetters(( obj$1$1 = {}, obj$1$1[DRAFT_STATE] = function (state) { return state; }, obj$1$1.size = function (state) { return latest$2(state).size; }, obj$1$1.has = function (state) { return function (key) { return latest$2(state).has(key); }; }, obj$1$1.add = function (state) { return function (value) {
+    if (!latest$2(state).has(value)) {
+      markChanged$1(state);
+      state.copy.add(value);
+    }
+
+    return state.draft;
+  }; }, obj$1$1.delete = function (state) { return function (value) {
+    markChanged$1(state);
+    return state.copy.delete(value);
+  }; }, obj$1$1.clear = function (state) { return function () {
+    markChanged$1(state);
+    return state.copy.clear();
+  }; }, obj$1$1.forEach = function (state) { return function (cb, thisArg) {
+    var iterator = iterateSetValues$1(state)();
+    var result = iterator.next();
+
+    while (!result.done) {
+      cb.call(thisArg, result.value, result.value, state.draft);
+      result = iterator.next();
+    }
+  }; }, obj$1$1.keys = iterateSetValues$1, obj$1$1.values = iterateSetValues$1, obj$1$1.entries = iterateSetValues$1, obj$1$1[hasSymbol ? Symbol.iterator : "@@iterator"] = iterateSetValues$1, obj$1$1 ));
+/**
+ * Helpers
+ */
+// Retrieve the latest values of the draft.
+
+function latest$2(state) {
+  return state.copy || state.base;
+} // Access a property without creating an Immer draft.
+
+
+function peek$1(draft, prop) {
+  var state = draft[DRAFT_STATE];
+  var desc = Reflect.getOwnPropertyDescriptor(state ? latest$2(state) : draft, prop);
+  return desc && desc.value;
+}
+
+function markChanged$1(state) {
+  if (!state.modified) {
+    state.modified = true;
+    var base = state.base;
+    var drafts = state.drafts;
+    var parent = state.parent;
+    var copy = shallowCopy(base);
+
+    if (isSet(base)) {
+      // Note: The `drafts` property is preserved for Set objects, since
+      // we need to keep track of which values are drafted.
+      assignSet(copy, drafts);
+    } else {
+      // Merge nested drafts into the copy.
+      if (isMap(base)) { assignMap(copy, drafts); }else { assign(copy, drafts); }
+      state.drafts = null;
+    }
+
+    state.copy = copy;
+
+    if (parent) {
+      markChanged$1(parent);
+    }
+  }
+}
+/** Create traps that all use the `Reflect` API on the `latest(state)` */
+
+
+function makeReflectTraps(names) {
+  return names.reduce(function (traps, name) {
+    traps[name] = function (state) {
+      var args = [], len = arguments.length - 1;
+      while ( len-- > 0 ) args[ len ] = arguments[ len + 1 ];
+
+      return Reflect[name].apply(Reflect, [ latest$2(state) ].concat( args ));
+    };
+
+    return traps;
+  }, {});
+}
+
+function makeTrapsForGetters(getters) {
+  return Object.assign({}, reflectTraps, {
+    get: function get(state, prop, receiver) {
+      return getters.hasOwnProperty(prop) ? getters[prop](state, prop, receiver) : Reflect.get(state, prop, receiver);
+    },
+
+    setPrototypeOf: function setPrototypeOf(state) {
+      throw new Error("Object.setPrototypeOf() cannot be used on an Immer draft"); // prettier-ignore
+    }
+
+  });
+}
+
+var modernProxy = /*#__PURE__*/Object.freeze({
+	willFinalize: willFinalize$1,
+	createProxy: createProxy$1
+});
+
+function generatePatches(state, basePath, patches, inversePatches) {
+  var generatePatchesFn = Array.isArray(state.base) ? generateArrayPatches : isSet(state.base) ? generateSetPatches : generatePatchesFromAssigned;
+  generatePatchesFn(state, basePath, patches, inversePatches);
+}
+
+function generateArrayPatches(state, basePath, patches, inversePatches) {
+  var assign, assign$1;
+
+  var base = state.base;
+  var copy = state.copy;
+  var assigned = state.assigned; // Reduce complexity by ensuring `base` is never longer.
+
+  if (copy.length < base.length) {
+    (assign = [copy, base], base = assign[0], copy = assign[1]);
+    (assign$1 = [inversePatches, patches], patches = assign$1[0], inversePatches = assign$1[1]);
+  }
+
+  var delta = copy.length - base.length; // Find the first replaced index.
+
+  var start = 0;
+
+  while (base[start] === copy[start] && start < base.length) {
+    ++start;
+  } // Find the last replaced index. Search from the end to optimize splice patches.
+
+
+  var end = base.length;
+
+  while (end > start && base[end - 1] === copy[end + delta - 1]) {
+    --end;
+  } // Process replaced indices.
+
+
+  for (var i = start; i < end; ++i) {
+    if (assigned[i] && copy[i] !== base[i]) {
+      var path = basePath.concat([i]);
+      patches.push({
+        op: "replace",
+        path: path,
+        value: copy[i]
+      });
+      inversePatches.push({
+        op: "replace",
+        path: path,
+        value: base[i]
+      });
+    }
+  }
+
+  var replaceCount = patches.length; // Process added indices.
+
+  for (var i$1 = end + delta - 1; i$1 >= end; --i$1) {
+    var path$1 = basePath.concat([i$1]);
+    patches[replaceCount + i$1 - end] = {
+      op: "add",
+      path: path$1,
+      value: copy[i$1]
+    };
+    inversePatches.push({
+      op: "remove",
+      path: path$1
+    });
+  }
+} // This is used for both Map objects and normal objects.
+
+
+function generatePatchesFromAssigned(state, basePath, patches, inversePatches) {
+  var base = state.base;
+  var copy = state.copy;
+  each(state.assigned, function (key, assignedValue) {
+    var origValue = get(base, key);
+    var value = get(copy, key);
+    var op = !assignedValue ? "remove" : has(base, key) ? "replace" : "add";
+    if (origValue === value && op === "replace") { return; }
+    var path = basePath.concat(key);
+    patches.push(op === "remove" ? {
+      op: op,
+      path: path
+    } : {
+      op: op,
+      path: path,
+      value: value
+    });
+    inversePatches.push(op === "add" ? {
+      op: "remove",
+      path: path
+    } : op === "remove" ? {
+      op: "add",
+      path: path,
+      value: origValue
+    } : {
+      op: "replace",
+      path: path,
+      value: origValue
+    });
+  });
+}
+
+function generateSetPatches(state, basePath, patches, inversePatches) {
+  var base = state.base;
+  var copy = state.copy;
+  var i = 0;
+
+  for (var i$1 = 0, list = base; i$1 < list.length; i$1 += 1) {
+    var value = list[i$1];
+
+    if (!copy.has(value)) {
+      var path = basePath.concat([i]);
+      patches.push({
+        op: "remove",
+        path: path,
+        value: value
+      });
+      inversePatches.unshift({
+        op: "add",
+        path: path,
+        value: value
+      });
+    }
+
+    i++;
+  }
+
+  i = 0;
+
+  for (var i$2 = 0, list$1 = copy; i$2 < list$1.length; i$2 += 1) {
+    var value$1 = list$1[i$2];
+
+    if (!base.has(value$1)) {
+      var path$1 = basePath.concat([i]);
+      patches.push({
+        op: "add",
+        path: path$1,
+        value: value$1
+      });
+      inversePatches.unshift({
+        op: "remove",
+        path: path$1,
+        value: value$1
+      });
+    }
+
+    i++;
+  }
+}
+
+var applyPatches = function (draft, patches) {
+  for (var i$1 = 0, list = patches; i$1 < list.length; i$1 += 1) {
+    var patch = list[i$1];
+
+    var path = patch.path;
+    var op = patch.op;
+    if (!path.length) { throw new Error("Illegal state"); }
+    var base = draft;
+
+    for (var i = 0; i < path.length - 1; i++) {
+      base = get(base, path[i]);
+      if (!base || typeof base !== "object") { throw new Error("Cannot apply patch, path doesn't resolve: " + path.join("/")); } // prettier-ignore
+    }
+
+    var value = clone(patch.value); // used to clone patch to ensure original patch is not modified, see #411
+
+    var key = path[path.length - 1];
+
+    switch (op) {
+      case "replace":
+        if (isMap(base)) {
+          base.set(key, value);
+        } else if (isSet(base)) {
+          throw new Error('Sets cannot have "replace" patches.');
+        } else {
+          // if value is an object, then it's assigned by reference
+          // in the following add or remove ops, the value field inside the patch will also be modifyed
+          // so we use value from the cloned patch
+          base[key] = value;
+        }
+
+        break;
+
+      case "add":
+        if (isSet(base)) {
+          base.delete(patch.value);
+        }
+
+        Array.isArray(base) ? base.splice(key, 0, value) : isMap(base) ? base.set(key, value) : isSet(base) ? base.add(value) : base[key] = value;
+        break;
+
+      case "remove":
+        Array.isArray(base) ? base.splice(key, 1) : isMap(base) ? base.delete(key) : isSet(base) ? base.delete(patch.value) : delete base[key];
+        break;
+
+      default:
+        throw new Error("Unsupported patch operation: " + op);
+    }
+  }
+
+  return draft;
+};
+
+function verifyMinified() {}
+
+var configDefaults = {
+  useProxies: typeof Proxy !== "undefined" && typeof Proxy.revocable !== "undefined" && typeof Reflect !== "undefined",
+  autoFreeze: typeof process !== "undefined" ? "development" !== "production" : verifyMinified.name === "verifyMinified",
+  onAssign: null,
+  onDelete: null,
+  onCopy: null
+};
+var Immer = function Immer(config) {
+  assign(this, configDefaults, config);
+  this.setUseProxies(this.useProxies);
+  this.produce = this.produce.bind(this);
+  this.produceWithPatches = this.produceWithPatches.bind(this);
+};
+
+Immer.prototype.produce = function produce (base, recipe, patchListener) {
+    var this$1 = this;
+
+  // curried invocation
+  if (typeof base === "function" && typeof recipe !== "function") {
+    var defaultBase = recipe;
+    recipe = base;
+    var self = this;
+    return function curriedProduce(base) {
+        var this$1 = this;
+        if ( base === void 0 ) base = defaultBase;
+        var args = [], len = arguments.length - 1;
+        while ( len-- > 0 ) args[ len ] = arguments[ len + 1 ];
+
+      return self.produce(base, function (draft) { return recipe.call.apply(recipe, [ this$1, draft ].concat( args )); }); // prettier-ignore
+    };
+  } // prettier-ignore
+
+
+  {
+    if (typeof recipe !== "function") {
+      throw new Error("The first or second argument to `produce` must be a function");
+    }
+
+    if (patchListener !== undefined && typeof patchListener !== "function") {
+      throw new Error("The third argument to `produce` must be a function or undefined");
+    }
+  }
+  var result; // Only plain objects, arrays, and "immerable classes" are drafted.
+
+  if (isDraftable(base)) {
+    var scope = ImmerScope.enter();
+    var proxy = this.createProxy(base);
+    var hasError = true;
+
+    try {
+      result = recipe(proxy);
+      hasError = false;
+    } finally {
+      // finally instead of catch + rethrow better preserves original stack
+      if (hasError) { scope.revoke(); }else { scope.leave(); }
+    }
+
+    if (typeof Promise !== "undefined" && result instanceof Promise) {
+      return result.then(function (result) {
+        scope.usePatches(patchListener);
+        return this$1.processResult(result, scope);
+      }, function (error) {
+        scope.revoke();
+        throw error;
+      });
+    }
+
+    scope.usePatches(patchListener);
+    return this.processResult(result, scope);
+  } else {
+    result = recipe(base);
+    if (result === NOTHING) { return undefined; }
+    if (result === undefined) { result = base; }
+    this.maybeFreeze(result, true);
+    return result;
+  }
+};
+
+Immer.prototype.produceWithPatches = function produceWithPatches (arg1, arg2, arg3) {
+    var this$1 = this;
+
+  if (typeof arg1 === "function") {
+    return function (state) {
+        var args = [], len = arguments.length - 1;
+        while ( len-- > 0 ) args[ len ] = arguments[ len + 1 ];
+
+        return this$1.produceWithPatches(state, function (draft) { return arg1.apply(void 0, [ draft ].concat( args )); });
+      };
+  } // non-curried form
+
+
+  if (arg3) { throw new Error("A patch listener cannot be passed to produceWithPatches"); }
+  var patches, inversePatches;
+  var nextState = this.produce(arg1, arg2, function (p, ip) {
+    patches = p;
+    inversePatches = ip;
+  });
+  return [nextState, patches, inversePatches];
+};
+
+Immer.prototype.createDraft = function createDraft (base) {
+  if (!isDraftable(base)) {
+    throw new Error("First argument to `createDraft` must be a plain object, an array, or an immerable object"); // prettier-ignore
+  }
+
+  var scope = ImmerScope.enter();
+  var proxy = this.createProxy(base);
+  proxy[DRAFT_STATE].isManual = true;
+  scope.leave();
+  return proxy;
+};
+
+Immer.prototype.finishDraft = function finishDraft (draft, patchListener) {
+  var state = draft && draft[DRAFT_STATE];
+
+  if (!state || !state.isManual) {
+    throw new Error("First argument to `finishDraft` must be a draft returned by `createDraft`"); // prettier-ignore
+  }
+
+  if (state.finalized) {
+    throw new Error("The given draft is already finalized"); // prettier-ignore
+  }
+
+  var scope = state.scope;
+  scope.usePatches(patchListener);
+  return this.processResult(undefined, scope);
+};
+
+Immer.prototype.setAutoFreeze = function setAutoFreeze (value) {
+  this.autoFreeze = value;
+};
+
+Immer.prototype.setUseProxies = function setUseProxies (value) {
+  this.useProxies = value;
+  assign(this, value ? modernProxy : legacyProxy);
+};
+
+Immer.prototype.applyPatches = function applyPatches$1 (base, patches) {
+  // If a patch replaces the entire state, take that replacement as base
+  // before applying patches
+  var i;
+
+  for (i = patches.length - 1; i >= 0; i--) {
+    var patch = patches[i];
+
+    if (patch.path.length === 0 && patch.op === "replace") {
+      base = patch.value;
+      break;
+    }
+  }
+
+  if (isDraft(base)) {
+    // N.B: never hits if some patch a replacement, patches are never drafts
+    return applyPatches(base, patches);
+  } // Otherwise, produce a copy of the base state.
+
+
+  return this.produce(base, function (draft) { return applyPatches(draft, patches.slice(i + 1)); });
+};
+/** @internal */
+
+
+Immer.prototype.processResult = function processResult (result, scope) {
+  var baseDraft = scope.drafts[0];
+  var isReplaced = result !== undefined && result !== baseDraft;
+  this.willFinalize(scope, result, isReplaced);
+
+  if (isReplaced) {
+    if (baseDraft[DRAFT_STATE].modified) {
+      scope.revoke();
+      throw new Error("An immer producer returned a new value *and* modified its draft. Either return a new value *or* modify the draft."); // prettier-ignore
+    }
+
+    if (isDraftable(result)) {
+      // Finalize the result in case it contains (or is) a subset of the draft.
+      result = this.finalize(result, null, scope);
+      this.maybeFreeze(result);
+    }
+
+    if (scope.patches) {
+      scope.patches.push({
+        op: "replace",
+        path: [],
+        value: result
+      });
+      scope.inversePatches.push({
+        op: "replace",
+        path: [],
+        value: baseDraft[DRAFT_STATE].base
+      });
+    }
+  } else {
+    // Finalize the base draft.
+    result = this.finalize(baseDraft, [], scope);
+  }
+
+  scope.revoke();
+
+  if (scope.patches) {
+    scope.patchListener(scope.patches, scope.inversePatches);
+  }
+
+  return result !== NOTHING ? result : undefined;
+};
+/**
+ * @internal
+ * Finalize a draft, returning either the unmodified base state or a modified
+ * copy of the base state.
+ */
+
+
+Immer.prototype.finalize = function finalize (draft, path, scope) {
+    var this$1 = this;
+
+  var state = draft[DRAFT_STATE];
+
+  if (!state) {
+    if (Object.isFrozen(draft)) { return draft; }
+    return this.finalizeTree(draft, null, scope);
+  } // Never finalize drafts owned by another scope.
+
+
+  if (state.scope !== scope) {
+    return draft;
+  }
+
+  if (!state.modified) {
+    this.maybeFreeze(state.base, true);
+    return state.base;
+  }
+
+  if (!state.finalized) {
+    state.finalized = true;
+    this.finalizeTree(state.draft, path, scope); // We cannot really delete anything inside of a Set. We can only replace the whole Set.
+
+    if (this.onDelete && !isSet(state.base)) {
+      // The `assigned` object is unreliable with ES5 drafts.
+      if (this.useProxies) {
+        var assigned = state.assigned;
+        each(assigned, function (prop, exists) {
+          if (!exists) { this$1.onDelete(state, prop); }
+        });
+      } else {
+        // TODO: Figure it out for Maps and Sets if we need to support ES5
+        var base = state.base;
+          var copy = state.copy;
+        each(base, function (prop) {
+          if (!has(copy, prop)) { this$1.onDelete(state, prop); }
+        });
+      }
+    }
+
+    if (this.onCopy) {
+      this.onCopy(state);
+    } // At this point, all descendants of `state.copy` have been finalized,
+    // so we can be sure that `scope.canAutoFreeze` is accurate.
+
+
+    if (this.autoFreeze && scope.canAutoFreeze) {
+      freeze(state.copy, false);
+    }
+
+    if (path && scope.patches) {
+      generatePatches(state, path, scope.patches, scope.inversePatches);
+    }
+  }
+
+  return state.copy;
+};
+/**
+ * @internal
+ * Finalize all drafts in the given state tree.
+ */
+
+
+Immer.prototype.finalizeTree = function finalizeTree (root, rootPath, scope) {
+    var this$1 = this;
+
+  var state = root[DRAFT_STATE];
+
+  if (state) {
+    if (!this.useProxies) {
+      // Create the final copy, with added keys and without deleted keys.
+      state.copy = shallowCopy(state.draft, true);
+    }
+
+    root = state.copy;
+  }
+
+  var needPatches = !!rootPath && !!scope.patches;
+
+  var finalizeProperty = function (prop, value, parent) {
+    if (value === parent) {
+      throw Error("Immer forbids circular references");
+    } // In the `finalizeTree` method, only the `root` object may be a draft.
+
+
+    var isDraftProp = !!state && parent === root;
+    var isSetMember = isSet(parent);
+
+    if (isDraft(value)) {
+      var path = isDraftProp && needPatches && !isSetMember && // Set objects are atomic since they have no keys.
+      !has(state.assigned, prop) // Skip deep patches for assigned keys.
+      ? rootPath.concat(prop) : null; // Drafts owned by `scope` are finalized here.
+
+      value = this$1.finalize(value, path, scope);
+      replace(parent, prop, value); // Drafts from another scope must prevent auto-freezing.
+
+      if (isDraft(value)) {
+        scope.canAutoFreeze = false;
+      } // Unchanged drafts are never passed to the `onAssign` hook.
+
+
+      if (isDraftProp && value === get(state.base, prop)) { return; }
+    } // Unchanged draft properties are ignored.
+    else if (isDraftProp && is(value, get(state.base, prop))) {
+        return;
+      } // Search new objects for unfinalized drafts. Frozen objects should never contain drafts.
+      else if (isDraftable(value) && !Object.isFrozen(value)) {
+          each(value, finalizeProperty);
+          this$1.maybeFreeze(value);
+        }
+
+    if (isDraftProp && this$1.onAssign && !isSetMember) {
+      this$1.onAssign(state, prop, value);
+    }
+  };
+
+  each(root, finalizeProperty);
+  return root;
+};
+
+Immer.prototype.maybeFreeze = function maybeFreeze (value, deep) {
+    if ( deep === void 0 ) deep = false;
+
+  if (this.autoFreeze && !isDraft(value)) {
+    freeze(value, deep);
+  }
+};
+
+function replace(parent, prop, value) {
+  if (isMap(parent)) {
+    parent.set(prop, value);
+  } else if (isSet(parent)) {
+    // In this case, the `prop` is actually a draft.
+    parent.delete(prop);
+    parent.add(value);
+  } else if (Array.isArray(parent) || isEnumerable(parent, prop)) {
+    // Preserve non-enumerable properties.
+    parent[prop] = value;
+  } else {
+    Object.defineProperty(parent, prop, {
+      value: value,
+      writable: true,
+      configurable: true
+    });
+  }
+}
+
+var immer = new Immer();
+/**
+ * The `produce` function takes a value and a "recipe function" (whose
+ * return value often depends on the base state). The recipe function is
+ * free to mutate its first argument however it wants. All mutations are
+ * only ever applied to a __copy__ of the base state.
+ *
+ * Pass only a function to create a "curried producer" which relieves you
+ * from passing the recipe function every time.
+ *
+ * Only plain objects and arrays are made mutable. All other objects are
+ * considered uncopyable.
+ *
+ * Note: This function is __bound__ to its `Immer` instance.
+ *
+ * @param {any} base - the initial state
+ * @param {Function} producer - function that receives a proxy of the base state as first argument and which can be freely modified
+ * @param {Function} patchListener - optional function that will be called with all the patches produced here
+ * @returns {any} a new state, or the initial state if nothing was modified
+ */
+
+var produce = immer.produce;
+/**
+ * Like `produce`, but `produceWithPatches` always returns a tuple
+ * [nextState, patches, inversePatches] (instead of just the next state)
+ */
+
+var produceWithPatches = immer.produceWithPatches.bind(immer);
+/**
+ * Pass true to automatically freeze all copies created by Immer.
+ *
+ * By default, auto-freezing is disabled in production.
+ */
+
+var setAutoFreeze = immer.setAutoFreeze.bind(immer);
+/**
+ * Pass true to use the ES2015 `Proxy` class when creating drafts, which is
+ * always faster than using ES5 proxies.
+ *
+ * By default, feature detection is used, so calling this is rarely necessary.
+ */
+
+var setUseProxies = immer.setUseProxies.bind(immer);
+/**
+ * Apply an array of Immer patches to the first argument.
+ *
+ * This function is a producer, which means copy-on-write is in effect.
+ */
+
+var applyPatches$1 = immer.applyPatches.bind(immer);
+/**
+ * Create an Immer draft from the given base state, which may be a draft itself.
+ * The draft can be modified until you finalize it with the `finishDraft` function.
+ */
+
+var createDraft = immer.createDraft.bind(immer);
+/**
+ * Finalize an Immer draft from a `createDraft` call, returning the base state
+ * (if no changes were made) or a modified copy. The draft must *not* be
+ * mutated afterwards.
+ *
+ * Pass a function as the 2nd argument to generate Immer patches based on the
+ * changes that were made.
+ */
+
+var finishDraft = immer.finishDraft.bind(immer);
+
+/* harmony default export */ __webpack_exports__["default"] = (produce);
+
+//# sourceMappingURL=immer.module.js.map
+
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../process/browser.js */ "./node_modules/process/browser.js")))
+
+/***/ }),
+
 /***/ "./node_modules/lodash/lodash.js":
 /*!***************************************!*\
   !*** ./node_modules/lodash/lodash.js ***!
@@ -17202,6 +19395,721 @@
 
 /***/ }),
 
+/***/ "./node_modules/process/browser.js":
+/*!*****************************************!*\
+  !*** ./node_modules/process/browser.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+// shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+
+/***/ }),
+
+/***/ "./node_modules/typestyle/lib.es2015/index.js":
+/*!****************************************************!*\
+  !*** ./node_modules/typestyle/lib.es2015/index.js ***!
+  \****************************************************/
+/*! exports provided: TypeStyle, types, extend, classes, media, setStylesTarget, cssRaw, cssRule, forceRenderStyles, fontFace, getStyles, keyframes, reinit, style, stylesheet, createTypeStyle */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setStylesTarget", function() { return setStylesTarget; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "cssRaw", function() { return cssRaw; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "cssRule", function() { return cssRule; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "forceRenderStyles", function() { return forceRenderStyles; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "fontFace", function() { return fontFace; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getStyles", function() { return getStyles; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "keyframes", function() { return keyframes; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "reinit", function() { return reinit; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "style", function() { return style; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "stylesheet", function() { return stylesheet; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "createTypeStyle", function() { return createTypeStyle; });
+/* harmony import */ var _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./internal/typestyle */ "./node_modules/typestyle/lib.es2015/internal/typestyle.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "TypeStyle", function() { return _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__["TypeStyle"]; });
+
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./types */ "./node_modules/typestyle/lib.es2015/types.js");
+/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_types__WEBPACK_IMPORTED_MODULE_1__);
+/* harmony reexport (module object) */ __webpack_require__.d(__webpack_exports__, "types", function() { return _types__WEBPACK_IMPORTED_MODULE_1__; });
+/* harmony import */ var _internal_utilities__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./internal/utilities */ "./node_modules/typestyle/lib.es2015/internal/utilities.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "extend", function() { return _internal_utilities__WEBPACK_IMPORTED_MODULE_2__["extend"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "classes", function() { return _internal_utilities__WEBPACK_IMPORTED_MODULE_2__["classes"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "media", function() { return _internal_utilities__WEBPACK_IMPORTED_MODULE_2__["media"]; });
+
+
+
+/**
+ * All the CSS types in the 'types' namespace
+ */
+
+
+/**
+ * Export certain utilities
+ */
+
+/** Zero configuration, default instance of TypeStyle */
+var ts = new _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__["TypeStyle"]({ autoGenerateTag: true });
+/** Sets the target tag where we write the css on style updates */
+var setStylesTarget = ts.setStylesTarget;
+/**
+ * Insert `raw` CSS as a string. This is useful for e.g.
+ * - third party CSS that you are customizing with template strings
+ * - generating raw CSS in JavaScript
+ * - reset libraries like normalize.css that you can use without loaders
+ */
+var cssRaw = ts.cssRaw;
+/**
+ * Takes CSSProperties and registers it to a global selector (body, html, etc.)
+ */
+var cssRule = ts.cssRule;
+/**
+ * Renders styles to the singleton tag imediately
+ * NOTE: You should only call it on initial render to prevent any non CSS flash.
+ * After that it is kept sync using `requestAnimationFrame` and we haven't noticed any bad flashes.
+ **/
+var forceRenderStyles = ts.forceRenderStyles;
+/**
+ * Utility function to register an @font-face
+ */
+var fontFace = ts.fontFace;
+/**
+ * Allows use to use the stylesheet in a node.js environment
+ */
+var getStyles = ts.getStyles;
+/**
+ * Takes keyframes and returns a generated animationName
+ */
+var keyframes = ts.keyframes;
+/**
+ * Helps with testing. Reinitializes FreeStyle + raw
+ */
+var reinit = ts.reinit;
+/**
+ * Takes CSSProperties and return a generated className you can use on your component
+ */
+var style = ts.style;
+/**
+ * Takes an object where property names are ideal class names and property values are CSSProperties, and
+ * returns an object where property names are the same ideal class names and the property values are
+ * the actual generated class names using the ideal class name as the $debugName
+ */
+var stylesheet = ts.stylesheet;
+/**
+ * Creates a new instance of TypeStyle separate from the default instance.
+ *
+ * - Use this for creating a different typestyle instance for a shadow dom component.
+ * - Use this if you don't want an auto tag generated and you just want to collect the CSS.
+ *
+ * NOTE: styles aren't shared between different instances.
+ */
+function createTypeStyle(target) {
+    var instance = new _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__["TypeStyle"]({ autoGenerateTag: false });
+    if (target) {
+        instance.setStylesTarget(target);
+    }
+    return instance;
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/typestyle/lib.es2015/internal/formatting.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/typestyle/lib.es2015/internal/formatting.js ***!
+  \******************************************************************/
+/*! exports provided: ensureStringObj, explodeKeyframes */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ensureStringObj", function() { return ensureStringObj; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "explodeKeyframes", function() { return explodeKeyframes; });
+/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! free-style */ "./node_modules/free-style/dist/free-style.js");
+/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(free_style__WEBPACK_IMPORTED_MODULE_0__);
+
+/**
+ * We need to do the following to *our* objects before passing to freestyle:
+ * - For any `$nest` directive move up to FreeStyle style nesting
+ * - For any `$unique` directive map to FreeStyle Unique
+ * - For any `$debugName` directive return the debug name
+ */
+function ensureStringObj(object) {
+    /** The final result we will return */
+    var result = {};
+    var debugName = '';
+    for (var key in object) {
+        /** Grab the value upfront */
+        var val = object[key];
+        /** TypeStyle configuration options */
+        if (key === '$unique') {
+            result[free_style__WEBPACK_IMPORTED_MODULE_0__["IS_UNIQUE"]] = val;
+        }
+        else if (key === '$nest') {
+            var nested = val;
+            for (var selector in nested) {
+                var subproperties = nested[selector];
+                result[selector] = ensureStringObj(subproperties).result;
+            }
+        }
+        else if (key === '$debugName') {
+            debugName = val;
+        }
+        else {
+            result[key] = val;
+        }
+    }
+    return { result: result, debugName: debugName };
+}
+// todo: better name here
+function explodeKeyframes(frames) {
+    var result = { $debugName: undefined, keyframes: {} };
+    for (var offset in frames) {
+        var val = frames[offset];
+        if (offset === '$debugName') {
+            result.$debugName = val;
+        }
+        else {
+            result.keyframes[offset] = val;
+        }
+    }
+    return result;
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/typestyle/lib.es2015/internal/typestyle.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/typestyle/lib.es2015/internal/typestyle.js ***!
+  \*****************************************************************/
+/*! exports provided: TypeStyle */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "TypeStyle", function() { return TypeStyle; });
+/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! free-style */ "./node_modules/free-style/dist/free-style.js");
+/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(free_style__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _formatting__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./formatting */ "./node_modules/typestyle/lib.es2015/internal/formatting.js");
+/* harmony import */ var _utilities__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utilities */ "./node_modules/typestyle/lib.es2015/internal/utilities.js");
+
+
+
+/**
+ * Creates an instance of free style with our options
+ */
+var createFreeStyle = function () { return free_style__WEBPACK_IMPORTED_MODULE_0__["create"](
+/** Use the default hash function */
+undefined, 
+/** Preserve $debugName values */
+true); };
+/**
+ * Maintains a single stylesheet and keeps it in sync with requested styles
+ */
+var TypeStyle = /** @class */ (function () {
+    function TypeStyle(_a) {
+        var autoGenerateTag = _a.autoGenerateTag;
+        var _this = this;
+        /**
+         * Insert `raw` CSS as a string. This is useful for e.g.
+         * - third party CSS that you are customizing with template strings
+         * - generating raw CSS in JavaScript
+         * - reset libraries like normalize.css that you can use without loaders
+         */
+        this.cssRaw = function (mustBeValidCSS) {
+            if (!mustBeValidCSS) {
+                return;
+            }
+            _this._raw += mustBeValidCSS || '';
+            _this._pendingRawChange = true;
+            _this._styleUpdated();
+        };
+        /**
+         * Takes CSSProperties and registers it to a global selector (body, html, etc.)
+         */
+        this.cssRule = function (selector) {
+            var objects = [];
+            for (var _i = 1; _i < arguments.length; _i++) {
+                objects[_i - 1] = arguments[_i];
+            }
+            var object = Object(_formatting__WEBPACK_IMPORTED_MODULE_1__["ensureStringObj"])(_utilities__WEBPACK_IMPORTED_MODULE_2__["extend"].apply(void 0, objects)).result;
+            _this._freeStyle.registerRule(selector, object);
+            _this._styleUpdated();
+            return;
+        };
+        /**
+         * Renders styles to the singleton tag imediately
+         * NOTE: You should only call it on initial render to prevent any non CSS flash.
+         * After that it is kept sync using `requestAnimationFrame` and we haven't noticed any bad flashes.
+         **/
+        this.forceRenderStyles = function () {
+            var target = _this._getTag();
+            if (!target) {
+                return;
+            }
+            target.textContent = _this.getStyles();
+        };
+        /**
+         * Utility function to register an @font-face
+         */
+        this.fontFace = function () {
+            var fontFace = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                fontFace[_i] = arguments[_i];
+            }
+            var freeStyle = _this._freeStyle;
+            for (var _a = 0, _b = fontFace; _a < _b.length; _a++) {
+                var face = _b[_a];
+                freeStyle.registerRule('@font-face', face);
+            }
+            _this._styleUpdated();
+            return;
+        };
+        /**
+         * Allows use to use the stylesheet in a node.js environment
+         */
+        this.getStyles = function () {
+            return (_this._raw || '') + _this._freeStyle.getStyles();
+        };
+        /**
+         * Takes keyframes and returns a generated animationName
+         */
+        this.keyframes = function (frames) {
+            var _a = Object(_formatting__WEBPACK_IMPORTED_MODULE_1__["explodeKeyframes"])(frames), keyframes = _a.keyframes, $debugName = _a.$debugName;
+            // TODO: replace $debugName with display name
+            var animationName = _this._freeStyle.registerKeyframes(keyframes, $debugName);
+            _this._styleUpdated();
+            return animationName;
+        };
+        /**
+         * Helps with testing. Reinitializes FreeStyle + raw
+         */
+        this.reinit = function () {
+            /** reinit freestyle */
+            var freeStyle = createFreeStyle();
+            _this._freeStyle = freeStyle;
+            _this._lastFreeStyleChangeId = freeStyle.changeId;
+            /** reinit raw */
+            _this._raw = '';
+            _this._pendingRawChange = false;
+            /** Clear any styles that were flushed */
+            var target = _this._getTag();
+            if (target) {
+                target.textContent = '';
+            }
+        };
+        /** Sets the target tag where we write the css on style updates */
+        this.setStylesTarget = function (tag) {
+            /** Clear any data in any previous tag */
+            if (_this._tag) {
+                _this._tag.textContent = '';
+            }
+            _this._tag = tag;
+            /** This special time buffer immediately */
+            _this.forceRenderStyles();
+        };
+        /**
+         * Takes an object where property names are ideal class names and property values are CSSProperties, and
+         * returns an object where property names are the same ideal class names and the property values are
+         * the actual generated class names using the ideal class name as the $debugName
+         */
+        this.stylesheet = function (classes) {
+            var classNames = Object.getOwnPropertyNames(classes);
+            var result = {};
+            for (var _i = 0, classNames_1 = classNames; _i < classNames_1.length; _i++) {
+                var className = classNames_1[_i];
+                var classDef = classes[className];
+                if (classDef) {
+                    classDef.$debugName = className;
+                    result[className] = _this.style(classDef);
+                }
+            }
+            return result;
+        };
+        var freeStyle = createFreeStyle();
+        this._autoGenerateTag = autoGenerateTag;
+        this._freeStyle = freeStyle;
+        this._lastFreeStyleChangeId = freeStyle.changeId;
+        this._pending = 0;
+        this._pendingRawChange = false;
+        this._raw = '';
+        this._tag = undefined;
+        // rebind prototype to TypeStyle.  It might be better to do a function() { return this.style.apply(this, arguments)}
+        this.style = this.style.bind(this);
+    }
+    /**
+     * Only calls cb all sync operations settle
+     */
+    TypeStyle.prototype._afterAllSync = function (cb) {
+        var _this = this;
+        this._pending++;
+        var pending = this._pending;
+        Object(_utilities__WEBPACK_IMPORTED_MODULE_2__["raf"])(function () {
+            if (pending !== _this._pending) {
+                return;
+            }
+            cb();
+        });
+    };
+    TypeStyle.prototype._getTag = function () {
+        if (this._tag) {
+            return this._tag;
+        }
+        if (this._autoGenerateTag) {
+            var tag = typeof window === 'undefined'
+                ? { textContent: '' }
+                : document.createElement('style');
+            if (typeof document !== 'undefined') {
+                document.head.appendChild(tag);
+            }
+            this._tag = tag;
+            return tag;
+        }
+        return undefined;
+    };
+    /** Checks if the style tag needs updating and if so queues up the change */
+    TypeStyle.prototype._styleUpdated = function () {
+        var _this = this;
+        var changeId = this._freeStyle.changeId;
+        var lastChangeId = this._lastFreeStyleChangeId;
+        if (!this._pendingRawChange && changeId === lastChangeId) {
+            return;
+        }
+        this._lastFreeStyleChangeId = changeId;
+        this._pendingRawChange = false;
+        this._afterAllSync(function () { return _this.forceRenderStyles(); });
+    };
+    TypeStyle.prototype.style = function () {
+        var freeStyle = this._freeStyle;
+        var _a = Object(_formatting__WEBPACK_IMPORTED_MODULE_1__["ensureStringObj"])(_utilities__WEBPACK_IMPORTED_MODULE_2__["extend"].apply(undefined, arguments)), result = _a.result, debugName = _a.debugName;
+        var className = debugName ? freeStyle.registerStyle(result, debugName) : freeStyle.registerStyle(result);
+        this._styleUpdated();
+        return className;
+    };
+    return TypeStyle;
+}());
+
+
+
+/***/ }),
+
+/***/ "./node_modules/typestyle/lib.es2015/internal/utilities.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/typestyle/lib.es2015/internal/utilities.js ***!
+  \*****************************************************************/
+/*! exports provided: raf, classes, extend, media */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "raf", function() { return raf; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "classes", function() { return classes; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "extend", function() { return extend; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "media", function() { return media; });
+/** Raf for node + browser */
+var raf = typeof requestAnimationFrame === 'undefined'
+    /**
+     * Make sure setTimeout is always invoked with
+     * `this` set to `window` or `global` automatically
+     **/
+    ? function (cb) { return setTimeout(cb); }
+    /**
+     * Make sure window.requestAnimationFrame is always invoked with `this` window
+     * We might have raf without window in case of `raf/polyfill` (recommended by React)
+     **/
+    : typeof window === 'undefined'
+        ? requestAnimationFrame
+        : requestAnimationFrame.bind(window);
+/**
+ * Utility to join classes conditionally
+ */
+function classes() {
+    var classes = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        classes[_i] = arguments[_i];
+    }
+    return classes
+        .map(function (c) { return c && typeof c === 'object' ? Object.keys(c).map(function (key) { return !!c[key] && key; }) : [c]; })
+        .reduce(function (flattened, c) { return flattened.concat(c); }, [])
+        .filter(function (c) { return !!c; })
+        .join(' ');
+}
+/**
+ * Merges various styles into a single style object.
+ * Note: if two objects have the same property the last one wins
+ */
+function extend() {
+    var objects = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        objects[_i] = arguments[_i];
+    }
+    /** The final result we will return */
+    var result = {};
+    for (var _a = 0, objects_1 = objects; _a < objects_1.length; _a++) {
+        var object = objects_1[_a];
+        if (object == null || object === false) {
+            continue;
+        }
+        for (var key in object) {
+            /** Falsy values except a explicit 0 is ignored */
+            var val = object[key];
+            if (!val && val !== 0) {
+                continue;
+            }
+            /** if nested media or pseudo selector */
+            if (key === '$nest' && val) {
+                result[key] = result['$nest'] ? extend(result['$nest'], val) : val;
+            }
+            else if ((key.indexOf('&') !== -1 || key.indexOf('@media') === 0)) {
+                result[key] = result[key] ? extend(result[key], val) : val;
+            }
+            else {
+                result[key] = val;
+            }
+        }
+    }
+    return result;
+}
+/**
+ * Utility to help customize styles with media queries. e.g.
+ * ```
+ * style(
+ *  media({maxWidth:500}, {color:'red'})
+ * )
+ * ```
+ */
+var media = function (mediaQuery) {
+    var objects = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        objects[_i - 1] = arguments[_i];
+    }
+    var mediaQuerySections = [];
+    if (mediaQuery.type)
+        mediaQuerySections.push(mediaQuery.type);
+    if (mediaQuery.orientation)
+        mediaQuerySections.push("(orientation: " + mediaQuery.orientation + ")");
+    if (mediaQuery.minWidth)
+        mediaQuerySections.push("(min-width: " + mediaLength(mediaQuery.minWidth) + ")");
+    if (mediaQuery.maxWidth)
+        mediaQuerySections.push("(max-width: " + mediaLength(mediaQuery.maxWidth) + ")");
+    if (mediaQuery.minHeight)
+        mediaQuerySections.push("(min-height: " + mediaLength(mediaQuery.minHeight) + ")");
+    if (mediaQuery.maxHeight)
+        mediaQuerySections.push("(max-height: " + mediaLength(mediaQuery.maxHeight) + ")");
+    var stringMediaQuery = "@media " + mediaQuerySections.join(' and ');
+    var object = {
+        $nest: (_a = {},
+            _a[stringMediaQuery] = extend.apply(void 0, objects),
+            _a)
+    };
+    return object;
+    var _a;
+};
+var mediaLength = function (value) {
+    return typeof value === 'string' ? value : value + "px";
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/typestyle/lib.es2015/types.js":
+/*!****************************************************!*\
+  !*** ./node_modules/typestyle/lib.es2015/types.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+
+
+/***/ }),
+
 /***/ "./node_modules/webpack/buildin/global.js":
 /*!***********************************!*\
   !*** (webpack)/buildin/global.js ***!
@@ -18293,6 +21201,13 @@ exports.ui_resources = new static_resources_1.StaticMap({
 
 "use strict";
 
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const puffer_1 = __webpack_require__(/*! ../puffer */ "./src/typescript/puffer.ts");
 const text_utils_1 = __webpack_require__(/*! ../text_utils */ "./src/typescript/text_utils.ts");
@@ -18300,7 +21215,7 @@ const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts")
 const world_1 = __webpack_require__(/*! ../world */ "./src/typescript/world.tsx");
 const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
 const parser_1 = __webpack_require__(/*! ../parser */ "./src/typescript/parser.ts");
-const gensym_1 = __webpack_require__(/*! ../gensym */ "./src/typescript/gensym.ts");
+const TypeStyle = __importStar(__webpack_require__(/*! typestyle */ "./node_modules/typestyle/lib.es2015/index.js"));
 story_1.StoryQueryIndex.seal();
 let LocationPuffer = {
     handle_command: (world, parser) => {
@@ -18385,7 +21300,9 @@ const qualities = [
     'predatory',
     'vulnerable'
 ];
-const hidden_class = gensym_1.gensym();
+const hidden_class = TypeStyle.style({
+    display: 'none'
+});
 let RolePuffer = {
     handle_command: (world, parser) => {
         if (world.is_in_heaven) {
@@ -18408,12 +21325,7 @@ let RolePuffer = {
     post: (new_world, old_world) => utils_1.update(new_world, story_1.story_updater(story_1.Updates.map_worlds(new_world, (w, frame) => [
         frame.has_class('vulnerable').css({ [hidden_class]: new_world.role !== 'vulnerable' }),
         frame.has_class('no-vulnerable').css({ [hidden_class]: new_world.role === 'vulnerable' })
-    ]))),
-    css_rules: [
-        `.${hidden_class} {
-            display: none;
-        }`
-    ]
+    ])))
 };
 ;
 const BirdWorldPuffers = [
@@ -18781,7 +21693,7 @@ const puffer_bird_world_1 = __webpack_require__(/*! ./demo_worlds/puffer_bird_wo
 // import { new_venience_world } from './demo_worlds/narrascope/narrascope';
 const UI_1 = __webpack_require__(/*! ./UI */ "./src/typescript/UI/index.ts");
 console.time('world_build');
-let { initial_result, update, css_rules } = puffer_bird_world_1.new_bird_world(); //new_hex_world();
+let { initial_result, update, css_rules } = puffer_bird_world_1.new_bird_world(); //new_venience_world()//new_bird_world();//new_hex_world();
 // Ability to start from a specific point in the demo:
 // const START_SOLVED = 0;
 // import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
@@ -20164,8 +23076,12 @@ __export(__webpack_require__(/*! ./dom */ "./src/typescript/story/dom.ts"));
 
 "use strict";
 
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const update_1 = __webpack_require__(/*! ../update */ "./src/typescript/update.ts");
+const immer_1 = __importDefault(__webpack_require__(/*! immer */ "./node_modules/immer/dist/immer.module.js"));
 ;
 const InvalidStoryNodeTypes = null;
 function is_story_node(x) {
@@ -20305,11 +23221,9 @@ function splice_in(parent, path, updated) {
     }
     if (path.length === 1) {
         return update_1.update(parent, {
-            children: _ => {
-                const r = [..._];
-                r.splice(path[0], 1, ...updated);
-                return r;
-            }
+            children: immer_1.default(_ => {
+                _.splice(path[0], 1, ...updated);
+            })
         });
     }
     return update_1.update(parent, {
@@ -21197,6 +24111,9 @@ function update1(source, updater) {
         return updater;
     }
     if (updater instanceof Array) {
+        // If the updater is an array, we are actually inside a *tuple* updater.
+        // This means the updater must be no larger than the source tuple type.
+        // We will not delete any elements, only replace with updates.
         let result;
         if (source instanceof Array) {
             result = [...source];
@@ -21215,6 +24132,8 @@ function update1(source, updater) {
     }
     if (updater instanceof Map) {
         let result;
+        // Assume that the constructor function is part of the Map interface
+        // Even though in JS it's not :(
         const ctor = updater.constructor;
         if (source instanceof Map) {
             result = new ctor([...source]);
@@ -21248,6 +24167,7 @@ function update1(source, updater) {
         }
         else if (source instanceof Object) {
             result = Object.assign({}, source);
+            // TODO: Consider using prototypes?
         }
         else {
             result = {};
@@ -21283,6 +24203,8 @@ function update_any(source, updater) {
     return update(source, updater);
 }
 exports.update_any = update_any;
+// Add an overload to immer's IProduce that makes it usable as an update function
+__webpack_require__(/*! immer */ "./node_modules/immer/dist/immer.module.js");
 
 
 /***/ }),
@@ -21304,7 +24226,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var update_1 = __webpack_require__(/*! ./update */ "./src/typescript/update.ts");
-exports.ObjectUpdater = update_1.ObjectUpdater;
 exports.Updater = update_1.Updater;
 exports.update = update_1.update;
 exports.update_any = update_1.update_any;

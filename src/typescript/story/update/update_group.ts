@@ -1,6 +1,6 @@
 import { StoryUpdateSpec, StoryUpdateStage } from "./update";
 import { Stages, stage_entries, stages } from "../../stages";
-import { append, update, Updater } from "../../utils";
+import { append, update, Updater, map } from "../../utils";
 
 export interface StoryUpdateGroups {
     init_frame: 'Updates that initialize the new frame and move the storyhole forward';
@@ -53,4 +53,23 @@ export function push_group(plan: Stages<StoryUpdateStage>, group: StoryUpdateGro
             }
         }]));
     }
+}
+
+export function move_group(plan: Stages<StoryUpdateStage>, name: keyof StoryUpdateGroups, source_stage: number, dest_stage: number) {
+    if (source_stage === dest_stage) {
+        throw new Error('source_stage and dest_stage cannot be equal');
+    }
+    const found_grp_i = (plan.get(source_stage) || []).findIndex(g => g.name === name);
+    if (found_grp_i === -1) {
+        return plan;
+    }
+
+    const found_grp = plan.get(source_stage)![found_grp_i];
+
+    return update(plan, stages(
+        [source_stage, {
+            [found_grp_i]: undefined
+        }],
+        [dest_stage, append(found_grp)]
+    ));
 }

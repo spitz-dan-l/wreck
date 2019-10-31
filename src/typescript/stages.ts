@@ -3,7 +3,13 @@ import { array_last } from "./utils";
 export class Stages<X> extends Map<number, X> {
 }
 
-export function stages<X>(...args: Array<readonly [number, X]>) {
+// export function stages<X extends Array<readonly[number, unknown]>>(...args: X): Stages<X[number][1]> {
+//     return new Stages(args);
+// }
+
+export function stages<X>(...args: Array<readonly [number, X]>): Stages<X>;
+export function stages<X extends Array<readonly[number, unknown]>>(...args: X): Stages<X[number][1]>;
+export function stages<X>(...args: Array<readonly [number, X]>): Stages<X> {
     return new Stages(args);
 }
 
@@ -66,6 +72,7 @@ export function merge_stages<T>(x: MaybeStages<T>, reducer: (acc: T, next: T) =>
     }
 }
 
+// export function find_and_move_to_stage<X extends unknown[]>(obj: Stages<X>, find: (x: X[number]) => boolean, update: (n: number) => number): Stages<X> {
 export function find_and_move_to_stage<X>(obj: Stages<X[]>, find: (x: X) => boolean, update: (n: number) => number): Stages<X[]> {
     let result = stages(...obj);
     let additions: Stages<X[]> = stages();

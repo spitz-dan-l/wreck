@@ -12,37 +12,6 @@ import { push_group, StoryUpdateGroup, StoryUpdateGroups } from './update_group'
 import { ParsedTextStory } from '../../UI/components/parsed_text';
 import { Parsing } from '../../parser';
 
-// TODO: Update Group dsl
-// - includes standard text shortcuts
-// - includes css applied to multiple indexes
-// - other arbitrary groups of updates
-/**
- *  
- * update(world, story_updates(u =>
- * u.group()(
- *      u.frame(5)(
- *          u.action().add(<div>He does it</div>),
- *          u.consequence().add('He is bad now.')
- *      )
- * )
- * 
- * group([
- *      frame(5, [
- *          action(<div>He does it</div>),
- *          consequence('He is bad now')
- *          css({butt: true})
- *      )
- *      
- *      frame((w, f) => f().data.frame_index > 3)
- *      has_class('butt').css()
- * 
- *      
- * ])
- * 
- * 
- */
-//
-
 type QuerySpecDomain = ReplaceReturn<StoryQueries, StoryQuerySpec>;
 export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
 
@@ -149,7 +118,7 @@ function op_method<K extends keyof StoryOps>(this: UpdatesBuilder, k: K, ...para
     const op = story_op(k, ...params);
     let q: StoryQuerySpec;
     if (this.context.query === undefined) {
-        q = Queries.story_root();
+        q = Queries.frame(); //Queries.story_root();
     } else {
         q = this.context.query;
     }
@@ -240,66 +209,6 @@ export function story_updater(...updates: StoryUpdaterSpec[]) {
     }) as W;
 }
 
-// // Helpers for doing common story updates
-// export type TextAddSpec = {
-//     action?: Fragment | Fragment[]
-//     consequence?: Fragment | Fragment[]
-//     description?: Fragment | Fragment[]
-//     prompt?: Fragment | Fragment[]
-// } | Fragment | Fragment[];
-
-// function is_fragment(spec: TextAddSpec): spec is Fragment | Fragment[] {
-//     return (typeof spec === 'string' || spec instanceof Array || is_story_node(spec as Fragment) || is_story_hole(spec as Fragment));
-// }
-
-// export const make_text_additions = (index: number, spec: TextAddSpec) => {
-//     if (is_fragment(spec)) {
-//         spec = {
-//             consequence: spec
-//         };
-//     }
-//     const result: StoryUpdateSpec[] = [];
-//     for (const prop of ['action', 'consequence', 'description', 'prompt'] as const) {
-//         const children = spec[prop];
-//         if (children !== undefined) {
-//             result.push(
-//                 story_update(
-//                     story_query('frame', {
-//                         index,
-//                         subquery: story_query('has_class', { class: prop }) }),
-//                     story_op('add', { children })
-//                 )
-//             );
-//         }
-//     }
-//     return result;
-// }
-
-// export const story_updater = (spec: TextAddSpec, stage=0) =>
-//     <W extends World>(world: W) => update(world as World, {
-//         story_updates: { effects: stages([stage, append(...make_text_additions(world.index, spec))]) }
-//     }) as W;
-
-// export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
-//     (world: W) => {
-//         const history = history_array(world);
-//         const css_updates: StoryUpdateSpec[] = history.flatMap(w => {
-//             const updates = f(w);
-
-//             if (Object.keys(updates).length === 0) {
-//                 return [];
-//             }
-
-//             return [story_update(
-//                 story_query('frame', { index: w.index }),
-//                 story_op('css', f(w))
-//             )]
-//         });
-
-//         return update(world as World, {
-//             story_updates: { effects: stages([0, append(...css_updates)]) }
-//         }) as W
-//     }
 
 export const add_input_text = (world: World, parsing: Parsing) => {
     return update(world,

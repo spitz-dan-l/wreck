@@ -46,22 +46,22 @@ I strongly encourage you to stake your professional reputation on the behavior o
 //                 never), Del> |
 //          ((x: T) => Maybe<T, Del>));
 
-export type Updater<T, Del extends boolean=false> =
+export type Updater<T, Deletable extends boolean=false> =
     // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
     [T] extends [(...args: any) => any] ?
-        (((x: T) => Maybe<T, Del>) |
+        (((x: T) => Updated<T, Deletable>) |
          // "unknown extends T" will check if T is any, in which case we want to match an update function *or* T.
-         ([unknown] extends [T] ? Maybe<T, Del> : never)) :
-        (Maybe<(T extends Primitive | Set<any> ? T :
+         ([unknown] extends [T] ? Updated<T, Deletable> : never)) :
+        (Updated<(T extends Primitive | Set<any> ? T :
             T extends Map<infer K, infer V> ? MapUpdater<K, V> :
             T extends any[] ? 
                 T extends {0: any} ? TupleUpdater<T> : ArrayUpdater<T> :
             T extends object ? ObjectUpdater<T> :
-                never), Del> |
-         ((x: Readonly<T>) => Maybe<(T | Readonly<T>), Del>));
+                never), Deletable> |
+         ((x: T) => Updated<T, Deletable>));
 
-type Maybe<T, Delete extends boolean> = Delete extends true ? T | undefined : T;
+type Updated<T, Deletable extends boolean> = Deletable extends true ? T | undefined : T;
 
 type Primitive = undefined | null | boolean | string | number | symbol;
 
@@ -100,6 +100,9 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
     }
 
     if (updater instanceof Array) {
+        // If the updater is an array, we are actually inside a *tuple* updater.
+        // This means the updater must be no larger than the source tuple type.
+        // We will not delete any elements, only replace with updates.
         let result: any[];
         if (source instanceof Array) {
             result = [...source];
@@ -119,6 +122,8 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
 
     if (updater instanceof Map){
         let result: Map<any, any>;
+        // Assume that the constructor function is part of the Map interface
+        // Even though in JS it's not :(
         const ctor = <MapConstructor>updater.constructor;
         if (source instanceof Map) {
             result = new ctor([...source]);
@@ -151,6 +156,7 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
             result = [...source] as any;
         } else if (source instanceof Object) {
             result = {...source};
+            // TODO: Consider using prototypes?
         } else {
             result = {};
         }
@@ -159,7 +165,7 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
             if (v === undefined) {
                 delete result[n as keyof S];
             } else {
-                const r = update(result[n as keyof S], v);
+                const r: any = update(result[n as keyof S], v);
                 if (r === undefined) {
                     delete result[n as keyof S];
                 } else {
@@ -190,3 +196,16 @@ export function update<S>(source: S, ...updaters: F.NoInfer<Updater<S>>[]): S {
 export function update_any<S>(source: S, updater: any): S {
     return update(source, updater);
 }
+
+type Writable<T> = {
+    -readonly [K in keyof T]: T[K]
+};
+
+// Add an overload to immer's IProduce that makes it usable as an update function
+import 'immer';
+declare module 'immer' {
+    export interface IProduce {
+        <T1>(recipe: (draft: NonNullable<T1>) => void): (t: NonNullable<T1>) => NonNullable<T1>;
+    }
+}    
+
