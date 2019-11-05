@@ -1,43 +1,33 @@
 
-### collectively organizing/orchestrating/scheduling story updates/animations
+TODOs
 
-Situation: You are doing an action which, in this order:
+Finish porting narrascope demo to new story tree repr
+    Counts as done when it works without would-animation stuff
+        At that point we have design decisions to make
 
-- Reveals the command you just typed (Frame t=0)
-- expands the text of a paragraph in t=-2
-- adds text to t=0
+    Eliminate nested class rule approach to revealing text. Instead actually add new nodes to story tree dynamically
 
-Currently.
+Animations
+    -Don't prevent the ability to enter text/otherwise interact
+    -Animation state gains a "started" property (so each stage only gets started once), and somehow gets the ability to be "cancelled", skipping through to the end of the last stage
+    - *all* story ops become reversible
+        - (And therefore, usable in would-effects)
+        - not necessarily animated in reverse, but this would allow more flexible "would-X" displays
 
-The input text for a given command is a child of the frame for that command. So adding the input text requires adding the empty frame.
+Style/display
+    - Use TypedStyle everywhere (unless it doesn't work)
+    - Abstract over the --alpha-color, --rgb-color, color: rules things
 
-The animation ordering is determined by Stages.
-By default all story update effects get added to stage 0, and then you have the option to add to stages before or after that depending.
-
-It is easy to just add some new updates to a new stage to the left of the earliest one. It is cumbersome/finicky to move updates between stages.
-    How would you specify moving an update from one stage to another.
-    - find it by its position in the list of updates for that stage
-        - then the logic is brittle because another change which altered the order beforehand could break this logic
-    - find it by the structure of the update spec
-        - then the logic is brittle because the update spec format can be adjusted/refactored to accomplish the same thing, but now the rule for finding the right update/series of updates will have broken
-
-Proposals
-    Assign names/identities to (groups of) updates. Then move the updates between stages by group key
-        Could cause a similar sort of brittleness as refactoring update spec format- change a grouping and this logic breaks. However, in practice this could probably work.
-    
-    Switch to a constraint-based method of specifying story updates. So now you don't manually arrange your updates in a sequence of stages, instead you specify constraints about which updates must run before which other updates, and the system solves the timeline for you.
-        Even this would have forms of the above problems- how would you specify what the prerequisite updates are for a given update?
-        A: You wouldn't? You'd specify a necessary *state of the story*, not an explicit set of updates to have run.
-
-
-TODOs optimizations
+optimizations
 - try using itiriri instead of array map/filter
 - story trees
     - find a way to avoid even building the full tree each frame
         - would only really help in future search
+        - This probably isn't doable for any game that actually uses the contents of the story tree for game mechanics
     - hold onto a map of keys to [node, Path] at the root of each story tree
         Faster to do find_node
 - parser
     - Avoid repeat walks by cloning the parser at each split
         If the repeat bits are slow, or cause a lot of gc, this could help
         Might have to ban variable reassignments to outer scopes from inside parser threads... hard to enforce
+            But maybe not a huge deal, or lintable

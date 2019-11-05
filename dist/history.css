@@ -74,13 +74,19 @@
     --alpha-color: 1;
 }
 
-.story .unfocused,
 .story .removing-unfocused.animation-start,
 .story .would-add-forgotten,
 .story .would-undo {
     --alpha-color: 0.4;
-    /* opacity: 0.4; */
-    color: rgba(var(--rgb-color),var(--alpha-color));
+}
+
+
+.story .unfocused {
+    --alpha-color: 0.4;
+}
+
+.story .unfocused .frame {
+    --alpha-color: 1.0;
 }
 
 .story .adding-unfocused.animation-start {

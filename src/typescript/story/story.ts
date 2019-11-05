@@ -3,6 +3,7 @@ import { HTMLAttributesWithout } from '../jsx_utils';
 import { update } from '../update';
 import { NodeProps } from './create';
 import produce from 'immer';
+import { Gist } from '../gist';
 
 
 export type StoryHole = { kind: 'StoryHole' };
@@ -18,20 +19,11 @@ export interface StoryNode {
     classes: Record<string, boolean>,
     attributes: HTMLAttributesWithout<NodeProps>
     data: {
-        frame_index?: number
+        frame_index?: number,
+        gist?: Gist
     },
     children: Fragment<this>[]
 }
-
-export interface StoryNodeTypes {
-    StoryNode: StoryNode;
-}
-
-type ValidStoryNodeTypes<T> = {
-    [K in keyof T]: T[K] extends StoryNode ? never : K;
-}[keyof T];
-
-const InvalidStoryNodeTypes: never = <ValidStoryNodeTypes<StoryNodeTypes>><unknown>null;
 
 export function is_story_node<Node extends StoryNode=StoryNode>(x: Fragment<Node>): x is Node {
     return (x as any).kind === 'StoryNode';

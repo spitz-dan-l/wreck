@@ -86,464 +86,6 @@
 /************************************************************************/
 /******/ ({
 
-/***/ "./node_modules/free-style/dist/free-style.js":
-/*!****************************************************!*\
-  !*** ./node_modules/free-style/dist/free-style.js ***!
-  \****************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-/* WEBPACK VAR INJECTION */(function(process) {
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    }
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-Object.defineProperty(exports, "__esModule", { value: true });
-/**
- * The unique id is used for unique hashes.
- */
-var uniqueId = 0;
-/**
- * Tag styles with this string to get unique hashes.
- */
-exports.IS_UNIQUE = '__DO_NOT_DEDUPE_STYLE__';
-var upperCasePattern = /[A-Z]/g;
-var msPattern = /^ms-/;
-var interpolatePattern = /&/g;
-var escapePattern = /[ !#$%&()*+,./;<=>?@[\]^`{|}~"'\\]/g;
-var propLower = function (m) { return "-" + m.toLowerCase(); };
-/**
- * CSS properties that are valid unit-less numbers.
- *
- * Ref: https://github.com/facebook/react/blob/master/packages/react-dom/src/shared/CSSProperty.js
- */
-var CSS_NUMBER = {
-    'animation-iteration-count': true,
-    'border-image-outset': true,
-    'border-image-slice': true,
-    'border-image-width': true,
-    'box-flex': true,
-    'box-flex-group': true,
-    'box-ordinal-group': true,
-    'column-count': true,
-    'columns': true,
-    'counter-increment': true,
-    'counter-reset': true,
-    'flex': true,
-    'flex-grow': true,
-    'flex-positive': true,
-    'flex-shrink': true,
-    'flex-negative': true,
-    'flex-order': true,
-    'font-weight': true,
-    'grid-area': true,
-    'grid-column': true,
-    'grid-column-end': true,
-    'grid-column-span': true,
-    'grid-column-start': true,
-    'grid-row': true,
-    'grid-row-end': true,
-    'grid-row-span': true,
-    'grid-row-start': true,
-    'line-clamp': true,
-    'line-height': true,
-    'opacity': true,
-    'order': true,
-    'orphans': true,
-    'tab-size': true,
-    'widows': true,
-    'z-index': true,
-    'zoom': true,
-    // SVG properties.
-    'fill-opacity': true,
-    'flood-opacity': true,
-    'stop-opacity': true,
-    'stroke-dasharray': true,
-    'stroke-dashoffset': true,
-    'stroke-miterlimit': true,
-    'stroke-opacity': true,
-    'stroke-width': true
-};
-// Add vendor prefixes to all unit-less properties.
-for (var _i = 0, _a = Object.keys(CSS_NUMBER); _i < _a.length; _i++) {
-    var property = _a[_i];
-    for (var _b = 0, _c = ['-webkit-', '-ms-', '-moz-', '-o-', '']; _b < _c.length; _b++) {
-        var prefix = _c[_b];
-        CSS_NUMBER[prefix + property] = true;
-    }
-}
-/**
- * Escape a CSS class name.
- */
-exports.escape = function (str) { return str.replace(escapePattern, '\\$&'); };
-/**
- * Transform a JavaScript property into a CSS property.
- */
-function hyphenate(propertyName) {
-    return propertyName
-        .replace(upperCasePattern, propLower)
-        .replace(msPattern, '-ms-'); // Internet Explorer vendor prefix.
-}
-exports.hyphenate = hyphenate;
-/**
- * Generate a hash value from a string.
- */
-function stringHash(str) {
-    var value = 5381;
-    var len = str.length;
-    while (len--)
-        value = (value * 33) ^ str.charCodeAt(len);
-    return (value >>> 0).toString(36);
-}
-exports.stringHash = stringHash;
-/**
- * Transform a style string to a CSS string.
- */
-function styleToString(key, value) {
-    if (typeof value === 'number' && value !== 0 && !CSS_NUMBER.hasOwnProperty(key)) {
-        return key + ":" + value + "px";
-    }
-    return key + ":" + value;
-}
-/**
- * Sort an array of tuples by first value.
- */
-function sortTuples(value) {
-    return value.sort(function (a, b) { return a[0] > b[0] ? 1 : -1; });
-}
-/**
- * Categorize user styles.
- */
-function parseStyles(styles, hasNestedStyles) {
-    var properties = [];
-    var nestedStyles = [];
-    var isUnique = false;
-    // Sort keys before adding to styles.
-    for (var _i = 0, _a = Object.keys(styles); _i < _a.length; _i++) {
-        var key = _a[_i];
-        var value = styles[key];
-        if (value !== null && value !== undefined) {
-            if (key === exports.IS_UNIQUE) {
-                isUnique = true;
-            }
-            else if (typeof value === 'object' && !Array.isArray(value)) {
-                nestedStyles.push([key.trim(), value]);
-            }
-            else {
-                properties.push([hyphenate(key.trim()), value]);
-            }
-        }
-    }
-    return {
-        style: stringifyProperties(sortTuples(properties)),
-        nested: hasNestedStyles ? nestedStyles : sortTuples(nestedStyles),
-        isUnique: isUnique
-    };
-}
-/**
- * Stringify an array of property tuples.
- */
-function stringifyProperties(properties) {
-    return properties.map(function (_a) {
-        var name = _a[0], value = _a[1];
-        if (!Array.isArray(value))
-            return styleToString(name, value);
-        return value.map(function (x) { return styleToString(name, x); }).join(';');
-    }).join(';');
-}
-/**
- * Interpolate CSS selectors.
- */
-function interpolate(selector, parent) {
-    if (selector.indexOf('&') === -1)
-        return parent + " " + selector;
-    return selector.replace(interpolatePattern, parent);
-}
-/**
- * Recursive loop building styles with deferred selectors.
- */
-function stylize(selector, styles, rulesList, stylesList, parent) {
-    var _a = parseStyles(styles, selector !== ''), style = _a.style, nested = _a.nested, isUnique = _a.isUnique;
-    var pid = style;
-    if (selector.charCodeAt(0) === 64 /* @ */) {
-        var child = { selector: selector, styles: [], rules: [], style: parent ? '' : style };
-        rulesList.push(child);
-        // Nested styles support (e.g. `.foo > @media > .bar`).
-        if (style && parent)
-            child.styles.push({ selector: parent, style: style, isUnique: isUnique });
-        for (var _i = 0, nested_1 = nested; _i < nested_1.length; _i++) {
-            var _b = nested_1[_i], name = _b[0], value = _b[1];
-            pid += name + stylize(name, value, child.rules, child.styles, parent);
-        }
-    }
-    else {
-        var key = parent ? interpolate(selector, parent) : selector;
-        if (style)
-            stylesList.push({ selector: key, style: style, isUnique: isUnique });
-        for (var _c = 0, nested_2 = nested; _c < nested_2.length; _c++) {
-            var _d = nested_2[_c], name = _d[0], value = _d[1];
-            pid += name + stylize(name, value, rulesList, stylesList, key);
-        }
-    }
-    return pid;
-}
-/**
- * Transform `stylize` tree into style objects.
- */
-function composeStylize(cache, pid, rulesList, stylesList, className, isStyle) {
-    for (var _i = 0, stylesList_1 = stylesList; _i < stylesList_1.length; _i++) {
-        var _a = stylesList_1[_i], selector = _a.selector, style = _a.style, isUnique = _a.isUnique;
-        var key = isStyle ? interpolate(selector, className) : selector;
-        var id = isUnique ? "u\0" + (++uniqueId).toString(36) : "s\0" + pid + "\0" + style;
-        var item = new Style(style, id);
-        item.add(new Selector(key, "k\0" + pid + "\0" + key));
-        cache.add(item);
-    }
-    for (var _b = 0, rulesList_1 = rulesList; _b < rulesList_1.length; _b++) {
-        var _c = rulesList_1[_b], selector = _c.selector, style = _c.style, rules = _c.rules, styles = _c.styles;
-        var item = new Rule(selector, style, "r\0" + pid + "\0" + selector + "\0" + style);
-        composeStylize(item, pid, rules, styles, className, isStyle);
-        cache.add(item);
-    }
-}
-/**
- * Cache to list to styles.
- */
-function join(arr) {
-    var res = '';
-    for (var i = 0; i < arr.length; i++)
-        res += arr[i];
-    return res;
-}
-/**
- * Noop changes.
- */
-var noopChanges = {
-    add: function () { return undefined; },
-    change: function () { return undefined; },
-    remove: function () { return undefined; }
-};
-/**
- * Implement a cache/event emitter.
- */
-var Cache = /** @class */ (function () {
-    function Cache(changes) {
-        if (changes === void 0) { changes = noopChanges; }
-        this.changes = changes;
-        this.sheet = [];
-        this.changeId = 0;
-        this._keys = [];
-        this._children = Object.create(null);
-        this._counters = Object.create(null);
-    }
-    Cache.prototype.add = function (style) {
-        var count = this._counters[style.id] || 0;
-        var item = this._children[style.id] || style.clone();
-        this._counters[style.id] = count + 1;
-        if (count === 0) {
-            this._children[item.id] = item;
-            this._keys.push(item.id);
-            this.sheet.push(item.getStyles());
-            this.changeId++;
-            this.changes.add(item, this._keys.length - 1);
-        }
-        else if (item instanceof Cache && style instanceof Cache) {
-            var curIndex = this._keys.indexOf(style.id);
-            var prevItemChangeId = item.changeId;
-            item.merge(style);
-            if (item.changeId !== prevItemChangeId) {
-                this.sheet.splice(curIndex, 1, item.getStyles());
-                this.changeId++;
-                this.changes.change(item, curIndex, curIndex);
-            }
-        }
-        return item;
-    };
-    Cache.prototype.remove = function (style) {
-        var count = this._counters[style.id];
-        if (count !== undefined && count > 0) {
-            this._counters[style.id] = count - 1;
-            var item = this._children[style.id];
-            var index = this._keys.indexOf(item.id);
-            if (count === 1) {
-                delete this._counters[style.id];
-                delete this._children[style.id];
-                this._keys.splice(index, 1);
-                this.sheet.splice(index, 1);
-                this.changeId++;
-                this.changes.remove(item, index);
-            }
-            else if (item instanceof Cache && style instanceof Cache) {
-                var prevChangeId = item.changeId;
-                item.unmerge(style);
-                if (item.changeId !== prevChangeId) {
-                    this.sheet.splice(index, 1, item.getStyles());
-                    this.changeId++;
-                    this.changes.change(item, index, index);
-                }
-            }
-        }
-    };
-    Cache.prototype.values = function () {
-        var _this = this;
-        return this._keys.map(function (key) { return _this._children[key]; });
-    };
-    Cache.prototype.merge = function (cache) {
-        for (var _i = 0, _a = cache.values(); _i < _a.length; _i++) {
-            var item = _a[_i];
-            this.add(item);
-        }
-        return this;
-    };
-    Cache.prototype.unmerge = function (cache) {
-        for (var _i = 0, _a = cache.values(); _i < _a.length; _i++) {
-            var item = _a[_i];
-            this.remove(item);
-        }
-        return this;
-    };
-    Cache.prototype.clone = function () {
-        return new Cache().merge(this);
-    };
-    return Cache;
-}());
-exports.Cache = Cache;
-/**
- * Selector is a dumb class made to represent nested CSS selectors.
- */
-var Selector = /** @class */ (function () {
-    function Selector(selector, id) {
-        this.selector = selector;
-        this.id = id;
-    }
-    Selector.prototype.getStyles = function () {
-        return this.selector;
-    };
-    Selector.prototype.clone = function () {
-        return new Selector(this.selector, this.id);
-    };
-    return Selector;
-}());
-exports.Selector = Selector;
-/**
- * The style container registers a style string with selectors.
- */
-var Style = /** @class */ (function (_super) {
-    __extends(Style, _super);
-    function Style(style, id) {
-        var _this = _super.call(this) || this;
-        _this.style = style;
-        _this.id = id;
-        return _this;
-    }
-    Style.prototype.getStyles = function () {
-        return this.sheet.join(',') + "{" + this.style + "}";
-    };
-    Style.prototype.clone = function () {
-        return new Style(this.style, this.id).merge(this);
-    };
-    return Style;
-}(Cache));
-exports.Style = Style;
-/**
- * Implement rule logic for style output.
- */
-var Rule = /** @class */ (function (_super) {
-    __extends(Rule, _super);
-    function Rule(rule, style, id) {
-        var _this = _super.call(this) || this;
-        _this.rule = rule;
-        _this.style = style;
-        _this.id = id;
-        return _this;
-    }
-    Rule.prototype.getStyles = function () {
-        return this.rule + "{" + this.style + join(this.sheet) + "}";
-    };
-    Rule.prototype.clone = function () {
-        return new Rule(this.rule, this.style, this.id).merge(this);
-    };
-    return Rule;
-}(Cache));
-exports.Rule = Rule;
-/**
- * The FreeStyle class implements the API for everything else.
- */
-var FreeStyle = /** @class */ (function (_super) {
-    __extends(FreeStyle, _super);
-    function FreeStyle(hash, debug, id, changes) {
-        var _this = _super.call(this, changes) || this;
-        _this.hash = hash;
-        _this.debug = debug;
-        _this.id = id;
-        return _this;
-    }
-    FreeStyle.prototype.registerStyle = function (styles, displayName) {
-        var rulesList = [];
-        var stylesList = [];
-        var pid = stylize('&', styles, rulesList, stylesList);
-        var hash = "f" + this.hash(pid);
-        var id = this.debug && displayName ? displayName + "_" + hash : hash;
-        composeStylize(this, pid, rulesList, stylesList, "." + exports.escape(id), true);
-        return id;
-    };
-    FreeStyle.prototype.registerKeyframes = function (keyframes, displayName) {
-        return this.registerHashRule('@keyframes', keyframes, displayName);
-    };
-    FreeStyle.prototype.registerHashRule = function (prefix, styles, displayName) {
-        var rulesList = [];
-        var stylesList = [];
-        var pid = stylize('', styles, rulesList, stylesList);
-        var hash = "f" + this.hash(pid);
-        var id = this.debug && displayName ? displayName + "_" + hash : hash;
-        var rule = new Rule(prefix + " " + exports.escape(id), '', "h\0" + pid + "\0" + prefix);
-        composeStylize(rule, pid, rulesList, stylesList, '', false);
-        this.add(rule);
-        return id;
-    };
-    FreeStyle.prototype.registerRule = function (rule, styles) {
-        var rulesList = [];
-        var stylesList = [];
-        var pid = stylize(rule, styles, rulesList, stylesList);
-        composeStylize(this, pid, rulesList, stylesList, '', false);
-    };
-    FreeStyle.prototype.registerCss = function (styles) {
-        return this.registerRule('', styles);
-    };
-    FreeStyle.prototype.getStyles = function () {
-        return join(this.sheet);
-    };
-    FreeStyle.prototype.clone = function () {
-        return new FreeStyle(this.hash, this.debug, this.id, this.changes).merge(this);
-    };
-    return FreeStyle;
-}(Cache));
-exports.FreeStyle = FreeStyle;
-/**
- * Exports a simple function to create a new instance.
- */
-function create(hash, debug, changes) {
-    if (hash === void 0) { hash = stringHash; }
-    if (debug === void 0) { debug = typeof process !== 'undefined' && "development" !== 'production'; }
-    if (changes === void 0) { changes = noopChanges; }
-    return new FreeStyle(hash, debug, "f" + (++uniqueId).toString(36), changes);
-}
-exports.create = create;
-//# sourceMappingURL=free-style.js.map
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../../process/browser.js */ "./node_modules/process/browser.js")))
-
-/***/ }),
-
 /***/ "./node_modules/immer/dist/immer.module.js":
 /*!*************************************************!*\
   !*** ./node_modules/immer/dist/immer.module.js ***!
@@ -19590,526 +19132,6 @@ process.umask = function() { return 0; };
 
 /***/ }),
 
-/***/ "./node_modules/typestyle/lib.es2015/index.js":
-/*!****************************************************!*\
-  !*** ./node_modules/typestyle/lib.es2015/index.js ***!
-  \****************************************************/
-/*! exports provided: TypeStyle, types, extend, classes, media, setStylesTarget, cssRaw, cssRule, forceRenderStyles, fontFace, getStyles, keyframes, reinit, style, stylesheet, createTypeStyle */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "setStylesTarget", function() { return setStylesTarget; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "cssRaw", function() { return cssRaw; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "cssRule", function() { return cssRule; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "forceRenderStyles", function() { return forceRenderStyles; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "fontFace", function() { return fontFace; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getStyles", function() { return getStyles; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "keyframes", function() { return keyframes; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "reinit", function() { return reinit; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "style", function() { return style; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "stylesheet", function() { return stylesheet; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "createTypeStyle", function() { return createTypeStyle; });
-/* harmony import */ var _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./internal/typestyle */ "./node_modules/typestyle/lib.es2015/internal/typestyle.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "TypeStyle", function() { return _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__["TypeStyle"]; });
-
-/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./types */ "./node_modules/typestyle/lib.es2015/types.js");
-/* harmony import */ var _types__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_types__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony reexport (module object) */ __webpack_require__.d(__webpack_exports__, "types", function() { return _types__WEBPACK_IMPORTED_MODULE_1__; });
-/* harmony import */ var _internal_utilities__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./internal/utilities */ "./node_modules/typestyle/lib.es2015/internal/utilities.js");
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "extend", function() { return _internal_utilities__WEBPACK_IMPORTED_MODULE_2__["extend"]; });
-
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "classes", function() { return _internal_utilities__WEBPACK_IMPORTED_MODULE_2__["classes"]; });
-
-/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "media", function() { return _internal_utilities__WEBPACK_IMPORTED_MODULE_2__["media"]; });
-
-
-
-/**
- * All the CSS types in the 'types' namespace
- */
-
-
-/**
- * Export certain utilities
- */
-
-/** Zero configuration, default instance of TypeStyle */
-var ts = new _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__["TypeStyle"]({ autoGenerateTag: true });
-/** Sets the target tag where we write the css on style updates */
-var setStylesTarget = ts.setStylesTarget;
-/**
- * Insert `raw` CSS as a string. This is useful for e.g.
- * - third party CSS that you are customizing with template strings
- * - generating raw CSS in JavaScript
- * - reset libraries like normalize.css that you can use without loaders
- */
-var cssRaw = ts.cssRaw;
-/**
- * Takes CSSProperties and registers it to a global selector (body, html, etc.)
- */
-var cssRule = ts.cssRule;
-/**
- * Renders styles to the singleton tag imediately
- * NOTE: You should only call it on initial render to prevent any non CSS flash.
- * After that it is kept sync using `requestAnimationFrame` and we haven't noticed any bad flashes.
- **/
-var forceRenderStyles = ts.forceRenderStyles;
-/**
- * Utility function to register an @font-face
- */
-var fontFace = ts.fontFace;
-/**
- * Allows use to use the stylesheet in a node.js environment
- */
-var getStyles = ts.getStyles;
-/**
- * Takes keyframes and returns a generated animationName
- */
-var keyframes = ts.keyframes;
-/**
- * Helps with testing. Reinitializes FreeStyle + raw
- */
-var reinit = ts.reinit;
-/**
- * Takes CSSProperties and return a generated className you can use on your component
- */
-var style = ts.style;
-/**
- * Takes an object where property names are ideal class names and property values are CSSProperties, and
- * returns an object where property names are the same ideal class names and the property values are
- * the actual generated class names using the ideal class name as the $debugName
- */
-var stylesheet = ts.stylesheet;
-/**
- * Creates a new instance of TypeStyle separate from the default instance.
- *
- * - Use this for creating a different typestyle instance for a shadow dom component.
- * - Use this if you don't want an auto tag generated and you just want to collect the CSS.
- *
- * NOTE: styles aren't shared between different instances.
- */
-function createTypeStyle(target) {
-    var instance = new _internal_typestyle__WEBPACK_IMPORTED_MODULE_0__["TypeStyle"]({ autoGenerateTag: false });
-    if (target) {
-        instance.setStylesTarget(target);
-    }
-    return instance;
-}
-
-
-/***/ }),
-
-/***/ "./node_modules/typestyle/lib.es2015/internal/formatting.js":
-/*!******************************************************************!*\
-  !*** ./node_modules/typestyle/lib.es2015/internal/formatting.js ***!
-  \******************************************************************/
-/*! exports provided: ensureStringObj, explodeKeyframes */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ensureStringObj", function() { return ensureStringObj; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "explodeKeyframes", function() { return explodeKeyframes; });
-/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! free-style */ "./node_modules/free-style/dist/free-style.js");
-/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(free_style__WEBPACK_IMPORTED_MODULE_0__);
-
-/**
- * We need to do the following to *our* objects before passing to freestyle:
- * - For any `$nest` directive move up to FreeStyle style nesting
- * - For any `$unique` directive map to FreeStyle Unique
- * - For any `$debugName` directive return the debug name
- */
-function ensureStringObj(object) {
-    /** The final result we will return */
-    var result = {};
-    var debugName = '';
-    for (var key in object) {
-        /** Grab the value upfront */
-        var val = object[key];
-        /** TypeStyle configuration options */
-        if (key === '$unique') {
-            result[free_style__WEBPACK_IMPORTED_MODULE_0__["IS_UNIQUE"]] = val;
-        }
-        else if (key === '$nest') {
-            var nested = val;
-            for (var selector in nested) {
-                var subproperties = nested[selector];
-                result[selector] = ensureStringObj(subproperties).result;
-            }
-        }
-        else if (key === '$debugName') {
-            debugName = val;
-        }
-        else {
-            result[key] = val;
-        }
-    }
-    return { result: result, debugName: debugName };
-}
-// todo: better name here
-function explodeKeyframes(frames) {
-    var result = { $debugName: undefined, keyframes: {} };
-    for (var offset in frames) {
-        var val = frames[offset];
-        if (offset === '$debugName') {
-            result.$debugName = val;
-        }
-        else {
-            result.keyframes[offset] = val;
-        }
-    }
-    return result;
-}
-
-
-/***/ }),
-
-/***/ "./node_modules/typestyle/lib.es2015/internal/typestyle.js":
-/*!*****************************************************************!*\
-  !*** ./node_modules/typestyle/lib.es2015/internal/typestyle.js ***!
-  \*****************************************************************/
-/*! exports provided: TypeStyle */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "TypeStyle", function() { return TypeStyle; });
-/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! free-style */ "./node_modules/free-style/dist/free-style.js");
-/* harmony import */ var free_style__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(free_style__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _formatting__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./formatting */ "./node_modules/typestyle/lib.es2015/internal/formatting.js");
-/* harmony import */ var _utilities__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utilities */ "./node_modules/typestyle/lib.es2015/internal/utilities.js");
-
-
-
-/**
- * Creates an instance of free style with our options
- */
-var createFreeStyle = function () { return free_style__WEBPACK_IMPORTED_MODULE_0__["create"](
-/** Use the default hash function */
-undefined, 
-/** Preserve $debugName values */
-true); };
-/**
- * Maintains a single stylesheet and keeps it in sync with requested styles
- */
-var TypeStyle = /** @class */ (function () {
-    function TypeStyle(_a) {
-        var autoGenerateTag = _a.autoGenerateTag;
-        var _this = this;
-        /**
-         * Insert `raw` CSS as a string. This is useful for e.g.
-         * - third party CSS that you are customizing with template strings
-         * - generating raw CSS in JavaScript
-         * - reset libraries like normalize.css that you can use without loaders
-         */
-        this.cssRaw = function (mustBeValidCSS) {
-            if (!mustBeValidCSS) {
-                return;
-            }
-            _this._raw += mustBeValidCSS || '';
-            _this._pendingRawChange = true;
-            _this._styleUpdated();
-        };
-        /**
-         * Takes CSSProperties and registers it to a global selector (body, html, etc.)
-         */
-        this.cssRule = function (selector) {
-            var objects = [];
-            for (var _i = 1; _i < arguments.length; _i++) {
-                objects[_i - 1] = arguments[_i];
-            }
-            var object = Object(_formatting__WEBPACK_IMPORTED_MODULE_1__["ensureStringObj"])(_utilities__WEBPACK_IMPORTED_MODULE_2__["extend"].apply(void 0, objects)).result;
-            _this._freeStyle.registerRule(selector, object);
-            _this._styleUpdated();
-            return;
-        };
-        /**
-         * Renders styles to the singleton tag imediately
-         * NOTE: You should only call it on initial render to prevent any non CSS flash.
-         * After that it is kept sync using `requestAnimationFrame` and we haven't noticed any bad flashes.
-         **/
-        this.forceRenderStyles = function () {
-            var target = _this._getTag();
-            if (!target) {
-                return;
-            }
-            target.textContent = _this.getStyles();
-        };
-        /**
-         * Utility function to register an @font-face
-         */
-        this.fontFace = function () {
-            var fontFace = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                fontFace[_i] = arguments[_i];
-            }
-            var freeStyle = _this._freeStyle;
-            for (var _a = 0, _b = fontFace; _a < _b.length; _a++) {
-                var face = _b[_a];
-                freeStyle.registerRule('@font-face', face);
-            }
-            _this._styleUpdated();
-            return;
-        };
-        /**
-         * Allows use to use the stylesheet in a node.js environment
-         */
-        this.getStyles = function () {
-            return (_this._raw || '') + _this._freeStyle.getStyles();
-        };
-        /**
-         * Takes keyframes and returns a generated animationName
-         */
-        this.keyframes = function (frames) {
-            var _a = Object(_formatting__WEBPACK_IMPORTED_MODULE_1__["explodeKeyframes"])(frames), keyframes = _a.keyframes, $debugName = _a.$debugName;
-            // TODO: replace $debugName with display name
-            var animationName = _this._freeStyle.registerKeyframes(keyframes, $debugName);
-            _this._styleUpdated();
-            return animationName;
-        };
-        /**
-         * Helps with testing. Reinitializes FreeStyle + raw
-         */
-        this.reinit = function () {
-            /** reinit freestyle */
-            var freeStyle = createFreeStyle();
-            _this._freeStyle = freeStyle;
-            _this._lastFreeStyleChangeId = freeStyle.changeId;
-            /** reinit raw */
-            _this._raw = '';
-            _this._pendingRawChange = false;
-            /** Clear any styles that were flushed */
-            var target = _this._getTag();
-            if (target) {
-                target.textContent = '';
-            }
-        };
-        /** Sets the target tag where we write the css on style updates */
-        this.setStylesTarget = function (tag) {
-            /** Clear any data in any previous tag */
-            if (_this._tag) {
-                _this._tag.textContent = '';
-            }
-            _this._tag = tag;
-            /** This special time buffer immediately */
-            _this.forceRenderStyles();
-        };
-        /**
-         * Takes an object where property names are ideal class names and property values are CSSProperties, and
-         * returns an object where property names are the same ideal class names and the property values are
-         * the actual generated class names using the ideal class name as the $debugName
-         */
-        this.stylesheet = function (classes) {
-            var classNames = Object.getOwnPropertyNames(classes);
-            var result = {};
-            for (var _i = 0, classNames_1 = classNames; _i < classNames_1.length; _i++) {
-                var className = classNames_1[_i];
-                var classDef = classes[className];
-                if (classDef) {
-                    classDef.$debugName = className;
-                    result[className] = _this.style(classDef);
-                }
-            }
-            return result;
-        };
-        var freeStyle = createFreeStyle();
-        this._autoGenerateTag = autoGenerateTag;
-        this._freeStyle = freeStyle;
-        this._lastFreeStyleChangeId = freeStyle.changeId;
-        this._pending = 0;
-        this._pendingRawChange = false;
-        this._raw = '';
-        this._tag = undefined;
-        // rebind prototype to TypeStyle.  It might be better to do a function() { return this.style.apply(this, arguments)}
-        this.style = this.style.bind(this);
-    }
-    /**
-     * Only calls cb all sync operations settle
-     */
-    TypeStyle.prototype._afterAllSync = function (cb) {
-        var _this = this;
-        this._pending++;
-        var pending = this._pending;
-        Object(_utilities__WEBPACK_IMPORTED_MODULE_2__["raf"])(function () {
-            if (pending !== _this._pending) {
-                return;
-            }
-            cb();
-        });
-    };
-    TypeStyle.prototype._getTag = function () {
-        if (this._tag) {
-            return this._tag;
-        }
-        if (this._autoGenerateTag) {
-            var tag = typeof window === 'undefined'
-                ? { textContent: '' }
-                : document.createElement('style');
-            if (typeof document !== 'undefined') {
-                document.head.appendChild(tag);
-            }
-            this._tag = tag;
-            return tag;
-        }
-        return undefined;
-    };
-    /** Checks if the style tag needs updating and if so queues up the change */
-    TypeStyle.prototype._styleUpdated = function () {
-        var _this = this;
-        var changeId = this._freeStyle.changeId;
-        var lastChangeId = this._lastFreeStyleChangeId;
-        if (!this._pendingRawChange && changeId === lastChangeId) {
-            return;
-        }
-        this._lastFreeStyleChangeId = changeId;
-        this._pendingRawChange = false;
-        this._afterAllSync(function () { return _this.forceRenderStyles(); });
-    };
-    TypeStyle.prototype.style = function () {
-        var freeStyle = this._freeStyle;
-        var _a = Object(_formatting__WEBPACK_IMPORTED_MODULE_1__["ensureStringObj"])(_utilities__WEBPACK_IMPORTED_MODULE_2__["extend"].apply(undefined, arguments)), result = _a.result, debugName = _a.debugName;
-        var className = debugName ? freeStyle.registerStyle(result, debugName) : freeStyle.registerStyle(result);
-        this._styleUpdated();
-        return className;
-    };
-    return TypeStyle;
-}());
-
-
-
-/***/ }),
-
-/***/ "./node_modules/typestyle/lib.es2015/internal/utilities.js":
-/*!*****************************************************************!*\
-  !*** ./node_modules/typestyle/lib.es2015/internal/utilities.js ***!
-  \*****************************************************************/
-/*! exports provided: raf, classes, extend, media */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "raf", function() { return raf; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "classes", function() { return classes; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "extend", function() { return extend; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "media", function() { return media; });
-/** Raf for node + browser */
-var raf = typeof requestAnimationFrame === 'undefined'
-    /**
-     * Make sure setTimeout is always invoked with
-     * `this` set to `window` or `global` automatically
-     **/
-    ? function (cb) { return setTimeout(cb); }
-    /**
-     * Make sure window.requestAnimationFrame is always invoked with `this` window
-     * We might have raf without window in case of `raf/polyfill` (recommended by React)
-     **/
-    : typeof window === 'undefined'
-        ? requestAnimationFrame
-        : requestAnimationFrame.bind(window);
-/**
- * Utility to join classes conditionally
- */
-function classes() {
-    var classes = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        classes[_i] = arguments[_i];
-    }
-    return classes
-        .map(function (c) { return c && typeof c === 'object' ? Object.keys(c).map(function (key) { return !!c[key] && key; }) : [c]; })
-        .reduce(function (flattened, c) { return flattened.concat(c); }, [])
-        .filter(function (c) { return !!c; })
-        .join(' ');
-}
-/**
- * Merges various styles into a single style object.
- * Note: if two objects have the same property the last one wins
- */
-function extend() {
-    var objects = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        objects[_i] = arguments[_i];
-    }
-    /** The final result we will return */
-    var result = {};
-    for (var _a = 0, objects_1 = objects; _a < objects_1.length; _a++) {
-        var object = objects_1[_a];
-        if (object == null || object === false) {
-            continue;
-        }
-        for (var key in object) {
-            /** Falsy values except a explicit 0 is ignored */
-            var val = object[key];
-            if (!val && val !== 0) {
-                continue;
-            }
-            /** if nested media or pseudo selector */
-            if (key === '$nest' && val) {
-                result[key] = result['$nest'] ? extend(result['$nest'], val) : val;
-            }
-            else if ((key.indexOf('&') !== -1 || key.indexOf('@media') === 0)) {
-                result[key] = result[key] ? extend(result[key], val) : val;
-            }
-            else {
-                result[key] = val;
-            }
-        }
-    }
-    return result;
-}
-/**
- * Utility to help customize styles with media queries. e.g.
- * ```
- * style(
- *  media({maxWidth:500}, {color:'red'})
- * )
- * ```
- */
-var media = function (mediaQuery) {
-    var objects = [];
-    for (var _i = 1; _i < arguments.length; _i++) {
-        objects[_i - 1] = arguments[_i];
-    }
-    var mediaQuerySections = [];
-    if (mediaQuery.type)
-        mediaQuerySections.push(mediaQuery.type);
-    if (mediaQuery.orientation)
-        mediaQuerySections.push("(orientation: " + mediaQuery.orientation + ")");
-    if (mediaQuery.minWidth)
-        mediaQuerySections.push("(min-width: " + mediaLength(mediaQuery.minWidth) + ")");
-    if (mediaQuery.maxWidth)
-        mediaQuerySections.push("(max-width: " + mediaLength(mediaQuery.maxWidth) + ")");
-    if (mediaQuery.minHeight)
-        mediaQuerySections.push("(min-height: " + mediaLength(mediaQuery.minHeight) + ")");
-    if (mediaQuery.maxHeight)
-        mediaQuerySections.push("(max-height: " + mediaLength(mediaQuery.maxHeight) + ")");
-    var stringMediaQuery = "@media " + mediaQuerySections.join(' and ');
-    var object = {
-        $nest: (_a = {},
-            _a[stringMediaQuery] = extend.apply(void 0, objects),
-            _a)
-    };
-    return object;
-    var _a;
-};
-var mediaLength = function (value) {
-    return typeof value === 'string' ? value : value + "px";
-};
-
-
-/***/ }),
-
-/***/ "./node_modules/typestyle/lib.es2015/types.js":
-/*!****************************************************!*\
-  !*** ./node_modules/typestyle/lib.es2015/types.js ***!
-  \****************************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-
-
-/***/ }),
-
 /***/ "./node_modules/webpack/buildin/global.js":
 /*!***********************************!*\
   !*** (webpack)/buildin/global.js ***!
@@ -21192,180 +20214,65 @@ exports.ui_resources = new static_resources_1.StaticMap({
 
 /***/ }),
 
-/***/ "./src/typescript/demo_worlds/puffer_bird_world.tsx":
-/*!**********************************************************!*\
-  !*** ./src/typescript/demo_worlds/puffer_bird_world.tsx ***!
-  \**********************************************************/
+/***/ "./src/typescript/demo_worlds/sam.tsx":
+/*!********************************************!*\
+  !*** ./src/typescript/demo_worlds/sam.tsx ***!
+  \********************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ../gist */ "./src/typescript/gist.ts");
 const puffer_1 = __webpack_require__(/*! ../puffer */ "./src/typescript/puffer.ts");
-const text_utils_1 = __webpack_require__(/*! ../text_utils */ "./src/typescript/text_utils.ts");
+const static_resources_1 = __webpack_require__(/*! ../static_resources */ "./src/typescript/static_resources.ts");
+const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
+const update_1 = __webpack_require__(/*! ../update */ "./src/typescript/update.ts");
 const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
 const world_1 = __webpack_require__(/*! ../world */ "./src/typescript/world.tsx");
-const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
-const parser_1 = __webpack_require__(/*! ../parser */ "./src/typescript/parser.ts");
-const TypeStyle = __importStar(__webpack_require__(/*! typestyle */ "./node_modules/typestyle/lib.es2015/index.js"));
-story_1.StoryQueryIndex.seal();
-let LocationPuffer = {
-    handle_command: (world, parser) => {
-        return parser.consume('go', () => {
-            let is_locked = { 'up': world.is_in_heaven, 'down': !world.is_in_heaven };
-            return parser.split(['up', 'down'].map(dir => () => parser.consume({
-                tokens: `${dir}_stairs`,
-                locked: is_locked[dir],
-                labels: { option: true }
-            }, dir)), (dir) => parser.submit(() => {
-                let new_pos = !world.is_in_heaven;
-                let loc = new_pos ? 'in Heaven' : 'standing around on the ground';
-                return utils_1.update(world, story_1.story_updater(story_1.Updates.consequence(`You are currently ${loc}.`)), { is_in_heaven: new_pos });
-            }));
-        });
-    },
-    post: (new_world, old_world) => {
-        return utils_1.update(new_world, story_1.story_updater(story_1.Updates.map_worlds(new_world, (w, frame) => frame.css({ happy: w.is_in_heaven === new_world.is_in_heaven }))));
-    }
-};
-let ZarathustraPuffer = {
-    handle_command: (world, parser) => {
-        if (!world.is_in_heaven) {
-            return parser.eliminate();
-        }
-        parser.consume("mispronounce zarathustra's name");
-        if (parser.failure) {
-            return parser.failure;
-        }
-        parser.submit();
-        if (parser.failure) {
-            return parser.failure;
-        }
-        let utterance_options = [
-            'Zammersretter',
-            'Hoosterzaro',
-            'Rooster Thooster',
-            'Thester Zar',
-            'Zerthes Threstine'
-        ];
-        let mispronunciation = text_utils_1.random_choice(utterance_options);
-        return utils_1.update(world, story_1.story_updater(story_1.Updates.action(`"${mispronunciation}," you say.`)));
-    },
-    post: (new_world, old_world) => {
-        if (old_world.is_in_heaven && !new_world.is_in_heaven) {
-            return utils_1.update(new_world, story_1.story_updater(story_1.Updates.action('You wave bye to Zarathustra.')));
-        }
-        if (!old_world.is_in_heaven && new_world.is_in_heaven) {
-            return utils_1.update(new_world, story_1.story_updater(story_1.Updates.description(!new_world.has_seen_zarathustra ?
-                story_1.createElement("div", null,
-                    "There's a bird up here. His name is Zarathustra.",
-                    story_1.createElement("span", { className: "vulnerable" }, "\u00A0He is sexy."),
-                    story_1.createElement("span", { className: "no-vulnerable" }, "\u00A0He is ugly.")) :
-                story_1.createElement("div", null,
-                    "Zarathustra is here.",
-                    story_1.createElement("span", { className: "vulnerable" }, "\u00A0(What a sexy bird.)")))), { has_seen_zarathustra: true });
-        }
-        return new_world;
-    },
-};
-const roles = [
-    'the One Who Gazes Ahead',
-    'the One Who Gazes Back',
-    'the One Who Gazes Up',
-    'the One Who Gazes Down',
-    'the One Whose Palms Are Open',
-    'the One Whose Palms Are Closed',
-    'the One Who Is Strong',
-    'the One Who Is Weak',
-    'the One Who Seduces',
-    'the One Who Is Seduced'
-];
-const qualities = [
-    'outwardly curious',
-    'introspective',
-    'transcendent',
-    'sorrowful',
-    'receptive',
-    'adversarial',
-    'confident',
-    'impressionable',
-    'predatory',
-    'vulnerable'
-];
-const hidden_class = TypeStyle.style({
-    display: 'none'
+exports.PufferIndex = new static_resources_1.StaticIndex();
+const Puffers = utils_1.bound_method(exports.PufferIndex, 'add');
+const StaticTopicIDs = utils_1.compute_const(() => ({
+    'Sam': null,
+}));
+gist_1.Gists({
+    tag: 'Sam',
+    command: () => 'sam',
+    text: () => 'Sam',
+    story: () => story_1.createElement("div", null,
+        story_1.createElement("div", { gist: "Sam's identity" }, "An old friend on his way to work."),
+        story_1.createElement("div", { gist: "Sam's demeanor" }, "He glances at you, smiling vaguely."))
 });
-let RolePuffer = {
-    handle_command: (world, parser) => {
-        if (world.is_in_heaven) {
-            return parser.eliminate();
-        }
-        parser.consume('be');
-        if (parser.failure) {
-            return parser.failure;
-        }
-        let choice = parser.split(roles.map((r, i) => () => parser.consume(`${r.replace(/ /g, '_')}`, i)));
-        if (parser_1.failed(choice)) {
-            return choice;
-        }
-        parser.submit();
-        if (parser.failure) {
-            return parser.failure;
-        }
-        return utils_1.update(world, { role: qualities[choice] }, story_1.story_updater(story_1.Updates.consequence(`You feel ${qualities[choice]}.`)));
-    },
-    post: (new_world, old_world) => utils_1.update(new_world, story_1.story_updater(story_1.Updates.map_worlds(new_world, (w, frame) => [
-        frame.has_class('vulnerable').css({ [hidden_class]: new_world.role !== 'vulnerable' }),
-        frame.has_class('no-vulnerable').css({ [hidden_class]: new_world.role === 'vulnerable' })
-    ])))
-};
-;
-const BirdWorldPuffers = [
-    LocationPuffer,
-    ZarathustraPuffer,
-    RolePuffer
-];
-const initial_bird_world = Object.assign({}, world_1.get_initial_world(), { 
-    // location
-    is_in_heaven: false, 
-    // zarathustra
-    has_seen_zarathustra: false, 
-    // roles
-    role: undefined });
-exports.bird_world_spec = puffer_1.make_puffer_world_spec(initial_bird_world, BirdWorldPuffers);
-function new_bird_world() {
-    return world_1.world_driver(exports.bird_world_spec);
+function story_facets(node) {
+    return story_1.find_all_nodes(node, n => n !== node && story_1.is_story_node(n) && n.data.gist !== undefined)
+        .map(([n]) => n.data.gist);
 }
-exports.new_bird_world = new_bird_world;
-/*
-
-    What is the correct means of factoring narrative text generation logic?
-
-    - There is the KISS perspective. We simply deny any abstraction above that of text generation.
-        The code becomes an expression of pushing text fragments together in the correct order.
-    - There is the DIFF perspective. Narrative text is a function of the change between the
-        previous world state and next one. State-update logic is segregated from narrative generation,
-        which really only happens *after* the full state update is done.
-    - Structural narrative perspective. We posit a structure for a narrative step:
-        - Action
-        - Consequence
-        - Description
-        - Prompt
-        This works decently well for standard text adventure style narratives but obviously
-        breaks down as you get more complicated.
-        Also, if there are multiple "facets" to the narrative world, additional structure must
-        be imposed to determine the order in which "sub-actions", "sub-consequences", etc. appear.
-
-
-*/
+Puffers({
+    handle_command: (w, p) => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume('consider', () => p.consume(gist_1.render_gist_command(gist_1.gist(t_id)), () => p.submit(() => update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist_story(gist_1.gist(t_id))))))))))
+});
+Puffers({
+    handle_command: (w, p) => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume('contemplate', () => p.consume(gist_1.render_gist_command(gist_1.gist(t_id)), () => p.submit(() => {
+        const topic_story = gist_1.render_gist_story(gist_1.gist(t_id));
+        const facets = story_facets(topic_story);
+        return update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist_story(gist_1.gist(t_id))), story_1.Updates.prompt(story_1.createElement("br", null)), story_1.Updates.prompt(story_1.createElement("div", null,
+            "You notice the following facets:",
+            facets.map(f => story_1.createElement("blockquote", null, gist_1.render_gist_text(f)))))));
+    })))))
+});
+exports.PufferIndex.seal();
+story_1.StoryQueryIndex.seal();
+gist_1.gist_renderer_index.seal();
+/**
+ * Ability to "consider sam", and get the topic
+ * Ability to "contemplate sam" and get a list of the facets
+ */
+const initial_sam_world = Object.assign({}, world_1.get_initial_world());
+exports.sam_world_spec = puffer_1.make_puffer_world_spec(initial_sam_world, exports.PufferIndex.all());
+function new_world() {
+    return world_1.world_driver(exports.sam_world_spec);
+}
+exports.new_world = new_world;
 
 
 /***/ }),
@@ -21549,6 +20456,188 @@ exports.gensym_value = gensym_value;
 
 /***/ }),
 
+/***/ "./src/typescript/gist.ts":
+/*!********************************!*\
+  !*** ./src/typescript/gist.ts ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const static_resources_1 = __webpack_require__(/*! ./static_resources */ "./src/typescript/static_resources.ts");
+const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/index.ts");
+const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
+const update_1 = __webpack_require__(/*! ./update */ "./src/typescript/update.ts");
+/* This will produce an error only if GistSpecs is invalid. */ const InvalidSpecs = null;
+exports.gist_renderer_index = new static_resources_1.StaticIndex();
+function render_gist_text(gist) {
+    let spec = exports.gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag;
+    });
+    if (spec === undefined || spec.text === undefined) {
+        return gist.tag;
+    }
+    if (gist.children === undefined) {
+        return spec.text({});
+    }
+    else {
+        let sub_text = {};
+        for (const k in gist.children) {
+            sub_text[k] = render_gist_text(gist.children[k]);
+        }
+        return spec.text(sub_text);
+    }
+}
+exports.render_gist_text = render_gist_text;
+function render_gist_command(gist) {
+    let spec = exports.gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag;
+    });
+    if (spec === undefined || spec.command === undefined) {
+        return gist.tag.replace(' ', '_');
+    }
+    let sub_commands = {};
+    if (gist.children === undefined) {
+        return spec.command({});
+    }
+    for (const k in gist.children) {
+        sub_commands[k] = render_gist_command(gist.children[k]);
+    }
+    return spec.command(sub_commands);
+}
+exports.render_gist_command = render_gist_command;
+function render_gist_story(gist) {
+    const spec = exports.gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag;
+    });
+    if (spec === undefined || spec.story === undefined) {
+        return gist.tag;
+    }
+    const sub_stories = {};
+    const result = utils_1.compute_const(() => {
+        if (gist.children === undefined) {
+            return spec.story({});
+        }
+        for (const k in gist.children) {
+            sub_stories[k] = render_gist_story(gist.children[k]);
+        }
+        return spec.story(sub_stories);
+    });
+    if (story_1.is_story_node(result)) {
+        return update_1.update(result, {
+            data: { gist: () => gist }
+        });
+    }
+    return result;
+}
+exports.render_gist_story = render_gist_story;
+function Gists(renderer) {
+    exports.gist_renderer_index.add(renderer);
+}
+exports.Gists = Gists;
+function my_gist(g) {
+    if (typeof (g) === 'string') {
+        return { tag: g, children: undefined };
+    }
+    return g;
+}
+exports.my_gist = my_gist;
+function gist(tag, children) {
+    if (typeof (tag) === 'string') {
+        return {
+            tag,
+            children
+        };
+    }
+    return tag;
+}
+exports.gist = gist;
+function has_tag(gist, tag) {
+    return gist.tag === tag;
+}
+exports.has_tag = has_tag;
+function gist_to_string(gist) {
+    let result = gist.tag;
+    if (gist.children === undefined) {
+        return result;
+    }
+    result += ';';
+    for (let [k, v] of Object.entries(gist.children)) {
+        result += k + '|' + gist_to_string(v);
+    }
+    result += ';';
+    return result;
+}
+exports.gist_to_string = gist_to_string;
+function gists_equal(gist1, gist2) {
+    if (gist1.tag !== gist2.tag) {
+        return false;
+    }
+    if (typeof gist1.children !== typeof gist2.children) {
+        return false;
+    }
+    if (gist1.children === undefined) {
+        return true;
+    }
+    for (const k in gist1.children) {
+        if (!(k in gist2.children)) {
+            debugger;
+            return false;
+        }
+        if (!gists_equal(gist1.children[k], gist2.children[k])) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.gists_equal = gists_equal;
+function includes_tag(tag, gist) {
+    if (gist.tag === tag) {
+        return true;
+    }
+    if (gist.children === undefined) {
+        return false;
+    }
+    for (const k in gist.children) {
+        const g = gist.children[k];
+        if (includes_tag(tag, g)) {
+            return true;
+        }
+    }
+    return false;
+}
+exports.includes_tag = includes_tag;
+function gist_matches(gist, pattern) {
+    if (pattern === undefined) {
+        return true;
+    }
+    if (pattern instanceof Array) {
+        return pattern.some(pat => gist_matches(gist, pat));
+    }
+    if (gist.tag !== pattern.tag) {
+        return false;
+    }
+    if (pattern.children === undefined) {
+        return true;
+    }
+    if (gist.children === undefined) {
+        return false;
+    }
+    for (const k in pattern.children) {
+        if (!gist_matches(gist.children[k], pattern.children[k])) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.gist_matches = gist_matches;
+// TODO: includes subpattern
+
+
+/***/ }),
+
 /***/ "./src/typescript/history.ts":
 /*!***********************************!*\
   !*** ./src/typescript/history.ts ***!
@@ -21687,13 +20776,14 @@ exports.keys = {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 // import { new_bird_world } from './demo_worlds/bird_world';
-const puffer_bird_world_1 = __webpack_require__(/*! ./demo_worlds/puffer_bird_world */ "./src/typescript/demo_worlds/puffer_bird_world.tsx");
+// import { new_bird_world as new_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
-// import { new_venience_world } from './demo_worlds/narrascope/narrascope';
+// import { new_venience_world as new_world } from './demo_worlds/narrascope/narrascope';
+const sam_1 = __webpack_require__(/*! ./demo_worlds/sam */ "./src/typescript/demo_worlds/sam.tsx");
 const UI_1 = __webpack_require__(/*! ./UI */ "./src/typescript/UI/index.ts");
 console.time('world_build');
-let { initial_result, update, css_rules } = puffer_bird_world_1.new_bird_world(); //new_venience_world()//new_bird_world();//new_hex_world();
+let { initial_result, update, css_rules } = sam_1.new_world(); //new_venience_world()//new_bird_world();//new_hex_world();
 // Ability to start from a specific point in the demo:
 // const START_SOLVED = 0;
 // import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
@@ -22587,6 +21677,7 @@ function merge_stages(x, reducer, init, stage_limit) {
     }
 }
 exports.merge_stages = merge_stages;
+// export function find_and_move_to_stage<X extends unknown[]>(obj: Stages<X>, find: (x: X[number]) => boolean, update: (n: number) => number): Stages<X> {
 function find_and_move_to_stage(obj, find, update) {
     let result = stages(...obj);
     let additions = stages();
@@ -22963,6 +22054,8 @@ exports.Pool = Pool;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const gensym_1 = __webpack_require__(/*! ../gensym */ "./src/typescript/gensym.ts");
+const gist_1 = __webpack_require__(/*! ../gist */ "./src/typescript/gist.ts");
 const jsx_utils_1 = __webpack_require__(/*! ../jsx_utils */ "./src/typescript/jsx_utils.ts");
 const text_utils_1 = __webpack_require__(/*! ../text_utils */ "./src/typescript/text_utils.ts");
 function createElement(tag, props, ...deep_children) {
@@ -22978,15 +22071,15 @@ function createElement(tag, props, ...deep_children) {
             classes[c] = true;
         }
     }
-    let data;
-    if (props.data) {
-        data = props.data;
+    let data = {};
+    if (props.frame_index) {
+        data.frame_index = props.frame_index;
     }
-    else {
-        data = {};
+    if (props.gist) {
+        data.gist = gist_1.gist(props.gist);
     }
     const key = gensym_1.gensym();
-    const attributes = jsx_utils_1.remove_custom_props(props, { 'data': null, 'type': null, 'className': null, 'children': null });
+    const attributes = jsx_utils_1.remove_custom_props(props, { 'frame_index': null, 'gist': null, 'type': null, 'className': null, 'children': null });
     return {
         kind: 'StoryNode',
         key,
@@ -22998,7 +22091,6 @@ function createElement(tag, props, ...deep_children) {
     };
 }
 exports.createElement = createElement;
-const gensym_1 = __webpack_require__(/*! ../gensym */ "./src/typescript/gensym.ts");
 
 
 /***/ }),
@@ -23083,7 +22175,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const update_1 = __webpack_require__(/*! ../update */ "./src/typescript/update.ts");
 const immer_1 = __importDefault(__webpack_require__(/*! immer */ "./node_modules/immer/dist/immer.module.js"));
 ;
-const InvalidStoryNodeTypes = null;
 function is_story_node(x) {
     return x.kind === 'StoryNode';
 }
@@ -23250,13 +22341,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dsl_utils_1 = __webpack_require__(/*! ../../dsl_utils */ "./src/typescript/dsl_utils.ts");
 const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
 const stages_1 = __webpack_require__(/*! ../../stages */ "./src/typescript/stages.ts");
+const parsed_text_1 = __webpack_require__(/*! ../../UI/components/parsed_text */ "./src/typescript/UI/components/parsed_text.tsx");
 const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
 const create_1 = __webpack_require__(/*! ../create */ "./src/typescript/story/create.ts");
 const op_1 = __webpack_require__(/*! ./op */ "./src/typescript/story/update/op.ts");
 const query_1 = __webpack_require__(/*! ./query */ "./src/typescript/story/update/query.ts");
 const update_1 = __webpack_require__(/*! ./update */ "./src/typescript/story/update/update.tsx");
 const update_group_1 = __webpack_require__(/*! ./update_group */ "./src/typescript/story/update/update_group.ts");
-const parsed_text_1 = __webpack_require__(/*! ../../UI/components/parsed_text */ "./src/typescript/UI/components/parsed_text.tsx");
 exports.Queries = dsl_utils_1.make_dsl((name) => (...params) => query_1.story_query(name, ...params));
 exports.Ops = dsl_utils_1.make_dsl(name => (...params) => op_1.story_op(name, ...params));
 ;
@@ -23318,7 +22409,7 @@ function op_method(k, ...params) {
     const op = op_1.story_op(k, ...params);
     let q;
     if (this.context.query === undefined) {
-        q = exports.Queries.story_root();
+        q = exports.Queries.frame(); //Queries.story_root();
     }
     else {
         q = this.context.query;
@@ -23385,70 +22476,17 @@ function story_updater(...updates) {
     flush_default_group();
     return (world) => utils_1.update(world, {
         story_updates: {
-            effects: _ => groups.reduce((eff, grp) => update_group_1.push_group(utils_1.writable(eff), grp), _)
+            effects: _ => groups.reduce((eff, grp) => update_group_1.push_group(eff, grp), _)
         }
     });
 }
 exports.story_updater = story_updater;
-// // Helpers for doing common story updates
-// export type TextAddSpec = {
-//     action?: Fragment | Fragment[]
-//     consequence?: Fragment | Fragment[]
-//     description?: Fragment | Fragment[]
-//     prompt?: Fragment | Fragment[]
-// } | Fragment | Fragment[];
-// function is_fragment(spec: TextAddSpec): spec is Fragment | Fragment[] {
-//     return (typeof spec === 'string' || spec instanceof Array || is_story_node(spec as Fragment) || is_story_hole(spec as Fragment));
-// }
-// export const make_text_additions = (index: number, spec: TextAddSpec) => {
-//     if (is_fragment(spec)) {
-//         spec = {
-//             consequence: spec
-//         };
-//     }
-//     const result: StoryUpdateSpec[] = [];
-//     for (const prop of ['action', 'consequence', 'description', 'prompt'] as const) {
-//         const children = spec[prop];
-//         if (children !== undefined) {
-//             result.push(
-//                 story_update(
-//                     story_query('frame', {
-//                         index,
-//                         subquery: story_query('has_class', { class: prop }) }),
-//                     story_op('add', { children })
-//                 )
-//             );
-//         }
-//     }
-//     return result;
-// }
-// export const story_updater = (spec: TextAddSpec, stage=0) =>
-//     <W extends World>(world: W) => update(world as World, {
-//         story_updates: { effects: stages([stage, append(...make_text_additions(world.index, spec))]) }
-//     }) as W;
-// export const css_updater = <W extends World>(f: (w: W) => CSSUpdates) =>
-//     (world: W) => {
-//         const history = history_array(world);
-//         const css_updates: StoryUpdateSpec[] = history.flatMap(w => {
-//             const updates = f(w);
-//             if (Object.keys(updates).length === 0) {
-//                 return [];
-//             }
-//             return [story_update(
-//                 story_query('frame', { index: w.index }),
-//                 story_op('css', f(w))
-//             )]
-//         });
-//         return update(world as World, {
-//             story_updates: { effects: stages([0, append(...css_updates)]) }
-//         }) as W
-//     }
 exports.add_input_text = (world, parsing) => {
     return utils_1.update(world, story_updater(exports.Groups.name('init_frame').push(exports.Updates
-        .frame().first(exports.Updates.has_class('input-text').to_query())
+        .frame(world.index).first(exports.Updates.has_class('input-text').to_query())
         .add(create_1.createElement(parsed_text_1.ParsedTextStory, { parsing: parsing }), true))));
 };
-exports.EmptyFrame = (props) => create_1.createElement("div", { className: "frame", data: { frame_index: props.index } },
+exports.EmptyFrame = (props) => create_1.createElement("div", { className: "frame", frame_index: props.index },
     create_1.createElement("div", { className: "input-text" }),
     create_1.createElement("div", { className: "output-text" },
         create_1.createElement("div", { className: TEXT_CATEGORY_NAMES[0] }),
@@ -23912,6 +22950,20 @@ function push_group(plan, group) {
     }
 }
 exports.push_group = push_group;
+function move_group(plan, name, source_stage, dest_stage) {
+    if (source_stage === dest_stage) {
+        throw new Error('source_stage and dest_stage cannot be equal');
+    }
+    const found_grp_i = (plan.get(source_stage) || []).findIndex(g => g.name === name);
+    if (found_grp_i === -1) {
+        return plan;
+    }
+    const found_grp = plan.get(source_stage)[found_grp_i];
+    return utils_1.update(plan, stages_1.stages([source_stage, {
+            [found_grp_i]: undefined
+        }], [dest_stage, utils_1.append(found_grp)]));
+}
+exports.move_group = move_group;
 
 
 /***/ }),
@@ -24489,7 +23541,6 @@ function key_union(a, b) {
     return [...new Set([...Object.keys(a), ...Object.keys(b)]).values()];
 }
 exports.key_union = key_union;
-// Map helpers
 function map(...args) {
     return new Map(args);
 }
@@ -24502,6 +23553,13 @@ function map_updater(x) {
     return (m) => new Map([...m, ...x]);
 }
 exports.map_updater = map_updater;
+function compute_const(f) {
+    return f();
+}
+exports.compute_const = compute_const;
+exports.enforce_const = () => {
+    return ((x) => x);
+};
 function curry(f) {
     return function _curry(f, ...accum_args) {
         return function curried(...args) {
@@ -24581,10 +23639,6 @@ function with_context(f) {
     return [result, context];
 }
 exports.with_context = with_context;
-function writable(t) {
-    return t;
-}
-exports.writable = writable;
 
 
 /***/ }),
@@ -24670,7 +23724,7 @@ function make_update_thread(spec, world) {
 }
 exports.make_update_thread = make_update_thread;
 function add_parsing(world, parsing, index) {
-    if (index === undefined || world.index === index) {
+    if (world.index === index) {
         return utils_1.update(world, { parsing: () => parsing }, _ => story_1.add_input_text(_, parsing));
     }
     return utils_1.update(world, {

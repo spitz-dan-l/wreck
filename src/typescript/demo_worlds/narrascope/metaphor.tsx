@@ -4,12 +4,13 @@ import { ConsumeSpec, Parser, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
 import { find_and_move_to_stage, stages } from '../../stages';
 import { StaticMap } from '../../static_resources';
-import { createElement, Fragment, Hole, story_query, StoryUpdateSpec, story_op, story_update, story_updater, StoryUpdateGroup, Updates, Groups, move_group } from '../../story';
+import { createElement, Fragment, Hole, story_query, StoryUpdateSpec, story_op, story_update, story_updater, StoryUpdateGroup, Updates as S, Groups, move_group, StoryUpdaterSpec, StoryNode } from '../../story';
 import { is_simulated, search_future } from '../../supervenience';
-import { append, begin, map, update, Updater } from "../../utils";
+import { append, begin, map, update, Updater, compute_const } from "../../utils";
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, StaticActionIDs, StaticFacetIDs, Venience, VeniencePuffer } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
-
+import * as TypeStyle from 'typestyle'
+import {alpha_rule, compute_color_rule} from '../../UI/styles';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -52,7 +53,7 @@ export type Action = {
     noun_cmd: ConsumeSpec,
     description: string,
     slug: string,
-    get_wrong_msg: (facet_phrase: string) => StoryUpdateGroup,
+    get_wrong_msg: (facet_phrase: string) => Fragment,
     get_cmd: (facet_phrase: ConsumeSpec) => ConsumeSpec
 }
 
@@ -139,12 +140,12 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
         },
         story_updater(
             Groups.name('interpretation_effects').stage(-1).push(
-                Updates.frame(indices_where(world, (w => w.index > world.current_interpretation!)))
+                S.frame(indices_where(world, (w => w.index > world.current_interpretation!)))
                     .css({
                         [`eph-descr-${action.slug}-blink`]: true,
                         [`eph-descr-${facet.slug}-blink`]: true
                     }),
-                Updates.frame(world.current_interpretation!)
+                S.frame(world.current_interpretation!)
                     .css({
                         [`eph-interp-${facet.slug}-blink`]: true
                     })
@@ -156,13 +157,13 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
         if (!already_solved) {
             return update(world, story_updater(
                 Groups.name('interpretation_effects').push(
-                    Updates.frame(interpretted_world.index).css({ [`interp-${facet.slug}`]: true })
+                    S.frame(interpretted_world.index).css({ [`interp-${facet.slug}`]: true })
                 )
             ));
         } else if (solved !== already_solved) { // The player picked the right answer again. blink it.
             return update(world, story_updater(
                 Groups.name('interpretation_effects').push(
-                    Updates.frame(interpretted_world.index).css({ [`eph-interp-${facet.slug}-solved-blink`]: true })
+                    S.frame(interpretted_world.index).css({ [`eph-interp-${facet.slug}-solved-blink`]: true })
                 )
             ));
         }
@@ -204,6 +205,135 @@ export const make_action_applicator = (world: Venience, facet_id: FacetID, actio
 
 }
 
+const unfocused_class = TypeStyle.style(
+    alpha_rule(0.4),
+    {
+        $nest: {
+            '& .frame:not(&)': {
+                ...alpha_rule(1.0)
+            }
+
+        }
+    }
+)
+
+function make_direct_thread(world: Venience, immediate_world: Venience | null): ParserThread<Venience> {
+    return (parser) => {
+        if (immediate_world === null) {
+            return parser.eliminate();
+        }
+        return parser.consume(['contemplate', render_gist_command(immediate_world.gist!)], () =>
+        parser.submit(() => {
+
+        const index = immediate_world.index;
+
+        let descriptions: Fragment[] = [];
+
+        for (let facet of Object.values(facet_index.all())) {
+            if (!facet.can_recognize(world, immediate_world)) {
+                continue;
+            }
+            descriptions.push(
+                <blockquote className={`descr-${facet.slug}`}>
+                    {facet.noun_phrase}
+                </blockquote>
+            );
+        }
+        if (descriptions.length === 0) {
+            descriptions.push(<div>However, nothing about it seems particularly notable.</div>);
+        } else {
+            descriptions.unshift(<div>You notice the following aspects:</div>);
+        }
+
+        return update(world,
+            w => metaphor_lock.lock(w, index),
+            story_updater(
+                S.map_worlds(world, (w, frame) =>
+                    frame.css({
+                        [unfocused_class]: w.index < index
+                    })),
+                S.frame(index).css({
+                    'interpretation-block': true,
+                    'interpretation-active': true
+                }),
+                S.action(<div>
+                    You contemplate {render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
+                </div>),
+                S.description(descriptions)
+            ),
+            {
+                current_interpretation: index,
+                gist: () => gist('contemplation', {subject: immediate_world.gist!})
+            }
+        );
+    }))};
+}
+
+const indirect_simulator = 'indirect_contemplation';
+                
+function make_indirect_thread(world: Venience, immediate_world: Venience | null, gists: Gist[]): ParserThread<Venience> {
+    return (parser) =>
+        parser.consume({
+            tokens: 'contemplate',
+            labels: {interp: true, filler: true}
+        }, () => {
+        const indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
+            const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
+
+            if (immediate_world !== null && gists_equal(g, immediate_world.gist!)) {
+                return parser.eliminate();
+            }
+
+            const target_gist = gist('contemplation', {
+                subject: has_tag(g, 'memory') ? gist('notes about', {topic: g.children.action}) : g
+            });
+
+            // move the next story hole inside the current frame
+            world = update(world, story_updater(
+                Groups.name('init_frame').push(
+                    S.story_hole().remove(),
+                    S.add(<Hole />)
+                )
+            ));
+
+            const result = search_future({
+                thread_maker: get_thread_maker(),
+                goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
+                max_steps: 2,
+                space: [w => w.gist && gist_to_string(w.gist)],
+                search_id: indirect_search_id,
+                simulator_id: indirect_simulator,
+                command_filter: (w, cmd) => {
+                    let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
+
+                    if (w.gist && gists_equal(w.gist, target_gist.children.subject)) {
+                        return would_contemplate;
+                    }
+                    return !would_contemplate;
+                }
+            }, world);
+
+            if (result.result === null) {
+                return parser.eliminate();
+            }
+
+            return parser.consume({
+                tokens: render_gist_command(g),
+                labels: {interp: true, filler: true}
+            }, () =>
+            parser.submit(() =>
+                update(result.result!,
+                    story_updater(
+                        S.frame(world.index).css({ [unfocused_class]: false })
+                    )
+                )
+            ));
+        });
+
+        return parser.split(indirect_threads);
+        });
+}
+
 // Begin and end contemplations
 Puffers(lock_and_brand('Metaphor', {
     pre: world => update(world, { gist: null }),    
@@ -234,114 +364,13 @@ Puffers(lock_and_brand('Metaphor', {
                     world.previous :
                     null;
 
-                const direct_thread: ParserThread<Venience> = () => {
-                    if (immediate_world === null) {
-                        return parser.eliminate();
-                    }
-                    return parser.consume(['contemplate', render_gist_command(immediate_world.gist!)], () =>
-                    parser.submit(() => {
+                const direct_thread = make_direct_thread(world, immediate_world);
 
-                    const index = immediate_world.index;
-                
-                    let descriptions: Fragment[] = [];
-
-                    for (let facet of Object.values(facet_index.all())) {
-                        if (!facet.can_recognize(world, immediate_world)) {
-                            continue;
-                        }
-                        descriptions.push(
-                            <blockquote className={`descr-${facet.slug}`}>
-                                {facet.noun_phrase}
-                            </blockquote>
-                        );
-                    }
-                    if (descriptions.length === 0) {
-                        descriptions.push(<div>However, nothing about it seems particularly notable.</div>);
-                    } else {
-                        descriptions.unshift(<div>You notice the following aspects:</div>);
-                    }
-
-                    return update(world,
-                        w => metaphor_lock.lock(w, index),
-                        story_updater(
-                            Updates.map_worlds(world, (w, frame) =>
-                                frame.css({
-                                    unfocused: w.index < index,
-                                    focused: w.index >= index
-                                })),
-                            Updates.frame(index).css({
-                                'interpretation-block': true,
-                                'interpretation-active': true
-                            }),
-                            Updates.action(<div>
-                                You contemplate {render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
-                            </div>),
-                            Updates.description(descriptions)
-                        ),
-                        { gist: () => gist('contemplation', {subject: immediate_world.gist!}) }
-                    );
-                }))};
-
-                const indirect_simulator = 'indirect_contemplation';
-                
                 if (gists.length === 1 || is_simulated(indirect_simulator, world)) {
                     return direct_thread(parser);
                 }
 
-                const indirect_thread: ParserThread<Venience> = (() =>
-                    parser.consume({
-                        tokens: 'contemplate',
-                        labels: {interp: true, filler: true}
-                    }, () => {
-                    const indirect_threads: ParserThread<Venience>[] = gists.map(g => () => {
-                        const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
-
-                        if (immediate_world !== null && gists_equal(g, immediate_world.gist!)) {
-                            return parser.eliminate();
-                        }
-
-                        const target_gist = gist('contemplation', {
-                            subject: has_tag(g, 'memory') ? gist('notes about', {topic: g.children.action}) : g
-                        });
-
-                        // move the next story hole inside the current frame
-                        world = update(world, story_updater(
-                            Updates.story_hole().remove(),
-                            Updates.frame().add(<Hole />)
-                        ));
-
-                        const result = search_future({
-                            thread_maker: get_thread_maker(),
-                            goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
-                            max_steps: 2,
-                            space: [w => w.gist && gist_to_string(w.gist)],
-                            search_id: indirect_search_id,
-                            simulator_id: indirect_simulator,
-                            command_filter: (w, cmd) => {
-                                let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
-
-                                if (w.gist && gists_equal(w.gist, target_gist.children.subject)) {
-                                    return would_contemplate;
-                                }
-                                return !would_contemplate;
-                            }
-                        }, world);
-
-                        if (result.result === null) {
-                            return parser.eliminate();
-                        }
-
-                        return parser.consume({
-                            tokens: render_gist_command(g),
-                            labels: {interp: true, filler: true}
-                        }, () =>
-                        parser.submit(() => result.result!));
-                        //update(world, { child: () => result.result! })));
-                    });
-
-                    return parser.split(indirect_threads);
-                }
-                ));
+                const indirect_thread = make_indirect_thread(world, immediate_world, gists);
 
                 const result = parser.split([direct_thread, indirect_thread]);
                 return result
@@ -354,15 +383,16 @@ Puffers(lock_and_brand('Metaphor', {
                 update(world,
                     metaphor_lock.release,
                     story_updater(
-                        Updates.map_worlds(world, (w, frame) =>
-                            frame.css({
-                                unfocused: false,
-                                focused: false
-                            })),
-                        Updates.frame(world.current_interpretation!).css({
+                        Groups.name('init_frame').push(
+                            S.story_hole().remove(),
+                            S.story_root().add(<Hole />)
+                        ),
+                        S.map_worlds(world, (w, frame) =>
+                            frame.css({ [unfocused_class]: false })),
+                        S.frame(world.current_interpretation!).css({
                             'interpretation-active': false
                         }),
-                        Updates.action('Your mind returns to a less focused state.')
+                        S.action('Your mind returns to a less focused state.')
                     ),
                     {
                         current_interpretation: null,
@@ -405,13 +435,7 @@ const facet_index = resource_registry.initialize('facet_index',
         function add_facet_to_puffers(spec: FacetSpec) {
             Puffers(make_facet(spec));
             return spec;
-        },
-        // function register_handlebars_partial(spec) {
-        //     if (spec.content !== undefined) {
-        //         Handlebars.registerPartial(spec.name, spec.content);
-        //     }
-        //     return spec;
-        // }
+        }
     ])
 );
 
@@ -442,7 +466,7 @@ const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaph
             let interpretted_world = find_historical(world2, w => w.index === world2.current_interpretation)!;
             if (!spec.can_recognize(world1, interpretted_world) && spec.can_recognize(world2, interpretted_world)) {
                 updates.push(story_updater(
-                    Updates.prompt(<div>
+                    S.prompt(<div>
                         You notice an aspect that you hadn't before:
                         <blockquote className={`descr-${spec.slug}`}>
                             {spec.noun_phrase}
@@ -454,7 +478,7 @@ const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaph
 
         if (spec.can_recognize(world2, world2) && spec.solved(world2)) {
             updates.push(story_updater(
-                Updates.frame().css({ [`interp-${spec.slug}`]: true })
+                S.frame().css({ [`interp-${spec.slug}`]: true })
             ));
         }
         return update(world2, ...updates);

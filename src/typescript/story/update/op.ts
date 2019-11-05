@@ -50,7 +50,7 @@ export const StoryUpdateOps: StoryOps = {
                 classes: { ['eph-new']: true }
             });
         }
-
+        
         if (effects) {
             effects.push(dom => {
                 const child_dom = story_to_dom(children as Fragment);

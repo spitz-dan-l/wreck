@@ -1,6 +1,8 @@
-import {AllHTMLAttributes, MergeWithHTMLProps, HTMLElementTags, remove_custom_props} from '../jsx_utils';
-import {StoryNode, Fragment, DeepFragment, StoryNodeTypes} from './story';
+import { gensym } from '../gensym';
+import { gist, GistParam } from '../gist';
+import { HTMLElementTags, MergeWithHTMLProps, remove_custom_props } from '../jsx_utils';
 import { split_tokens } from '../text_utils';
+import { DeepFragment, Fragment, StoryNode } from './story';
 
 export namespace JSX {
     export type Element = Fragment;
@@ -16,31 +18,25 @@ export namespace JSX {
 
 // creating story trees
 export type NodeProps = (
-	| {
+	& {
 		type?: undefined
 		children?: DeepFragment,
-		data?: StoryNode['data']
+        frame_index?: number,
+        gist?: GistParam
 	}
-	| {
-		[K in keyof StoryNodeTypes]: {
-			type: K,
-			children?: DeepFragment<StoryNodeTypes[K]>,
-			data?: StoryNodeTypes[K]['data']
-		}
-	}[keyof StoryNodeTypes]
-) & {
-	className?: string
-}
-;
+    & {
+        className?: string
+    }
+);
 
-type StoryNodeTypeForProps<P extends NodeProps> = P['type'] extends keyof any ? StoryNodeTypes[P['type']] : StoryNode;
+// type StoryNodeTypeForProps<P extends NodeProps> = P['type'] extends keyof any ? StoryNodeTypes[P['type']] : StoryNode;
 
 export type RendererBaseProps<Node extends StoryNode=StoryNode> = { children?: Fragment<Node>[] };
 
 export type StoryRenderer<P extends {}, Node extends StoryNode=StoryNode> = (props: P & RendererBaseProps<Node>) => Node;
 
 export function createElement<P extends {}, N extends StoryNode=StoryNode>(tag: StoryRenderer<P, N>, props: P, ...deep_children: DeepFragment<N>[]): N;
-export function createElement<P extends NodeProps>(tag: string, props: MergeWithHTMLProps<P>, ...deep_children: DeepFragment<StoryNodeTypeForProps<P>>[]): StoryNodeTypeForProps<P>;
+export function createElement<P extends NodeProps>(tag: string, props: MergeWithHTMLProps<P>, ...deep_children: DeepFragment[]): StoryNode;
 export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithHTMLProps<NodeProps>, ...deep_children: DeepFragment[]): StoryNode {
     // The jsx transformation appears to pass null as the second argument if none are provided.
     props = props || {};
@@ -56,16 +52,17 @@ export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithH
         }
     }
 
-    let data: StoryNode['data'];
-    if (props.data) {
-        data = props.data;
-    } else {
-        data = {}
+    let data: StoryNode['data'] = {};
+    if (props.frame_index) {
+        data.frame_index = props.frame_index;
+    }
+    if (props.gist) {
+        data.gist = gist(props.gist);
     }
 
     const key = gensym();
 
-    const attributes = remove_custom_props(props, {'data': null, 'type': null, 'className': null, 'children': null});
+    const attributes = remove_custom_props(props, {'frame_index': null, 'gist': null, 'type': null, 'className': null, 'children': null});
    
     return {
         kind: 'StoryNode',
@@ -79,7 +76,6 @@ export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithH
 }
 
 import JSX_ = JSX;
-import { gensym } from '../gensym';
 export declare namespace createElement {
     export import JSX = JSX_;
 }

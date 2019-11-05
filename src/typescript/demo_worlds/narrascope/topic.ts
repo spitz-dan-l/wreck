@@ -4,7 +4,7 @@ import { Puffer } from '../../puffer';
 import { StaticIndex, StaticMap } from '../../static_resources';
 import { bound_method, cond, update, map } from '../../utils';
 import { ActionID, Puffers, resource_registry, TopicID, Venience, StaticTopicIDs } from "./prelude";
-import { TextAddSpec, story_updater } from '../../story';
+import { story_updater, StoryUpdaterSpec, Fragment, Updates } from '../../story';
 
 export interface Topics {
     has_considered: Map<TopicID, boolean>;
@@ -14,7 +14,7 @@ export type TopicSpec = {
     name: TopicID,
     cmd: ConsumeSpec,
     can_consider: (w: Venience) => boolean,
-    message: (w: Venience) => TextAddSpec,
+    message: (w: Venience) => StoryUpdaterSpec,
     consider?: (w: Venience) => Venience,
     reconsider?: (w2: Venience, w1: Venience) => boolean
 }

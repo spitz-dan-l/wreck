@@ -121,8 +121,8 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
     }
 }
 
-export function add_parsing<W extends World>(world: W, parsing: Parsing, index?: number): W {
-    if (index === undefined || world.index === index) {
+export function add_parsing<W extends World>(world: W, parsing: Parsing, index: number): W {
+    if (world.index === index) {
         return update(world as World, 
             { parsing: () => parsing },
             _ => add_input_text(_, parsing)

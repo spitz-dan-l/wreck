@@ -308,6 +308,8 @@ export function key_union(a: {}, b: {}) {
 }
 
 // Map helpers
+export function map<K, V>(...args: [K, V][]): Map<K, V>;
+export function map<X extends Array<readonly[unknown, unknown]>>(...args: X): Map<X[number][0], X[number][1]>;
 export function map<K, V>(...args: [K, V][]) {
     return new Map(args);
 }
@@ -319,6 +321,27 @@ export function copy_map<K, V>(m: Map<K, V>) {
 export function map_updater<K, V>(x: [K, V][]) {
     return (m: Map<K, V>) => new Map([...m, ...x]);
 }
+
+export function compute_const<R>(f: () => R): R {
+    return f();
+}
+
+import { $ } from './hkts';
+
+export const enforce_const = <TypePredicate extends <T>(t: T) => (T | never)>() => {
+    return (((x: any) => x) as TypePredicate);
+    
+}
+
+    // return <X>(f: $<TypePredicate, [X]> extends never ? never : () => X) => f();
+
+    // function _enforce_const<X, Y extends $<TypePredicate, [X]>>(x: X): X;
+    // function _enforce_const<X>(x: X): X {
+    //     return x;
+    // }
+
+    // return _enforce_const;
+
 
 
 // Helper for declaring values with tuple types.
@@ -445,6 +468,7 @@ export const let_ = <T>(f: (...args: any) => T) => f();
 
 import {A, F, T} from 'ts-toolbelt'
 import { P } from 'ts-toolbelt/out/types/src/Object/_api';
+import { Try } from 'ts-toolbelt/out/types/src/Any/Try';
 
 type MethodProperties<T extends {}> = {
     [K in keyof T]: T[K] extends (...args: any) => any ? K : never
@@ -497,9 +521,4 @@ export function with_context<C, R>(f: (set: (c: C) => void) => R): [R, C | undef
     const result = f(setter);
 
     return [result, context];
-}
-
-export type Writable<T> = T extends Readonly<infer W> ? W : T;
-export function writable<T>(t: T) {
-    return t as Writable<T>;
 }

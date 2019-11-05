@@ -1,5 +1,8 @@
 import { ConsumeSpec } from './parser';
 import { StaticIndex } from './static_resources';
+import { Fragment, is_story_node } from './story';
+import { compute_const } from './utils';
+import { update } from './update';
 
 /*
     Use Cases
@@ -41,38 +44,40 @@ type GistChildren = undefined | Record<string | number, Gist>;
 
 export type GistRenderer<Tag extends keyof GistSpecs=keyof GistSpecs> = {
     tag: Tag,
-    text: (child_text: { [K in keyof GistSpecs[Tag]]: string }) => string,
-    command: (child_commands: { [K in keyof GistSpecs[Tag]]: ConsumeSpec }) => ConsumeSpec
+    text?: (child_text: { [K in keyof GistSpecs[Tag]]: string }) => string,
+    command?: (child_commands: { [K in keyof GistSpecs[Tag]]: ConsumeSpec }) => ConsumeSpec,
+    story?: (child_stories: { [K in keyof GistSpecs[Tag]]: Fragment }) => Fragment
 };
 
 
 export const gist_renderer_index = new StaticIndex<GistRenderer>();
 
-export function render_gist_text(gist: Gist): string {
+export function render_gist_text(gist: Gist): string;
+export function render_gist_text(gist: GistStructure): string {
     let spec = gist_renderer_index.find((gs) => {
         return gs.tag === gist.tag
     });
-    if (spec === undefined) {
+    if (spec === undefined || spec.text === undefined) {
         return gist.tag;
     }
 
-    if (gist.children === undefined) {
+    if (gist.children === undefined) {  
         return spec.text({});
     } else {
-
-    let sub_text: any = {};
-    for (const k in gist.children) {
-        sub_text[k] = render_gist_text(gist.children[k]);
+        let sub_text: any = {};
+        for (const k in gist.children) {
+            sub_text[k] = render_gist_text(gist.children[k] as Gist);
+        }
+        return spec.text(sub_text);
     }
-    return spec.text(sub_text);
-}
 }
 
-export function render_gist_command(gist: Gist): ConsumeSpec {
+export function render_gist_command(gist: Gist): ConsumeSpec;
+export function render_gist_command(gist: GistStructure): ConsumeSpec {
     let spec = gist_renderer_index.find((gs) => {
         return gs.tag === gist.tag
     });
-    if (spec === undefined) {
+    if (spec === undefined || spec.command === undefined) {
         return gist.tag.replace(' ', '_');
     }
 
@@ -83,9 +88,38 @@ export function render_gist_command(gist: Gist): ConsumeSpec {
     }
 
     for (const k in gist.children) {
-        sub_commands[k] = render_gist_command(gist.children[k]);
+        sub_commands[k] = render_gist_command(gist.children[k] as Gist);
     }
     return spec.command(sub_commands);
+}
+
+export function render_gist_story(gist: Gist): Fragment;
+export function render_gist_story(gist: GistStructure): Fragment {
+    const spec = gist_renderer_index.find((gs) => {
+        return gs.tag === gist.tag
+    });
+    if (spec === undefined || spec.story === undefined) {
+        return gist.tag;
+    }
+
+    const sub_stories: any = {};
+
+    const result = compute_const(() => {
+        if (gist.children === undefined) {
+            return spec.story!({});
+        }
+
+        for (const k in gist.children) {
+            sub_stories[k] = render_gist_story(gist.children[k] as Gist);
+        }
+        return spec.story!(sub_stories);
+    });
+    if (is_story_node(result)) {
+        return update(result, {
+            data: { gist: () => gist as Gist }
+        });
+    }
+    return result;
 }
 
 export function Gists<Tag extends keyof GistSpecs=keyof GistSpecs>(renderer: GistRenderer<Tag>) {
@@ -95,20 +129,36 @@ export function Gists<Tag extends keyof GistSpecs=keyof GistSpecs>(renderer: Gis
 
 type NoChildren<X, Y> = undefined extends X ? Y : never;
 
+export type GistParam = {
+    [K in keyof GistSpecs]: Gist<K> | (GistSpecs[K] extends undefined ? K : never)
+}[keyof GistSpecs];
+
+export function my_gist(g: GistParam): Gist {
+    if (typeof(g) === 'string'){
+        return { tag: g, children: undefined }
+    }
+    return g;
+}
+
 export function gist<Tag extends keyof GistSpecs>(tag: NoChildren<GistSpecs[Tag], Tag>): Gist<Tag>//GistVerbose<GistSpecs, Tag>;
 export function gist<Tag extends keyof GistSpecs>(tag: Tag, children: GistSpecs[Tag]): Gist<Tag>//GistVerbose<GistSpecs, Tag>;
-export function gist<Tag extends keyof GistSpecs>(tag: Tag, children?: GistSpecs[Tag]) {
-    return {
-        tag,
-        children
+export function gist(g: GistParam): Gist;
+export function gist<Tag extends keyof GistSpecs>(tag: Tag | Gist, children?: GistSpecs[Tag]) {
+    if (typeof(tag) === 'string') {
+        return {
+            tag,
+            children
+        }
     }
+    return tag;
 }
 
 export function has_tag<Tag extends keyof GistSpecs>(gist: Gist, tag: Tag): gist is Gist<Tag> {
     return gist.tag === tag;
 }
 
-export function gist_to_string(gist: Gist): string {
+export function gist_to_string(gist: Gist): string;
+export function gist_to_string(gist: GistStructure): string {
     let result = gist.tag;
 
     if (gist.children === undefined) {
@@ -118,7 +168,7 @@ export function gist_to_string(gist: Gist): string {
     result += ';';
 
     for (let [k, v] of Object.entries(gist.children)) {
-        result += k + '|' + gist_to_string(v);
+        result += k + '|' + gist_to_string(v as Gist);
     }
 
     result += ';';
@@ -126,7 +176,8 @@ export function gist_to_string(gist: Gist): string {
     return result;
 }
 
-export function gists_equal(gist1: Gist, gist2: Gist): boolean {
+export function gists_equal(gist1: Gist, gist2: Gist): boolean;
+export function gists_equal(gist1: GistStructure, gist2: GistStructure): boolean {
     if (gist1.tag !== gist2.tag) {
         return false;
     }
@@ -144,14 +195,15 @@ export function gists_equal(gist1: Gist, gist2: Gist): boolean {
             debugger;
             return false;
         }
-        if (!gists_equal(gist1.children[k], gist2.children![k])) {
+        if (!gists_equal(gist1.children[k] as Gist, gist2.children![k] as Gist)) {
             return false;
         }
     }
     return true;
 }
 
-export function includes_tag<Tag extends keyof GistSpecs>(tag: Tag, gist: Gist) {
+export function includes_tag<Tag extends keyof GistSpecs>(tag: Tag, gist: Gist): boolean;
+export function includes_tag<Tag extends keyof GistSpecs>(tag: Tag, gist: GistStructure) {
     if (gist.tag === tag) {
         return true;
     }
@@ -162,7 +214,7 @@ export function includes_tag<Tag extends keyof GistSpecs>(tag: Tag, gist: Gist) 
 
     for (const k in gist.children) {
         const g = gist.children[k];
-        if (includes_tag(tag, g)) {
+        if (includes_tag(tag, g as Gist)) {
             return true;
         }
     }
@@ -186,13 +238,14 @@ type ChildrenPattern<Tag extends keyof GistSpecs, Children extends GistSpecs[Tag
         [K in keyof Children]: GistPattern
     };
 
-export function gist_matches(gist: Gist, pattern: GistPattern): boolean {
+export function gist_matches(gist: Gist, pattern: GistPattern): boolean;
+export function gist_matches(gist: GistStructure, pattern: GistPattern): boolean {
     if (pattern === undefined) {
         return true;
     }
 
     if (pattern instanceof Array) {
-        return pattern.some(pat => gist_matches(gist, pat));
+        return pattern.some(pat => gist_matches(gist as Gist, pat));
     }
 
     if (gist.tag !== pattern.tag) {
@@ -207,8 +260,8 @@ export function gist_matches(gist: Gist, pattern: GistPattern): boolean {
         return false;
     }
 
-    for (const k in pattern.children as {}) {
-        if (!gist_matches(gist.children[k], pattern.children[k as keyof (typeof pattern)['children']])) {
+    for (const k in (pattern as GistStructure).children) {
+        if (!gist_matches(gist.children[k] as Gist, (pattern as GistStructure).children![k as keyof (typeof pattern)['children']] as Gist)) {
             return false;
         }
     }

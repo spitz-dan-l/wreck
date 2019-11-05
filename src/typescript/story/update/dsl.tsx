@@ -1,7 +1,9 @@
 import { make_dsl, ParametersFor, ReplaceReturn } from '../../dsl_utils';
 import { history_array } from "../../history";
+import { Parsing } from '../../parser';
 import { stages } from "../../stages";
-import { keys, update, Updater, writable } from "../../utils";
+import { ParsedTextStory } from '../../UI/components/parsed_text';
+import { keys, update, Updater } from "../../utils";
 import { World } from "../../world";
 import { createElement } from '../create';
 import { Fragment, StoryHole, StoryNode } from "../story";
@@ -9,8 +11,6 @@ import { StoryOps, StoryOpSpec, StoryUpdateOps, story_op } from './op';
 import { StoryQueries, StoryQueryName, StoryQuerySpec, story_query } from './query';
 import { Story, StoryUpdatePlan, StoryUpdateSpec, story_update } from "./update";
 import { push_group, StoryUpdateGroup, StoryUpdateGroups } from './update_group';
-import { ParsedTextStory } from '../../UI/components/parsed_text';
-import { Parsing } from '../../parser';
 
 type QuerySpecDomain = ReplaceReturn<StoryQueries, StoryQuerySpec>;
 export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
@@ -172,7 +172,7 @@ class GroupBuilder {
 
 export const Groups = new GroupBuilder();
 
-type StoryUpdaterSpec = StoryUpdateGroup | StoryUpdateSpec | StoryUpdaterSpecArray;
+export type StoryUpdaterSpec = StoryUpdateGroup | StoryUpdateSpec | StoryUpdaterSpecArray;
 interface StoryUpdaterSpecArray extends Array<StoryUpdaterSpec> {}
 
 function is_group(x: StoryUpdateGroup | StoryUpdateSpec): x is StoryUpdateGroup {
@@ -204,7 +204,7 @@ export function story_updater(...updates: StoryUpdaterSpec[]) {
 
     return <W extends World>(world: W) => update(world as World, {
         story_updates: { 
-            effects: _ => groups.reduce((eff, grp) => push_group(writable(eff), grp), _)
+            effects: _ => groups.reduce((eff, grp) => push_group(eff, grp), _)
         } 
     }) as W;
 }
@@ -215,7 +215,7 @@ export const add_input_text = (world: World, parsing: Parsing) => {
         story_updater(
             Groups.name('init_frame').push(
                 Updates
-                    .frame().first(Updates.has_class('input-text').to_query())
+                    .frame(world.index).first(Updates.has_class('input-text').to_query())
                     .add(<ParsedTextStory parsing={parsing} />, true)
             )
         )
@@ -223,7 +223,7 @@ export const add_input_text = (world: World, parsing: Parsing) => {
 }
 
 export const EmptyFrame = (props: { index: number }) => 
-    <div className="frame" data={{frame_index: props.index}}>
+    <div className="frame" frame_index={props.index}>
         <div className="input-text" />
         <div className="output-text">
             <div className={TEXT_CATEGORY_NAMES[0]}></div>

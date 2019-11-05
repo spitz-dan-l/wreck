@@ -1,5 +1,5 @@
 import { gist, Gists, render_gist_command, render_gist_text } from '../../gist';
-import { createElement, story_updater, Fragment } from '../../story';
+import { createElement, story_updater, Fragment, Updates } from '../../story';
 // import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
 import { StaticMap } from '../../static_resources';
@@ -62,11 +62,11 @@ export function add_to_notes(world: Venience, note_id: NoteID) {
 
     return update(world,
         { has_written_down: map([note_id, true]) },
-        story_updater({
-            prompt: <div>
+        story_updater(
+            Updates.prompt(<div>
                 You write about {capitalize(render_gist_text(gist(note_id)))} in your <strong>notes</strong>.
-            </div>
-        })
+            </div>)
+        )
     );
 }
 
@@ -85,14 +85,14 @@ Puffers({
             }, () => parser.submit(() =>
             update(world,
                 { gist: gist('notes') },
-                story_updater({ description: <div>
+                story_updater(Updates.description(<div>
                     You have written down notes about the following:
                     {Object.values(note_index.all())
                         .filter(n => world.has_written_down.get(n.note_id))
                         .map(n => <blockquote>{capitalize(render_gist_text(gist(n.note_id)))}</blockquote>)
                         .join('')}
                     </div>
-                })
+                ))
             ))));
 
             let specific_threads: ParserThread<Venience>[] = [];
@@ -114,10 +114,10 @@ Puffers({
                         has_read: map([entry.note_id, true]),
                         gist: () => gist('notes about', { topic: g })
                     },
-                    story_updater({ description: <div>
+                    story_updater(Updates.description(<div>
                         <strong>${capitalize(render_gist_text(g))}</strong>
                         {entry.description()}
-                    </div> })
+                    </div>))
                 )})));
             }
 

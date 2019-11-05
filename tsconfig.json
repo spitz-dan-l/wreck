@@ -23,6 +23,8 @@
     },
     "include": [
         "./src/typescript/main.tsx",
+        "./src/typescript/demo_worlds/sam.tsx"
+        // 
         // "./src/typescript/**/*"
         // "./src/typescript/main.tsx"
         // "./src/tests",
