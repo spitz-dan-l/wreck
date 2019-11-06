@@ -1,7 +1,7 @@
 import { ConsumeSpec } from './parser';
-import { StaticIndex } from './static_resources';
-import { Fragment, is_story_node } from './story';
-import { compute_const } from './utils';
+import { StaticIndex, StaticNameIndexFor } from './static_resources';
+import { Fragment, is_story_node, createElement } from './story';
+import { compute_const, map_values, enforce_always_never } from './utils';
 import { update } from './update';
 
 /*
@@ -27,7 +27,10 @@ type InvalidSpecs = {
     [K in keyof GistSpecs]: ValidatedSpecs[K] extends never ? K : never
 }[keyof GistSpecs];
 
-/* This will produce an error only if GistSpecs is invalid. */ const InvalidSpecs: never = <InvalidSpecs><unknown>null;
+enforce_always_never(
+    /* This will produce an error only if GistSpecs is invalid. */
+    null as InvalidSpecs
+);
 
 export type GistStructure = {
     tag: string,
@@ -42,85 +45,180 @@ export type Gist<Tag extends keyof GistSpecs=keyof GistSpecs> = {
 type GistChildren = undefined | Record<string | number, Gist>;
 
 
+type GistRenderFunction<Tag extends keyof GistSpecs, OutType, PreRender extends 'prerender' | 'preserve'='prerender'> =
+    (children: {[K in keyof GistSpecs[Tag]]: PreRender extends 'prerender' ? OutType : GistSpecs[Tag][K]}) => OutType;
+
+type GistRendererType = {
+    noun_phrase: string,
+    command_noun_phrase: ConsumeSpec,
+    story: Fragment
+}
+const StaticGistRendererNames: StaticNameIndexFor<GistRendererType> = {
+    noun_phrase: null,
+    command_noun_phrase: null,
+    story: null
+}
+
+type GistRenderMethods<Tag extends keyof GistSpecs, PreRender extends 'prerender' | 'preserve'='prerender'> = {
+    [K in keyof GistRendererType]?: GistRenderFunction<Tag, GistRendererType[K], PreRender>
+}
+
 export type GistRenderer<Tag extends keyof GistSpecs=keyof GistSpecs> = {
     tag: Tag,
-    text?: (child_text: { [K in keyof GistSpecs[Tag]]: string }) => string,
-    command?: (child_commands: { [K in keyof GistSpecs[Tag]]: ConsumeSpec }) => ConsumeSpec,
-    story?: (child_stories: { [K in keyof GistSpecs[Tag]]: Fragment }) => Fragment
-};
+    patterns?: [GistPattern<Tag>, GistRenderMethods<Tag, 'preserve'>][],
+} & GistRenderMethods<Tag, 'prerender'>
+;
 
 
 export const gist_renderer_index = new StaticIndex<GistRenderer>();
 
-export function render_gist_text(gist: Gist): string;
-export function render_gist_text(gist: GistStructure): string {
-    let spec = gist_renderer_index.find((gs) => {
-        return gs.tag === gist.tag
-    });
-    if (spec === undefined || spec.text === undefined) {
-        return gist.tag;
-    }
+export function make_renderer<T extends keyof GistRendererType>(t: T, compute_default: (g: Gist) => GistRendererType[T], post_process?: (output: GistRendererType[T], gist: Gist) => GistRendererType[T]) {
+    function _render(gist: Gist): GistRendererType[T];
+    function _render(gist: GistStructure): GistRendererType[T] {
+        const result = compute_const(() => {
+            const spec = gist_renderer_index.find((gs) => {
+                return gs.tag === gist.tag
+            });
 
-    if (gist.children === undefined) {  
-        return spec.text({});
-    } else {
-        let sub_text: any = {};
-        for (const k in gist.children) {
-            sub_text[k] = render_gist_text(gist.children[k] as Gist);
-        }
-        return spec.text(sub_text);
-    }
-}
+            if (spec === undefined) {
+                return compute_default(gist as Gist);
+            }
 
-export function render_gist_command(gist: Gist): ConsumeSpec;
-export function render_gist_command(gist: GistStructure): ConsumeSpec {
-    let spec = gist_renderer_index.find((gs) => {
-        return gs.tag === gist.tag
-    });
-    if (spec === undefined || spec.command === undefined) {
-        return gist.tag.replace(' ', '_');
-    }
+            type PreservedFunc = GistRenderFunction<keyof GistSpecs, GistRendererType[T], 'preserve'>;
+            if (spec.patterns) {
+                for (const [pat, handlers] of spec.patterns) {
+                    if (gist_matches(gist as Gist, pat) && handlers[t]) {
+                        return (handlers[t] as PreservedFunc)(gist.children || {})
+                    }
+                }
+            }
+            
+            if (spec[t] === undefined) {
+                return compute_default(gist as Gist);
+            }
 
-    let sub_commands: any = {};
-
-    if (gist.children === undefined) {
-        return spec.command({});
-    }
-
-    for (const k in gist.children) {
-        sub_commands[k] = render_gist_command(gist.children[k] as Gist);
-    }
-    return spec.command(sub_commands);
-}
-
-export function render_gist_story(gist: Gist): Fragment;
-export function render_gist_story(gist: GistStructure): Fragment {
-    const spec = gist_renderer_index.find((gs) => {
-        return gs.tag === gist.tag
-    });
-    if (spec === undefined || spec.story === undefined) {
-        return gist.tag;
-    }
-
-    const sub_stories: any = {};
-
-    const result = compute_const(() => {
-        if (gist.children === undefined) {
-            return spec.story!({});
-        }
-
-        for (const k in gist.children) {
-            sub_stories[k] = render_gist_story(gist.children[k] as Gist);
-        }
-        return spec.story!(sub_stories);
-    });
-    if (is_story_node(result)) {
-        return update(result, {
-            data: { gist: () => gist as Gist }
+            type PreRenderedFunc = GistRenderFunction<keyof GistSpecs, GistRendererType[T], 'prerender'>;
+            if (gist.children === undefined) {  
+                return (spec[t] as PreRenderedFunc)({});
+            } else {
+                let rendered_children: any = {};
+                for (const k in gist.children) {
+                    rendered_children[k] = _render(gist.children[k] as Gist);
+                }
+                return (spec[t] as PreRenderedFunc)(rendered_children);
+            }
         });
+
+        if (post_process !== undefined) {
+            return post_process(result, gist as Gist);
+        }
+        return result;
     }
-    return result;
+    return _render;
 }
+
+export const render_gist: {
+    [K in keyof GistRendererType]: (gist: Gist) => GistRendererType[K]
+} = {
+    noun_phrase: make_renderer('noun_phrase', g => g.tag),
+    command_noun_phrase: make_renderer('command_noun_phrase', g => g.tag.replace(' ', '_')),
+    story: make_renderer('story', g => g.tag, (result, gist) => {
+        if (is_story_node(result)) {
+            return update(result, {
+                data: { gist: () => gist }
+            });
+        } else {
+            return createElement('span', { gist: gist as GistParam }, result)
+        }
+    })
+}
+
+// export function render_gist_noun_phrase(gist: Gist): string;
+// export function render_gist_noun_phrase(gist: GistStructure): string {
+//     const spec = gist_renderer_index.find((gs) => {
+//         return gs.tag === gist.tag
+//     });
+
+//     const compute_default = () => gist.tag;
+
+//     if (spec === undefined) {
+//         return compute_default();
+//     }
+
+//     if (spec.patterns) {
+//         for (const [pat, handlers] of spec.patterns) {
+//             if (gist_matches(gist as Gist, pat) && handlers.noun_phrase) {
+//                 return handlers.noun_phrase(gist.children || {})
+//             }
+//         }
+//     }
+    
+//     if (spec.noun_phrase === undefined) {
+//         return compute_default();
+//     }
+    
+
+//     if (gist.children === undefined) {  
+//         return spec.noun_phrase({});
+//     } else {
+//         let sub_text: any = {};
+//         for (const k in gist.children) {
+//             sub_text[k] = render_gist_noun_phrase(gist.children[k] as Gist);
+//         }
+//         return spec.noun_phrase(sub_text);
+//     }
+// }
+
+// export function render_gist_command_noun_phrase(gist: Gist): ConsumeSpec;
+// export function render_gist_command_noun_phrase(gist: GistStructure): ConsumeSpec {
+//     let spec = gist_renderer_index.find((gs) => {
+//         return gs.tag === gist.tag
+//     });
+//     if (spec === undefined || spec.command_noun_phrase === undefined) {
+//         return gist.tag.replace(' ', '_');
+//     }
+
+//     let sub_commands: any = {};
+
+//     if (gist.children === undefined) {
+//         return spec.command_noun_phrase({});
+//     }
+
+//     for (const k in gist.children) {
+//         sub_commands[k] = render_gist_command_noun_phrase(gist.children[k] as Gist);
+//     }
+//     return spec.command_noun_phrase(sub_commands);
+// }
+
+// export function render_gist_story(gist: Gist): Fragment;
+// export function render_gist_story(gist: GistStructure): Fragment {
+//     const spec = gist_renderer_index.find((gs) => {
+//         return gs.tag === gist.tag
+//     });
+//     if (spec === undefined || spec.story === undefined) {
+//         return gist.tag;
+//     }
+
+//     const sub_stories: any = {};
+
+//     const result = compute_const(() => {
+//         if (gist.children === undefined) {
+//             return spec.story!({});
+//         }
+
+//         for (const k in gist.children) {
+//             sub_stories[k] = render_gist_story(gist.children[k] as Gist);
+//         }
+//         return spec.story!(sub_stories);
+//     });
+//     if (is_story_node(result)) {
+//         return update(result, {
+//             data: { gist: () => gist as Gist }
+//         });
+//     } else {
+//         return createElement('span', { gist: gist as GistParam }, result)
+//     }
+// }
 
 export function Gists<Tag extends keyof GistSpecs=keyof GistSpecs>(renderer: GistRenderer<Tag>) {
     gist_renderer_index.add(renderer);
@@ -159,21 +257,11 @@ export function has_tag<Tag extends keyof GistSpecs>(gist: Gist, tag: Tag): gist
 
 export function gist_to_string(gist: Gist): string;
 export function gist_to_string(gist: GistStructure): string {
-    let result = gist.tag;
+    return JSON.stringify(gist);
+}
 
-    if (gist.children === undefined) {
-        return result;
-    }
-
-    result += ';';
-
-    for (let [k, v] of Object.entries(gist.children)) {
-        result += k + '|' + gist_to_string(v as Gist);
-    }
-
-    result += ';';
-
-    return result;
+export function parse_gist(gist_json: string): Gist {
+    return JSON.parse(gist_json);
 }
 
 export function gists_equal(gist1: Gist, gist2: Gist): boolean;

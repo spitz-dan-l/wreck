@@ -20234,31 +20234,93 @@ const world_1 = __webpack_require__(/*! ../world */ "./src/typescript/world.tsx"
 exports.PufferIndex = new static_resources_1.StaticIndex();
 const Puffers = utils_1.bound_method(exports.PufferIndex, 'add');
 const StaticTopicIDs = utils_1.compute_const(() => ({
-    'Sam': null,
+    'Sam': null
 }));
+utils_1.enforce_always_never(null);
 gist_1.Gists({
     tag: 'Sam',
-    command: () => 'sam',
-    text: () => 'Sam',
+    command_noun_phrase: () => 'sam',
+    noun_phrase: () => 'Sam',
     story: () => story_1.createElement("div", null,
         story_1.createElement("div", { gist: "Sam's identity" }, "An old friend on his way to work."),
         story_1.createElement("div", { gist: "Sam's demeanor" }, "He glances at you, smiling vaguely."))
 });
+gist_1.Gists({
+    tag: 'facet',
+    noun_phrase: ({ child }) => child,
+    command_noun_phrase: ({ child }) => child,
+    patterns: [[undefined, {
+                story: ({ child }) => story_1.createElement("blockquote", null, gist_1.render_gist.noun_phrase(child))
+            }]]
+});
 function story_facets(node) {
+    if (!story_1.is_story_node(node) || node.data.gist === undefined) {
+        return [];
+    }
+    const parent = node.data.gist;
     return story_1.find_all_nodes(node, n => n !== node && story_1.is_story_node(n) && n.data.gist !== undefined)
-        .map(([n]) => n.data.gist);
+        .map(([n]) => gist_1.gist('facet', {
+        child: n.data.gist,
+        parent
+    }));
 }
 Puffers({
-    handle_command: (w, p) => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume('consider', () => p.consume(gist_1.render_gist_command(gist_1.gist(t_id)), () => p.submit(() => update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist_story(gist_1.gist(t_id))))))))))
+    handle_command: (w, p) => p.consume('consider', () => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume(gist_1.render_gist.command_noun_phrase(gist_1.gist(t_id)), () => p.submit(() => update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist.story(gist_1.gist(t_id))), story_1.Updates.set_gist(gist_1.gist('consideration', { topic: gist_1.gist(t_id) })))))))))
 });
 Puffers({
-    handle_command: (w, p) => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume('contemplate', () => p.consume(gist_1.render_gist_command(gist_1.gist(t_id)), () => p.submit(() => {
-        const topic_story = gist_1.render_gist_story(gist_1.gist(t_id));
+    handle_command: (w, p) => p.consume('contemplate', () => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume(gist_1.render_gist.command_noun_phrase(gist_1.gist(t_id)), () => p.submit(() => {
+        const topic_story = gist_1.render_gist.story(gist_1.gist(t_id));
         const facets = story_facets(topic_story);
-        return update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist_story(gist_1.gist(t_id))), story_1.Updates.prompt(story_1.createElement("br", null)), story_1.Updates.prompt(story_1.createElement("div", null,
+        return update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist.story(gist_1.gist(t_id))), story_1.Updates.prompt(story_1.createElement("br", null)), story_1.Updates.prompt(story_1.createElement("div", null,
             "You notice the following facets:",
-            facets.map(f => story_1.createElement("blockquote", null, gist_1.render_gist_text(f)))))));
+            facets.map(f => gist_1.render_gist.story(f)))), story_1.Groups.name('init_frame').push(story_1.Updates.set_gist(gist_1.gist('contemplation', { topic: gist_1.gist(t_id) })))));
     })))))
+});
+gist_1.Gists({
+    tag: 'consideration',
+    noun_phrase: ({ topic }) => `your consideration of ${topic}`,
+    command_noun_phrase: ({ topic }) => ['my_consideration_of', topic]
+});
+gist_1.Gists({
+    tag: 'contemplation',
+    noun_phrase: ({ topic }) => `your contemplation of ${topic}`,
+    command_noun_phrase: ({ topic }) => ['my_contemplation_of', topic]
+});
+gist_1.Gists({
+    tag: 'recollection',
+    noun_phrase: ({ event }) => `your recollection of ${event}`,
+    command_noun_phrase: ({ event }) => ['my_recollection_of', event]
+});
+Puffers({
+    handle_command: (w, p) => {
+        const past_actions = story_1.find_all_nodes(w.story, (f) => (story_1.is_story_node(f) &&
+            f.data.gist !== undefined &&
+            f.data.frame_index !== undefined)).filter(([f, p]) => {
+            let n = w.story;
+            for (const i of p.slice(0, -1)) {
+                n = n.children[i];
+                if (n.data.gist !== undefined &&
+                    gist_1.gist_matches(n.data.gist, { tag: 'recollection' })) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        if (past_actions.length === 0) {
+            return p.eliminate();
+        }
+        const past_actions_most_recent = [];
+        for (const [f] of past_actions.reverse()) {
+            const f_ = f.data.gist;
+            if (past_actions_most_recent.find(f2 => gist_1.gists_equal(f2.data.gist, f.data.gist)) === undefined) {
+                past_actions_most_recent.unshift(f);
+            }
+        }
+        return (p.consume('recall', () => p.split(past_actions_most_recent.map((f) => {
+            const g = f.data.gist;
+            return () => p.consume(gist_1.render_gist.command_noun_phrase(g), () => p.submit(() => update_1.update(w, story_1.story_updater(story_1.Updates.consequence('You remember it going something like this:'), story_1.Updates.description(story_1.createElement("blockquote", null, f)), story_1.Groups.name('init_frame').push(story_1.Updates.set_gist(gist_1.gist('recollection', { event: g })))))));
+        }))));
+    }
 });
 exports.PufferIndex.seal();
 story_1.StoryQueryIndex.seal();
@@ -20470,69 +20532,139 @@ const static_resources_1 = __webpack_require__(/*! ./static_resources */ "./src/
 const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/index.ts");
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
 const update_1 = __webpack_require__(/*! ./update */ "./src/typescript/update.ts");
-/* This will produce an error only if GistSpecs is invalid. */ const InvalidSpecs = null;
+utils_1.enforce_always_never(
+/* This will produce an error only if GistSpecs is invalid. */
+null);
+const StaticGistRendererNames = {
+    noun_phrase: null,
+    command_noun_phrase: null,
+    story: null
+};
 exports.gist_renderer_index = new static_resources_1.StaticIndex();
-function render_gist_text(gist) {
-    let spec = exports.gist_renderer_index.find((gs) => {
-        return gs.tag === gist.tag;
-    });
-    if (spec === undefined || spec.text === undefined) {
-        return gist.tag;
-    }
-    if (gist.children === undefined) {
-        return spec.text({});
-    }
-    else {
-        let sub_text = {};
-        for (const k in gist.children) {
-            sub_text[k] = render_gist_text(gist.children[k]);
-        }
-        return spec.text(sub_text);
-    }
-}
-exports.render_gist_text = render_gist_text;
-function render_gist_command(gist) {
-    let spec = exports.gist_renderer_index.find((gs) => {
-        return gs.tag === gist.tag;
-    });
-    if (spec === undefined || spec.command === undefined) {
-        return gist.tag.replace(' ', '_');
-    }
-    let sub_commands = {};
-    if (gist.children === undefined) {
-        return spec.command({});
-    }
-    for (const k in gist.children) {
-        sub_commands[k] = render_gist_command(gist.children[k]);
-    }
-    return spec.command(sub_commands);
-}
-exports.render_gist_command = render_gist_command;
-function render_gist_story(gist) {
-    const spec = exports.gist_renderer_index.find((gs) => {
-        return gs.tag === gist.tag;
-    });
-    if (spec === undefined || spec.story === undefined) {
-        return gist.tag;
-    }
-    const sub_stories = {};
-    const result = utils_1.compute_const(() => {
-        if (gist.children === undefined) {
-            return spec.story({});
-        }
-        for (const k in gist.children) {
-            sub_stories[k] = render_gist_story(gist.children[k]);
-        }
-        return spec.story(sub_stories);
-    });
-    if (story_1.is_story_node(result)) {
-        return update_1.update(result, {
-            data: { gist: () => gist }
+function make_renderer(t, compute_default, post_process) {
+    function _render(gist) {
+        const result = utils_1.compute_const(() => {
+            const spec = exports.gist_renderer_index.find((gs) => {
+                return gs.tag === gist.tag;
+            });
+            if (spec === undefined) {
+                return compute_default(gist);
+            }
+            if (spec.patterns) {
+                for (const [pat, handlers] of spec.patterns) {
+                    if (gist_matches(gist, pat) && handlers[t]) {
+                        return handlers[t](gist.children || {});
+                    }
+                }
+            }
+            if (spec[t] === undefined) {
+                return compute_default(gist);
+            }
+            if (gist.children === undefined) {
+                return spec[t]({});
+            }
+            else {
+                let rendered_children = {};
+                for (const k in gist.children) {
+                    rendered_children[k] = _render(gist.children[k]);
+                }
+                return spec[t](rendered_children);
+            }
         });
+        if (post_process !== undefined) {
+            return post_process(result, gist);
+        }
+        return result;
     }
-    return result;
+    return _render;
 }
-exports.render_gist_story = render_gist_story;
+exports.make_renderer = make_renderer;
+exports.render_gist = {
+    noun_phrase: make_renderer('noun_phrase', g => g.tag),
+    command_noun_phrase: make_renderer('command_noun_phrase', g => g.tag.replace(' ', '_')),
+    story: make_renderer('story', g => g.tag, (result, gist) => {
+        if (story_1.is_story_node(result)) {
+            return update_1.update(result, {
+                data: { gist: () => gist }
+            });
+        }
+        else {
+            return story_1.createElement('span', { gist: gist }, result);
+        }
+    })
+};
+// export function render_gist_noun_phrase(gist: Gist): string;
+// export function render_gist_noun_phrase(gist: GistStructure): string {
+//     const spec = gist_renderer_index.find((gs) => {
+//         return gs.tag === gist.tag
+//     });
+//     const compute_default = () => gist.tag;
+//     if (spec === undefined) {
+//         return compute_default();
+//     }
+//     if (spec.patterns) {
+//         for (const [pat, handlers] of spec.patterns) {
+//             if (gist_matches(gist as Gist, pat) && handlers.noun_phrase) {
+//                 return handlers.noun_phrase(gist.children || {})
+//             }
+//         }
+//     }
+//     if (spec.noun_phrase === undefined) {
+//         return compute_default();
+//     }
+//     if (gist.children === undefined) {  
+//         return spec.noun_phrase({});
+//     } else {
+//         let sub_text: any = {};
+//         for (const k in gist.children) {
+//             sub_text[k] = render_gist_noun_phrase(gist.children[k] as Gist);
+//         }
+//         return spec.noun_phrase(sub_text);
+//     }
+// }
+// export function render_gist_command_noun_phrase(gist: Gist): ConsumeSpec;
+// export function render_gist_command_noun_phrase(gist: GistStructure): ConsumeSpec {
+//     let spec = gist_renderer_index.find((gs) => {
+//         return gs.tag === gist.tag
+//     });
+//     if (spec === undefined || spec.command_noun_phrase === undefined) {
+//         return gist.tag.replace(' ', '_');
+//     }
+//     let sub_commands: any = {};
+//     if (gist.children === undefined) {
+//         return spec.command_noun_phrase({});
+//     }
+//     for (const k in gist.children) {
+//         sub_commands[k] = render_gist_command_noun_phrase(gist.children[k] as Gist);
+//     }
+//     return spec.command_noun_phrase(sub_commands);
+// }
+// export function render_gist_story(gist: Gist): Fragment;
+// export function render_gist_story(gist: GistStructure): Fragment {
+//     const spec = gist_renderer_index.find((gs) => {
+//         return gs.tag === gist.tag
+//     });
+//     if (spec === undefined || spec.story === undefined) {
+//         return gist.tag;
+//     }
+//     const sub_stories: any = {};
+//     const result = compute_const(() => {
+//         if (gist.children === undefined) {
+//             return spec.story!({});
+//         }
+//         for (const k in gist.children) {
+//             sub_stories[k] = render_gist_story(gist.children[k] as Gist);
+//         }
+//         return spec.story!(sub_stories);
+//     });
+//     if (is_story_node(result)) {
+//         return update(result, {
+//             data: { gist: () => gist as Gist }
+//         });
+//     } else {
+//         return createElement('span', { gist: gist as GistParam }, result)
+//     }
+// }
 function Gists(renderer) {
     exports.gist_renderer_index.add(renderer);
 }
@@ -20559,6 +20691,7 @@ function has_tag(gist, tag) {
 }
 exports.has_tag = has_tag;
 function gist_to_string(gist) {
+    return JSON.stringify(gist);
     let result = gist.tag;
     if (gist.children === undefined) {
         return result;
@@ -22107,6 +22240,7 @@ exports.createElement = createElement;
 Object.defineProperty(exports, "__esModule", { value: true });
 const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/story.ts");
 const jsx_utils_1 = __webpack_require__(/*! ../jsx_utils */ "./src/typescript/jsx_utils.ts");
+const gist_1 = __webpack_require__(/*! ../gist */ "./src/typescript/gist.ts");
 // This is pretty ugly, but there's not a good enough reason to
 // do something fancier yet
 exports.StoryHoleDom = document.createElement('div');
@@ -22125,7 +22259,12 @@ function story_to_dom(story) {
         }
     }
     for (const [data_attr, val] of Object.entries(story.data)) {
-        elt.dataset[data_attr] = '' + val;
+        if (data_attr === 'gist') {
+            elt.dataset[data_attr] = gist_1.gist_to_string(val);
+        }
+        else {
+            elt.dataset[data_attr] = '' + val;
+        }
     }
     jsx_utils_1.set_attributes(elt, story.attributes);
     for (const c of story.children) {
@@ -22549,6 +22688,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/story.ts");
 const dom_1 = __webpack_require__(/*! ../dom */ "./src/typescript/story/dom.ts");
 const utils_1 = __webpack_require__(/*! ../../utils */ "./src/typescript/utils.ts");
+const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
 function story_op(name, ...parameters) {
     return { name, parameters };
 }
@@ -22667,6 +22807,19 @@ exports.StoryUpdateOps = {
             });
         }
         return replacement;
+    },
+    set_gist: (gist) => (elt, effects) => {
+        if (!story_1.is_story_node(elt)) {
+            throw new Error('Tried to update the gist on a non-story-node element.');
+        }
+        if (effects) {
+            effects.push(dom => {
+                dom.dataset.gist = gist_1.gist_to_string(gist);
+            });
+        }
+        return utils_1.update(elt, {
+            data: { gist: () => gist }
+        });
     }
 };
 function compile_story_update_op(op_spec) {
@@ -23557,9 +23710,7 @@ function compute_const(f) {
     return f();
 }
 exports.compute_const = compute_const;
-exports.enforce_const = () => {
-    return ((x) => x);
-};
+exports.enforce_always_never = (...args) => { };
 function curry(f) {
     return function _curry(f, ...accum_args) {
         return function curried(...args) {

@@ -1,5 +1,6 @@
 import { StoryNode, Fragment, is_story_hole } from "./story";
 import { set_attributes } from "../jsx_utils";
+import { gist_to_string, Gist } from "../gist";
 
 // This is pretty ugly, but there's not a good enough reason to
 // do something fancier yet
@@ -26,7 +27,11 @@ export function story_to_dom(story: Fragment): HTMLElement | Text {
     }
 
     for (const [data_attr, val] of Object.entries(story.data)) {
-        elt.dataset[data_attr] = '' + val;
+        if (data_attr === 'gist') {
+            elt.dataset[data_attr] = gist_to_string(val as Gist)
+        } else {
+            elt.dataset[data_attr] = '' + val;
+        }
     }
 
     set_attributes(elt, story.attributes);

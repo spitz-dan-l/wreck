@@ -326,23 +326,7 @@ export function compute_const<R>(f: () => R): R {
     return f();
 }
 
-import { $ } from './hkts';
-
-export const enforce_const = <TypePredicate extends <T>(t: T) => (T | never)>() => {
-    return (((x: any) => x) as TypePredicate);
-    
-}
-
-    // return <X>(f: $<TypePredicate, [X]> extends never ? never : () => X) => f();
-
-    // function _enforce_const<X, Y extends $<TypePredicate, [X]>>(x: X): X;
-    // function _enforce_const<X>(x: X): X {
-    //     return x;
-    // }
-
-    // return _enforce_const;
-
-
+export const enforce_always_never = (...args: never[]): void => {};
 
 // Helper for declaring values with tuple types.
 // "as const" would nearly make this unnecessary but @babel/preset-typescript 3.7.7 doesn't parse as const
@@ -488,9 +472,7 @@ let div = (a: number, b: number) => {
         } else {
             resolve(result);
         }
-    })
-
-    
+    })   
 }
 
 async function buh() {
