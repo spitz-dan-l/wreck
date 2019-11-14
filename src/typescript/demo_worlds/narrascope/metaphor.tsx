@@ -1,4 +1,4 @@
-import { Gist, gist, Gists, gists_equal, gist_to_string, has_tag, render_gist_command, render_gist_text } from '../../gist';
+import { Gist, gist, Gists, gists_equal, gist_to_string, has_tag, render_gist_command_noun_phrase, render_gist_noun_phrase } from '../../gist';
 import { find_historical, find_index, history_array, indices_where } from "../../history";
 import { ConsumeSpec, Parser, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
@@ -222,7 +222,7 @@ function make_direct_thread(world: Venience, immediate_world: Venience | null): 
         if (immediate_world === null) {
             return parser.eliminate();
         }
-        return parser.consume(['contemplate', render_gist_command(immediate_world.gist!)], () =>
+        return parser.consume(['contemplate', render_gist_command_noun_phrase(immediate_world.gist!)], () =>
         parser.submit(() => {
 
         const index = immediate_world.index;
@@ -257,7 +257,7 @@ function make_direct_thread(world: Venience, immediate_world: Venience | null): 
                     'interpretation-active': true
                 }),
                 S.action(<div>
-                    You contemplate {render_gist_text(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
+                    You contemplate {render_gist_noun_phrase(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
                 </div>),
                 S.description(descriptions)
             ),
@@ -318,7 +318,7 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | null,
             }
 
             return parser.consume({
-                tokens: render_gist_command(g),
+                tokens: render_gist_command_noun_phrase(g),
                 labels: {interp: true, filler: true}
             }, () =>
             parser.submit(() =>

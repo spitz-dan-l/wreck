@@ -19300,7 +19300,7 @@ function animate(comp_elt) {
             setTimeout(() => {
                 comp_elt.classList.remove('animation-start', 'animation-active');
                 walkElt(comp_elt, (e) => {
-                    e.style.maxHeight = null;
+                    e.style.maxHeight = '';
                     delete e.dataset.maxHeight;
                     delete e.dataset.isCollapsing;
                 });
@@ -19976,7 +19976,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jsx_utils_1 = __webpack_require__(/*! ../../jsx_utils */ "./src/typescript/jsx_utils.ts");
 function createElement(type, props, ...children_deep) {
     const children = children_deep.flat(Infinity);
-    const all_props = Object.assign({}, props, { children });
+    const all_props = Object.assign(Object.assign({}, props), { children });
     if (typeof type === 'string') {
         return exports.intrinsic_element_renderer(type, all_props);
     }
@@ -20231,50 +20231,102 @@ const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/inde
 const update_1 = __webpack_require__(/*! ../update */ "./src/typescript/update.ts");
 const utils_1 = __webpack_require__(/*! ../utils */ "./src/typescript/utils.ts");
 const world_1 = __webpack_require__(/*! ../world */ "./src/typescript/world.tsx");
+const type_predicate_utils_1 = __webpack_require__(/*! ../type_predicate_utils */ "./src/typescript/type_predicate_utils.ts");
 exports.PufferIndex = new static_resources_1.StaticIndex();
 const Puffers = utils_1.bound_method(exports.PufferIndex, 'add');
-const StaticTopicIDs = utils_1.compute_const(() => ({
+const StaticTopicIDs = {
     'Sam': null
-}));
+};
 utils_1.enforce_always_never(null);
+const TopicContents = new static_resources_1.StaticMap(StaticTopicIDs);
+TopicContents.initialize('Sam', story_1.createElement("div", { gist: "Sam" },
+    story_1.createElement("div", { gist: "Sam's identity" }, "An old friend on his way to work."),
+    story_1.createElement("div", { gist: "Sam's demeanor" }, "He glances at you, smiling vaguely.")));
 gist_1.Gists({
     tag: 'Sam',
     command_noun_phrase: () => 'sam',
     noun_phrase: () => 'Sam',
-    story: () => story_1.createElement("div", null,
-        story_1.createElement("div", { gist: "Sam's identity" }, "An old friend on his way to work."),
-        story_1.createElement("div", { gist: "Sam's demeanor" }, "He glances at you, smiling vaguely."))
 });
 gist_1.Gists({
     tag: 'facet',
     noun_phrase: ({ child }) => child,
-    command_noun_phrase: ({ child }) => child,
-    patterns: [[undefined, {
-                story: ({ child }) => story_1.createElement("blockquote", null, gist_1.render_gist.noun_phrase(child))
-            }]]
+    command_noun_phrase: ({ child }) => child
 });
 function story_facets(node) {
     if (!story_1.is_story_node(node) || node.data.gist === undefined) {
         return [];
     }
-    const parent = node.data.gist;
-    return story_1.find_all_nodes(node, n => n !== node && story_1.is_story_node(n) && n.data.gist !== undefined)
-        .map(([n]) => gist_1.gist('facet', {
-        child: n.data.gist,
-        parent
-    }));
+    const predicate = type_predicate_utils_1.make_matcher()({
+        kind: 'StoryNode',
+        key: k => k !== node.key,
+        data: { gist: type_predicate_utils_1.NotNull }
+    });
+    const gist_nodes = story_1.find_all_nodes(node, predicate);
+    return gist_nodes.map((f) => f[0].data.gist);
+    // const result = gist_nodes.map(([n, p]) => {
+    //     const parents = parent_path(node, p);
+    //     for (const p of parents.reverse().slice(1)) {
+    //         if (is_story_node(p) && p.data.gist !== undefined) {
+    //             return gist('facet', {
+    //                 child: n.data.gist,
+    //                 parent: p.data.gist
+    //             });
+    //         }
+    //     }
+    //     throw new Error('should never get here');
+    // });
+    // return result;
+    // return find_all_nodes(node,
+    //     (n): n is StoryNode & {data: { gist: Gist }} => 
+    //         n !== node && is_story_node(n) && n.data.gist !== undefined)
+}
+function render_facet(facet) {
+    return story_1.createElement("blockquote", { gist: facet }, gist_1.render_gist.noun_phrase(facet));
 }
 Puffers({
-    handle_command: (w, p) => p.consume('consider', () => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume(gist_1.render_gist.command_noun_phrase(gist_1.gist(t_id)), () => p.submit(() => update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist.story(gist_1.gist(t_id))), story_1.Updates.set_gist(gist_1.gist('consideration', { topic: gist_1.gist(t_id) })))))))))
+    handle_command: (w, p) => p.consume('consider', () => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume(gist_1.render_gist.command_noun_phrase(gist_1.gist(t_id)), () => p.submit(() => update_1.update(w, story_1.story_updater(story_1.Updates.description(TopicContents.get(t_id)), story_1.Updates.set_gist(gist_1.gist('consideration', { topic: gist_1.gist(t_id) })))))))))
 });
+// Puffers({
+//     handle_command: (w, p) =>
+//         p.consume('contemplate', () =>
+//         p.split(Object.keys(StaticTopicIDs).map(
+//             (t_id: TopicID) => () =>
+//                 p.consume(render_gist.command_noun_phrase(gist(t_id)), () =>
+//                 p.submit(() => {
+//                     const topic_story = TopicContents.get(t_id);
+//                     const facets = story_facets(topic_story);
+//                     return update(w, story_updater(
+//                         S.description(
+//                             TopicContents.get(t_id)),
+//                         S.prompt(<br />),
+//                         S.prompt(<div>
+//                             You notice the following facets:
+//                             { facets.map(f => render_facet(f)) }
+//                         </div>),
+//                         Groups.name('init_frame').push(
+//                             S.set_gist(gist('contemplation', {topic: gist(t_id)}))
+//                         )
+//                     ));
+//                 })))        
+//         ))
+// });
 Puffers({
-    handle_command: (w, p) => p.consume('contemplate', () => p.split(Object.keys(StaticTopicIDs).map((t_id) => () => p.consume(gist_1.render_gist.command_noun_phrase(gist_1.gist(t_id)), () => p.submit(() => {
-        const topic_story = gist_1.render_gist.story(gist_1.gist(t_id));
-        const facets = story_facets(topic_story);
-        return update_1.update(w, story_1.story_updater(story_1.Updates.description(gist_1.render_gist.story(gist_1.gist(t_id))), story_1.Updates.prompt(story_1.createElement("br", null)), story_1.Updates.prompt(story_1.createElement("div", null,
-            "You notice the following facets:",
-            facets.map(f => gist_1.render_gist.story(f)))), story_1.Groups.name('init_frame').push(story_1.Updates.set_gist(gist_1.gist('contemplation', { topic: gist_1.gist(t_id) })))));
-    })))))
+    handle_command: (w, p) => {
+        if (w.index < 2) {
+            return p.eliminate();
+        }
+        return (p.consume('contemplate_that', () => p.submit(() => {
+            const [focus_story] = story_1.StoryQueryIndex.get('frame')(w.index - 1)(w.story)[0];
+            utils_1.assert(story_1.is_story_node(focus_story));
+            const facets = story_facets(focus_story);
+            return update_1.update(w, story_1.story_updater(
+            // S.description(focus_story),
+            // S.prompt(<br />),
+            story_1.Updates.prompt(story_1.createElement("div", null,
+                "You notice the following facets:",
+                facets.map(f => render_facet(f)))), story_1.Groups.name('init_frame').push(story_1.Updates.set_gist(gist_1.gist('contemplation', { event: focus_story.data.gist })))));
+        })));
+    }
 });
 gist_1.Gists({
     tag: 'consideration',
@@ -20283,8 +20335,8 @@ gist_1.Gists({
 });
 gist_1.Gists({
     tag: 'contemplation',
-    noun_phrase: ({ topic }) => `your contemplation of ${topic}`,
-    command_noun_phrase: ({ topic }) => ['my_contemplation_of', topic]
+    noun_phrase: ({ event }) => `your contemplation of ${event}`,
+    command_noun_phrase: ({ event }) => ['my_contemplation_of', event]
 });
 gist_1.Gists({
     tag: 'recollection',
@@ -20322,12 +20374,14 @@ Puffers({
         }))));
     }
 });
+TopicContents.seal();
 exports.PufferIndex.seal();
 story_1.StoryQueryIndex.seal();
 gist_1.gist_renderer_index.seal();
 /**
- * Ability to "consider sam", and get the topic
- * Ability to "contemplate sam" and get a list of the facets
+ *
+ *
+ *
  */
 const initial_sam_world = Object.assign({}, world_1.get_initial_world());
 exports.sam_world_spec = puffer_1.make_puffer_world_spec(initial_sam_world, exports.PufferIndex.all());
@@ -20529,16 +20583,13 @@ exports.gensym_value = gensym_value;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const static_resources_1 = __webpack_require__(/*! ./static_resources */ "./src/typescript/static_resources.ts");
-const story_1 = __webpack_require__(/*! ./story */ "./src/typescript/story/index.ts");
 const utils_1 = __webpack_require__(/*! ./utils */ "./src/typescript/utils.ts");
-const update_1 = __webpack_require__(/*! ./update */ "./src/typescript/update.ts");
 utils_1.enforce_always_never(
 /* This will produce an error only if GistSpecs is invalid. */
 null);
 const StaticGistRendererNames = {
     noun_phrase: null,
     command_noun_phrase: null,
-    story: null
 };
 exports.gist_renderer_index = new static_resources_1.StaticIndex();
 function make_renderer(t, compute_default, post_process) {
@@ -20582,89 +20633,7 @@ exports.make_renderer = make_renderer;
 exports.render_gist = {
     noun_phrase: make_renderer('noun_phrase', g => g.tag),
     command_noun_phrase: make_renderer('command_noun_phrase', g => g.tag.replace(' ', '_')),
-    story: make_renderer('story', g => g.tag, (result, gist) => {
-        if (story_1.is_story_node(result)) {
-            return update_1.update(result, {
-                data: { gist: () => gist }
-            });
-        }
-        else {
-            return story_1.createElement('span', { gist: gist }, result);
-        }
-    })
 };
-// export function render_gist_noun_phrase(gist: Gist): string;
-// export function render_gist_noun_phrase(gist: GistStructure): string {
-//     const spec = gist_renderer_index.find((gs) => {
-//         return gs.tag === gist.tag
-//     });
-//     const compute_default = () => gist.tag;
-//     if (spec === undefined) {
-//         return compute_default();
-//     }
-//     if (spec.patterns) {
-//         for (const [pat, handlers] of spec.patterns) {
-//             if (gist_matches(gist as Gist, pat) && handlers.noun_phrase) {
-//                 return handlers.noun_phrase(gist.children || {})
-//             }
-//         }
-//     }
-//     if (spec.noun_phrase === undefined) {
-//         return compute_default();
-//     }
-//     if (gist.children === undefined) {  
-//         return spec.noun_phrase({});
-//     } else {
-//         let sub_text: any = {};
-//         for (const k in gist.children) {
-//             sub_text[k] = render_gist_noun_phrase(gist.children[k] as Gist);
-//         }
-//         return spec.noun_phrase(sub_text);
-//     }
-// }
-// export function render_gist_command_noun_phrase(gist: Gist): ConsumeSpec;
-// export function render_gist_command_noun_phrase(gist: GistStructure): ConsumeSpec {
-//     let spec = gist_renderer_index.find((gs) => {
-//         return gs.tag === gist.tag
-//     });
-//     if (spec === undefined || spec.command_noun_phrase === undefined) {
-//         return gist.tag.replace(' ', '_');
-//     }
-//     let sub_commands: any = {};
-//     if (gist.children === undefined) {
-//         return spec.command_noun_phrase({});
-//     }
-//     for (const k in gist.children) {
-//         sub_commands[k] = render_gist_command_noun_phrase(gist.children[k] as Gist);
-//     }
-//     return spec.command_noun_phrase(sub_commands);
-// }
-// export function render_gist_story(gist: Gist): Fragment;
-// export function render_gist_story(gist: GistStructure): Fragment {
-//     const spec = gist_renderer_index.find((gs) => {
-//         return gs.tag === gist.tag
-//     });
-//     if (spec === undefined || spec.story === undefined) {
-//         return gist.tag;
-//     }
-//     const sub_stories: any = {};
-//     const result = compute_const(() => {
-//         if (gist.children === undefined) {
-//             return spec.story!({});
-//         }
-//         for (const k in gist.children) {
-//             sub_stories[k] = render_gist_story(gist.children[k] as Gist);
-//         }
-//         return spec.story!(sub_stories);
-//     });
-//     if (is_story_node(result)) {
-//         return update(result, {
-//             data: { gist: () => gist as Gist }
-//         });
-//     } else {
-//         return createElement('span', { gist: gist as GistParam }, result)
-//     }
-// }
 function Gists(renderer) {
     exports.gist_renderer_index.add(renderer);
 }
@@ -20692,18 +20661,12 @@ function has_tag(gist, tag) {
 exports.has_tag = has_tag;
 function gist_to_string(gist) {
     return JSON.stringify(gist);
-    let result = gist.tag;
-    if (gist.children === undefined) {
-        return result;
-    }
-    result += ';';
-    for (let [k, v] of Object.entries(gist.children)) {
-        result += k + '|' + gist_to_string(v);
-    }
-    result += ';';
-    return result;
 }
 exports.gist_to_string = gist_to_string;
+function parse_gist(gist_json) {
+    return JSON.parse(gist_json);
+}
+exports.parse_gist = parse_gist;
 function gists_equal(gist1, gist2) {
     if (gist1.tag !== gist2.tag) {
         return false;
@@ -20742,9 +20705,17 @@ function includes_tag(tag, gist) {
     return false;
 }
 exports.includes_tag = includes_tag;
+const pat1 = { child: "Sam's identity" };
+function pattern(pat) {
+    return pat;
+}
+exports.pattern = pattern;
 function gist_matches(gist, pattern) {
     if (pattern === undefined) {
         return true;
+    }
+    if (typeof pattern === 'string') {
+        return pattern === gist.tag;
     }
     if (pattern instanceof Array) {
         return pattern.some(pat => gist_matches(gist, pat));
@@ -20766,6 +20737,31 @@ function gist_matches(gist, pattern) {
     return true;
 }
 exports.gist_matches = gist_matches;
+function gist_tag_equals(g, tag) {
+    return g.tag === tag;
+}
+exports.gist_tag_equals = gist_tag_equals;
+function assert_gist_tag(g, tag) {
+    if (!gist_tag_equals(g, tag)) {
+        throw new Error(`Gist ${gist_to_string(g)} did not have expected tag ${tag}`);
+    }
+}
+exports.assert_gist_tag = assert_gist_tag;
+function match(pat, f) {
+    return [pat, f];
+}
+exports.match = match;
+function matcher(...match_pairs) {
+    return (gist) => {
+        for (const [pattern, func] of match_pairs) {
+            if (gist_matches(gist, pattern)) {
+                return func(gist);
+            }
+        }
+        throw new Error('Failed to match the input gist: ' + JSON.stringify(gist));
+    };
+}
+exports.matcher = matcher;
 // TODO: includes subpattern
 
 
@@ -21182,7 +21178,7 @@ class Parser {
     }
     with_label_context(labels, cb) {
         let old_label_context = Object.assign({}, this.label_context);
-        this.label_context = Object.assign({}, this.label_context, labels);
+        this.label_context = Object.assign(Object.assign({}, this.label_context), labels);
         try {
             return cb();
         }
@@ -21219,7 +21215,7 @@ class Parser {
         let availability = 'Available';
         if (overrides !== undefined) {
             if (overrides.labels !== undefined) {
-                labels = Object.assign({}, labels, overrides.labels);
+                labels = Object.assign(Object.assign({}, labels), overrides.labels);
             }
             if (overrides.used) {
                 availability = 'Used';
@@ -21250,7 +21246,7 @@ class Parser {
                 spec_.locked = overrides.locked;
             }
             if (overrides.labels) {
-                spec_.labels = Object.assign({}, spec.labels, overrides.labels);
+                spec_.labels = Object.assign(Object.assign({}, spec.labels), overrides.labels);
             }
         }
         return this._consume_spec(spec.tokens, utils_1.drop_keys(spec_, 'tokens'));
@@ -22196,7 +22192,7 @@ function createElement(tag, props, ...deep_children) {
     props = props || {};
     const children = deep_children.flat(Infinity);
     if (typeof (tag) === 'function') {
-        return tag(Object.assign({}, props, { children }));
+        return tag(Object.assign(Object.assign({}, props), { children }));
     }
     const classes = {};
     if (props.className) {
@@ -22424,6 +22420,17 @@ function path_to(parent, target) {
     return null;
 }
 exports.path_to = path_to;
+function parent_path(root, path) {
+    if (path.length === 0) {
+        return [root];
+    }
+    if (!is_story_node(root)) {
+        throw new Error('Element in path had no children.');
+    }
+    const child = root.children[path[0]];
+    return [root, ...parent_path(child, path.slice(1))];
+}
+exports.parent_path = parent_path;
 function replace_in(parent, path, updated) {
     if (path.length === 0) {
         return updated;
@@ -22524,7 +22531,7 @@ for (const prop of TEXT_CATEGORY_NAMES) {
         if (base_query === undefined) {
             base_query = exports.Queries.frame();
         }
-        return update_1.story_update(exports.Queries.chain(base_query, exports.Queries.has_class(prop)), exports.Ops.add(children));
+        return update_1.story_update(exports.Queries.chain(base_query, exports.Queries.children(exports.Queries.has_class('output-text')), exports.Queries.children(exports.Queries.has_class(prop))), exports.Ops.add(children));
     };
 }
 function query_method(k, ...params) {
@@ -22808,17 +22815,18 @@ exports.StoryUpdateOps = {
         }
         return replacement;
     },
-    set_gist: (gist) => (elt, effects) => {
+    set_gist: (gist_param) => (elt, effects) => {
         if (!story_1.is_story_node(elt)) {
             throw new Error('Tried to update the gist on a non-story-node element.');
         }
+        const gist_ = gist_1.gist(gist_param);
         if (effects) {
             effects.push(dom => {
-                dom.dataset.gist = gist_1.gist_to_string(gist);
+                dom.dataset.gist = gist_1.gist_to_string(gist_);
             });
         }
         return utils_1.update(elt, {
-            data: { gist: () => gist }
+            data: { gist: () => gist_ }
         });
     }
 };
@@ -22942,11 +22950,16 @@ exports.StoryQueryIndex.initialize('chain', (...queries) => (story) => {
         .flatMap(([n1, p1]) => exports.StoryQueryIndex.get('chain')(...queries.slice(1))(n1)
         .map(([n2, p2]) => [n2, [...p1, ...p2]]));
 });
-exports.StoryQueryIndex.initialize('children', () => (story) => {
+exports.StoryQueryIndex.initialize('children', (subquery) => (story) => {
     if (!story_1.is_story_node(story)) {
         return [];
     }
-    return story.children.map((child, i) => [child, [i]]);
+    const result = story.children.map((child, i) => [child, [i]]);
+    if (subquery !== undefined) {
+        const q = compile_story_query(subquery);
+        return result.filter(([n, p]) => q(n).find(([f, p]) => f === n) !== undefined);
+    }
+    return result;
 });
 
 
@@ -23255,6 +23268,96 @@ function wrap_in_div(message) {
     return elt;
 }
 exports.wrap_in_div = wrap_in_div;
+
+
+/***/ }),
+
+/***/ "./src/typescript/type_predicate_utils.ts":
+/*!************************************************!*\
+  !*** ./src/typescript/type_predicate_utils.ts ***!
+  \************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+function assert_type_predicate(predicate, value) {
+    if (!predicate(value)) {
+        throw new Error('assertion failed');
+    }
+}
+exports.assert_type_predicate = assert_type_predicate;
+function fake_assert(x) {
+    console.warn('You are doing a fake assert, you are bad.');
+    return;
+}
+exports.fake_assert = fake_assert;
+exports.typeof_ = (t) => (x) => typeof (x) === t;
+exports.in_ = (k) => (x) => k in x;
+exports.instanceof_ = (ctor) => (x) => x instanceof ctor;
+exports.not_ = (f) => (value) => !f(value);
+exports.not_nullish_ = (value) => value !== undefined && value !== null;
+exports.nullish_ = (value) => value === undefined || value === null;
+function and_(pred1) {
+    function and_inner_(pred2) {
+        return (value) => pred1(value) && pred2(value);
+    }
+    return and_inner_;
+}
+exports.and_ = and_;
+function or_(pred1) {
+    function or_inner_(pred2) {
+        return (value) => pred1(value) || pred2(value);
+    }
+    return or_inner_;
+}
+exports.or_ = or_;
+// Value-based structural pattern matching
+exports.Any = Symbol('Any');
+exports.NotNull = Symbol('NotNull');
+function pattern(value, pattern) {
+    return pattern;
+}
+exports.pattern = pattern;
+function matches(value, pat) {
+    if (typeof (pat) === 'function') {
+        return pat(value);
+    }
+    else if (pat === exports.Any) {
+        return true;
+    }
+    else if (pat === exports.NotNull) {
+        return value !== undefined && value !== null;
+    }
+    else if (pat instanceof Array) {
+        for (const p of pat) {
+            if (matches(value, p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    else if (typeof (pat) === 'object') {
+        if (typeof (value) !== 'object') {
+            return false;
+        }
+        for (const [k, v] of Object.entries(pat)) {
+            if (!matches(value[k], v)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    else {
+        return pat === value;
+    }
+}
+exports.matches = matches;
+function make_matcher() {
+    return (pattern) => (value) => matches(value, pattern);
+}
+exports.make_matcher = make_matcher;
 
 
 /***/ }),
@@ -23601,7 +23704,7 @@ function cond_obj(c, r) {
 }
 exports.cond_obj = cond_obj;
 function merge_objects(arr) {
-    return arr.reduce((acc, cur) => (Object.assign({}, acc, cur)), {});
+    return arr.reduce((acc, cur) => (Object.assign(Object.assign({}, acc), cur)), {});
 }
 exports.merge_objects = merge_objects;
 // export type Entry<Obj extends {}> =
@@ -23618,6 +23721,10 @@ function set_prop(obj, ...pair) {
     obj[pair[0]] = pair[1];
 }
 exports.set_prop = set_prop;
+function values(obj) {
+    return Object.values(obj);
+}
+exports.values = values;
 // WARNING: this will break if obj has a property that is explicitly set to undefined!
 // export function entries<K extends keyof any, V>(obj: {[k in K]?: V}): [K, V][] {
 //     return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
@@ -23711,6 +23818,12 @@ function compute_const(f) {
 }
 exports.compute_const = compute_const;
 exports.enforce_always_never = (...args) => { };
+function assert(condition, msg) {
+    if (!condition) {
+        throw new Error(msg);
+    }
+}
+exports.assert = assert;
 function curry(f) {
     return function _curry(f, ...accum_args) {
         return function curried(...args) {

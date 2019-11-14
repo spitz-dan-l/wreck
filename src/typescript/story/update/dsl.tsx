@@ -74,7 +74,7 @@ for (const prop of TEXT_CATEGORY_NAMES) {
             base_query = Queries.frame();
         }
         return story_update(
-            Queries.chain(base_query, Queries.has_class(prop)),
+            Queries.chain(base_query, Queries.children(Queries.has_class('output-text')), Queries.children(Queries.has_class(prop))),
             Ops.add(children)
         );
     }

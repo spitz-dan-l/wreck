@@ -23,8 +23,10 @@
     },
     "include": [
         "./src/typescript/main.tsx",
-        "./src/typescript/demo_worlds/sam.tsx"
-        // 
+        "./src/typescript/demo_worlds/sam.tsx",
+        "./src/typescript/type_predicate_utils.ts",
+        "./src/typescript/gist2.ts",
+        "./src/typescript/scratch.ts"
         // "./src/typescript/**/*"
         // "./src/typescript/main.tsx"
         // "./src/tests",

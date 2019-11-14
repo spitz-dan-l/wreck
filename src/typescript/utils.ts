@@ -225,6 +225,10 @@ export function set_prop<Obj extends {}>(obj: Obj, ...pair: Entry<Obj>) {
     obj[pair[0]] = pair[1];
 }
 
+export function values<Obj extends {}>(obj: Obj): Entry<Obj>[1][] {
+    return <Entry<Obj>[1][]> Object.values(obj);
+}
+
 // WARNING: this will break if obj has a property that is explicitly set to undefined!
 // export function entries<K extends keyof any, V>(obj: {[k in K]?: V}): [K, V][] {
 //     return <[K, Exclude<V, undefined>][]>Object.entries(obj).filter((k, v) => v !== undefined);
@@ -327,6 +331,12 @@ export function compute_const<R>(f: () => R): R {
 }
 
 export const enforce_always_never = (...args: never[]): void => {};
+
+export function assert(condition: any, msg?: string): asserts condition {
+    if (!condition) {
+        throw new Error(msg)
+    }
+}
 
 // Helper for declaring values with tuple types.
 // "as const" would nearly make this unnecessary but @babel/preset-typescript 3.7.7 doesn't parse as const
@@ -451,8 +461,6 @@ export const statics =
 export const let_ = <T>(f: (...args: any) => T) => f();
 
 import {A, F, T} from 'ts-toolbelt'
-import { P } from 'ts-toolbelt/out/types/src/Object/_api';
-import { Try } from 'ts-toolbelt/out/types/src/Any/Try';
 
 type MethodProperties<T extends {}> = {
     [K in keyof T]: T[K] extends (...args: any) => any ? K : never

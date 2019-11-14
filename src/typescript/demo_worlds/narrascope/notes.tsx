@@ -1,4 +1,4 @@
-import { gist, Gists, render_gist_command, render_gist_text } from '../../gist';
+import { gist, Gists, render_gist_command_noun_phrase, render_gist_noun_phrase } from '../../gist';
 import { createElement, story_updater, Fragment, Updates } from '../../story';
 // import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
@@ -64,7 +64,7 @@ export function add_to_notes(world: Venience, note_id: NoteID) {
         { has_written_down: map([note_id, true]) },
         story_updater(
             Updates.prompt(<div>
-                You write about {capitalize(render_gist_text(gist(note_id)))} in your <strong>notes</strong>.
+                You write about {capitalize(render_gist_noun_phrase(gist(note_id)))} in your <strong>notes</strong>.
             </div>)
         )
     );
@@ -89,7 +89,7 @@ Puffers({
                     You have written down notes about the following:
                     {Object.values(note_index.all())
                         .filter(n => world.has_written_down.get(n.note_id))
-                        .map(n => <blockquote>{capitalize(render_gist_text(gist(n.note_id)))}</blockquote>)
+                        .map(n => <blockquote>{capitalize(render_gist_noun_phrase(gist(n.note_id)))}</blockquote>)
                         .join('')}
                     </div>
                 ))
@@ -104,7 +104,7 @@ Puffers({
 
                 specific_threads.push(() =>
                 parser.consume({
-                    tokens: ['notes about', render_gist_command(gist(entry.note_id))],
+                    tokens: ['notes about', render_gist_command_noun_phrase(gist(entry.note_id))],
                     used: world.has_read.get(entry.note_id)
                 }, () =>
                 parser.submit(() => {
@@ -115,7 +115,7 @@ Puffers({
                         gist: () => gist('notes about', { topic: g })
                     },
                     story_updater(Updates.description(<div>
-                        <strong>${capitalize(render_gist_text(g))}</strong>
+                        <strong>${capitalize(render_gist_noun_phrase(g))}</strong>
                         {entry.description()}
                     </div>))
                 )})));

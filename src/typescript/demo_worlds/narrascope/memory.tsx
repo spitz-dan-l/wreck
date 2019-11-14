@@ -1,4 +1,4 @@
-import { gist, Gists, render_gist_text } from '../../gist';
+import { gist, Gists, render_gist_noun_phrase } from '../../gist';
 import { find_historical } from '../../history';
 import { Puffer } from '../../puffer';
 import { StaticIndex } from '../../static_resources';
@@ -37,7 +37,7 @@ function memory_description(spec: MemorySpec) {
             {spec.description()}
         </div>
         <br/>
-        {capitalize(render_gist_text(gist(spec.action)))} confers:
+        {capitalize(render_gist_noun_phrase(gist(spec.action)))} confers:
         <blockquote>
             {action.description}
         </blockquote>

@@ -113,7 +113,7 @@ export function animate(comp_elt: HTMLElement) {
                     'animation-active');
 
                 walkElt(comp_elt, (e) => {
-                    e.style.maxHeight = null;
+                    e.style.maxHeight = '';
                     delete e.dataset.maxHeight;
                     delete e.dataset.isCollapsing;
                 });

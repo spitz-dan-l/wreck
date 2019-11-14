@@ -60,7 +60,7 @@ export interface StoryQueries {
     has_class: (cls: string | RegExp) => StoryQuery;
     frame: (index?: number | number[]) => StoryQuery;
     chain: (...queries: StoryQuerySpec[]) => StoryQuery;
-    children: () => StoryQuery;
+    children: (subquery?: StoryQuerySpec) => StoryQuery;
 }
 StoryQueryIndex.initialize('path', (path) =>
     root => {
@@ -158,10 +158,17 @@ StoryQueryIndex.initialize('chain', (...queries) =>
         );
     });
 
-StoryQueryIndex.initialize('children', () =>
+StoryQueryIndex.initialize('children', (subquery?) =>
     (story) => {
         if (!is_story_node(story)){
             return [];
         }
-        return story.children.map((child, i) => [child, [i]]);
+        const result = story.children.map((child, i) => [child, [i]] as FoundNode);
+        if (subquery !== undefined) {
+            const q = compile_story_query(subquery);
+            return result.filter(([n, p]) => 
+                q(n).find(([f, p]) => f === n) !== undefined
+            );
+        }
+        return result;
     });

@@ -8,9 +8,9 @@ import { Gist } from '../gist';
 
 export type StoryHole = { kind: 'StoryHole' };
 
-export type Fragment<Node extends StoryNode=StoryNode> = string | Node | StoryHole;
-export type DeepFragment<Node extends StoryNode=StoryNode> = Fragment<Node> | DeepFragmentArray<Node>;
-interface DeepFragmentArray<Node extends StoryNode=StoryNode> extends Array<DeepFragment<Node>> {};
+export type Fragment = string | StoryNode | StoryHole;
+export type DeepFragment = Fragment | DeepFragmentArray;
+interface DeepFragmentArray extends Array<DeepFragment> {};
 
 export interface StoryNode {
     kind: 'StoryNode',
@@ -22,10 +22,10 @@ export interface StoryNode {
         frame_index?: number,
         gist?: Gist
     },
-    children: Fragment<this>[]
+    children: Fragment[]
 }
 
-export function is_story_node<Node extends StoryNode=StoryNode>(x: Fragment<Node>): x is Node {
+export function is_story_node(x: Fragment): x is StoryNode {
     return (x as any).kind === 'StoryNode';
 }
 export function is_story_hole(x: Fragment): x is StoryHole {
@@ -35,6 +35,8 @@ export function is_story_hole(x: Fragment): x is StoryHole {
 
 // Find subnodes within a story
 export type StoryPredicate = (n: Fragment) => boolean;
+export type StoryTypePredicate<F extends Fragment> = (n: Fragment) => n is F;
+
 
 export type Path = number[];
 export function is_path_empty(x: Path): x is [] {
@@ -44,8 +46,10 @@ export function is_path_full(x: Path): x is [number, ...number[]] {
     return x.length > 0;
 }
 
-export type FoundNode = [Fragment, Path];
+export type FoundNode<F extends Fragment=Fragment> = [F, Path];
 
+export function find_node<F extends Fragment>(node: Fragment, predicate: StoryTypePredicate<F>): FoundNode<F> | null
+export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode | null;
 export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode | null {
     if (predicate(node)) {
         return [node, []];
@@ -63,6 +67,8 @@ export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode 
     return null;
 }
 
+export function find_all_nodes<F extends Fragment>(node: Fragment, predicate: StoryTypePredicate<F>): FoundNode<F>[];
+export function find_all_nodes(node: Fragment, predicate: StoryPredicate): FoundNode[];
 export function find_all_nodes(node: Fragment, predicate: StoryPredicate): FoundNode[] {
     const result: FoundNode[] = [];
     if (predicate(node)) {
@@ -143,6 +149,19 @@ export function path_to(parent: Fragment, target: Fragment): Path | null {
         }
     }
     return null;
+}
+
+export function parent_path(root: Fragment, path: Path): Fragment[] {
+    if (path.length === 0) {
+        return [root];
+    }
+
+    if (!is_story_node(root)) {
+        throw new Error('Element in path had no children.');
+    }
+    const child = root.children[path[0]];
+    
+    return [root, ...parent_path(child, path.slice(1))]
 }
 
 // updating story nodes

@@ -47,7 +47,7 @@ I strongly encourage you to stake your professional reputation on the behavior o
 //          ((x: T) => Maybe<T, Del>));
 
 export type Updater<T, Deletable extends boolean=false> =
-    // Wrapping in [] makes typescript not distribute unions down the tree (seems pretty dumb to me)
+    // Wrapping in [] makes typescript not distribute unions down the tree
     // See discussion here: https://github.com/Microsoft/TypeScript/issues/22596
     [T] extends [(...args: any) => any] ?
         (((x: T) => Updated<T, Deletable>) |

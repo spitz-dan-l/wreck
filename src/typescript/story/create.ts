@@ -31,11 +31,11 @@ export type NodeProps = (
 
 // type StoryNodeTypeForProps<P extends NodeProps> = P['type'] extends keyof any ? StoryNodeTypes[P['type']] : StoryNode;
 
-export type RendererBaseProps<Node extends StoryNode=StoryNode> = { children?: Fragment<Node>[] };
+export type RendererBaseProps = { children?: Fragment[] };
 
-export type StoryRenderer<P extends {}, Node extends StoryNode=StoryNode> = (props: P & RendererBaseProps<Node>) => Node;
+export type StoryRenderer<P extends {}> = (props: P & RendererBaseProps) => StoryNode;
 
-export function createElement<P extends {}, N extends StoryNode=StoryNode>(tag: StoryRenderer<P, N>, props: P, ...deep_children: DeepFragment<N>[]): N;
+export function createElement<P extends {}>(tag: StoryRenderer<P>, props: P, ...deep_children: DeepFragment[]): StoryNode;
 export function createElement<P extends NodeProps>(tag: string, props: MergeWithHTMLProps<P>, ...deep_children: DeepFragment[]): StoryNode;
 export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithHTMLProps<NodeProps>, ...deep_children: DeepFragment[]): StoryNode {
     // The jsx transformation appears to pass null as the second argument if none are provided.
