@@ -512,3 +512,11 @@ export function with_context<C, R>(f: (set: (c: C) => void) => R): [R, C | undef
 
     return [result, context];
 }
+
+export type AsProperty<Name extends string, Type> =
+    [Type] extends [undefined] ?
+        object :
+    Type & undefined extends never ?
+        { [N in Name]: Type } :
+    { [N in Name]?: Type };
+

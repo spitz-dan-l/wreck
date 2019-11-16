@@ -1,10 +1,10 @@
 import { ConsumeSpec } from './parser';
 import { StaticIndex, StaticNameIndexFor } from './static_resources';
 import { Fragment, is_story_node, createElement } from './story';
-import { compute_const, map_values, enforce_always_never, entries } from './utils';
+import { compute_const, map_values, enforce_always_never, entries, AsProperty } from './utils';
 import { update } from './update';
 import { A, U } from 'ts-toolbelt';
-import { matches, Pattern, NotNull, infer_pattern, infer_matched_value, Any } from './type_predicate_utils';
+import { matches, Pattern, NotNull, Any } from './pattern_matching';
 
 /*
     A gist is a composable structure that can be rendered into a noun phrase as a game command or as output text
@@ -32,104 +32,130 @@ import { matches, Pattern, NotNull, infer_pattern, infer_matched_value, Any } fr
 
 */
 
+export type ChildrenType = {[K in string]?: ValidTags};
+export type MakeStaticGistType<Children extends ChildrenType | undefined=undefined, Parameters extends object | undefined=undefined> =
+    & AsProperty<'children', Children> //(Children & undefined extends never ? { children: Children} : { children?: Children })
+    & AsProperty<'parameters', Parameters> //(Parameters & undefined extends never ? { parameters: Parameters } : { parameters?: Parameters })
+
 interface StaticGistTypes {
-    Sam: {},
+    Sam: {};
     butt1: {
-        parameters: {horse?: number},
+        parameters: {horse: number},
         children: { horse: ValidTags }
-    }
+    };
     butt2: {
         parameters: {horse?: number},
         children: { horse?: ValidTags }
+    };
+    facet: {
+        children: {
+            parent?: ValidTags,
+            child: ValidTags
+        }
     }
-    // butt3: {
-    //     parameters: {horse?: number}
-    //     children: { horse?: Gist }
-    // }
-    // butt4: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt5: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt6: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt7: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt8: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt9: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt10: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt11: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt12: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt13: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt14: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt15: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt16: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt17: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt18: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt19: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt20: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt21: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt22: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
-    // butt23: {
-    //     parameters: {horse?: number}
-    //     children: { horse: Gist }
-    // }
+    butt3: {
+        parameters: {horse?: number}
+        children: { horse?: Gist }
+    }
+    butt4: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt5: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt6: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt7: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt8: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt9: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt10: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt11: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt12: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt13: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt14: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt15: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt16: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt17: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt18: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt19: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt20: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt21: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt22: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
+    butt23: {
+        parameters: {horse?: number}
+        children: { horse: Gist }
+    }
 };
 type ValidTags = keyof StaticGistTypes;
 
-type ValidChildren = Record<string, Gist>;
+type ValidStaticGistTypes = Record<string, MakeStaticGistType<any, any>>;
+
+enforce_always_never(
+    null as (
+        {[K in keyof StaticGistTypes]:
+            StaticGistTypes[K] extends MakeStaticGistType<any, any> ?
+                never :
+                K
+            
+            // {
+            //     parameters?: object,
+            //     children?: { [C in string]?: keyof StaticGistTypes }
+            // } ? never : K
+        }[keyof StaticGistTypes]
+    )
+)
 
 type GistTypes = {
     [Tag in ValidTags]: {
@@ -213,9 +239,6 @@ type GistDSLChildren<Children extends {}> = {
 
 type TTTT = Gists['butt2']['children']
 
-declare const gcc: GistDSLChildren<Gists['butt2']['children']>;
-gcc.horse
-
 function translate_dsl<G extends Gist>(x: G/*GistDSL<Gist>*/): G;//Gist;
 function translate_dsl(x: GistDSLStructure) {
     if (typeof(x) === 'string') {
@@ -262,11 +285,11 @@ gist('Sam')
 
 function foo(g: Gist) {
     if (matches(g, {
-        // tag: ['Sam', 'butt1'],
-        children: {
-            horse: NotNull
-        }
+        tag: ['Sam', 'facet'],
     })) {
+        g
+        g.tag
+        g.children
     }
 }
 
@@ -277,46 +300,3 @@ function foo(g: Gist) {
 //     // }
 // }
 
-type AA = 'a' | 'b' | 'c' | 'd';
-
-type AAA<X> =
-    [X] extends [(infer X1)] ?
-        X extends unknown ?
-            X1 extends unknown ?
-                {a: X, b: X1} :
-                never :
-            never :
-        never;
-
-type AAA2<X> =
-    U.TupleOf<X> extends infer Tup ?
-        { [K in keyof Tup]: {
-            [K2 in keyof Tup]: {a: K, b: K2}
-        }} :
-        never
-
-type AAA3<X> =
-    {a: X, b: X} extends infer U ?
-        U extends unknown ?
-            U :
-            never :
-        never;
-
-type T11 = AAA<AA>
-type T12 = AAA2<AA>
-type T13 = AAA3<AA>
-
-type FF = { name: 'a' } | { name: 'b' }
-const ff_recognizer = infer_matched_value<FF>();
-const pff1 = ff_recognizer([
-    { name: 'a' },
-    { name: 'b' }
-]);
-
-const pff2 = ff_recognizer({
-    name: ['a', 'b']
-});
-
-type Unior = U.TupleOf<FF>
-
-export const inferer = <T>() => <T1 extends T>(t: T1) => t;

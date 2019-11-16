@@ -5,7 +5,7 @@ import { createElement, find_all_nodes, Fragment, is_story_node, StoryNode, Stor
 import { update } from "../update";
 import { bound_method, compute_const, enforce_always_never, assert } from "../utils";
 import { get_initial_world, World, world_driver } from "../world";
-import { matches, make_matcher, not_nullish_, nullish_, NotNull, and_, infer_matched_value } from '../type_predicate_utils';
+import { matches, make_matcher, NotNull } from '../pattern_matching';
 
 export interface SamWorld extends World {
 }
@@ -95,13 +95,6 @@ function story_facets(node: Fragment) {
     if (!is_story_node(node) || node.data.gist === undefined) {
         return [];
     }
-
-    const matched = infer_matched_value<Fragment>()({
-        kind: 'StoryNode',
-        key: k => k !== node.key,
-        data: { gist: NotNull }
-    });
-    matched.data.gist
 
     const predicate = make_matcher<Fragment>()({
         kind: 'StoryNode',
