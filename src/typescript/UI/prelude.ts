@@ -1,4 +1,4 @@
-import { StaticMap } from '../static_resources';
+import { StaticMap } from '../lib/static_resources';
 import { AppAction, AppState } from './app_state';
 import {UI} from './framework';
 

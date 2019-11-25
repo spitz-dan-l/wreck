@@ -10,8 +10,8 @@
     read or otherwise used by other Puffers sharing the world.
 */
 
-import { map_stages, MaybeStages, normalize_stages, Stages, stages, stage_keys } from './stages';
-import { drop_keys, IntersectTupleTypes } from './utils';
+import { map_stages, MaybeStages, normalize_stages, Stages, stages, stage_keys } from './lib/stages';
+import { drop_keys, IntersectTupleTypes } from './lib/utils';
 import { CommandHandler, make_world_spec, Narrator, World, WorldSpec, WorldUpdater } from './world';
 
 

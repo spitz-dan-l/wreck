@@ -20,17 +20,44 @@
 
 */
 
-import { starts_with, tokenize, split_tokens } from './text_utils';
-import { array_last, drop_keys } from './utils';
+import { filter, map } from 'iterative';
+import { starts_with, tokenize, split_tokens } from './lib/text_utils';
+import { array_last, drop_keys } from './lib/utils';
+import { type_or_kind_is } from './lib/type_predicate_utils';
 
-class NoMatch {
-    kind: 'NoMatch' = 'NoMatch';
-};
+// class NoMatch {
+//     kind: 'NoMatch' = 'NoMatch';
+// };
 
-class ParseRestart {
-    kind: 'ParseRestart' = 'ParseRestart';
-    constructor(public n_splits: number) {}
-};
+const NO_MATCH_BRAND: unique symbol = Symbol('NO_MATCH_BRAND');
+type NoMatch = {
+    kind: 'NoMatch';
+    __brand: typeof NO_MATCH_BRAND
+}
+
+const NO_MATCH: NoMatch = {kind: 'NoMatch'} as NoMatch;
+
+function is_no_match<T extends {}>(x: T | NoMatch): x is NoMatch {
+    return x === NO_MATCH; //('kind' in x) && x.kind === 'NoMatch';
+}
+
+type ParseRestart = {
+    kind: 'ParseRestart',
+    n_splits: number
+}
+
+function parse_restart(n_splits: number): ParseRestart {
+    return { kind: 'ParseRestart', n_splits };
+}
+
+function is_parse_restart<T>(x: T | ParseRestart): x is ParseRestart {
+    return (typeof(x) === 'object') && ('kind' in x) && x.kind === 'ParseRestart';
+}
+
+// class ParseRestart {
+//     kind: 'ParseRestart' = 'ParseRestart';
+//     constructor(public n_splits: number) {}
+// };
 export class ParseError extends Error {};
 
 export const SUBMIT_TOKEN = Symbol('SUBMIT');
@@ -143,7 +170,8 @@ export function is_parse_result_valid(result: TokenMatch[]) {
 }
 
 type GroupableRow = (TokenMatch | null)[]
-export function group_rows(options: GroupableRow[], consider_labels=true) {
+// export function group_rows(options: GroupableRow[], consider_labels=true) {
+export function group_rows(options: Iterable<GroupableRow>, consider_labels=true) {
     let grouped_options: {
         [k: string]: GroupableRow[]
     } = {};
@@ -201,8 +229,11 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
         if (input_stream.length === 0) {
             row = [];
         } else {
-            let all_partial_rows = parse_results.filter(row => array_last(row)!.status === 'PartialMatch');
-            let truncated = all_partial_rows.map(row => row.slice(0, input_stream.length));
+            
+            let all_partial_rows = filter(parse_results, row => array_last(row)!.status === 'PartialMatch');
+            let truncated = map(all_partial_rows, row => row.slice(0, input_stream.length));
+            // let all_partial_rows = parse_results.filter(row => array_last(row)!.status === 'PartialMatch');
+            // let truncated = all_partial_rows.map(row => row.slice(0, input_stream.length));
 
             let grouped = <{[k:string]: TokenMatch[][]}> group_rows(truncated);
 
@@ -267,14 +298,18 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
         return tm.status === 'PartialMatch';
     }
 
-    let rows_with_typeahead = parse_results.filter(pr => 
+    let rows_with_typeahead = filter(parse_results, pr => 
         !(array_last(pr)!.status === 'ErrorMatch')
         && pr.slice(input_stream.length - 1).some(is_partial)
     );
+    // let rows_with_typeahead = parse_results.filter(pr => 
+    //     !(array_last(pr)!.status === 'ErrorMatch')
+    //     && pr.slice(input_stream.length - 1).some(is_partial)
+    // );
 
     type groups_of_partials = { [k: string]: (PartialMatch | null)[][] };
     let grouped_options: groups_of_partials = <groups_of_partials> group_rows(
-        rows_with_typeahead.map(pr => {
+        map(rows_with_typeahead, pr => {
             let start_idx = pr.findIndex(is_partial);
             let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
             let elts = <PartialMatch[]>pr.slice(start_idx);
@@ -282,6 +317,15 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
             return option
         }
     ));
+    // let grouped_options: groups_of_partials = <groups_of_partials> group_rows(
+    //     rows_with_typeahead.map(pr => {
+    //         let start_idx = pr.findIndex(is_partial);
+    //         let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
+    //         let elts = <PartialMatch[]>pr.slice(start_idx);
+    //         option.push(...elts);
+    //         return option
+    //     }
+    // ));
 
     return Object.entries(grouped_options).map(([key, options]) => {
         let current_a: TokenAvailability = 'Locked';
@@ -336,7 +380,10 @@ interface ConsumeSpecArray extends Array<ConsumeSpec> {};
 export type ParseValue<T> = T | NoMatch | ParseRestart;
 
 export function failed<T>(result: ParseValue<T>): result is NoMatch | ParseRestart {
-    return (result instanceof NoMatch || result instanceof ParseRestart);
+    if (result === undefined) {
+        return false;
+    }
+    return result === NO_MATCH || type_or_kind_is(result, 'ParseRestart');
 }
 
 type Path = (number | Iterator<number>)[];
@@ -349,7 +396,7 @@ export class Parser {
         // this.splits_to_take = splits_to_take;
     }
 
-    private split_iter: Iterator<number>;
+    private split_iter: Iterator<number, void>;
     private splits_to_take: number[];
     private current_split: number = 0;
 
@@ -372,7 +419,7 @@ export class Parser {
     }
 
     with_label_context<R>(labels: TokenLabels, cb: () => R) {
-        let old_label_context = {...this.label_context};
+        const old_label_context = {...this.label_context};
 
         this.label_context = {...this.label_context, ...labels};
 
@@ -387,7 +434,7 @@ export class Parser {
     consume<T>(spec: ConsumeSpec, callback: ParserThread<T>): ParseValue<T>;
     consume<T>(spec: ConsumeSpec, result: T): ParseValue<T>;
     consume(spec: ConsumeSpec, result?: any): any {
-        let status = this._consume_spec(spec);
+        const status = this._consume_spec(spec);
         if (failed(status)) {
             return status;
         }
@@ -411,7 +458,7 @@ export class Parser {
     }
 
     private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): ParseValue<void> {
-        let toks = split_tokens(spec)//tokenize(spec)[0];
+        const toks = split_tokens(spec)//tokenize(spec)[0];
             
         let labels: TokenLabels = this.label_context; //{ filler: true };
         let availability: TokenAvailability = 'Available';
@@ -431,7 +478,7 @@ export class Parser {
         }
         
         for (let t of toks) {
-            let status = this._consume(t.split('_').map(t => ({
+            const status = this._consume(t.split('_').map(t => ({
                 kind: 'RawConsumeSpec',
                 token: t,
                 availability,
@@ -445,7 +492,7 @@ export class Parser {
     }
 
     private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): ParseValue<void> {
-        let spec_: ConsumeSpecObj = {...spec};
+        const spec_: ConsumeSpecObj = {...spec};
 
         if (overrides) {
             if (overrides.used !== undefined) {
@@ -492,9 +539,9 @@ export class Parser {
         let i = 0
         // check if exact match
         for (i = 0; i < tokens.length; i++) {
-            let spec = tokens[i];
+            const spec = tokens[i];
 
-            let spec_value = spec.token;
+            const spec_value = spec.token;
 
             if (spec_value === NEVER_TOKEN) {
                 error = true;
@@ -505,7 +552,7 @@ export class Parser {
                 partial = true;
                 break;
             }
-            let input = this.input_stream[this.pos + i];
+            const input = this.input_stream[this.pos + i];
             if (spec_value === input) {
                 if (spec.availability === 'Locked') {
                     error = true;
@@ -554,7 +601,7 @@ export class Parser {
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
-            this.failure = new NoMatch();
+            this.failure = NO_MATCH; //new NoMatch();
             return this.failure;
         }
 
@@ -567,7 +614,7 @@ export class Parser {
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
-            this.failure = new NoMatch();
+            this.failure = NO_MATCH //new NoMatch();
             return this.failure;
         }
 
@@ -581,6 +628,7 @@ export class Parser {
             } as const)));
         // increment pos
         this.pos += tokens.length;
+        return undefined;
     }
 
     eliminate(): NoMatch {
@@ -605,7 +653,7 @@ export class Parser {
         // let status = this._consume([
         //     rcs_pool.create(SUBMIT_TOKEN, 'Available', {})
         // ]);
-        let status = this._consume([{
+        const status = this._consume([{
             kind: 'RawConsumeSpec',
             token: SUBMIT_TOKEN,
             labels: {},
@@ -625,15 +673,15 @@ export class Parser {
             return this.eliminate();
         }
 
-        let {value: split_value, done} = this.split_iter.next();
+        const next_result = this.split_iter.next();
 
-        if (done) {
-            this.failure = new ParseRestart(subthreads.length);
+        if (next_result.done) {
+            this.failure = parse_restart(subthreads.length); //new ParseRestart(subthreads.length);
             return this.failure;
         }
         
-        let st = subthreads[split_value];
-        let result = st(this);
+        const st = subthreads[next_result.value];
+        const result = st(this);
 
         if (failed(result)) {
             return result;
@@ -678,23 +726,23 @@ export class Parser {
 
                 const p = new Parser(tokens, splits_to_take);
 
-                let result: ParseValue<T> = new NoMatch();
+                let result: ParseValue<T> = NO_MATCH; //new NoMatch();
                 n_iterations++;
 
                 result = t(p);
 
-                if (result instanceof ParseRestart) {
+                if (is_parse_restart(result)) { //result instanceof ParseRestart) {
                     n_splits++;
-                    const new_splits: number[] = [];
-                    for (let i = 0; i < result.n_splits; i++) {
-                        new_splits.push(i);
-                    }
-                    frontier.push([...splits_to_take, new_splits[Symbol.iterator]()]);
+                    // const new_splits: number[] = [];
+                    // for (let i = 0; i < result.n_splits; i++) {
+                    //     new_splits.push(i);
+                    // }
+                    frontier.push([...splits_to_take, new Array(result.n_splits).keys()]); //new_splits[Symbol.iterator]()]);
                     continue;
                 }
 
-                if (!(result instanceof NoMatch) && (p.parse_result.length === 0 || array_last(p.parse_result)!.expected.token !== SUBMIT_TOKEN)) {
-                    let expected_command: string = p.parse_result.map(r => r.expected.token).join(' ');
+                if (!is_no_match(result)/*( result instanceof NoMatch)*/ && (p.parse_result.length === 0 || array_last(p.parse_result)!.expected.token !== SUBMIT_TOKEN)) {
+                    const expected_command: string = p.parse_result.map(r => r.expected.token).join(' ');
 
                     throw new ParseError("Command did not end in SUBMIT: " + expected_command);
                 }
@@ -709,9 +757,9 @@ export class Parser {
         const [results, parses] = match_input();        
 
         // Assembling the view object, data structures for building views of the parsed text
-        let view = compute_view(parses, tokens);
+        const view = compute_view(parses, tokens);
 
-        let parsing: Parsing = {
+        const parsing: Parsing = {
             kind: 'Parsing',
             view,
             parses,
@@ -721,7 +769,7 @@ export class Parser {
         };
 
         // Filter and find the single valid result to return
-        let valid_results = <T[]>results.filter(r => !(r instanceof NoMatch));
+        const valid_results = <T[]>results.filter(r => !is_no_match(r)); //(r instanceof NoMatch));
 
         if (valid_results.length === 0) {
             return {
@@ -731,7 +779,7 @@ export class Parser {
         } else if (valid_results.length > 1) {
             throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
         } else {
-            let result = valid_results[0];
+            const result = valid_results[0];
             return {
                 kind: 'Parsed',
                 result: result,
@@ -780,13 +828,13 @@ export function traverse_thread<T>(thread: ParserThread<T>, command_filter?: (co
     let n_partials = 0;
     let n_matches = 0;
 
-    let result: { [cmd: string]: Parsed<T> } = {};
+    const result: { [cmd: string]: Parsed<T> } = {};
 
-    let frontier: RawInput[] = [{kind: 'RawInput', text: '', submit: false}];
+    const frontier: RawInput[] = [{kind: 'RawInput', text: '', submit: false}];
 
     while (frontier.length > 0) {
-        let cmd = frontier.shift()!;
-        let res = Parser.run_thread(cmd, thread);
+        const cmd = frontier.shift()!;
+        const res = Parser.run_thread(cmd, thread);
         if (res.kind === 'Parsed') {
             result[cmd.text] = res;
             n_matches++;
@@ -794,26 +842,27 @@ export function traverse_thread<T>(thread: ParserThread<T>, command_filter?: (co
             n_partials++;
         }
 
-        let partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch')
-        let grps = group_rows(partial_parses, false);
+        const partial_parses = filter(res.parsing.parses, ms => array_last(ms)!.status === 'PartialMatch')
+        // let partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch')
+        const grps = group_rows(partial_parses, false);
 
         for (let k of Object.keys(grps)) {
-            let grp = grps[k];
+            const grp = grps[k];
 
             if (command_filter !== undefined) {
-                let expected = grp[0].map(m => m!.expected);
+                const expected = grp[0].map(m => m!.expected);
                 if (!command_filter(expected)) {
                     continue;
                 }
             }
 
-            let new_cmd: RawInput = <RawInput>{
+            const new_cmd: RawInput = <RawInput>{
                 kind: 'RawInput',
                 submit: false
             };
-            let toks: string[] = [];
+            const toks: string[] = [];
             for (let m of grp[0]) {
-                let tok = m!.expected.token;
+                const tok = m!.expected.token;
                 if (typeof(tok) === 'string') {
                     toks.push(tok);
                 } else {

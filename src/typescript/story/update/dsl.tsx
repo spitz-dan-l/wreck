@@ -1,9 +1,9 @@
-import { make_dsl, ParametersFor, ReplaceReturn } from '../../dsl_utils';
+import { make_dsl, ParametersFor, ReplaceReturn } from '../../lib/dsl_utils';
 import { history_array } from "../../history";
 import { Parsing } from '../../parser';
-import { stages } from "../../stages";
+import { stages } from "../../lib/stages";
 import { ParsedTextStory } from '../../UI/components/parsed_text';
-import { keys, update, Updater } from "../../utils";
+import { keys, update, Updater, flat_deep } from "../../lib/utils";
 import { World } from "../../world";
 import { createElement } from '../create';
 import { Fragment, StoryHole, StoryNode } from "../story";
@@ -13,7 +13,7 @@ import { Story, StoryUpdatePlan, StoryUpdateSpec, story_update } from "./update"
 import { push_group, StoryUpdateGroup, StoryUpdateGroups } from './update_group';
 
 type QuerySpecDomain = ReplaceReturn<StoryQueries, StoryQuerySpec>;
-export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, ...params))
+export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, params))
 
 type OpSpecDomain = ReplaceReturn<StoryOps, StoryOpSpec>;
 export const Ops = make_dsl<OpSpecDomain>(name => (...params) => story_op(name, ...params));
@@ -35,7 +35,7 @@ class UpdatesBuilder {
     }
 
     apply(f: (builder: UpdatesBuilder) => UpdateSpecs): StoryUpdateSpec[] {
-        return [f(this)].flat(Infinity);
+        return flat_deep([f(this)]);
     }
 
     to_query(): StoryQuerySpec {
@@ -51,7 +51,7 @@ class UpdatesBuilder {
             const w_frame = this.frame(w.index);
             results.push(f(w, w_frame));
         }
-        return results.flat(Infinity);
+        return flat_deep(results); //.flat(Infinity);
     }
 }
 
@@ -88,7 +88,7 @@ type QueryMethods = {
 interface UpdatesBuilder extends QueryMethods {}
 
 function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<QueryMethods>[K]): UpdatesBuilder {
-    const q = story_query(k, ...params);
+    const q = story_query(k, params);
     const base_query = this.context.query;
     
     if (base_query === undefined) {
@@ -165,7 +165,7 @@ class GroupBuilder {
             kind: 'StoryUpdateGroup',
             name: this.context.name || 'updates',
             stage: this.context.stage,
-            updates: update_specs.flat(Infinity)
+            updates: flat_deep(update_specs) //.flat(Infinity)
         };
     }
 }
@@ -180,7 +180,7 @@ function is_group(x: StoryUpdateGroup | StoryUpdateSpec): x is StoryUpdateGroup 
 }
 
 export function story_updater(...updates: StoryUpdaterSpec[]) {
-    const flat_updates = updates.flat(Infinity) as (StoryUpdateGroup | StoryUpdateSpec)[];
+    const flat_updates = flat_deep(updates)/*.flat(Infinity)*/ as (StoryUpdateGroup | StoryUpdateSpec)[];
     
     const groups: StoryUpdateGroup[] = []
     let default_group_updates: StoryUpdateSpec[] = [];
@@ -202,6 +202,7 @@ export function story_updater(...updates: StoryUpdaterSpec[]) {
     }
     flush_default_group();
 
+    
     return <W extends World>(world: W) => update(world as World, {
         story_updates: { 
             effects: _ => groups.reduce((eff, grp) => push_group(eff, grp), _)

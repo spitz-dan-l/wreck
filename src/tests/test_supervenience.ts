@@ -1,50 +1,52 @@
+import './setup';
 import * as assert from 'assert';
-import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
 // import { new_hex_world, Hex } from '../typescript/demo_worlds/hex_port';
 // import { new_bird_world, BirdWorld } from '../typescript/demo_worlds/puffer_bird_world';
-// import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
+import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
 import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, CommandFilter } from '../typescript/supervenience';
-// import { find_index } from '../typescript/interpretation';
-import { deep_equal, included, array_last, drop_keys } from '../typescript/utils';
+import { find_index } from '../typescript/history';
+import { deep_equal, included, array_last, drop_keys } from '../typescript/lib';
 import { gist_matches, GistPattern } from '../typescript/gist';
 
 const simulator_id = 'playtester';
 
-describe('supervenience birdworld', () => {
-    it('beats birdworld', () => {
+// describe('supervenience birdworld', () => {
+//     it.only('beats birdworld', () => {
         
-        let {initial_result, thread_maker} = new_bird_world();
+//         let {initial_result, thread_maker} = new_bird_world();
 
-        function goal_met(w: BirdWorld): boolean {
-            return w.is_in_heaven && w.has_seen_zarathustra && w.role === 'vulnerable';
-        }
+//         function goal_met(w: BirdWorld): boolean {
+//             return w.is_in_heaven && w.has_seen_zarathustra && w.role === 'vulnerable';
+//         }
 
-        let space: NarrativeDimension<BirdWorld>[] = [
-            w => w.is_in_heaven,
-            w => w.has_seen_zarathustra,
-            w => w.role === 'vulnerable'
-        ];
+//         let space: NarrativeDimension<BirdWorld>[] = [
+//             w => w.is_in_heaven,
+//             w => w.has_seen_zarathustra,
+//             w => w.role === 'vulnerable'
+//         ];
 
-        let search_spec: FutureSearchSpec<BirdWorld> = {
-            simulator_id,
-            thread_maker,
-            goals: [goal_met],
-            space,
-            command_filter: (w, cmd) => {
-                if (cmd[0]
-                    && cmd[0].token === 'be'
-                    && cmd[5]
-                    && cmd[5].token !== 'seduced') {
-                    return false;
-                }
-                return true;
-            }
-        };
+//         let search_spec: FutureSearchSpec<BirdWorld> = {
+//             simulator_id,
+//             thread_maker,
+//             goals: [goal_met],
+//             space,
+//             command_filter: (w, cmd) => {
+//                 if (cmd[0]
+//                     && cmd[0].token === 'be'
+//                     && cmd[5]
+//                     && cmd[5].token !== 'seduced') {
+//                     return false;
+//                 }
+//                 return true;
+//             }
+//         };
+//         console.profile('supervenience');
+//         search_future(search_spec, initial_result.world);
+//         console.profileEnd('supervenience');
+//     });
+// });
 
-        search_future(search_spec, initial_result.world);
-    });
-});
 
 describe('supervenience narrascope', () => {
     let {initial_result, thread_maker} = new_venience_world();
@@ -117,7 +119,7 @@ describe('supervenience narrascope', () => {
             simulator_id,
             thread_maker,
             goals,
-            space: [w => drop_keys(w, 'previous', 'index', 'parsing', 'interpretations', 'parent', 'child')],
+            space: [w => drop_keys(w, 'previous', 'index', 'parsing')],
             command_filter
         };
         let result = search_future(spec, initial_result.world);
@@ -143,7 +145,9 @@ describe('supervenience narrascope', () => {
             space,
             command_filter
         };
+        console.profile('supervenience_narrascope');
         let result = search_future(spec, initial_result.world);
+        console.profileEnd('supervenience_narrascope');
         assert.equal(result.status, 'Found');
     });
 

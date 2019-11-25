@@ -6,7 +6,7 @@
         "moduleResolution": "node",
         "esModuleInterop": true,
         "module": "commonjs",
-        "target": "es2017",
+        "target": "es2020",
         "lib": ["esnext", "dom"],
         "jsx": "react",
         "jsxFactory": "createElement",
@@ -22,14 +22,16 @@
         "noImplicitThis": true
     },
     "include": [
-        "./src/typescript/main.tsx",
-        "./src/typescript/demo_worlds/sam.tsx",
-        "./src/typescript/type_predicate_utils.ts",
-        "./src/typescript/gist2.ts",
-        "./src/typescript/scratch.ts"
-        // "./src/typescript/**/*"
+        // "./src/typescript/main.tsx",
+        // "./src/typescript/demo_worlds/sam.tsx",
+        // "./src/typescript/type_predicate_utils.ts",
+        // "./src/typescript/gist2.ts",
+        // "src/typescript/scratch.ts",
+        // "./src/typescript/pattern_matching2.ts"
+        // "./src/typescript",
         // "./src/typescript/main.tsx"
-        // "./src/tests",
+        "./src/tests",
+        "./src/typescript/demo_worlds/demo_worlds/narrascope",
         // "./src/typescript/*",
         // "./src/typescript/UI/**/*",
         // "./src/typescript/story/**/*",
@@ -37,8 +39,8 @@
         
     ],
     "exclude": [
-        "./src/tests",
-        "./src/tests/*",
-        "./src/tests/**"
+        // "./src/tests",
+        // "./src/tests/*",
+        // "./src/tests/**"
     ]
 }

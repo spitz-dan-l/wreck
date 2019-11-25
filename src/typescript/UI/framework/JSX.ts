@@ -1,4 +1,4 @@
-import { HTMLElementTags, MergeWithHTMLProps, set_attributes, remove_custom_props } from "../../jsx_utils";
+import { HTMLElementTags, MergeWithHTMLProps, set_attributes, remove_custom_props } from "../../lib/jsx_utils";
 import { Renderer, Props, BaseProps } from "./framework";
 
 
@@ -30,7 +30,7 @@ interface CreateElementChildArrayDeep extends Array<CreateElementChildDeep> {}
 export function createElement<P extends Props>(type: Renderer<P>, props: P, ...children: CreateElementChildDeep[]): HTMLElement;
 export function createElement(type: string, props: MergeWithHTMLProps<Props>, ...children: CreateElementChildDeep[]): HTMLElement;
 export function createElement<P extends Props>(type: Renderer<P> | string, props: MergeWithHTMLProps<P>, ...children_deep: CreateElementChildDeep[]): HTMLElement {
-	const children: CreateElementChild[] = children_deep.flat(Infinity);
+	const children: CreateElementChild[] = flat_deep(children_deep); //.flat(Infinity);
 	const all_props: P & BaseProps = {...props, children};
 	
 	if (typeof type === 'string') {
@@ -41,6 +41,7 @@ export function createElement<P extends Props>(type: Renderer<P> | string, props
 }
 
 export import JSX_ = JSX;
+import { flat_deep } from "../../lib/utils";
 export declare namespace createElement {
 	export import JSX = JSX_;
 }

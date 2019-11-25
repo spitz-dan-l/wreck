@@ -20,25 +20,65 @@ export const NotNull: unique symbol = Symbol('NotNull');
 
 type Primitive = boolean | string | symbol | number | null | undefined;
 
+// export type Pattern<Value> =
+//     | ObjectPattern<Value>
+//     | (
+//         Value extends Primitive ?
+//             Value :
+//             never )
+//     | ((x: Value) => x is any)
+//     | ((x: Value) => boolean)
+//     | typeof Any
+//     | typeof NotNull
+//     | Pattern<Value>[]
+//     ;
+
+// export type Pattern<Value> =
+//     | PatternSingle<Value>
+//     | PatternCombiner<Value>
+
 export type Pattern<Value> =
-    | ObjectPattern<Value>
+    // | PatternCombiner<Value>
+    // | typeof Any
+    | typeof NotNull
     | (
         Value extends Primitive ?
             Value :
-            never )
+        Value extends object ?
+            ObjectPattern<Value>:
+        never )
     | ((x: Value) => x is any)
     | ((x: Value) => boolean)
-    | typeof Any
-    | typeof NotNull
-    | Pattern<Value>[]
     ;
+
+
+
+const Union: unique symbol = Symbol('Union');
+const Intersection: unique symbol = Symbol('Intersection');
+
+type Combiner = typeof Union | typeof Intersection;
+export const CombinerSlot: unique symbol = Symbol('CombinerSlot');
+
+type PatternCombiner<Value> = {
+    [CombinerSlot]: Combiner,
+    patterns: Pattern<Value>[]
+}
+
+export function intersection<Value, Patterns extends Pattern<Value>[]>(...patterns: Patterns){
+    return { [CombinerSlot]: Intersection as typeof Intersection, patterns };
+}
+export function union<Value, Patterns extends Pattern<Value>[]>(...patterns: Patterns) {
+    return { [CombinerSlot]: Union as typeof Union, patterns };
+}
 
 type Keys<Value> = (Value extends object ? keyof Value : never);
 
-type ObjectPattern<Value> =
+export type ObjectPattern<Value> =
     Keys<Value> extends never ? never :
         { [K in Keys<Value>]?:
-            Pattern<(Value extends Record<K, unknown> ? Value : never)[K]>
+            Value extends {[K_ in K]?: unknown} ?
+                Pattern<Value[K]> :
+                never
         };
 
 type ArrayIndices<T extends readonly any[]> = {
@@ -69,27 +109,71 @@ const MappedPatternBrand: unique symbol = Symbol('MappedPatternBrand');
 
     Which means cleaner code with fewer type assertions inside the branches.
 */
+// export type MatchedValue<V, Pat> = (
+//     Pat extends never[] ?
+//         V :
+//     Pat extends readonly any[] ?
+//         {
+//             [K in ArrayIndices<Pat>]: MatchedValue<V, Pat[K]>
+//         }[ArrayIndices<Pat>] :
+//     Pat extends typeof Any ?
+//         V :
+//     Pat extends typeof NotNull ?
+//         (NonNullable<V>) :
+//     Pat extends (x: unknown) => x is infer TNarrow ?
+//         TNarrow :
+//     Pat extends (x: V) => boolean ?
+//         V :
+//     Pat extends Primitive ?
+//         Pat :    
+//     Pat extends object ?
+//         MatchedValueForObjectPattern<V, Pat>:
+//     never
+// );
+
+// export type MatchedValue<V, Pat> =
+//     Pat extends { [CombinerSlot]: Combiner } ?
+//     //     MatchedValueCombiner<V, Pat> :
+//     MatchedValueSingle<V, Pat>;
+
+type MatchedValueCombiner<V, Pat> =
+    Pat extends { [CombinerSlot]: infer C, patterns: infer P } ?
+        C extends Combiner ?
+            P extends unknown[] ?
+                P[number] extends infer U ?
+                    {
+                        [Union]: 
+                            U extends unknown ? MatchedValue<V, U> : never,
+                        [Intersection]:
+                            (U extends unknown ? (k: MatchedValue<V, U>) => void : never) extends ((k: infer I) => void) ?
+                                (V & I) :
+                                never
+                    }[C] :
+                    never :
+                never :
+            never :
+        never;
+
+
+
 export type MatchedValue<V, Pat> = (
-    Pat extends never[] ?
-        V :
-    Pat extends readonly any[] ?
-        {
-            [K in ArrayIndices<Pat>]: MatchedValue<V, Pat[K]>
-        }[ArrayIndices<Pat>] :
-    Pat extends typeof Any ?
-        V :
+    // Pat extends { [CombinerSlot]: Combiner } ?
+    //     MatchedValueCombiner<V, Pat> :
+    // Pat extends typeof Any ?
+    //     V :
     Pat extends typeof NotNull ?
-        (NonNullable<V>) :
+        NonNullable<V> :
     Pat extends (x: unknown) => x is infer TNarrow ?
         TNarrow :
     Pat extends (x: V) => boolean ?
         V :
     Pat extends Primitive ?
-        Pat :    
+        Pat :
     Pat extends object ?
         MatchedValueForObjectPattern<V, Pat>:
     never
 );
+
 
 type MatchedValueForObjectPattern<V, Pat extends object> =
     V extends object ?
@@ -114,13 +198,13 @@ type MatchedValueForObjectPattern<V, Pat extends object> =
 
 
 export function matches<V, Pat extends Pattern<V>>(value: V, pat: Pat): value is MatchedValue<V, Pat>;
-export function matches<V>(value: V, pat: Pattern<V>): boolean;
+// export function matches<V>(value: V, pat: Pattern<V>): boolean;
 export function matches(value: any, pat: any): boolean {
     if (typeof(pat) === 'function') {
         return pat(value);
-    } else if (pat === Any) {
+    }/* else if (pat === Any) {
         return true;
-    } else if (pat === NotNull) {
+    }*/ else if (pat === NotNull) {
         return value !== undefined && value !== null;
     } else if (pat instanceof Array) {
         for (const p of pat) {
@@ -146,9 +230,17 @@ export function matches(value: any, pat: any): boolean {
 
 export function make_matcher<V>() {
     function make_matcher_inner<Pat extends Pattern<V>>(pattern: Pat): (value: V) => value is MatchedValue<V, Pat>;
-    function make_matcher_inner(pattern: Pattern<V>): (value: V) => boolean;
+    // function make_matcher_inner(pattern: Pattern<V>): (value: V) => boolean;
     function make_matcher_inner<Pat extends Pattern<V>>(pattern: Pat) {
         return (value: V): value is MatchedValue<V, Pat> => matches(value, pattern);
     }
     return make_matcher_inner;
+}
+
+export function make_matcher2<V, Pat extends Pattern<V>>(pattern: Pat) {//: (value: V) => value is MatchedValue<V, Pat> {
+    return (value: V): value is MatchedValue<V, Pat> => matches(value, pattern);
+}
+
+class Matcher<V> {
+    
 }

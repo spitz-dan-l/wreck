@@ -1,7 +1,7 @@
 import { history_array } from "../history";
-import { make_consecutive, stages, stage_keys } from "../stages";
-import { apply_story_updates_all, compile_story_query, find_node, is_story_node, story_query, ReversibleUpdateSpec, Story, StoryUpdatePlan, story_update, ReversibleOpSpec, StoryUpdateSpec } from "../story";
-import { update } from "../utils";
+import { make_consecutive, stages, stage_keys } from "../lib/stages";
+import { update } from "../lib/utils";
+import { apply_story_updates_all, Story, StoryUpdatePlan, StoryUpdateSpec } from "../story";
 import { World } from "../world";
 
 export type AnimationState = {

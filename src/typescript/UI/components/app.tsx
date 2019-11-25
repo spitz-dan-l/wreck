@@ -1,4 +1,4 @@
-import { keys } from '../../keyboard_utils';
+import { keys } from '../../lib/keyboard_utils';
 import { AppState, app_reducer } from "../app_state";
 import { scroll_down } from "../animation";
 import { child_declarator_for, Component, createElement, make_ui, Renderer } from "../framework";

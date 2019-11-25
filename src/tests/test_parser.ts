@@ -1,7 +1,8 @@
+import './setup';
 import * as assert from 'assert';
 import 'mocha';
 import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread, failed } from '../typescript/parser';
-import { array_last } from '../typescript/utils';
+import { array_last } from '../typescript/lib';
 
 describe('parser', () => {
     it('should do a thing', () => {
@@ -46,24 +47,24 @@ describe('parser', () => {
 
             return `Looked at ${who} ${how}`;
         }
-        console.log(traverse_thread(main_thread));
+        // console.log(traverse_thread(main_thread));
         let result = Parser.run_thread(raw('look at me'), main_thread);
 
-        console.log(result);
+        // console.log(result);
 
-        console.log(result.parsing.view);
-        console.log(array_last(result.parsing.view.matches)!.status);
+        // console.log(result.parsing.view);
+        // console.log(array_last(result.parsing.view.matches)!.status);
 
         let ta = result.parsing.view.typeahead_grid;
-        console.log(ta);
+        // console.log(ta);
         if (ta.length > 0) {
-            console.log(array_last(ta[0].option));
+            // console.log(array_last(ta[0].option));
         }
     });
 
     it('should do the dsl thing', () => {
-        let main_thread = (p) => p.consume([{tokens:"daniel", labels: {keyword: true}}, "didn't", {tokens:"wash", labels: {option: true}}], () => p.submit('unclean'));
-        console.log(traverse_thread(main_thread));
+        let main_thread: ParserThread<string> = (p) => p.consume([{tokens:"daniel", labels: {keyword: true}}, "didn't", {tokens:"wash", labels: {option: true}}], () => p.submit('unclean'));
+        // console.log(traverse_thread(main_thread));
         let result = <Parsed<string>>Parser.run_thread(raw("daniel didn't wash"), main_thread);
         assert.equal(result.kind, 'Parsed');
         assert.equal(result.result, 'unclean', 'daniel was too clean');

@@ -1,14 +1,14 @@
-import { gist, Gists, render_gist_command_noun_phrase, render_gist_noun_phrase } from '../../gist';
+import { gist, Gists, render_gist } from '../../gist';
 import { createElement, story_updater, Fragment, Updates } from '../../story';
 // import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
-import { StaticMap } from '../../static_resources';
-import { capitalize } from '../../text_utils';
-import { update } from '../../update';
-import { map } from '../../utils';
+import { StaticMap } from '../../lib/static_resources';
+import { capitalize } from '../../lib/text_utils';
+import { update } from '../../lib/update';
+import { map } from '../../lib/utils';
 import { } from './metaphor';
 import { NoteID, Puffers, resource_registry, StaticNoteIDs, Venience } from './prelude';
-import { stages } from '../../stages';
+import { stages } from '../../lib/stages';
 
 type NoteGists = { [K in NoteID]: undefined };
 
@@ -21,14 +21,14 @@ declare module '../../gist' {
 
 Gists({
     tag: 'notes',
-    text: () => 'your notes',
-    command: () => 'my_notes'
+    noun_phrase: () => 'your notes',
+    command_noun_phrase: () => 'my_notes'
 });
 
 Gists({
     tag: 'notes about',
-    text: ({topic}) => `your notes about ${topic}`,
-    command: ({topic}) => ['my_notes about', topic]
+    noun_phrase: ({topic}) => `your notes about ${topic}`,
+    command_noun_phrase: ({topic}) => ['my_notes about', topic]
 });
 
 export type NoteEntry = {
@@ -64,7 +64,7 @@ export function add_to_notes(world: Venience, note_id: NoteID) {
         { has_written_down: map([note_id, true]) },
         story_updater(
             Updates.prompt(<div>
-                You write about {capitalize(render_gist_noun_phrase(gist(note_id)))} in your <strong>notes</strong>.
+                You write about {capitalize(render_gist.noun_phrase(gist(note_id)))} in your <strong>notes</strong>.
             </div>)
         )
     );
@@ -89,7 +89,7 @@ Puffers({
                     You have written down notes about the following:
                     {Object.values(note_index.all())
                         .filter(n => world.has_written_down.get(n.note_id))
-                        .map(n => <blockquote>{capitalize(render_gist_noun_phrase(gist(n.note_id)))}</blockquote>)
+                        .map(n => <blockquote>{capitalize(render_gist.noun_phrase(gist(n.note_id)))}</blockquote>)
                         .join('')}
                     </div>
                 ))
@@ -104,7 +104,7 @@ Puffers({
 
                 specific_threads.push(() =>
                 parser.consume({
-                    tokens: ['notes about', render_gist_command_noun_phrase(gist(entry.note_id))],
+                    tokens: ['notes about', render_gist.command_noun_phrase(gist(entry.note_id))],
                     used: world.has_read.get(entry.note_id)
                 }, () =>
                 parser.submit(() => {
@@ -115,7 +115,7 @@ Puffers({
                         gist: () => gist('notes about', { topic: g })
                     },
                     story_updater(Updates.description(<div>
-                        <strong>${capitalize(render_gist_noun_phrase(g))}</strong>
+                        <strong>${capitalize(render_gist.noun_phrase(g))}</strong>
                         {entry.description()}
                     </div>))
                 )})));

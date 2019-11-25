@@ -1,8 +1,8 @@
 import { ConsumeSpec } from './parser';
-import { StaticIndex, StaticNameIndexFor } from './static_resources';
+import { StaticIndex, StaticNameIndexFor } from './lib/static_resources';
 import { Fragment, is_story_node, createElement } from './story';
-import { compute_const, map_values, enforce_always_never } from './utils';
-import { update } from './update';
+import { compute_const, map_values, enforce_always_never } from './lib/utils';
+import { update } from './lib/update';
 import { A } from 'ts-toolbelt';
 
 /*
@@ -121,8 +121,8 @@ export function make_renderer<T extends keyof GistRendererType>(t: T, compute_de
 export const render_gist: {
     [K in keyof GistRendererType]: (gist: Gist) => GistRendererType[K]
 } = {
-    noun_phrase: make_renderer('noun_phrase', g => g.tag),
-    command_noun_phrase: make_renderer('command_noun_phrase', g => g.tag.replace(' ', '_')),
+    noun_phrase: make_renderer('noun_phrase', (g: GistStructure) => g.tag),
+    command_noun_phrase: make_renderer('command_noun_phrase', (g: GistStructure) => g.tag.replace(' ', '_')),
     // story: make_renderer('story', g => g.tag, (result, gist) => {
     //     if (is_story_node(result)) {
     //         return update(result, {
@@ -145,13 +145,6 @@ type NoChildren<X, Y> = undefined extends X ? Y : never;
 export type GistParam = {
     [K in keyof GistSpecs]: (GistSpecs[K] extends undefined ? K : never)
 }[keyof GistSpecs] | Gist;
-
-export function my_gist(g: GistParam): Gist {
-    if (typeof(g) === 'string'){
-        return { tag: g, children: undefined }
-    }
-    return g;
-}
 
 export function gist<Tag extends keyof GistSpecs>(tag: NoChildren<GistSpecs[Tag], Tag>): Gist<Tag>//GistVerbose<GistSpecs, Tag>;
 export function gist<Tag extends keyof GistSpecs>(tag: Tag, children: GistSpecs[Tag]): Gist<Tag>//GistVerbose<GistSpecs, Tag>;
@@ -283,10 +276,6 @@ type ChildrenPattern<Tag extends keyof GistSpecs> =
                 undefined
     }[Tag];
 
-const pat1: ChildrenPattern<keyof GistSpecs> = { child: "Sam's identity"};
-
-type T11 = GistSpecs[keyof GistSpecs];
-
 export function pattern<Pattern extends GistPattern>(pat: Pattern): Pattern {
     return pat;
 }
@@ -318,8 +307,8 @@ export function gist_matches(gist: GistStructure, pattern: GistPattern): boolean
         return false;
     }
 
-    for (const k in (pattern as GistStructure).children) {
-        if (!gist_matches(gist.children[k] as Gist, (pattern as GistStructure).children![k as keyof (typeof pattern)['children']] as Gist)) {
+    for (const k in (pattern as unknown as GistStructure).children) {
+        if (!gist_matches(gist.children[k] as Gist, (pattern as unknown as GistStructure).children![k as keyof (typeof pattern)['children']] as Gist)) {
             return false;
         }
     }

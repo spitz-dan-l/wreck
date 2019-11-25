@@ -1,11 +1,11 @@
-import { gist, Gists, gist_renderer_index, GistSpecs, render_gist, Gist, gist_matches, gists_equal, InvalidGistSpecs, GistFromPattern, gist_tag_equals, GistPattern } from "../gist";
+import { gist, Gist, Gists, GistSpecs, gists_equal, gist_matches, gist_renderer_index, render_gist } from "../gist";
+import { Any, make_matcher, match, NotNull } from '../pattern_matching2';
 import { make_puffer_world_spec, Puffer } from "../puffer";
 import { NameOf, StaticIndex, StaticMap } from "../static_resources";
-import { createElement, find_all_nodes, Fragment, is_story_node, StoryNode, StoryQueryIndex, story_updater, Updates as S, Groups, find_all_chain, find_node, parent_path, Queries } from "../story";
+import { createElement, find_all_nodes, Fragment, Groups, is_story_node, StoryNode, StoryQueryIndex, story_updater, Updates as S } from "../story";
 import { update } from "../update";
-import { bound_method, compute_const, enforce_always_never, assert } from "../utils";
+import { assert, bound_method, enforce_always_never } from "../utils";
 import { get_initial_world, World, world_driver } from "../world";
-import { matches, make_matcher, NotNull } from '../pattern_matching';
 
 export interface SamWorld extends World {
 }
@@ -26,36 +26,36 @@ declare module '../gist' {
         'contemplation': {event: Gist};
         'recollection': {event: Gist};
 
-        'recollectiona': {event: Gist};
-        'recollections': {event: Gist};
-        'recollectionq': {event: Gist};
-        'recollectionw': {event: Gist};
-        'recollectione': {event: Gist};
-        'recollectionr': {event: Gist};
-        'recollectiont': {event: Gist};
-        'recollectiony': {event: Gist};
-        'recollectionu': {event: Gist};
-        'recollectionoi': {event: Gist};
-        'recollectionp': {event: Gist};
-        'recollectiond': {event: Gist};
-        'recollectionf': {event: Gist};
-        'recollectiong': {event: Gist};
-        'recollectionh': {event: Gist};
-        'recollectionj': {event: Gist};
-        'recollectionk': {event: Gist};
-        'recollectionl': {event: Gist};
-        'recollectionz': {event: Gist};
-        'recollectionx': {event: Gist};
-        'recollectionc': {event: Gist};
-        'recollectionv': {event: Gist};
-        'recollectionb': {event: Gist};
-        'recollectionn': {event: Gist};
-        'recollectionm': {event: Gist};
-        'recollection,': {event: Gist};
-        'recollection.': {event: Gist};
-        'recollection;': {event: Gist};
-        'recollection1': {event: Gist};
-        'recollection2': {event: Gist};
+        // 'recollectiona': {event: Gist};
+        // 'recollections': {event: Gist};
+        // 'recollectionq': {event: Gist};
+        // 'recollectionw': {event: Gist};
+        // 'recollectione': {event: Gist};
+        // 'recollectionr': {event: Gist};
+        // 'recollectiont': {event: Gist};
+        // 'recollectiony': {event: Gist};
+        // 'recollectionu': {event: Gist};
+        // 'recollectionoi': {event: Gist};
+        // 'recollectionp': {event: Gist};
+        // 'recollectiond': {event: Gist};
+        // 'recollectionf': {event: Gist};
+        // 'recollectiong': {event: Gist};
+        // 'recollectionh': {event: Gist};
+        // 'recollectionj': {event: Gist};
+        // 'recollectionk': {event: Gist};
+        // 'recollectionl': {event: Gist};
+        // 'recollectionz': {event: Gist};
+        // 'recollectionx': {event: Gist};
+        // 'recollectionc': {event: Gist};
+        // 'recollectionv': {event: Gist};
+        // 'recollectionb': {event: Gist};
+        // 'recollectionn': {event: Gist};
+        // 'recollectionm': {event: Gist};
+        // 'recollection,': {event: Gist};
+        // 'recollection.': {event: Gist};
+        // 'recollection;': {event: Gist};
+        // 'recollection1': {event: Gist};
+        // 'recollection2': {event: Gist};
     }
 }
 
@@ -96,33 +96,16 @@ function story_facets(node: Fragment) {
         return [];
     }
 
-    const predicate = make_matcher<Fragment>()({
-        kind: 'StoryNode',
-        key: k => k !== node.key,
-        data: { gist: NotNull }
-    });
-
+    const predicate = (f: Fragment): f is StoryNode & { data: { gist: Gist }} =>
+        (
+            f !== node &&
+            is_story_node(f) &&
+            f.data?.gist !== undefined
+        );
+    
     const gist_nodes = find_all_nodes(node, predicate); 
     
-    return gist_nodes.map((f) => f[0].data.gist);
-
-    // const result = gist_nodes.map(([n, p]) => {
-    //     const parents = parent_path(node, p);
-    //     for (const p of parents.reverse().slice(1)) {
-    //         if (is_story_node(p) && p.data.gist !== undefined) {
-    //             return gist('facet', {
-    //                 child: n.data.gist,
-    //                 parent: p.data.gist
-    //             });
-    //         }
-    //     }
-    //     throw new Error('should never get here');
-    // });
-    // return result;
-
-    // return find_all_nodes(node,
-    //     (n): n is StoryNode & {data: { gist: Gist }} => 
-    //         n !== node && is_story_node(n) && n.data.gist !== undefined)
+    return gist_nodes.map(([f, p]) => f.data.gist);
 }
 
 function render_facet(facet: Gist): Fragment {

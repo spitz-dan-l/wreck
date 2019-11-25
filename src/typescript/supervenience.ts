@@ -1,6 +1,6 @@
 import {World, WorldSpec, update_thread_maker, add_parsing} from './world';
 import { traverse_thread, ParserThread, RawConsumeSpec, Parser, gate } from './parser';
-import { deep_equal, drop_keys } from './utils';
+import { deep_equal, drop_keys } from './lib/utils';
 import { find_historical } from './history';
 
 /*

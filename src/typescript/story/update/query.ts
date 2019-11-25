@@ -1,10 +1,10 @@
-import { Gensym } from "../../gensym";
-import { StaticMap, StaticNameIndexFor } from "../../static_resources";
+import { Gensym } from "../../lib/gensym";
+import { StaticMap, StaticNameIndexFor } from "../../lib/static_resources";
 import { find_node, FoundNode, Fragment, is_story_node, Path, StoryNode, story_lookup_path, find_all_nodes, is_story_hole } from "../story";
 import { map_puffer } from "../../puffer";
-import { map_values, included } from "../../utils";
+import { map_values, included } from "../../lib/utils";
 import { Story } from "./update";
-import { ParametersFor, DomainMappedFunction } from "../../dsl_utils";
+import { ParametersFor } from "../../lib/dsl_utils";
 
 import {A} from 'ts-toolbelt';
 
@@ -42,11 +42,14 @@ export type StoryQuerySpec = StoryQuerySpecs[keyof StoryQuerySpecs];
 
 
 export function compile_story_query(query_spec: StoryQuerySpec): StoryQuery {
-    const query = ((StoryQueryIndex.get(query_spec.name)) as (...args: StoryQuerySpec['parameters']) => StoryQuery)(...query_spec.parameters);
+    const f = ((StoryQueryIndex.get(query_spec.name)) as (...args: StoryQuerySpec['parameters']) => StoryQuery);
+    const query = f.apply(null, query_spec.parameters);
     return (story: StoryNode) => query(story);   
 }
 
-export function story_query<Q extends keyof StoryQueries>(name: Q, ...parameters: ParametersFor<StoryQueries>[Q]): StoryQuerySpec {
+export function story_query<Q extends keyof StoryQueries>(name: Q, ...parameters: ParametersFor<StoryQueries>[Q] extends [] ? [] : never): StoryQuerySpec;
+export function story_query<Q extends keyof StoryQueries>(name: Q, parameters: ParametersFor<StoryQueries>[Q]): StoryQuerySpec;
+export function story_query<Q extends keyof StoryQueries>(name: Q, parameters: any[] = []): StoryQuerySpec {
     return { name, parameters } as StoryQuerySpec;
 }
 

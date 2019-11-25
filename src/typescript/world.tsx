@@ -20,9 +20,9 @@
 
 */
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
-import { stages } from './stages';
+import { stages } from './lib/stages';
 import { apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan, add_input_text } from './story';
-import { update } from './utils';
+import { update } from './lib/utils';
 
 export interface World {
     readonly parsing: Parsing | undefined,
@@ -92,8 +92,15 @@ export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
 
 export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W>;
 export function make_update_thread(spec: WorldSpec<World>, world: World) {
-    let next_state = world;
+    let next_state = world as {-readonly [K in keyof World]: World[K]};
     const new_index = world.index + 1;
+
+    // next_state = Object.create(world);
+    // next_state.previous = world;
+    // next_state.index = new_index;
+    // next_state.story = apply_story_updates_all(world.story, world.story_updates);
+    // next_state.story_updates = init_story_updates(new_index);
+    // next_state.parsing = undefined;
 
     next_state = update(next_state, {
         previous: _ => world,

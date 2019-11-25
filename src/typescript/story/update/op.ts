@@ -1,10 +1,10 @@
 import { Fragment, is_story_node } from "../story";
 import { story_to_dom } from '../dom';
 
-import { Effects } from "../../effect_utils";
+import { Effects } from "../../lib/effect_utils";
 
-import { update, append, map_values } from "../../utils";
-import { ParametersFor } from "../../dsl_utils";
+import { update, append, map_values } from "../../lib/utils";
+import { ParametersFor } from "../../lib/dsl_utils";
 import { Gist, gist_to_string, GistParam, gist } from "../../gist";
 
 export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | Fragment[]
@@ -171,5 +171,8 @@ export const StoryUpdateOps: StoryOps = {
 }
 
 export function compile_story_update_op(op_spec: StoryOpSpec): StoryOp {
-    return (StoryUpdateOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp)(...op_spec.parameters);
+    const f = (StoryUpdateOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp);
+    return f.apply(null, op_spec.parameters);
+    // return (StoryUpdateOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp)(...op_spec.parameters);
 }
+

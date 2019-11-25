@@ -2,7 +2,7 @@ import { createElement, story_updater, StoryQueryIndex, Updates } from '../../st
 import { gist, Gists, gists_equal, includes_tag } from '../../gist';
 import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
-import { cond, included, update, map } from '../../utils';
+import { cond, included, update, map } from '../../lib/utils';
 import { get_initial_world, WorldSpec, world_driver } from '../../world';
 import { Actions, Facets, RenderFacet } from './metaphor';
 import { Puffers, resource_registry, Venience } from './prelude';
@@ -404,8 +404,8 @@ Topics({
 
 Gists({
     tag: 'your history with Sam',
-    text: () => 'your history with Sam',
-    command: () => 'my_history_with_sam'
+    noun_phrase: () => 'your history with Sam',
+    command_noun_phrase: () => 'my_history_with_sam'
 });
 
 function is_about_history(w: Venience) {

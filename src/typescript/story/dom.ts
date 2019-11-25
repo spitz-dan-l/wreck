@@ -1,5 +1,5 @@
 import { StoryNode, Fragment, is_story_hole } from "./story";
-import { set_attributes } from "../jsx_utils";
+import { set_attributes } from "../lib/jsx_utils";
 import { gist_to_string, Gist } from "../gist";
 
 // This is pretty ugly, but there's not a good enough reason to

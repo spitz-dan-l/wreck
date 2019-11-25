@@ -140,6 +140,45 @@ export function empty(x: Object): boolean {
     return Object.keys(x).length === 0;
 }
 
+export function flat_deep(arr: any[]): any[] {
+    const result: any[] = [];
+    const iter_stack: {
+        arr: any[],
+        pos: number | undefined
+    }[] = [{
+        arr,
+        pos: undefined
+    }];
+    while (iter_stack.length > 0) {
+        const iter = iter_stack[iter_stack.length - 1];
+        if (iter.pos === undefined) {
+            if (iter.arr.length === 0) {
+                iter_stack.pop();
+                continue;
+            } else {
+                iter.pos = 0
+            }
+        } else if (iter.pos === iter.arr.length - 1) {
+            iter_stack.pop();
+            continue;
+        } else {
+            iter.pos++;
+        }
+
+        const elt = iter.arr[iter.pos];
+        if (elt instanceof Array) {
+            iter_stack.push({
+                arr: elt,
+                pos: undefined
+            });
+            continue;
+        } else {
+            result.push(elt);
+        }
+    }
+    return result;
+}
+
 export function set_eq(arr1: any[], arr2: any[]) {
     if (arr1 === undefined && arr2 === undefined) {
         return true;
@@ -487,10 +526,11 @@ async function buh() {
     return await div(1, 0);
 }
 
-function wrap<T>(f: Promise<T>): Maybe<T> {
+export function unwrap<T>(f: Promise<T>): Maybe<T> {
     let result: T | null = null;
 
     Promise.resolve(f.then(r => {
+        console.log(r);
         result = r;
     }));
 
@@ -520,3 +560,4 @@ export type AsProperty<Name extends string, Type> =
         { [N in Name]: Type } :
     { [N in Name]?: Type };
 
+    

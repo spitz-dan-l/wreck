@@ -1,10 +1,12 @@
-import { Gensym } from '../gensym';
-import { HTMLAttributesWithout } from '../jsx_utils';
-import { update } from '../update';
+import { Gensym } from '../lib/gensym';
+import { HTMLAttributesWithout } from '../lib/jsx_utils';
+import { update } from '../lib/update';
 import { NodeProps } from './create';
-import produce from 'immer';
+import  {setAutoFreeze, produce} from 'immer';
 import { Gist } from '../gist';
-
+import { map, zip, zipLongest } from 'iterative';
+import {dangerous_assert, type_or_kind_name} from '../lib/type_predicate_utils';
+import { deep_equal, drop_keys } from '../lib';
 
 export type StoryHole = { kind: 'StoryHole' };
 
@@ -71,6 +73,59 @@ export function find_all_nodes<F extends Fragment>(node: Fragment, predicate: St
 export function find_all_nodes(node: Fragment, predicate: StoryPredicate): FoundNode[];
 export function find_all_nodes(node: Fragment, predicate: StoryPredicate): FoundNode[] {
     const result: FoundNode[] = [];
+    
+    type FrontierEntry = {
+        node: Fragment,
+        path: number[],
+        child_pos: number | undefined
+    }
+    
+    const frontier: FrontierEntry[] = [{
+        node,
+        path: [],
+        child_pos: undefined
+    }];
+
+    while (frontier.length > 0) {
+        const fe = frontier[frontier.length - 1];
+        const n = fe.node;
+        const p = fe.path;
+            
+
+        if (fe.child_pos === undefined) {
+            if (predicate(fe.node)) {
+                result.push([n, p]);
+            }
+    
+            if (!is_story_node(n) || n.children.length === 0) {
+                frontier.pop();
+                continue
+            } else {
+                fe.child_pos = 0;
+            }
+        } else {
+            fe.child_pos++;
+        }
+
+        const child_pos = fe.child_pos;
+        const children = (n as StoryNode).children;
+        if (child_pos >= children.length) {
+            frontier.pop();
+            continue;
+        } else {
+            frontier.push({
+                node: children[child_pos],
+                path: [...p, child_pos],
+                child_pos: undefined
+            });
+        }
+    }
+    return result;
+}
+
+export function find_all_nodes_recursive(node: Fragment, predicate: StoryPredicate): FoundNode[] {
+    const result: FoundNode[] = [];
+    
     if (predicate(node)) {
         result.push([node, []]);
     }
@@ -198,9 +253,11 @@ export function splice_in(parent: Fragment, path: Path, updated: Fragment[]): Fr
     }
     if (path.length === 1) {
         return update(parent, {
-            children: produce(_ => {
-                _.splice(path[0], 1, ...updated);
-            })
+            children: _ => {
+                const result = [..._]
+                result.splice(path[0], 1, ...updated);
+                return result;
+            }
         })
     }
     return update(parent, {
@@ -208,4 +265,36 @@ export function splice_in(parent: Fragment, path: Path, updated: Fragment[]): Fr
             [path[0]]: _ => splice_in(_, path.slice(1), updated)
         }
     });
+}
+
+export function structurally_equal(story1: Fragment, story2: Fragment): boolean {
+    if (story1 === story2) {
+        return true;
+    }
+
+    const tk1 = type_or_kind_name(story1), tk2 = type_or_kind_name(story2);
+    if (tk1 !== tk2) {
+        return false;
+    }
+
+    if (tk1 === 'StoryHole') {
+        return true;
+    }
+
+    dangerous_assert<StoryNode>(story1);
+    dangerous_assert<StoryNode>(story2);
+
+    if (!deep_equal(drop_keys(story1, 'key'), drop_keys(story2, 'key'))) {
+        return false;
+    }
+
+    for (const [c1, c2] of zipLongest(story1.children, story2.children)) {
+        if (c1 === undefined || c2 === undefined) {
+            return false;
+        }
+        if (!(structurally_equal(c1, c2))) {
+            return false;
+        }
+    }
+    return true;
 }

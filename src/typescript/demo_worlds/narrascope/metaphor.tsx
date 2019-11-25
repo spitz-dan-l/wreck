@@ -1,16 +1,17 @@
-import { Gist, gist, Gists, gists_equal, gist_to_string, has_tag, render_gist_command_noun_phrase, render_gist_noun_phrase } from '../../gist';
+import { filter } from 'iterative';
+import * as TypeStyle from 'typestyle';
+import { Gist, gist, Gists, gists_equal, gist_to_string, has_tag, render_gist } from '../../gist';
 import { find_historical, find_index, history_array, indices_where } from "../../history";
+import { stages } from '../../lib/stages';
+import { StaticMap } from '../../lib/static_resources';
+import { map, update, Updater } from "../../lib/utils";
 import { ConsumeSpec, Parser, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
-import { find_and_move_to_stage, stages } from '../../stages';
-import { StaticMap } from '../../static_resources';
-import { createElement, Fragment, Hole, story_query, StoryUpdateSpec, story_op, story_update, story_updater, StoryUpdateGroup, Updates as S, Groups, move_group, StoryUpdaterSpec, StoryNode } from '../../story';
+import { createElement, Fragment, Groups, Hole, move_group, story_updater, Updates as S } from '../../story';
 import { is_simulated, search_future } from '../../supervenience';
-import { append, begin, map, update, Updater, compute_const } from "../../utils";
+import { alpha_rule } from '../../UI/styles';
 import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, StaticActionIDs, StaticFacetIDs, Venience, VeniencePuffer } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
-import * as TypeStyle from 'typestyle'
-import {alpha_rule, compute_color_rule} from '../../UI/styles';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -83,8 +84,8 @@ let action_index = resource_registry.initialize('action_index',
             Puffers(make_action(action));
             Gists({
                 tag: action.name,
-                text: () => action.noun,
-                command: () => action.noun_cmd
+                noun_phrase: () => action.noun,
+                command_noun_phrase: () => action.noun_cmd
             });
             return action;
         }
@@ -222,7 +223,7 @@ function make_direct_thread(world: Venience, immediate_world: Venience | null): 
         if (immediate_world === null) {
             return parser.eliminate();
         }
-        return parser.consume(['contemplate', render_gist_command_noun_phrase(immediate_world.gist!)], () =>
+        return parser.consume(['contemplate', render_gist.command_noun_phrase(immediate_world.gist!)], () =>
         parser.submit(() => {
 
         const index = immediate_world.index;
@@ -257,7 +258,7 @@ function make_direct_thread(world: Venience, immediate_world: Venience | null): 
                     'interpretation-active': true
                 }),
                 S.action(<div>
-                    You contemplate {render_gist_noun_phrase(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
+                    You contemplate {render_gist.noun_phrase(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
                 </div>),
                 S.description(descriptions)
             ),
@@ -318,7 +319,7 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | null,
             }
 
             return parser.consume({
-                tokens: render_gist_command_noun_phrase(g),
+                tokens: render_gist.command_noun_phrase(g),
                 labels: {interp: true, filler: true}
             }, () =>
             parser.submit(() =>
@@ -349,7 +350,8 @@ Puffers(lock_and_brand('Metaphor', {
                     return parser.eliminate();
                 }
 
-                let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== null && w.gist.tag !== 'contemplation');
+                let contemplatable_worlds: IterableIterator<Venience> = filter(history_array(world), w => w.gist !== null && w.gist.tag !== 'contemplation');
+                // let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== null && w.gist.tag !== 'contemplation');
 
                 let gists: Gist[] = [];
                 for (let w of contemplatable_worlds) {

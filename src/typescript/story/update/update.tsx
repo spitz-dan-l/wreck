@@ -1,9 +1,9 @@
-import { Effects } from '../../effect_utils';
+import { Effects } from '../../lib/effect_utils';
 import { history_array } from '../../history';
 import { Parsing } from '../../parser';
-import { Stages, stages, stage_entries, stage_keys } from '../../stages';
+import { Stages, stages, stage_entries, stage_keys } from '../../lib/stages';
 import { ParsedTextStory } from '../../UI/components/parsed_text';
-import { append, update } from '../../utils';
+import { append, update } from '../../lib/utils';
 import { World } from '../../world';
 import { createElement } from '../create';
 import { find_all_nodes, find_node, FoundNode, Fragment, is_story_hole, is_story_node, Path, replace_in, splice_in, StoryHole, StoryNode } from '../story';

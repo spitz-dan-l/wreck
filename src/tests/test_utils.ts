@@ -1,8 +1,9 @@
+import './setup';
 import * as assert from 'assert';
-import 'babel-polyfill'; // TODO put this somewhere that makes more sense
+// import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
-import { begin, chain, deep_equal } from '../typescript/utils';
-import { update, Updater } from '../typescript/update';
+import { begin, chain, deep_equal } from '../typescript/lib';
+import { update, Updater } from '../typescript/lib/update';
 
 
 
@@ -50,7 +51,7 @@ describe('update', () => {
                         }
                     },
                     g: (old_g) => () => old_g() + 4,
-                    h: (x) => 'c' as const, // this works even though it shouldn't?
+                    h: (x: any) => 'c' as const, // this works even though it shouldn't?
                     
                 })
 

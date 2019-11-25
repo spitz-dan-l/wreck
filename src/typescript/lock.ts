@@ -1,6 +1,6 @@
 import { gate, ParserThread } from './parser';
 import { gate_puffer, Puffer } from './puffer';
-import { update } from './utils';
+import { update } from './lib/utils';
 import { World } from './world';
 
 export type LockStatus = 'Unlocked' | 'Mine' | 'Locked';

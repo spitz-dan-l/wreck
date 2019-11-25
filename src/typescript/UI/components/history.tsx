@@ -1,9 +1,9 @@
-import { Effects } from "../../effect_utils";
 import { history_array } from "../../history";
-import { apply_story_updates_stage, story_query, remove_eph, ReversibleUpdateSpec, Story, story_op, story_to_dom, story_update, CSSUpdates, Groups } from "../../story";
-import { array_last, map_values, update } from "../../utils";
+import { Effects } from "../../lib/effect_utils";
+import { array_last } from "../../lib/utils";
+import { apply_story_updates_stage, remove_eph, Story, story_to_dom } from "../../story";
 import { World } from "../../world";
-import { animate, AnimationState, final_story, compute_possible_effects } from "../animation";
+import { animate, AnimationState, compute_possible_effects, final_story } from "../animation";
 import { Component, Renderer } from "../framework";
 import { ui_resources } from '../prelude';
 

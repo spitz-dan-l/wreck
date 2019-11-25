@@ -1,7 +1,7 @@
-import { gensym } from '../gensym';
+import { gensym } from '../lib/gensym';
 import { gist, GistParam } from '../gist';
-import { HTMLElementTags, MergeWithHTMLProps, remove_custom_props } from '../jsx_utils';
-import { split_tokens } from '../text_utils';
+import { HTMLElementTags, MergeWithHTMLProps, remove_custom_props } from '../lib/jsx_utils';
+import { split_tokens } from '../lib/text_utils';
 import { DeepFragment, Fragment, StoryNode } from './story';
 
 export namespace JSX {
@@ -40,7 +40,8 @@ export function createElement<P extends NodeProps>(tag: string, props: MergeWith
 export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithHTMLProps<NodeProps>, ...deep_children: DeepFragment[]): StoryNode {
     // The jsx transformation appears to pass null as the second argument if none are provided.
     props = props || {};
-    const children = deep_children.flat(Infinity);
+    const children = flat_deep(deep_children);
+    // const children = deep_children.flat(Infinity);
     if (typeof(tag) === 'function') {
         return tag({...props, children})
     }
@@ -76,6 +77,7 @@ export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithH
 }
 
 import JSX_ = JSX;
+import { flat_deep } from '../lib';
 export declare namespace createElement {
     export import JSX = JSX_;
 }

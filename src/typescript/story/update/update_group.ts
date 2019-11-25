@@ -1,6 +1,6 @@
 import { StoryUpdateSpec, StoryUpdateStage } from "./update";
-import { Stages, stage_entries, stages } from "../../stages";
-import { append, update, Updater, map } from "../../utils";
+import { Stages, stage_entries, stages } from "../../lib/stages";
+import { append, update, Updater, map } from "../../lib/utils";
 
 export interface StoryUpdateGroups {
     init_frame: 'Updates that initialize the new frame and move the storyhole forward';

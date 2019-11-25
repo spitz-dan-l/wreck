@@ -1,6 +1,6 @@
 import { ConsumeSpec, Parser, ParserThread } from './parser';
 import { knit_puffers, map_puffer, Puffer, PufferMapper } from './puffer';
-import { MaybeStages, normalize_stages, Stages, stages, stage_keys } from './stages';
+import { MaybeStages, normalize_stages, Stages, stages, stage_keys } from './lib/stages';
 import { CSSUpdates, css_updater, story_updater, TextAddSpec } from './story';
 import { update, Updater } from './utils';
 import { Narrator, World } from './world';

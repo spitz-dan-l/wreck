@@ -1,4 +1,4 @@
-import { update, array_last } from "../utils";
+import { update, array_last } from "../lib/utils";
 import { advance_animation, new_animation_state, empty_animation_state, AnimationState } from "./animation";
 import { Token, SUBMIT_TOKEN, RawInput } from "../parser";
 import { CommandResult, World } from "../world";

@@ -1,6 +1,6 @@
 import { make_puffer_world_spec, Puffer } from '../puffer';
-import { random_choice } from '../text_utils';
-import { update } from '../utils';
+import { random_choice } from '../lib/text_utils';
+import { update } from '../lib';
 import { get_initial_world, World, world_driver } from '../world';
 import { story_updater, Updates, createElement, StoryQueryIndex } from '../story';
 import { failed } from '../parser';

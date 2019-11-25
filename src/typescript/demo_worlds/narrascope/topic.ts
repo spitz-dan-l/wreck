@@ -1,8 +1,8 @@
 import { gist, Gists, gists_equal } from '../../gist';
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
-import { StaticIndex, StaticMap } from '../../static_resources';
-import { bound_method, cond, update, map } from '../../utils';
+import { StaticIndex, StaticMap } from '../../lib/static_resources';
+import { bound_method, cond, update, map } from '../../lib/utils';
 import { ActionID, Puffers, resource_registry, TopicID, Venience, StaticTopicIDs } from "./prelude";
 import { story_updater, StoryUpdaterSpec, Fragment, Updates } from '../../story';
 
@@ -42,8 +42,8 @@ declare module '../../gist' {
 
 Gists({
     tag: 'impression',
-    text: ({subject}) => `your impression of ${subject}`,
-    command: ({subject}) => ['my_impression of', subject]
+    noun_phrase: ({subject}) => `your impression of ${subject}`,
+    command_noun_phrase: ({subject}) => ['my_impression of', subject]
 });
 
 export function make_topic(spec: TopicSpec): Puffer<Venience> {
@@ -90,8 +90,8 @@ const topic_index = resource_registry.initialize('topic_index',
         function add_topic_to_gists(spec) {
             Gists({
                 tag: spec.name,
-                text: () => spec.name,
-                command: () => spec.cmd
+                noun_phrase: () => spec.name,
+                command_noun_phrase: () => spec.cmd
             });
             return spec;
         }

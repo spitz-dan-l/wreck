@@ -13,10 +13,70 @@ export function assert_type_predicate<V, F extends ((x: V) => x is any)>(predica
     }
 }
 
-export function fake_assert<T>(x: unknown): asserts x is T {
-    console.warn('You are doing a fake assert, you are bad.');
+export function infer_type_predicate<F extends (x: unknown) => x is unknown>(f: F) { return f }
+
+export function dangerous_assert<T>(x: unknown): asserts x is T {
+    // console.warn('You are doing a fake assert, you are bad.');
     return;
 }
+
+export function adheres_to_kind_protocol(x: object): x is {kind: string} {
+    return typeof(x as any).kind === 'string';
+}
+
+type TypeofTypes = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function"; 
+type TypeOrKindName<T> =
+    T extends object ?
+        T extends { kind: infer K } ?
+            K :
+        'object' :
+    TypeofTypes;
+
+export function type_or_kind_name<T>(x: T): TypeOrKindName<T>;
+export function type_or_kind_name(x: unknown): string;
+export function type_or_kind_name(x: unknown) {
+    const type_name = typeof(x);
+    if (type_name !== 'object') {
+        return type_name;
+    }
+    dangerous_assert<object>(x)
+    if (adheres_to_kind_protocol(x)) {
+        return x.kind
+    } else {
+        return 'object';
+    }
+}
+
+type TypeOrKindNamesFor<T> =
+    T extends object ?
+        T extends { kind: infer K } ?
+            K :
+            'object' :
+    T extends number ?
+        'number' :
+    T extends string ?
+        'string' :
+    T extends boolean ?
+        'boolean' :
+    T extends symbol ?
+        'symbol' :
+    keyof TypeofName;
+
+type TypeGivenName<T, Name> =
+    T extends { kind: Name } ?
+        T :
+    Name extends keyof TypeofName ?
+        T extends TypeofName[Name] ?
+            T :
+            never :
+    never;
+
+export function type_or_kind_is<T, Name extends TypeOrKindNamesFor<T>>(x: T, type_or_kind: Name): x is TypeGivenName<T, Name>;
+export function type_or_kind_is<Name extends TypeOrKindNamesFor<unknown>>(x: unknown, type_or_kind: Name): x is TypeGivenName<unknown, Name>;
+export function type_or_kind_is(x: unknown, type_or_kind: string) {
+    return type_or_kind_name(x) === type_or_kind;
+}
+
 
 // Function versions of operator-based type predicates
 

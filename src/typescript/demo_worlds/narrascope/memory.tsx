@@ -1,10 +1,10 @@
-import { gist, Gists, render_gist_noun_phrase } from '../../gist';
+import { gist, Gists, render_gist } from '../../gist';
 import { find_historical } from '../../history';
 import { Puffer } from '../../puffer';
-import { StaticIndex } from '../../static_resources';
+import { StaticIndex } from '../../lib/static_resources';
 import { createElement, story_updater, Fragment, Updates } from '../../story';
-import { capitalize } from '../../text_utils';
-import { bound_method, map, update } from '../../utils';
+import { capitalize } from '../../lib/text_utils';
+import { bound_method, map, update } from '../../lib/utils';
 import { add_to_notes, Notes } from './notes';
 import { ActionID, Puffers, resource_registry, Venience } from "./prelude";
 
@@ -37,7 +37,7 @@ function memory_description(spec: MemorySpec) {
             {spec.description()}
         </div>
         <br/>
-        {capitalize(render_gist_noun_phrase(gist(spec.action)))} confers:
+        {capitalize(render_gist.noun_phrase(gist(spec.action)))} confers:
         <blockquote>
             {action.description}
         </blockquote>
@@ -93,8 +93,8 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
 
 Gists({
     tag: 'memory',
-    text: ({action}) => `your memory of ${action}`,
-    command: ({action}) => ['my_memory of', action]
+    noun_phrase: ({action}) => `your memory of ${action}`,
+    command_noun_phrase: ({action}) => ['my_memory of', action]
 });
 
 const memory_index = resource_registry.initialize('memory_index',

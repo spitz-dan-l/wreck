@@ -154,9 +154,11 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
         let result: Partial<S>;
         if (source instanceof Array) {
             result = [...source] as any;
-        } else if (source instanceof Object) {
+        } else if (typeof(source) === 'object') {
+            
             result = {...source};
             // TODO: Consider using prototypes?
+            // result = Object.create(source as unknown as object)
         } else {
             result = {};
         }

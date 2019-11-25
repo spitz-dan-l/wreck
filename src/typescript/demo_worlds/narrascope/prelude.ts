@@ -1,9 +1,9 @@
 import { lock_builder, Lock } from '../../lock';
 import { Puffer } from '../../puffer';
-import { update, entries, bound_method, merge_objects } from '../../utils';
+import { update, entries, bound_method, merge_objects } from '../../lib/utils';
 import { World, get_initial_world } from '../../world';
 import { FutureSearchSpec } from '../../supervenience';
-import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../static_resources';
+import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../lib/static_resources';
 import { GistRenderer, gist_renderer_index } from '../../gist';
 
 export const StaticTopicIDs = {
