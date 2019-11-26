@@ -100,91 +100,109 @@ export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
     }
 
     if (updater instanceof Array) {
-        // If the updater is an array, we are actually inside a *tuple* updater.
-        // This means the updater must be no larger than the source tuple type.
-        // We will not delete any elements, only replace with updates.
-        let result: any[];
-        if (source instanceof Array) {
-            result = [...source];
-        } else {
-            result = [];
-        }
-
-        for (let i = 0; i < updater.length; i++) {
-            const x = updater[i];
-            if (x === undefined) {
-                continue;
-            }
-            result[i] = update(result[i], x);
-        }
-        return <S><unknown>result;
+        return update1_array(source, updater) as unknown as S;
     }
 
     if (updater instanceof Map){
-        let result: Map<any, any>;
-        // Assume that the constructor function is part of the Map interface
-        // Even though in JS it's not :(
-        const ctor = <MapConstructor>updater.constructor;
-        if (source instanceof Map) {
-            result = new ctor([...source]);
-        } else {
-            result = new ctor();
-        }
-
-        for (let [k, v] of updater) {
-            if (v === undefined) {
-                result.delete(k);
-            } else {
-                const r = update(result.get(k), v);
-                if (r === undefined) {
-                    result.delete(k);
-                } else {
-                    result.set(k, r)
-                }
-            }
-        }
-
-        return <S><unknown>result;
+        return update1_map(source, updater) as unknown as S;
     }
 
     // updater is an Object, traverse each key/value and update recursively.
     // note: if you are just trying to set to a deeply-nested object with no traversal,
     // you can achieve this by passing a function returning your desired object.
-    if (updater instanceof Object) {
-        let result: Partial<S>;
-        if (source instanceof Array) {
-            result = [...source] as any;
-        } else if (typeof(source) === 'object') {
-            
-            result = {...source};
-            // TODO: Consider using prototypes?
-            // result = Object.create(source as unknown as object)
-        } else {
-            result = {};
-        }
-        
-        for (let [n, v] of Object.entries(updater)) {
-            if (v === undefined) {
-                delete result[n as keyof S];
-            } else {
-                const r: any = update(result[n as keyof S], v);
-                if (r === undefined) {
-                    delete result[n as keyof S];
-                } else {
-                    result[n as keyof S] = r;
-                }
-            }
-        }
-
-        if (result instanceof Array) {
-            // flatten to remove empty (deleted) slots
-            result = <S><unknown>result.flat(0);
-        }
-
-        return <S>result;
+    // if (updater instanceof Object) {
+    if (typeof(updater) === 'object') {
+        return update1_object(source, updater);
     }
 
     throw Error('Should never get here');
+}
+
+function update1_array(source: any, updater: any[]) {
+    // If the updater is an array, we are actually inside a *tuple* updater.
+    // This means the updater must be no larger than the source tuple type.
+    // We will not delete any elements, only replace with updates.
+    let result: any[];
+    if (source instanceof Array) {
+        result = [...source];
+    } else {
+        result = [];
+    }
+
+    for (let i = 0; i < updater.length; i++) {
+        const x = updater[i];
+        if (x === undefined) {
+            continue;
+        }
+        result[i] = update(result[i], x);
+    }
+    return result;
+}
+
+function update1_map(source: any, updater: Map<any, any>) {
+    let result: Map<any, any>;
+    // Assume that the constructor function is part of the Map interface
+    // Even though in JS it's not :(
+    const ctor = <MapConstructor>updater.constructor;
+    if (source instanceof Map) {
+        result = new ctor(source);
+    } else {
+        result = new ctor();
+    }
+
+    for (let [k, v] of updater) {
+        if (v === undefined) {
+            result.delete(k);
+        } else {
+            const r = update(result.get(k), v);
+            if (r === undefined) {
+                result.delete(k);
+            } else {
+                result.set(k, r)
+            }
+        }
+    }
+
+    return result;
+}
+
+function update1_object(source: any, updater: any) {
+    let result: any;
+    if (source instanceof Array) {
+        result = [...source] as any;
+    } else if (typeof(source) === 'object') {
+        
+        result = {...source};
+        // TODO: Consider using prototypes?
+        // result = Object.create(source as unknown as object)
+    } else {
+        result = {};
+    }
+    
+    for (const n in updater) {
+        const v = updater[n];
+        if (v === undefined) {
+            delete result[n];
+        } else {
+            const r: any = update(result[n], v);
+            if (r === undefined) {
+                delete result[n];
+            } else {
+                result[n] = r;
+            }
+        }
+    }
+    
+    if (result instanceof Array) {
+        // remove empty (deleted) slots
+        result = remove_empty_slots(result);
+    }
+
+    return result;
+}
+
+export function remove_empty_slots(arr: any[]) {
+    return arr.filter((_,i) => i in arr);
 }
 
 // The second generic type parameter is a hack to prevent typescript from using the contents of updater
@@ -199,12 +217,9 @@ export function update_any<S>(source: S, updater: any): S {
     return update(source, updater);
 }
 
-type Writable<T> = {
-    -readonly [K in keyof T]: T[K]
-};
-
 // Add an overload to immer's IProduce that makes it usable as an update function
-import 'immer';
+import {setAutoFreeze} from 'immer';
+setAutoFreeze(false);
 declare module 'immer' {
     export interface IProduce {
         <T1>(recipe: (draft: NonNullable<T1>) => void): (t: NonNullable<T1>) => NonNullable<T1>;

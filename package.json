@@ -26,6 +26,7 @@
     "@types/mocha": "^5.2.6",
     "assert": "^1.4.1",
     "jsdom": "^15.2.1",
+    
     "mocha": "^6.1.4",
     "ts-loader": "^6.2.0",
     "ts-node": "^8.1.0",

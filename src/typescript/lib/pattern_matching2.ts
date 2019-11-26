@@ -1,5 +1,5 @@
 import { A } from "ts-toolbelt";
-import { dangerous_assert } from "../type_predicate_utils";
+import { dangerous_assert } from "./type_predicate_utils";
 import { Match } from "Any/_Internal";
 
 /*

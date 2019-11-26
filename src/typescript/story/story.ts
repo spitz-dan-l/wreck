@@ -6,7 +6,7 @@ import  {setAutoFreeze, produce} from 'immer';
 import { Gist } from '../gist';
 import { map, zip, zipLongest } from 'iterative';
 import {dangerous_assert, type_or_kind_name} from '../lib/type_predicate_utils';
-import { deep_equal, drop_keys } from '../lib';
+import { deep_equal, drop_keys, memoize } from '../lib';
 
 export type StoryHole = { kind: 'StoryHole' };
 
@@ -100,25 +100,25 @@ export function find_all_nodes(node: Fragment, predicate: StoryPredicate): Found
             if (!is_story_node(n) || n.children.length === 0) {
                 frontier.pop();
                 continue
-            } else {
-                fe.child_pos = 0;
             }
+            fe.child_pos = 0;
         } else {
+            if (fe.child_pos === (n as StoryNode).children.length - 1) {
+                frontier.pop();
+                continue;
+            }
             fe.child_pos++;
+            
         }
 
         const child_pos = fe.child_pos;
         const children = (n as StoryNode).children;
-        if (child_pos >= children.length) {
-            frontier.pop();
-            continue;
-        } else {
-            frontier.push({
-                node: children[child_pos],
-                path: [...p, child_pos],
-                child_pos: undefined
-            });
-        }
+        frontier.push({
+            node: children[child_pos],
+            path: [...p, child_pos],
+            child_pos: undefined
+        });
+    
     }
     return result;
 }

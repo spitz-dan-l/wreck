@@ -6,7 +6,7 @@
         "moduleResolution": "node",
         "esModuleInterop": true,
         "module": "commonjs",
-        "target": "es2020",
+        "target": "esnext",
         "lib": ["esnext", "dom"],
         "jsx": "react",
         "jsxFactory": "createElement",

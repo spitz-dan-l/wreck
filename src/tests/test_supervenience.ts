@@ -145,10 +145,11 @@ describe('supervenience narrascope', () => {
             space,
             command_filter
         };
-        console.profile('supervenience_narrascope');
+        // console.profile('supervenience_narrascope');
         let result = search_future(spec, initial_result.world);
-        console.profileEnd('supervenience_narrascope');
+        // console.profileEnd('supervenience_narrascope');
         assert.equal(result.status, 'Found');
     });
+    
 
 });

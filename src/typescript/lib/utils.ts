@@ -140,6 +140,13 @@ export function empty(x: Object): boolean {
     return Object.keys(x).length === 0;
 }
 
+export function remove_empty_slots<T>(arr: T[]): T[];
+export function remove_empty_slots(arr: any[]): any[];
+export function remove_empty_slots(arr: any[]) {
+    return arr.filter((_,i) => i in arr);
+}
+
+// Significantly faster version of Array.flat(Infinity)
 export function flat_deep(arr: any[]): any[] {
     const result: any[] = [];
     const iter_stack: {
@@ -560,4 +567,60 @@ export type AsProperty<Name extends string, Type> =
         { [N in Name]: Type } :
     { [N in Name]?: Type };
 
-    
+
+export function is_shallow_equal<T>(arr1: T[], arr2: T[]) {
+    if (arr1 === arr2) {
+        return true;
+    }
+
+    if (arr1.length !== arr2.length) {
+        return false;
+    }
+
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+class ArgCache<Args extends any[], Result> {
+    constructor(public func: (...args: Args) => Result, public size = 100) {}
+
+    cache: {
+        arguments: Args,
+        result: Result
+    }[] = [];
+
+    call(args: Args) {
+        const entry = this.cache.find(e => is_shallow_equal(e.arguments, args));
+        if (entry === undefined) {
+            // console.count('cache_miss');
+            const result = this.func(...args);
+            this.cache.push({
+                arguments: args,
+                result
+            });
+
+            if (this.cache.length > this.size * 1.2) {
+                // console.count('cache_spill');
+                this.cache.splice(0, this.cache.length - this.size);
+            }
+
+            return result;
+        }
+        console.count('cache_hit');
+        return entry.result;
+    }
+
+}
+
+export function memoize<F extends (...args: any[]) => any>(f: F, size?: number): F {
+    const cache = new ArgCache(f, size);
+    return new Proxy<F>(f, {
+        apply(target, thisArg, args) {
+            return cache.call(args);
+        }
+    });
+}

@@ -198,33 +198,33 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
     }
 }
 
-const active_simulators: { [K: string]: Set<World> } = {};
+const ACTIVE_SIMULATORS: { [K: string]: Set<World> } = {};
 
 export function is_simulated<W extends World>(simulator_id: string, world: W) {
-    if (!(simulator_id in active_simulators)) {
+    if (!(simulator_id in ACTIVE_SIMULATORS)) {
         return false;
     }
 
-    const entry = active_simulators[simulator_id];
+    const entry = ACTIVE_SIMULATORS[simulator_id];
     return find_historical(world, w => entry.has(w)) !== null;
 }
 
 function begin_search<W extends World>(simulator_id: string, world: W) {
     let entry: Set<World>;
-    if (simulator_id in active_simulators) {
-        entry = active_simulators[simulator_id];
+    if (simulator_id in ACTIVE_SIMULATORS) {
+        entry = ACTIVE_SIMULATORS[simulator_id];
     } else {
-        entry = active_simulators[simulator_id] = new Set();
+        entry = ACTIVE_SIMULATORS[simulator_id] = new Set();
     }
     entry.add(world);
 }
 
 function end_search<W extends World>(simulator_id: string, world: W) {
-    let entry = active_simulators[simulator_id];
+    let entry = ACTIVE_SIMULATORS[simulator_id];
     entry.delete(world);
 
     if (entry.size === 0) {
-        delete active_simulators[simulator_id];
+        delete ACTIVE_SIMULATORS[simulator_id];
     }
 }
 

@@ -7,6 +7,7 @@ import { Story } from "./update";
 import { ParametersFor } from "../../lib/dsl_utils";
 
 import {A} from 'ts-toolbelt';
+import { P } from "Object/_api";
 
 export type StoryQuery = (story: Fragment) => FoundNode[];
 
@@ -44,7 +45,8 @@ export type StoryQuerySpec = StoryQuerySpecs[keyof StoryQuerySpecs];
 export function compile_story_query(query_spec: StoryQuerySpec): StoryQuery {
     const f = ((StoryQueryIndex.get(query_spec.name)) as (...args: StoryQuerySpec['parameters']) => StoryQuery);
     const query = f.apply(null, query_spec.parameters);
-    return (story: StoryNode) => query(story);   
+    return query;
+    //return (story: StoryNode) => query(story);   
 }
 
 export function story_query<Q extends keyof StoryQueries>(name: Q, ...parameters: ParametersFor<StoryQueries>[Q] extends [] ? [] : never): StoryQuerySpec;
@@ -102,12 +104,25 @@ StoryQueryIndex.initialize('story_hole', () =>
         return result;
     })
 
-StoryQueryIndex.initialize('eph', () =>
-    (story) => find_all_nodes(story,
-        (n) => is_story_node(n) && Object.entries(n.classes)
-            .some(([cls, on]) => on && cls.startsWith('eph-'))));
+export const eph_predicate = (n: Fragment) => {
+    if (!is_story_node(n)) {
+        return false;
+    }
 
-StoryQueryIndex.initialize('has_class', (cls) =>
+    for (const cls in n.classes) {
+        if (n.classes[cls] && cls.startsWith('eph-')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+StoryQueryIndex.initialize('eph', () =>
+    (story) => find_all_nodes(story, eph_predicate));
+
+
+StoryQueryIndex.initialize('has_class', (cls) => 
     (story) => find_all_nodes(story,
         (n) => is_story_node(n) &&
             (typeof(cls) === 'string'
@@ -116,35 +131,41 @@ StoryQueryIndex.initialize('has_class', (cls) =>
                     .some(([c, on]) =>
                         on && (cls as RegExp).test(c)))));
 
+function is_frame_predicate(n: Fragment) {
+    return is_story_node(n) && n.data.frame_index !== undefined;
+}
+function latest_frame(story: Fragment) {
+    if (!is_story_node(story)) {
+        return [];
+    }
+    const frames = find_all_nodes(story, is_frame_predicate);
+    if (frames.length > 0) {
+        let max_frame: FoundNode = frames[0];
+        for (let i = 1; i < frames.length; i++) {
+            const f = frames[i];
+            if ((max_frame[0] as StoryNode).data.frame_index! < (f[0] as StoryNode).data.frame_index!) {
+                max_frame = f;
+            }
+        }
+        return [max_frame];
+    } else {
+        return [];
+    }
+}
+
 StoryQueryIndex.initialize('frame', (index?) =>
     (story) => {
         let found: FoundNode[];
         // if index is null, find the highest frame
         if (index === undefined) {
-            let max_frame: FoundNode | null = null;
-            const frames = find_all_nodes(story,
-                n => is_story_node(n) && n.data.frame_index !== undefined);
-            if (frames.length > 0) {
-                for (const f of frames) {
-                    if (max_frame === null) {
-                        max_frame = f;
-                    } else if ((max_frame[0] as StoryNode).data.frame_index! < (f[0] as StoryNode).data.frame_index!) {
-                        max_frame = f;
-                    }
-                }
-            }
-            if (max_frame === null) {
-                return [];
-            }
-            found = [max_frame];
+            return latest_frame(story);
         } else if (index instanceof Array) {
-            found = find_all_nodes(story,
+            return find_all_nodes(story,
                 (n) => is_story_node(n) && included(n.data.frame_index, index));
         } else {
-            found = find_all_nodes(story,
+            return find_all_nodes(story,
                 (n) => is_story_node(n) && n.data.frame_index === index);
         }
-        return found;
     });
 
 StoryQueryIndex.initialize('chain', (...queries) =>
