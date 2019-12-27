@@ -1,0 +1,18 @@
+Fire
+    Clear the Hearth
+
+    (The following 3 can happen in any order)
+    Place the Tinder
+    Lay the Kindling
+    Stack the Firewood
+    
+    Spark the tinder
+        Spark + Tinder -> Ember
+
+    (The following happen in succession with no actions from the voice of the fire, but they should correspond to narrative actions in the mapped voice)
+    Then
+        Ember + Kindling -> Flame
+    Then
+        Flame + Firewood -> Blaze
+    Then
+        Blaze + Time(?) -> Ash

@@ -1,10 +1,10 @@
 
 TODOs
+Honestly just work on a badass puzzle right now. You are getting too caught up in SoftEng/efficiency details. The intuition that if you can just clean this all up it will make thinking about mechanics easier is wrong at this point. The overhaul from story strings to trees was all you needed, and that's done.
 
-Finish porting narrascope demo to new story tree repr
-    Counts as done when it works without would-animation stuff
-        At that point we have design decisions to make
 
+
+Revealing new text logic
     Eliminate nested class rule approach to revealing text. Instead actually add new nodes to story tree dynamically
 
 Animations
@@ -18,12 +18,13 @@ Style/display
     - Use TypedStyle everywhere (unless it doesn't work)
     - Abstract over the --alpha-color, --rgb-color, color: rules things
 
+Certain static resources- GistSpecs, StoryQuerySpecs, are shared across worlds when running multiple worlds in a single VM. There are collisions.
+    -Dedupe these?
+        (But it's annoying. Maybe just only run one world per VM, and find ways to test this more easily.)
+
 optimizations
 - try using itiriri instead of array map/filter
 - story trees
-    - find a way to avoid even building the full tree each frame
-        - would only really help in future search
-        - This probably isn't doable for any game that actually uses the contents of the story tree for game mechanics
     - hold onto a map of keys to [node, Path] at the root of each story tree
         Faster to do find_node
 - parser

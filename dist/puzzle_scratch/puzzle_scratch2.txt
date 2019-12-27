@@ -1,0 +1,58 @@
+Possibillity- basic recollection actions are done through voices too?
+
+You've got your box of events, it is probably constrained to 3 events.
+You can put them in whichever order though, right?
+
+> begin contemplation
+{ }
+
+{
+    > consider the present moment
+    Katya sits across from you in a cafe.
+
+    >
+}
+
+{
+    > consider the present moment
+    Katya sits across from you in a cafe.
+
+    > consider Katya
+    Your advisor and mentor, though you think of her as family.
+
+    > ??? gets out of the contemplation box somehow
+}
+
+> find, in my contemplation, the voice of the mnemonic traveler
+The mnemonic traveler speaks in terms of traveling through *mnemonic space*.
+You must find:
+    - An anchorpoint in mnemonic space.
+    - A a second point which yields a mnemonic trajectory relative to the anchor
+
+    > find, in considering the present moment, a mnemonic anchor
+    ...
+
+    > find, in considering Katya, a mnemonic trajectory relative to the anchor
+        ??? what does this do?
+        it should reveal one or more available *episodic memories*
+            Not quite- it should "activate" the voice of the recollector.
+            Up til now, you haven't been issuing commands *as* the recollector,
+            you have been attemping to *find the recollector's voice* within
+            the events under contemplation.
+            ie. *now that you've found a valid trajectory*, you can assume
+            the voice of the recollector directly (and your command prompt
+            moves to the third space in the right column of the contemplation
+            box)
+    The memories lying along this trajectory are about Your General History With Katya.
+    You can now *assume* the voice of the mnemonic traveler.
+
+    > assume, in my contemplation, the voice of the mnemonic traveler
+(Back in the contemplation box, bottom row righthand column:)    
+    > travel along (the trajectory)/(my general history with katya)
+    You walk along the path through mnemonic space, admiring the scenery.
+
+    You note the following mnemonic landmarks:
+        - The first time you met Katya
+        - Drinking tea with Katya
+
+    (You can now *consider* these memories any time)
