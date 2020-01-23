@@ -1,3 +1,7 @@
+# Core puzzle mechanics in Venience World
+
+### First: A parser game generates a history
+
 So the core puzzle mechanism I have in mind for Venience World is something that can only properly work in a game world that shares various properties of the "traditional" IF parser games. It leverages the idea that these games build up a "history" (or "narrative") of sequential action-consequence pairs.
 
 E.g.
@@ -31,7 +35,7 @@ So. A puzzle mechanic that uses the fact that playing the game implicitly genera
 
 From here, there are couple additional steps to getting to the puzzle mechanic.
 
-### First: Events are game objects too.
+### Second: Events are game objects too.
 
 That is, you can refer to them by name, and "do things with them" in the commands the player can enter.
 
@@ -57,7 +61,7 @@ So, we can now refer to events like we can any other "game object". What can we 
 
 There are a lot of possibilities but I have a specific intention for Venience World...
 
-### Second: Sequences of events are game objects too.
+### Third: Sequences of events are game objects too.
 
 That is, you can assemble a sequence of events, and treat it either as each event in the sequence, or as a single entity, the summary of all the events in the sequence. You can refer to the summary as a noun phrase.
 
@@ -95,7 +99,7 @@ Ok, cool. We can refer to sequences of events, see them printed out verbatim, an
 
 Again, there's a lot of places you can go from here to get to puzzles, but still I have something very particular in mind...
 
-### Third: Abstract narrative sequences are game objects too.
+### Fourth: Abstract narrative sequences are game objects too.
 
 A popular example of an abstract narrative sequence is The Hero's Journey. It is a pattern which can be matched against many, arguably infinitely many, sequences of "raw narrative events".
 
@@ -115,7 +119,7 @@ Like The Hero's Journey, The Pillaging could map to infinitely many sequences of
 
 The Pillaging is a sad story. A story of evil, oppression, victimization.
 
-### Fourth (last): Puzzles are about mapping sequences of events to abstract narrative sequences, and the consequences of making those mappings.
+### Fifth (last): Puzzles are about mapping sequences of events to abstract narrative sequences, and the consequences of making those mappings.
 
 A player might find that they can plausibly map a given concrete sequence of events to the abstract ones of The Pillaging. (They might find that they cannot; it depends on how the mapping mechanics work and what concrete events they have to work with. This is a good thing; challenging puzzles require degrees of freedom.)
 
@@ -141,7 +145,7 @@ I intend for Venience World to be about reflecting on things and interpreting th
 
 The examples of hypothetical game output I've been using have a very close resemblance to traditional parser game output. It's linear, top-to-bottom, very terminal-like. Don't assume Venience World will look anything like that.
 
-You know from my (previous demo)[https://venienceworld.com/dist/venience.html] that my engine has word-highlighting, autocomplete, animated text, expanding text from previous entries in the history, etc: 
+You know from my previous demo (https://venienceworld.com/dist/venience.html) that my engine has word-highlighting, autocomplete, animated text, expanding text from previous entries in the history, etc: 
 
 There will be even further departures from the traditional stuff in order to get some of this stuff to work well in the game UI.
 
