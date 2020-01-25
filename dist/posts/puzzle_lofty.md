@@ -163,14 +163,21 @@ You're sitting in a small classroom with Katya, your advisor. Today she is givin
 
 She starts by writing a series of statements on the chalkboard:
 
-> - The laying of the tinder
-> - The laying of the kindling over the tinder
-> - The stacking of the firewood over the kindling
-> - The sparking of the tinder, creating an ember
-> - The spreading of the ember to the kindling, creating a flame
-> - The spreading of the flame to the firewood, creating a blaze
-> - The consumption of all within the blaze
-> - The ash left behind
+> The laying of the tinder
+>
+> The laying of the kindling over the tinder
+>
+> The stacking of the firewood over the kindling
+>
+> The sparking of the tinder, creating an ember
+>
+> The spreading of the ember to the kindling, creating a flame
+>
+> The spreading of the flame to the firewood, creating a blaze
+>
+> The consumption of all within the blaze
+>
+> The ash left behind
 
 She rewrites this in the standard notation of the field:
 
@@ -211,23 +218,95 @@ As the wooden fuel is spent, the blaze dies down, gradually dwindling to nothing
 "Now," she says. "Consider this story:"
 
 > A group of friends takes a weekend trip to camp in the woods.
+>
 > As it darkens outside, they gather tinder, kindling and firewood.
+>
 > They dig a pit in the ground.
+>
 > They lay the tinder in the middle of the pit.
+>
 > They pile the kindling on over it.
+>
 > They stack the logs in layers over the kindling.
+>
 > One of them lights a match, and carefully touches its flame to the tinder.
+>
 > The fire starts, spreading first to the kindling and then the logs.
+>
 > The group begins to sing an old song together.
+>
 > The fire burns brightly for awhile, and the friends tend to it, adding more logs periodically, as they continue to sing and tell stories.
+>
 > As it grows late, they stop adding wood, and the flame dwindles. The friends retreat to their tents.
+>
 > The remaining embers fizzle out, leaving behind ash.
 
 "Ah, I see that the story from the Voice of Fire is contained within this one," you say.
 
 "Indeed, my dear. Trivially so. Show it now, on the board," she says.
 
-She beckons you up. First you convert the story to the standard notation in a column on the left of the board. You draw a vertical line, creating a second column.
+She beckons you up. First you convert the story to the standard notation in a column on the left of the board:
+
+```
+> travel to the woods
+
+You all make your way out of town, in cars piled full of food, tents and musical instruments.
+
+You arrive at the campground in the woods.
+
+> gather tinder, kindling and firewood
+
+As it begins to grow dark, your group searches for and finds:
+  - tinder
+  - kindling
+  - firewood
+
+> dig a pit in the ground
+
+You dig a pit, a foot deep and 3 feet in diameter.
+
+> lay the tinder in the pit
+
+You place a patch of fluffy tinder in the pit.
+
+> pile the kindling over the tinder
+
+You gently pile the thin, dry sticks of kindling over the tinder.
+
+> stack the logs over the kindling
+
+You stack several layers of logs, in square fashion, over the pile of kindling.
+
+> light a match
+
+The match head flickers into a tiny flame.
+
+> touch the flame to the tinder.
+
+The tinder burns quickly on contact with the flame.
+
+The fire starts, spreading first to the kindling and then the logs.
+
+> sing
+
+You all begin to sing an old song together.
+
+> add logs to the fire
+
+The fire burns brightly for awhile, and your group tends to it, adding more logs periodically, as you continue to sing and tell stories.
+
+> sing
+
+As your group sings late into the night, you stop adding wood, and the flame dwindles.
+
+> sleep in tents
+
+Your group, growing weary, crawl into their tents to sleep.
+
+The remaining embers fizzle out, leaving behind ash.
+```
+
+Next you draw a vertical line, creating a second column.
 
 In the second column you list the successive steps of the Voice of Fire. For each step, you draw a line between the step on the right, and the part of the story on the left to which it corresponds.
 
@@ -237,17 +316,29 @@ In the second column you list the successive steps of the Voice of Fire. For eac
 
 
 > A young family moves out of the city.
+>
 > After some travel, they find a clearing in the woods, away from everything and everyone they've ever known.
+>
 > They begin to cut the trees in the surrounding wood. They begin to dig into the ground in the clearing.
+>
 > They build a wooden foundation into the ground, and upon this structure a frame for the house that they will make.
+>
 > They toil for weeks, chopping and laying wood over the frame, building walls and a roof.
+>
 > Once ready, the young family moves into their new home.
+>
 > Time passes.
+>
 > One day, a small group of children happens upon the house while wandering through the woods.
+>
 > Egging each other on, one of the children lights an oil-soaked rag on the end of a stick. He hurls it onto the roof of the house. The children scatter frantically into the woods.
+>
 > The flame from the burning stick spreads to the thatch of the house's roof. Soon, the whole roof is ablaze.
+>
 > The fire spreads to roof's frame, and the roof falls in.
+>
 > The whole house burns to the ground, the family trapped within.
+>
 > A field of ash is all that remains the next morning.
 
 "Well," you say, "That's quite a sad story."
@@ -271,16 +362,27 @@ You complete the translation of the story. Then, as before, you add a vertical l
 Katya continues the lesson with another story...
 
 > A seed takes root in fertile ground.
+>
 > The season is right, and the weather is right, and a sapling rises forth.
+>
 > It grows, and time passes, and the weather is right, and it lives to become a tree.
+>
 > The tree sprouts leaves and seeds, and the season changes, and the seeds fall to the ground and the leaves protect them.
+>
 > Gradually, more trees sprout and grow and spread.
+>
 > Much time passes. The trees flourish, a forest.
+>
 > The weather becomes dry and hot, and the forest suffers. Many trees die and the ground is covered in dead brush.
+>
 > The weather happens to bring a thunderstorm. A lightning bolt strikes a dead tree, and it begins to burn.
+>
 > The flame spreads to the dead brush on the ground, and out to more trees.
+>
 > The fire burns in a rapidly-growing circle around the lightning strike.
+>
 > The forest is consumed in fire. Trees and brush are burnt to the ground.
+>
 > The flame stops at rivers and sand and rocks. The forest burns down to ash.
 
 You repeat the exercise. There are no people in this story, no intentions at all. The forest is not a well-constructed fireplace at all, but the conditions of nature happened to conspire to burn it down[2]. Katya teaches you about disembodied and abstract voices in the standard notation.
