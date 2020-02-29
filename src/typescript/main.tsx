@@ -12,14 +12,15 @@ let {initial_result, update, css_rules} = new_world() //new_venience_world()//ne
 
 // Ability to start from a specific point in the demo:
 
-const START_SOLVED = 7;
+const START_SOLVED = 0;
 
 import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
 import { raw } from './parser';
 
-const starting_world = find_world_at(initial_result.world, START_SOLVED);
-initial_result = update(starting_world.result!, raw('', false));
-
+if (START_SOLVED > 0) {
+    const starting_world = find_world_at(initial_result.world, START_SOLVED);
+    initial_result = update(starting_world.result!, raw('', false));
+}
 console.timeEnd('world_build');
 
 

@@ -78,6 +78,11 @@ export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate
         const targets = compile_story_query(story_update.query)(story);        
         const op = compile_story_update_op(story_update.op);
 
+        if (targets.length === 0 && story_update.op.name !== 'remove_eph') {
+            console.log('Got to an op with no found targets:');
+            console.log(JSON.stringify(story_update, undefined, 2));
+        }
+
         for (const [target, path] of sort_targets(targets)) {
             const updated_child = op(target, effects ? effects.then(dom => dom_lookup_path(dom, path)) : undefined);
             let result: Fragment | undefined;

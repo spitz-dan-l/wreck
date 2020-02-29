@@ -54,7 +54,7 @@ export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithH
     }
 
     let data: StoryNode['data'] = {};
-    if (props.frame_index) {
+    if (props.frame_index !== undefined) {
         data.frame_index = props.frame_index;
     }
     if (props.gist) {

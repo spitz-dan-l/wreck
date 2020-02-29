@@ -20722,8 +20722,8 @@ module.exports = function(module) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const history_1 = __webpack_require__(/*! ../history */ "./src/typescript/history.ts");
 const stages_1 = __webpack_require__(/*! ../lib/stages */ "./src/typescript/lib/stages.ts");
-const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
 const utils_1 = __webpack_require__(/*! ../lib/utils */ "./src/typescript/lib/utils.ts");
+const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
 exports.empty_animation_state = {
     update_plan: stages_1.stages(),
     current_stage: undefined,
@@ -21122,10 +21122,10 @@ exports.App = (state, old) => {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const effect_utils_1 = __webpack_require__(/*! ../../lib/effect_utils */ "./src/typescript/lib/effect_utils.ts");
 const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
-const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
+const effect_utils_1 = __webpack_require__(/*! ../../lib/effect_utils */ "./src/typescript/lib/effect_utils.ts");
 const utils_1 = __webpack_require__(/*! ../../lib/utils */ "./src/typescript/lib/utils.ts");
+const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
 const animation_1 = __webpack_require__(/*! ../animation */ "./src/typescript/UI/animation.ts");
 const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/UI/prelude.ts");
 exports.History = (props, old) => {
@@ -21489,8 +21489,8 @@ exports.UndoButton = ({ world, undo_selected }, old) => {
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsx_utils_1 = __webpack_require__(/*! ../../lib/jsx_utils */ "./src/typescript/lib/jsx_utils.ts");
 function createElement(type, props, ...children_deep) {
-    const children = children_deep.flat(Infinity);
-    const all_props = Object.assign(Object.assign({}, props), { children });
+    const children = utils_1.flat_deep(children_deep); //.flat(Infinity);
+    const all_props = { ...props, children };
     if (typeof type === 'string') {
         return exports.intrinsic_element_renderer(type, all_props);
     }
@@ -21499,6 +21499,7 @@ function createElement(type, props, ...children_deep) {
     }
 }
 exports.createElement = createElement;
+const utils_1 = __webpack_require__(/*! ../../lib/utils */ "./src/typescript/lib/utils.ts");
 exports.intrinsic_element_renderer = (tag, props) => {
     const node = document.createElement(tag);
     const html_props = jsx_utils_1.remove_custom_props(props, { children: null });
@@ -21859,18 +21860,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const iterative_1 = __webpack_require__(/*! iterative */ "./node_modules/iterative/dist/index.js");
+const TypeStyle = __importStar(__webpack_require__(/*! typestyle */ "./node_modules/typestyle/lib.es2015/index.js"));
 const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist.ts");
 const history_1 = __webpack_require__(/*! ../../history */ "./src/typescript/history.ts");
 const stages_1 = __webpack_require__(/*! ../../lib/stages */ "./src/typescript/lib/stages.ts");
 const static_resources_1 = __webpack_require__(/*! ../../lib/static_resources */ "./src/typescript/lib/static_resources.ts");
+const utils_1 = __webpack_require__(/*! ../../lib/utils */ "./src/typescript/lib/utils.ts");
 const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/index.ts");
 const supervenience_1 = __webpack_require__(/*! ../../supervenience */ "./src/typescript/supervenience.ts");
-const utils_1 = __webpack_require__(/*! ../../lib/utils */ "./src/typescript/lib/utils.ts");
+const styles_1 = __webpack_require__(/*! ../../UI/styles */ "./src/typescript/UI/styles.ts");
 const prelude_1 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
 const supervenience_spec_1 = __webpack_require__(/*! ./supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
-const TypeStyle = __importStar(__webpack_require__(/*! typestyle */ "./node_modules/typestyle/lib.es2015/index.js"));
-const styles_1 = __webpack_require__(/*! ../../UI/styles */ "./src/typescript/UI/styles.ts");
-const iterative_1 = __webpack_require__(/*! iterative */ "./node_modules/iterative/dist/index.js");
 prelude_1.resource_registry.initialize('initial_world_metaphor', {
     gist: null,
     owner: null,
@@ -21979,7 +21980,9 @@ exports.make_action_applicator = (world, facet_id, action_id) => (parser) => {
 };
 const unfocused_class = TypeStyle.style(styles_1.alpha_rule(0.4), {
     $nest: {
-        '& .frame:not(&)': Object.assign({}, styles_1.alpha_rule(1.0))
+        '& .frame:not(&)': {
+            ...styles_1.alpha_rule(1.0)
+        }
     }
 });
 function make_direct_thread(world, immediate_world) {
@@ -22640,7 +22643,14 @@ prelude_1.Puffers({
 // });
 var prelude_2 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
 exports.Venience = prelude_2.Venience;
-let initial_venience_world = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, world_1.get_initial_world()), prelude_1.resource_registry.get('initial_world_prelude', false)), prelude_1.resource_registry.get('initial_world_metaphor', false)), prelude_1.resource_registry.get('initial_world_topic', false)), prelude_1.resource_registry.get('initial_world_narrascope', false)), prelude_1.resource_registry.get('initial_world_notes', false));
+let initial_venience_world = {
+    ...world_1.get_initial_world(),
+    ...prelude_1.resource_registry.get('initial_world_prelude', false),
+    ...prelude_1.resource_registry.get('initial_world_metaphor', false),
+    ...prelude_1.resource_registry.get('initial_world_topic', false),
+    ...prelude_1.resource_registry.get('initial_world_narrascope', false),
+    ...prelude_1.resource_registry.get('initial_world_notes', false)
+};
 initial_venience_world = utils_1.update(initial_venience_world, story_1.story_updater(story_1.Updates.description('You and Sam are sitting together on the bus.')));
 const puffer_index = prelude_1.resource_registry.get('puffer_index', false);
 exports.venience_world_spec = puffer_1.make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
@@ -23029,20 +23039,13 @@ function make_renderer(t, compute_default, post_process) {
 }
 exports.make_renderer = make_renderer;
 exports.render_gist = {
-    noun_phrase: make_renderer('noun_phrase', g => g.tag),
-    command_noun_phrase: make_renderer('command_noun_phrase', g => g.tag.replace(' ', '_')),
+    noun_phrase: make_renderer('noun_phrase', (g) => g.tag),
+    command_noun_phrase: make_renderer('command_noun_phrase', (g) => g.tag.replace(' ', '_')),
 };
 function Gists(renderer) {
     exports.gist_renderer_index.add(renderer);
 }
 exports.Gists = Gists;
-function my_gist(g) {
-    if (typeof (g) === 'string') {
-        return { tag: g, children: undefined };
-    }
-    return g;
-}
-exports.my_gist = my_gist;
 function gist(tag, children) {
     if (typeof (tag) === 'string') {
         return {
@@ -23455,7 +23458,7 @@ function set_attributes(element, attributes) {
 }
 exports.set_attributes = set_attributes;
 function remove_custom_props(props, custom_keys) {
-    const result = Object.assign({}, props);
+    const result = { ...props };
     for (const k of utils_1.keys(custom_keys)) {
         delete result[k];
     }
@@ -24088,7 +24091,7 @@ exports.assert_type_predicate = assert_type_predicate;
 function infer_type_predicate(f) { return f; }
 exports.infer_type_predicate = infer_type_predicate;
 function dangerous_assert(x) {
-    console.warn('You are doing a fake assert, you are bad.');
+    // console.warn('You are doing a fake assert, you are bad.');
     return;
 }
 exports.dangerous_assert = dangerous_assert;
@@ -24096,10 +24099,10 @@ function adheres_to_kind_protocol(x) {
     return typeof x.kind === 'string';
 }
 exports.adheres_to_kind_protocol = adheres_to_kind_protocol;
-function type_or_kind_of(x) {
-    const t = typeof (x);
-    if (t !== 'object') {
-        return t;
+function type_or_kind_name(x) {
+    const type_name = typeof (x);
+    if (type_name !== 'object') {
+        return type_name;
     }
     dangerous_assert(x);
     if (adheres_to_kind_protocol(x)) {
@@ -24109,7 +24112,11 @@ function type_or_kind_of(x) {
         return 'object';
     }
 }
-exports.type_or_kind_of = type_or_kind_of;
+exports.type_or_kind_name = type_or_kind_name;
+function type_or_kind_is(x, type_or_kind) {
+    return type_or_kind_name(x) === type_or_kind;
+}
+exports.type_or_kind_is = type_or_kind_is;
 exports.typeof_ = (t) => (x) => typeof (x) === t;
 exports.in_ = (k) => (x) => k in x;
 exports.instanceof_ = (ctor) => (x) => x instanceof ctor;
@@ -24191,91 +24198,106 @@ function update1(source, updater) {
         return updater;
     }
     if (updater instanceof Array) {
-        // If the updater is an array, we are actually inside a *tuple* updater.
-        // This means the updater must be no larger than the source tuple type.
-        // We will not delete any elements, only replace with updates.
-        let result;
-        if (source instanceof Array) {
-            result = [...source];
-        }
-        else {
-            result = [];
-        }
-        for (let i = 0; i < updater.length; i++) {
-            const x = updater[i];
-            if (x === undefined) {
-                continue;
-            }
-            result[i] = update(result[i], x);
-        }
-        return result;
+        return update1_array(source, updater);
     }
     if (updater instanceof Map) {
-        let result;
-        // Assume that the constructor function is part of the Map interface
-        // Even though in JS it's not :(
-        const ctor = updater.constructor;
-        if (source instanceof Map) {
-            result = new ctor([...source]);
-        }
-        else {
-            result = new ctor();
-        }
-        for (let [k, v] of updater) {
-            if (v === undefined) {
-                result.delete(k);
-            }
-            else {
-                const r = update(result.get(k), v);
-                if (r === undefined) {
-                    result.delete(k);
-                }
-                else {
-                    result.set(k, r);
-                }
-            }
-        }
-        return result;
+        return update1_map(source, updater);
     }
     // updater is an Object, traverse each key/value and update recursively.
     // note: if you are just trying to set to a deeply-nested object with no traversal,
     // you can achieve this by passing a function returning your desired object.
-    if (updater instanceof Object) {
-        let result;
-        if (source instanceof Array) {
-            result = [...source];
-        }
-        else if (typeof (source) === 'object') {
-            result = Object.assign({}, source);
-            // TODO: Consider using prototypes?
-            // result = Object.create(source as unknown as object)
-        }
-        else {
-            result = {};
-        }
-        for (let [n, v] of Object.entries(updater)) {
-            if (v === undefined) {
-                delete result[n];
-            }
-            else {
-                const r = update(result[n], v);
-                if (r === undefined) {
-                    delete result[n];
-                }
-                else {
-                    result[n] = r;
-                }
-            }
-        }
-        if (result instanceof Array) {
-            // flatten to remove empty (deleted) slots
-            result = result.flat(0);
-        }
-        return result;
+    // if (updater instanceof Object) {
+    if (typeof (updater) === 'object') {
+        return update1_object(source, updater);
     }
     throw Error('Should never get here');
 }
 exports.update1 = update1;
+function update1_array(source, updater) {
+    // If the updater is an array, we are actually inside a *tuple* updater.
+    // This means the updater must be no larger than the source tuple type.
+    // We will not delete any elements, only replace with updates.
+    let result;
+    if (source instanceof Array) {
+        result = [...source];
+    }
+    else {
+        result = [];
+    }
+    for (let i = 0; i < updater.length; i++) {
+        const x = updater[i];
+        if (x === undefined) {
+            continue;
+        }
+        result[i] = update(result[i], x);
+    }
+    return result;
+}
+function update1_map(source, updater) {
+    let result;
+    // Assume that the constructor function is part of the Map interface
+    // Even though in JS it's not :(
+    const ctor = updater.constructor;
+    if (source instanceof Map) {
+        result = new ctor(source);
+    }
+    else {
+        result = new ctor();
+    }
+    for (let [k, v] of updater) {
+        if (v === undefined) {
+            result.delete(k);
+        }
+        else {
+            const r = update(result.get(k), v);
+            if (r === undefined) {
+                result.delete(k);
+            }
+            else {
+                result.set(k, r);
+            }
+        }
+    }
+    return result;
+}
+function update1_object(source, updater) {
+    let result;
+    if (source instanceof Array) {
+        result = [...source];
+    }
+    else if (typeof (source) === 'object') {
+        result = { ...source };
+        // TODO: Consider using prototypes?
+        // result = Object.create(source as unknown as object)
+    }
+    else {
+        result = {};
+    }
+    for (const n in updater) {
+        const v = updater[n];
+        if (v === undefined) {
+            delete result[n];
+        }
+        else {
+            const r = update(result[n], v);
+            if (r === undefined) {
+                delete result[n];
+            }
+            else {
+                result[n] = r;
+            }
+        }
+    }
+    if (result instanceof Array) {
+        // remove empty (deleted) slots
+        result = remove_empty_slots(result);
+    }
+    return result;
+}
+function remove_empty_slots(arr) {
+    return arr.filter((_, i) => i in arr);
+}
+exports.remove_empty_slots = remove_empty_slots;
 function update(source, ...updaters) {
     return updaters.reduce(update1, source);
 }
@@ -24285,7 +24307,8 @@ function update_any(source, updater) {
 }
 exports.update_any = update_any;
 // Add an overload to immer's IProduce that makes it usable as an update function
-__webpack_require__(/*! immer */ "./node_modules/immer/dist/immer.module.js");
+const immer_1 = __webpack_require__(/*! immer */ "./node_modules/immer/dist/immer.module.js");
+immer_1.setAutoFreeze(false);
 
 
 /***/ }),
@@ -24424,6 +24447,50 @@ function empty(x) {
     return Object.keys(x).length === 0;
 }
 exports.empty = empty;
+function remove_empty_slots(arr) {
+    return arr.filter((_, i) => i in arr);
+}
+exports.remove_empty_slots = remove_empty_slots;
+// Significantly faster version of Array.flat(Infinity)
+function flat_deep(arr) {
+    const result = [];
+    const iter_stack = [{
+            arr,
+            pos: undefined
+        }];
+    while (iter_stack.length > 0) {
+        const iter = iter_stack[iter_stack.length - 1];
+        if (iter.pos === undefined) {
+            if (iter.arr.length === 0) {
+                iter_stack.pop();
+                continue;
+            }
+            else {
+                iter.pos = 0;
+            }
+        }
+        else if (iter.pos === iter.arr.length - 1) {
+            iter_stack.pop();
+            continue;
+        }
+        else {
+            iter.pos++;
+        }
+        const elt = iter.arr[iter.pos];
+        if (elt instanceof Array) {
+            iter_stack.push({
+                arr: elt,
+                pos: undefined
+            });
+            continue;
+        }
+        else {
+            result.push(elt);
+        }
+    }
+    return result;
+}
+exports.flat_deep = flat_deep;
 function set_eq(arr1, arr2) {
     if (arr1 === undefined && arr2 === undefined) {
         return true;
@@ -24477,7 +24544,7 @@ function cond_obj(c, r) {
 }
 exports.cond_obj = cond_obj;
 function merge_objects(arr) {
-    return arr.reduce((acc, cur) => (Object.assign(Object.assign({}, acc), cur)), {});
+    return arr.reduce((acc, cur) => ({ ...acc, ...cur }), {});
 }
 exports.merge_objects = merge_objects;
 // export type Entry<Obj extends {}> =
@@ -24678,6 +24745,55 @@ function with_context(f) {
     return [result, context];
 }
 exports.with_context = with_context;
+function is_shallow_equal(arr1, arr2) {
+    if (arr1 === arr2) {
+        return true;
+    }
+    if (arr1.length !== arr2.length) {
+        return false;
+    }
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+exports.is_shallow_equal = is_shallow_equal;
+class ArgCache {
+    constructor(func, size = 100) {
+        this.func = func;
+        this.size = size;
+        this.cache = [];
+    }
+    call(args) {
+        const entry = this.cache.find(e => is_shallow_equal(e.arguments, args));
+        if (entry === undefined) {
+            // console.count('cache_miss');
+            const result = this.func(...args);
+            this.cache.push({
+                arguments: args,
+                result
+            });
+            if (this.cache.length > this.size * 1.2) {
+                // console.count('cache_spill');
+                this.cache.splice(0, this.cache.length - this.size);
+            }
+            return result;
+        }
+        console.count('cache_hit');
+        return entry.result;
+    }
+}
+function memoize(f, size) {
+    const cache = new ArgCache(f, size);
+    return new Proxy(f, {
+        apply(target, thisArg, args) {
+            return cache.call(args);
+        }
+    });
+}
+exports.memoize = memoize;
 
 
 /***/ }),
@@ -24750,11 +24866,13 @@ const UI_1 = __webpack_require__(/*! ./UI */ "./src/typescript/UI/index.ts");
 console.time('world_build');
 let { initial_result, update, css_rules } = narrascope_1.new_venience_world(); //new_venience_world()//new_bird_world();//new_hex_world();
 // Ability to start from a specific point in the demo:
-const START_SOLVED = 7;
+const START_SOLVED = 0;
 const supervenience_spec_1 = __webpack_require__(/*! ./demo_worlds/narrascope/supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
 const parser_1 = __webpack_require__(/*! ./parser */ "./src/typescript/parser.ts");
-const starting_world = supervenience_spec_1.find_world_at(initial_result.world, START_SOLVED);
-initial_result = update(starting_world.result, parser_1.raw('', false));
+if (START_SOLVED > 0) {
+    const starting_world = supervenience_spec_1.find_world_at(initial_result.world, START_SOLVED);
+    initial_result = update(starting_world.result, parser_1.raw('', false));
+}
 console.timeEnd('world_build');
 console.time('render');
 if (css_rules !== undefined) {
@@ -24811,6 +24929,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const iterative_1 = __webpack_require__(/*! iterative */ "./node_modules/iterative/dist/index.js");
 const text_utils_1 = __webpack_require__(/*! ./lib/text_utils */ "./src/typescript/lib/text_utils.ts");
 const utils_1 = __webpack_require__(/*! ./lib/utils */ "./src/typescript/lib/utils.ts");
+const type_predicate_utils_1 = __webpack_require__(/*! ./lib/type_predicate_utils */ "./src/typescript/lib/type_predicate_utils.ts");
 // class NoMatch {
 //     kind: 'NoMatch' = 'NoMatch';
 // };
@@ -24823,7 +24942,7 @@ function parse_restart(n_splits) {
     return { kind: 'ParseRestart', n_splits };
 }
 function is_parse_restart(x) {
-    return ('kind' in x) && x.kind === 'ParseRestart';
+    return (typeof (x) === 'object') && ('kind' in x) && x.kind === 'ParseRestart';
 }
 // class ParseRestart {
 //     kind: 'ParseRestart' = 'ParseRestart';
@@ -25011,7 +25130,7 @@ function failed(result) {
     if (result === undefined) {
         return false;
     }
-    return result === NO_MATCH || ('kind' in result) && (result.kind === 'ParseRestart');
+    return result === NO_MATCH || type_predicate_utils_1.type_or_kind_is(result, 'ParseRestart');
 }
 exports.failed = failed;
 class Parser {
@@ -25034,8 +25153,8 @@ class Parser {
         this._current_availability = val;
     }
     with_label_context(labels, cb) {
-        let old_label_context = Object.assign({}, this.label_context);
-        this.label_context = Object.assign(Object.assign({}, this.label_context), labels);
+        const old_label_context = { ...this.label_context };
+        this.label_context = { ...this.label_context, ...labels };
         try {
             return cb();
         }
@@ -25044,7 +25163,7 @@ class Parser {
         }
     }
     consume(spec, result) {
-        let status = this._consume_spec(spec);
+        const status = this._consume_spec(spec);
         if (failed(status)) {
             return status;
         }
@@ -25067,12 +25186,12 @@ class Parser {
         }
     }
     _consume_string(spec, overrides) {
-        let toks = text_utils_1.split_tokens(spec); //tokenize(spec)[0];
+        const toks = text_utils_1.split_tokens(spec); //tokenize(spec)[0];
         let labels = this.label_context; //{ filler: true };
         let availability = 'Available';
         if (overrides !== undefined) {
             if (overrides.labels !== undefined) {
-                labels = Object.assign(Object.assign({}, labels), overrides.labels);
+                labels = { ...labels, ...overrides.labels };
             }
             if (overrides.used) {
                 availability = 'Used';
@@ -25082,7 +25201,7 @@ class Parser {
             }
         }
         for (let t of toks) {
-            let status = this._consume(t.split('_').map(t => ({
+            const status = this._consume(t.split('_').map(t => ({
                 kind: 'RawConsumeSpec',
                 token: t,
                 availability,
@@ -25094,7 +25213,7 @@ class Parser {
         }
     }
     _consume_object(spec, overrides) {
-        let spec_ = Object.assign({}, spec);
+        const spec_ = { ...spec };
         if (overrides) {
             if (overrides.used !== undefined) {
                 spec_.used = overrides.used;
@@ -25103,7 +25222,7 @@ class Parser {
                 spec_.locked = overrides.locked;
             }
             if (overrides.labels) {
-                spec_.labels = Object.assign(Object.assign({}, spec.labels), overrides.labels);
+                spec_.labels = { ...spec.labels, ...overrides.labels };
             }
         }
         return this._consume_spec(spec.tokens, utils_1.drop_keys(spec_, 'tokens'));
@@ -25136,8 +25255,8 @@ class Parser {
         let i = 0;
         // check if exact match
         for (i = 0; i < tokens.length; i++) {
-            let spec = tokens[i];
-            let spec_value = spec.token;
+            const spec = tokens[i];
+            const spec_value = spec.token;
             if (spec_value === exports.NEVER_TOKEN) {
                 error = true;
                 break;
@@ -25146,7 +25265,7 @@ class Parser {
                 partial = true;
                 break;
             }
-            let input = this.input_stream[this.pos + i];
+            const input = this.input_stream[this.pos + i];
             if (spec_value === input) {
                 if (spec.availability === 'Locked') {
                     error = true;
@@ -25235,7 +25354,7 @@ class Parser {
         // let status = this._consume([
         //     rcs_pool.create(SUBMIT_TOKEN, 'Available', {})
         // ]);
-        let status = this._consume([{
+        const status = this._consume([{
                 kind: 'RawConsumeSpec',
                 token: exports.SUBMIT_TOKEN,
                 labels: {},
@@ -25255,8 +25374,8 @@ class Parser {
             this.failure = parse_restart(subthreads.length); //new ParseRestart(subthreads.length);
             return this.failure;
         }
-        let st = subthreads[next_result.value];
-        let result = st(this);
+        const st = subthreads[next_result.value];
+        const result = st(this);
         if (failed(result)) {
             return result;
         }
@@ -25307,7 +25426,7 @@ class Parser {
                     continue;
                 }
                 if (!is_no_match(result) /*( result instanceof NoMatch)*/ && (p.parse_result.length === 0 || utils_1.array_last(p.parse_result).expected.token !== exports.SUBMIT_TOKEN)) {
-                    let expected_command = p.parse_result.map(r => r.expected.token).join(' ');
+                    const expected_command = p.parse_result.map(r => r.expected.token).join(' ');
                     throw new ParseError("Command did not end in SUBMIT: " + expected_command);
                 }
                 results.push(result);
@@ -25317,8 +25436,8 @@ class Parser {
         }
         const [results, parses] = match_input();
         // Assembling the view object, data structures for building views of the parsed text
-        let view = compute_view(parses, tokens);
-        let parsing = {
+        const view = compute_view(parses, tokens);
+        const parsing = {
             kind: 'Parsing',
             view,
             parses,
@@ -25327,7 +25446,7 @@ class Parser {
             raw
         };
         // Filter and find the single valid result to return
-        let valid_results = results.filter(r => !is_no_match(r)); //(r instanceof NoMatch));
+        const valid_results = results.filter(r => !is_no_match(r)); //(r instanceof NoMatch));
         if (valid_results.length === 0) {
             return {
                 kind: 'NotParsed',
@@ -25338,7 +25457,7 @@ class Parser {
             throw new ParseError(`Ambiguous parse: ${valid_results.length} valid results found.`);
         }
         else {
-            let result = valid_results[0];
+            const result = valid_results[0];
             return {
                 kind: 'Parsed',
                 result: result,
@@ -25376,11 +25495,11 @@ Options
 function traverse_thread(thread, command_filter) {
     let n_partials = 0;
     let n_matches = 0;
-    let result = {};
-    let frontier = [{ kind: 'RawInput', text: '', submit: false }];
+    const result = {};
+    const frontier = [{ kind: 'RawInput', text: '', submit: false }];
     while (frontier.length > 0) {
-        let cmd = frontier.shift();
-        let res = Parser.run_thread(cmd, thread);
+        const cmd = frontier.shift();
+        const res = Parser.run_thread(cmd, thread);
         if (res.kind === 'Parsed') {
             result[cmd.text] = res;
             n_matches++;
@@ -25388,24 +25507,24 @@ function traverse_thread(thread, command_filter) {
         else {
             n_partials++;
         }
-        let partial_parses = iterative_1.filter(res.parsing.parses, ms => utils_1.array_last(ms).status === 'PartialMatch');
+        const partial_parses = iterative_1.filter(res.parsing.parses, ms => utils_1.array_last(ms).status === 'PartialMatch');
         // let partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch')
-        let grps = group_rows(partial_parses, false);
+        const grps = group_rows(partial_parses, false);
         for (let k of Object.keys(grps)) {
-            let grp = grps[k];
+            const grp = grps[k];
             if (command_filter !== undefined) {
-                let expected = grp[0].map(m => m.expected);
+                const expected = grp[0].map(m => m.expected);
                 if (!command_filter(expected)) {
                     continue;
                 }
             }
-            let new_cmd = {
+            const new_cmd = {
                 kind: 'RawInput',
                 submit: false
             };
-            let toks = [];
+            const toks = [];
             for (let m of grp[0]) {
-                let tok = m.expected.token;
+                const tok = m.expected.token;
                 if (typeof (tok) === 'string') {
                     toks.push(tok);
                 }
@@ -25451,12 +25570,24 @@ const stages_1 = __webpack_require__(/*! ./lib/stages */ "./src/typescript/lib/s
 const utils_1 = __webpack_require__(/*! ./lib/utils */ "./src/typescript/lib/utils.ts");
 const world_1 = __webpack_require__(/*! ./world */ "./src/typescript/world.tsx");
 function normalize_puffer(puffer) {
-    return Object.assign({ pre: stages_1.normalize_stages(puffer.pre), handle_command: stages_1.normalize_stages(puffer.handle_command), post: stages_1.normalize_stages(puffer.post), css_rules: puffer.css_rules || [] }, utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules'));
+    return {
+        pre: stages_1.normalize_stages(puffer.pre),
+        handle_command: stages_1.normalize_stages(puffer.handle_command),
+        post: stages_1.normalize_stages(puffer.post),
+        css_rules: puffer.css_rules || [],
+        ...utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules')
+    };
 }
 exports.normalize_puffer = normalize_puffer;
 function map_puffer(mapper, puffer) {
     let norm_puffer = normalize_puffer(puffer);
-    return Object.assign({ pre: mapper.pre ? stages_1.map_stages(norm_puffer.pre, mapper.pre) : norm_puffer.pre, handle_command: mapper.handle_command ? stages_1.map_stages(norm_puffer.handle_command, mapper.handle_command) : norm_puffer.handle_command, post: mapper.post ? stages_1.map_stages(norm_puffer.post, mapper.post) : norm_puffer.post, css_rules: norm_puffer.css_rules }, utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules'));
+    return {
+        pre: mapper.pre ? stages_1.map_stages(norm_puffer.pre, mapper.pre) : norm_puffer.pre,
+        handle_command: mapper.handle_command ? stages_1.map_stages(norm_puffer.handle_command, mapper.handle_command) : norm_puffer.handle_command,
+        post: mapper.post ? stages_1.map_stages(norm_puffer.post, mapper.post) : norm_puffer.post,
+        css_rules: norm_puffer.css_rules,
+        ...utils_1.drop_keys(puffer, 'pre', 'handle_command', 'post', 'css_rules')
+    };
 }
 exports.map_puffer = map_puffer;
 function gate_puffer(cond, puffer) {
@@ -25582,9 +25713,55 @@ function bake_puffers(puffers) {
 exports.bake_puffers = bake_puffers;
 function make_puffer_world_spec(initial_world, puffer_index) {
     let spec = bake_puffers(puffer_index);
-    return world_1.make_world_spec(Object.assign({ initial_world }, spec));
+    return world_1.make_world_spec({
+        initial_world,
+        ...spec,
+    });
 }
 exports.make_puffer_world_spec = make_puffer_world_spec;
+
+
+/***/ }),
+
+/***/ "./src/typescript/story/basic_text.ts":
+/*!********************************************!*\
+  !*** ./src/typescript/story/basic_text.ts ***!
+  \********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+function to_basic_text(story, previous_text = '') {
+    let separator = '';
+    let added_text = '';
+    if (typeof story === 'string') {
+        const n = document.createTextNode(story);
+        added_text = n.textContent || '';
+        separator = ' ';
+    }
+    else if (story.kind === 'StoryHole') {
+        added_text = '> ';
+        separator = '\n';
+    }
+    else {
+        if (story.tag === 'span') {
+            separator = ' ';
+        }
+        else {
+            separator = '\n';
+        }
+        for (const child of story.children) {
+            added_text += to_basic_text(child, added_text);
+        }
+    }
+    if (added_text.length > 0 && previous_text.length > 0) {
+        return separator + added_text;
+    }
+    return added_text;
+}
+exports.to_basic_text = to_basic_text;
 
 
 /***/ }),
@@ -25606,9 +25783,10 @@ const text_utils_1 = __webpack_require__(/*! ../lib/text_utils */ "./src/typescr
 function createElement(tag, props, ...deep_children) {
     // The jsx transformation appears to pass null as the second argument if none are provided.
     props = props || {};
-    const children = deep_children.flat(Infinity);
+    const children = lib_1.flat_deep(deep_children);
+    // const children = deep_children.flat(Infinity);
     if (typeof (tag) === 'function') {
-        return tag(Object.assign(Object.assign({}, props), { children }));
+        return tag({ ...props, children });
     }
     const classes = {};
     if (props.className) {
@@ -25617,7 +25795,7 @@ function createElement(tag, props, ...deep_children) {
         }
     }
     let data = {};
-    if (props.frame_index) {
+    if (props.frame_index !== undefined) {
         data.frame_index = props.frame_index;
     }
     if (props.gist) {
@@ -25636,6 +25814,7 @@ function createElement(tag, props, ...deep_children) {
     };
 }
 exports.createElement = createElement;
+const lib_1 = __webpack_require__(/*! ../lib */ "./src/typescript/lib/index.ts");
 
 
 /***/ }),
@@ -25706,6 +25885,7 @@ __export(__webpack_require__(/*! ./story */ "./src/typescript/story/story.ts"));
 __export(__webpack_require__(/*! ./create */ "./src/typescript/story/create.ts"));
 __export(__webpack_require__(/*! ./update */ "./src/typescript/story/update/index.ts"));
 __export(__webpack_require__(/*! ./dom */ "./src/typescript/story/dom.ts"));
+__export(__webpack_require__(/*! ./basic_text */ "./src/typescript/story/basic_text.ts"));
 
 
 /***/ }),
@@ -25721,7 +25901,6 @@ __export(__webpack_require__(/*! ./dom */ "./src/typescript/story/dom.ts"));
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const update_1 = __webpack_require__(/*! ../lib/update */ "./src/typescript/lib/update.ts");
-const immer_1 = __webpack_require__(/*! immer */ "./node_modules/immer/dist/immer.module.js");
 const iterative_1 = __webpack_require__(/*! iterative */ "./node_modules/iterative/dist/index.js");
 const type_predicate_utils_1 = __webpack_require__(/*! ../lib/type_predicate_utils */ "./src/typescript/lib/type_predicate_utils.ts");
 const lib_1 = __webpack_require__(/*! ../lib */ "./src/typescript/lib/index.ts");
@@ -25760,7 +25939,45 @@ function find_node(node, predicate) {
 }
 exports.find_node = find_node;
 function find_all_nodes(node, predicate) {
-    // return find_all_nodes_iterative(node, predicate);
+    const result = [];
+    const frontier = [{
+            node,
+            path: [],
+            child_pos: undefined
+        }];
+    while (frontier.length > 0) {
+        const fe = frontier[frontier.length - 1];
+        const n = fe.node;
+        const p = fe.path;
+        if (fe.child_pos === undefined) {
+            if (predicate(fe.node)) {
+                result.push([n, p]);
+            }
+            if (!is_story_node(n) || n.children.length === 0) {
+                frontier.pop();
+                continue;
+            }
+            fe.child_pos = 0;
+        }
+        else {
+            if (fe.child_pos === n.children.length - 1) {
+                frontier.pop();
+                continue;
+            }
+            fe.child_pos++;
+        }
+        const child_pos = fe.child_pos;
+        const children = n.children;
+        frontier.push({
+            node: children[child_pos],
+            path: [...p, child_pos],
+            child_pos: undefined
+        });
+    }
+    return result;
+}
+exports.find_all_nodes = find_all_nodes;
+function find_all_nodes_recursive(node, predicate) {
     const result = [];
     if (predicate(node)) {
         result.push([node, []]);
@@ -25774,47 +25991,7 @@ function find_all_nodes(node, predicate) {
     }
     return result;
 }
-exports.find_all_nodes = find_all_nodes;
-function find_all_nodes_iterative(node, predicate) {
-    const result = [];
-    function get_child_iter(node) {
-        if (is_story_node(node)) {
-            return node.children.keys();
-        }
-        return undefined;
-    }
-    const frontier = [{
-            node,
-            path: []
-        }];
-    while (frontier.length > 0) {
-        const fe = frontier[frontier.length - 1];
-        if (fe.child_iter === undefined) {
-            if (predicate(fe.node)) {
-                result.push([fe.node, fe.path]);
-            }
-            const child_iter = get_child_iter(fe.node);
-            if (child_iter === undefined) {
-                frontier.pop();
-                continue;
-            }
-            else {
-                fe.child_iter = child_iter;
-            }
-        }
-        const next_child_result = fe.child_iter.next();
-        if (next_child_result.done) {
-            frontier.pop();
-            continue;
-        }
-        frontier.push({
-            node: fe.node.children[next_child_result.value],
-            path: [...fe.path, next_child_result.value]
-        });
-    }
-    return result;
-}
-exports.find_all_nodes_iterative = find_all_nodes_iterative;
+exports.find_all_nodes_recursive = find_all_nodes_recursive;
 // Find from a sequence of predicates. Makes it easy to get querySelector-like behavior.
 function find_chain(node, predicates) {
     if (predicates.length === 0) {
@@ -25915,9 +26092,11 @@ function splice_in(parent, path, updated) {
     }
     if (path.length === 1) {
         return update_1.update(parent, {
-            children: immer_1.produce(_ => {
-                _.splice(path[0], 1, ...updated);
-            })
+            children: _ => {
+                const result = [..._];
+                result.splice(path[0], 1, ...updated);
+                return result;
+            }
         });
     }
     return update_1.update(parent, {
@@ -25931,7 +26110,7 @@ function structurally_equal(story1, story2) {
     if (story1 === story2) {
         return true;
     }
-    const tk1 = type_predicate_utils_1.type_or_kind_of(story1), tk2 = type_predicate_utils_1.type_or_kind_of(story2);
+    const tk1 = type_predicate_utils_1.type_or_kind_name(story1), tk2 = type_predicate_utils_1.type_or_kind_name(story2);
     if (tk1 !== tk2) {
         return false;
     }
@@ -25978,7 +26157,7 @@ const op_1 = __webpack_require__(/*! ./op */ "./src/typescript/story/update/op.t
 const query_1 = __webpack_require__(/*! ./query */ "./src/typescript/story/update/query.ts");
 const update_1 = __webpack_require__(/*! ./update */ "./src/typescript/story/update/update.tsx");
 const update_group_1 = __webpack_require__(/*! ./update_group */ "./src/typescript/story/update/update_group.ts");
-exports.Queries = dsl_utils_1.make_dsl((name) => (...params) => query_1.story_query(name, ...params));
+exports.Queries = dsl_utils_1.make_dsl((name) => (...params) => query_1.story_query(name, params));
 exports.Ops = dsl_utils_1.make_dsl(name => (...params) => op_1.story_op(name, ...params));
 ;
 class UpdatesBuilder {
@@ -25990,7 +26169,7 @@ class UpdatesBuilder {
         return new UpdatesBuilder(utils_1.update(this.context, updater));
     }
     apply(f) {
-        return [f(this)].flat(Infinity);
+        return utils_1.flat_deep([f(this)]);
     }
     to_query() {
         if (this.context.query === undefined) {
@@ -26004,7 +26183,7 @@ class UpdatesBuilder {
             const w_frame = this.frame(w.index);
             results.push(f(w, w_frame));
         }
-        return results.flat(Infinity);
+        return utils_1.flat_deep(results); //.flat(Infinity);
     }
 }
 const TEXT_CATEGORY_NAMES = ['action', 'consequence', 'description', 'prompt'];
@@ -26019,7 +26198,7 @@ for (const prop of TEXT_CATEGORY_NAMES) {
     };
 }
 function query_method(k, ...params) {
-    const q = query_1.story_query(k, ...params);
+    const q = query_1.story_query(k, params);
     const base_query = this.context.query;
     if (base_query === undefined) {
         return this.update_context({
@@ -26076,7 +26255,7 @@ class GroupBuilder {
             kind: 'StoryUpdateGroup',
             name: this.context.name || 'updates',
             stage: this.context.stage,
-            updates: update_specs.flat(Infinity)
+            updates: utils_1.flat_deep(update_specs) //.flat(Infinity)
         };
     }
 }
@@ -26085,7 +26264,7 @@ function is_group(x) {
     return x.kind === 'StoryUpdateGroup';
 }
 function story_updater(...updates) {
-    const flat_updates = updates.flat(Infinity);
+    const flat_updates = utils_1.flat_deep(updates) /*.flat(Infinity)*/;
     const groups = [];
     let default_group_updates = [];
     function flush_default_group() {
@@ -26245,7 +26424,7 @@ exports.StoryUpdateOps = {
         if (!story_1.is_story_node(elt)) {
             throw new Error('Tried to update CSS on non-StoryNode ' + JSON.stringify(elt));
         }
-        updates = Object.assign({}, updates);
+        updates = { ...updates };
         for (const [cls, on] of Object.entries(updates)) {
             if (!!on !== !!elt.classes[cls]) {
                 updates[`eph-${on ? 'adding' : 'removing'}-${cls}`] = true;
@@ -26315,7 +26494,9 @@ exports.StoryUpdateOps = {
     }
 };
 function compile_story_update_op(op_spec) {
-    return exports.StoryUpdateOps[op_spec.name](...op_spec.parameters);
+    const f = exports.StoryUpdateOps[op_spec.name];
+    return f.apply(null, op_spec.parameters);
+    // return (StoryUpdateOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp)(...op_spec.parameters);
 }
 exports.compile_story_update_op = compile_story_update_op;
 
@@ -26352,11 +26533,13 @@ exports.StoryQueryName = {
 };
 exports.StoryQueryIndex = new static_resources_1.StaticMap(exports.StoryQueryName);
 function compile_story_query(query_spec) {
-    const query = (exports.StoryQueryIndex.get(query_spec.name))(...query_spec.parameters);
-    return (story) => query(story);
+    const f = (exports.StoryQueryIndex.get(query_spec.name));
+    const query = f.apply(null, query_spec.parameters);
+    return query;
+    //return (story: StoryNode) => query(story);   
 }
 exports.compile_story_query = compile_story_query;
-function story_query(name, ...parameters) {
+function story_query(name, parameters = []) {
     return { name, parameters };
 }
 exports.story_query = story_query;
@@ -26388,41 +26571,57 @@ exports.StoryQueryIndex.initialize('story_hole', () => (story) => {
     }
     return result;
 });
-exports.StoryQueryIndex.initialize('eph', () => (story) => story_1.find_all_nodes(story, (n) => story_1.is_story_node(n) && Object.entries(n.classes)
-    .some(([cls, on]) => on && cls.startsWith('eph-'))));
+exports.eph_predicate = (n) => {
+    if (!story_1.is_story_node(n)) {
+        return false;
+    }
+    for (const cls in n.classes) {
+        if (n.classes[cls] && cls.startsWith('eph-')) {
+            return true;
+        }
+    }
+    return false;
+};
+exports.StoryQueryIndex.initialize('eph', () => (story) => story_1.find_all_nodes(story, exports.eph_predicate));
 exports.StoryQueryIndex.initialize('has_class', (cls) => (story) => story_1.find_all_nodes(story, (n) => story_1.is_story_node(n) &&
     (typeof (cls) === 'string'
         ? !!n.classes[cls]
         : Object.entries(n.classes)
             .some(([c, on]) => on && cls.test(c)))));
+function is_frame_predicate(n) {
+    return story_1.is_story_node(n) && n.data.frame_index !== undefined;
+}
+function latest_frame(story) {
+    if (!story_1.is_story_node(story)) {
+        return [];
+    }
+    const frames = story_1.find_all_nodes(story, is_frame_predicate);
+    if (frames.length > 0) {
+        let max_frame = frames[0];
+        for (let i = 1; i < frames.length; i++) {
+            const f = frames[i];
+            if (max_frame[0].data.frame_index < f[0].data.frame_index) {
+                max_frame = f;
+            }
+        }
+        return [max_frame];
+    }
+    else {
+        return [];
+    }
+}
 exports.StoryQueryIndex.initialize('frame', (index) => (story) => {
     let found;
     // if index is null, find the highest frame
     if (index === undefined) {
-        let max_frame = null;
-        const frames = story_1.find_all_nodes(story, n => story_1.is_story_node(n) && n.data.frame_index !== undefined);
-        if (frames.length > 0) {
-            for (const f of frames) {
-                if (max_frame === null) {
-                    max_frame = f;
-                }
-                else if (max_frame[0].data.frame_index < f[0].data.frame_index) {
-                    max_frame = f;
-                }
-            }
-        }
-        if (max_frame === null) {
-            return [];
-        }
-        found = [max_frame];
+        return latest_frame(story);
     }
     else if (index instanceof Array) {
-        found = story_1.find_all_nodes(story, (n) => story_1.is_story_node(n) && utils_1.included(n.data.frame_index, index));
+        return story_1.find_all_nodes(story, (n) => story_1.is_story_node(n) && utils_1.included(n.data.frame_index, index));
     }
     else {
-        found = story_1.find_all_nodes(story, (n) => story_1.is_story_node(n) && n.data.frame_index === index);
+        return story_1.find_all_nodes(story, (n) => story_1.is_story_node(n) && n.data.frame_index === index);
     }
-    return found;
 });
 exports.StoryQueryIndex.initialize('chain', (...queries) => (story) => {
     if (queries.length === 0) {
@@ -26506,6 +26705,10 @@ function compile_story_update(story_update) {
     return (story, effects) => {
         const targets = query_1.compile_story_query(story_update.query)(story);
         const op = op_1.compile_story_update_op(story_update.op);
+        if (targets.length === 0) {
+            console.log('Got to an op with no found targets:');
+            console.log(JSON.stringify(story_update, undefined, 2));
+        }
         for (const [target, path] of sort_targets(targets)) {
             const updated_child = op(target, effects ? effects.then(dom => dom_lookup_path(dom, path)) : undefined);
             let result;
@@ -26665,7 +26868,7 @@ function search_future(spec, world) {
         }
         begin_search(spec.simulator_id, world);
         if (spec.space === undefined) {
-            spec = Object.assign(Object.assign({}, spec), { space: default_narrative_space() });
+            spec = { ...spec, space: default_narrative_space() };
         }
         let n_skipped = 0;
         const visited = [[
@@ -26752,30 +26955,30 @@ function search_future(spec, world) {
     }
 }
 exports.search_future = search_future;
-const active_simulators = {};
+const ACTIVE_SIMULATORS = {};
 function is_simulated(simulator_id, world) {
-    if (!(simulator_id in active_simulators)) {
+    if (!(simulator_id in ACTIVE_SIMULATORS)) {
         return false;
     }
-    const entry = active_simulators[simulator_id];
+    const entry = ACTIVE_SIMULATORS[simulator_id];
     return history_1.find_historical(world, w => entry.has(w)) !== null;
 }
 exports.is_simulated = is_simulated;
 function begin_search(simulator_id, world) {
     let entry;
-    if (simulator_id in active_simulators) {
-        entry = active_simulators[simulator_id];
+    if (simulator_id in ACTIVE_SIMULATORS) {
+        entry = ACTIVE_SIMULATORS[simulator_id];
     }
     else {
-        entry = active_simulators[simulator_id] = new Set();
+        entry = ACTIVE_SIMULATORS[simulator_id] = new Set();
     }
     entry.add(world);
 }
 function end_search(simulator_id, world) {
-    let entry = active_simulators[simulator_id];
+    let entry = ACTIVE_SIMULATORS[simulator_id];
     entry.delete(world);
     if (entry.size === 0) {
-        delete active_simulators[simulator_id];
+        delete ACTIVE_SIMULATORS[simulator_id];
     }
 }
 const cache_size = 1000;

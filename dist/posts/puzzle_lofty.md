@@ -349,6 +349,37 @@ In the second column you list the successive steps of the Voice of Fire. For eac
 
 "Indeed," says Katya. She shows you how to indicate voice switches using visual notation. [1]
 
+The Family
+```
+> pack
+
+You gather what you need, and leave the rest.
+
+> travel
+
+You depart the city together, entering the woods.
+
+> travel
+
+You march through the woods, making camp at night, taking shelter when the weather is bad.
+
+> travel
+
+You reach a clearing within the woods.
+
+The ground here is flat and healthy.
+
+> cut wood
+
+You cut down the trees surrounding your clearing, and strip them of their bark.
+
+> dig a hole
+
+You dig into the ground in the clearing where you intend to build your home's foundation.
+
+
+```
+
 You complete the translation of the story. Then, as before, you add a vertical line and a new column. You struggle a bit more to map the steps from the Voice of Fire to the steps of this story. It's less clear what part of the house is the tinder, or the kindling, or the firewood. Nevertheless, you find an acceptable mapping.
 
 "Quite a bit different, this time," you mutter. "There's not a clear answer for what's tinder, or kindling, or firewood. Is the tinder the oil-soaked rag, or the thatch on the roof? And in this case, the so-called 'fireplace' wasn't purposefully built up to be burnt; it was a family's home. The burning was done by someone else."
