@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "install": "tsc",
     "compile": "tsc",
     "test": "tsc && mocha ./build/tests",
     "debug": "echo 'Remember to open chrome://inspect in a tab before running this.\n' && tsc && mocha --inspect-brk ./build/tests",
@@ -26,7 +27,6 @@
     "@types/mocha": "^5.2.6",
     "assert": "^1.4.1",
     "jsdom": "^15.2.1",
-    
     "mocha": "^6.1.4",
     "ts-loader": "^6.2.0",
     "ts-node": "^8.1.0",

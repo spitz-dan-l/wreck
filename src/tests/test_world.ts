@@ -47,7 +47,6 @@ describe('world', () => {
     // });
 
     it('thingy3', () => {
-        
         let {initial_result: result, update} = new_venience_world();
 
         const starting_text = world_to_basic_text(result.world);
