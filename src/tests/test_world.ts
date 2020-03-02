@@ -56,6 +56,7 @@ describe('world', () => {
         const text2 = world_to_basic_text(result.world);
         assert.equal(text2, "You and Sam are sitting together on the bus.\n> \nconsider\n myself\nYou haven't entirely woken up.\nA \nthick notebook  sits in your lap.\n> ");
         assert.equal(result.world.index, 1);
+
     });
 });
 
