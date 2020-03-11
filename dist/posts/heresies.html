@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>3 Parser Game Design "Heresies" driving Venience World</title>
+        <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,700,700i" rel="stylesheet">
+        <!-- look into normalize.css -->
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+        <link rel="stylesheet" type="text/css" href="./global.css" />
+    </head>
+    <body>
+        <div id="terminal">
+        <div class="terminal">
+            <h2>
+            3 Parser game design "heresies" driving Venience World's development
+            </h2>
+            <h4>Last updated: 02/10/2020</h4>
+            
+            <br/>
+            <br/>
+
+            <section>
+                <h3>
+                    1. Eliminate commonsense-reasoning-based inference
+                </h3>
+                <a href="https://en.wikipedia.org/wiki/Commonsense_reasoning">Commonsense-reasoning</a>-based inference engines are a staple of parser game design. This approach is used to implement both the parser and world model dynamics of most parser games. In my view, this is an artifact of <i>when</i> parser games were made and became popular – during the era of <a href="https://en.wikipedia.org/wiki/Symbolic_artificial_intelligence">GOFAI</a>.
+                
+                <br/><br/>
+                In Venience World's design, I'm ditching the approach entirely. This is a pretty fundamental change, and breaks with the longstanding tradition of parser games.
+
+                <br/><br/>
+                <h4>Justification</h4>
+                <br/>
+                Incomplete commonsense-reasoning-based engines (which are the only kind in existence) damage gameplay. All attempts at solving this technical problem have been failures historically; the approach of hardcoding rules for parsing natural language, or simulating the dynamics of a story world, is intractable. There are always corner cases that your rules fail to cover.
+                <br/><br/>
+                The player is repeatedly surprised by failures of the game to recognize the intentions behind their commands. Because the engine operates based on a large pile of hardcoded rules, with various implicit "priorities" and "overrides" among them, it is difficult for the player to infer the inner workings of the system through experimentation. So ironically, the attempt to create an <i>intuitive</i> interface in this way actually makes interaction <i>unintuitive and frustrating</i>.
+                <br/><br/>
+                Playing the role of scientist can be fun, don't get me wrong. In fact, for a large class of games, the value of the game is in the discovery of new knowledge through experimentation with interesting mechanics.
+                <br/><br/>
+                But any given parser game is not usually <i>about</i> the engine on which it runs. The focus of most parser games is not on piecing together the inscrutable rules of the parser or the world model. It is on the particular subject matter that the game's author has attempted to build on top of the core engine. So the "quest" to understand the idiosyncrasies of the parser's rules usually feels unrelated and frustrating compared to the intended "quest(s)" of any given game.
+                <br/><br/>
+                <h4>Alternative: Author-defined grammars, transparent discoverability of valid inputs</h4>
+                <br/>
+                In Venience World, we trade the loftier problem of automated commonsense-reasoning for the more contextual (and more tractable) problem of <i>game-relevant reasoning</i>. We dispense with the idea of parsing natural language, and instead focus on parsing <i>game-specific commands</i>. Similarly we dispense with modeling any kind of commonsense-based physical world, and instead focus on modeling <i>our game's particular world</i>, in precisely the ways that are relevant to the player's experience.
+                <br/><br/>
+                In Venience World, the author (just me) specifies the entire set of valid inputs for every possible situation in the game explicitly. This sounds like it ought to be a lot of work, but it's not. That's because we use a particular technical approach that's good for the job: <a href="https://en.wikipedia.org/wiki/Parser_combinator">parser-combinators</a>. These make it easy to compose commands out of many sub-parsers, each specialized to a particular contextual job.
+
+            </section>

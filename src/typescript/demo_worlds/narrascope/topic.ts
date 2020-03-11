@@ -1,10 +1,10 @@
-import { gist, Gists, gists_equal } from '../../gist';
+import { gist, GistRenderer, gists_equal } from '../../gist';
+import { StaticMap } from '../../lib/static_resources';
+import { cond, map, update } from '../../lib/utils';
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
-import { StaticIndex, StaticMap } from '../../lib/static_resources';
-import { bound_method, cond, update, map } from '../../lib/utils';
-import { ActionID, Puffers, resource_registry, TopicID, Venience, StaticTopicIDs } from "./prelude";
-import { story_updater, StoryUpdaterSpec, Fragment, Updates } from '../../story';
+import { StoryUpdaterSpec, story_updater } from '../../story';
+import { Puffers, resource_registry, StaticTopicIDs, TopicID, Venience } from "./prelude";
 
 export interface Topics {
     has_considered: Map<TopicID, boolean>;
@@ -32,18 +32,23 @@ resource_registry.initialize('initial_world_topic', {
     has_considered: map()
 });
 
-type TopicGists = { [K in TopicID]: undefined };
+type TopicGists = { [K in TopicID]: {} };
 
-declare module '../../gist' {
-    export interface GistSpecs extends TopicGists {
-        'impression': { subject: Gist<TopicID> };
+declare module '../../gist/gist' {
+    export interface StaticGistTypes extends TopicGists {
+        'impression': { children: { subject: TopicID } };
     }
 }
 
-Gists({
-    tag: 'impression',
-    noun_phrase: ({subject}) => `your impression of ${subject}`,
-    command_noun_phrase: ({subject}) => ['my_impression of', subject]
+GistRenderer('impression', {
+    noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {subject}) => `your impression of ${subject}`
+    },
+    command_noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {subject}) => ['my_impression of', subject]
+    }
 });
 
 export function make_topic(spec: TopicSpec): Puffer<Venience> {
@@ -59,9 +64,9 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
             }, () =>
                 parser.submit(
                     () => update(world,
-                        story_updater(spec.message(world)),
                         {
-                            gist: () => gist('impression', { subject: gist(spec.name)}),
+                            story_updates: story_updater(spec.message(world)),
+                            gist: () => gist({ tag: 'impression', children: { subject: spec.name} }),
                             has_considered: map( [spec.name, true] )
                         },
                         ...cond(!!spec.consider, () => spec.consider!)
@@ -88,10 +93,15 @@ const topic_index = resource_registry.initialize('topic_index',
             return spec;
         },
         function add_topic_to_gists(spec) {
-            Gists({
-                tag: spec.name,
-                noun_phrase: () => spec.name,
-                command_noun_phrase: () => spec.cmd
+            GistRenderer(spec.name, {
+                noun_phrase: {
+                    order: 'TopDown',
+                    impl: () => spec.name
+                },
+                command_noun_phrase: {
+                    order: 'TopDown',
+                    impl: () => spec.cmd
+                }
             });
             return spec;
         }

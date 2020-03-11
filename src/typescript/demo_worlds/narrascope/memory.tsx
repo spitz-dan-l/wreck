@@ -1,8 +1,8 @@
-import { gist, Gists, render_gist } from '../../gist';
+import { gist, GistRendererRule, render_gist, Gists, GistRenderer } from '../../gist';
 import { find_historical } from '../../history';
 import { Puffer } from '../../puffer';
 import { StaticIndex } from '../../lib/static_resources';
-import { createElement, story_updater, Fragment, Updates } from '../../story';
+import { createElement, story_updater, Fragment, Updates, apply_story_updates_all, Queries, compile_story_query } from '../../story';
 import { capitalize } from '../../lib/text_utils';
 import { bound_method, map, update } from '../../lib/utils';
 import { add_to_notes, Notes } from './notes';
@@ -21,9 +21,11 @@ declare module './prelude' {
     }
 }
 
-declare module '../../gist' {
-    export interface GistSpecs{
-        'memory': { action: Gist<ActionID> };
+declare module '../../gist/gist' {
+    export interface StaticGistTypes{
+        'memory': { children: {
+            action: ActionID
+        } };
     }
 }
 
@@ -61,13 +63,13 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
             return update(world,
                 {
                     has_acquired: map([spec.action, true]),
-                    gist: () => gist('memory', { action: gist(action.name)})
+                    gist: () => gist({ tag: 'memory', children: { action: action.name } }),
+                    story_updates: story_updater(Updates.consequence(<div>
+                        You close your eyes, and hear Katya's voice:
+                        {memory_description(spec)}
+                    </div>))
                 },
-                w => add_to_notes(w, spec.action),
-                story_updater(Updates.consequence(<div>
-                    You close your eyes, and hear Katya's voice:
-                    {memory_description(spec)}
-                </div>))
+                w => add_to_notes(w, spec.action)
             );
         },
         post: (world2, world1) => {
@@ -79,22 +81,31 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
             world1 = find_historical(world1, w => w.owner === null)!;
 
             if (!spec.could_remember(world1)) {
-                return update(world2,
-                    story_updater(Updates.prompt(<div>
-                            You feel as though you might <strong>remember something...</strong>
-                        </div>
-                    ))
-                );
+                const updated_story = apply_story_updates_all(world2.story, world2.story_updates);
+                const existing_prompts = Updates.frame().has_class('prompt').children().to_query()(updated_story);
+                if (existing_prompts.length === 0) {
+                    return update(world2, {
+                        story_updates: story_updater(Updates.prompt(<div>
+                                You feel as though you might <strong>remember something...</strong>
+                            </div>
+                        ))
+                    });
+                }
             }
             return world2;
         }
     }
 }
 
-Gists({
-    tag: 'memory',
-    noun_phrase: ({action}) => `your memory of ${action}`,
-    command_noun_phrase: ({action}) => ['my_memory of', action]
+GistRenderer('memory', {
+    noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {action}) => `your memory of ${action}`,
+    },
+    command_noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {action}) => ['my_memory of', action]
+    }
 });
 
 const memory_index = resource_registry.initialize('memory_index',

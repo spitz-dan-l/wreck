@@ -1,10 +1,10 @@
 import { lock_builder, Lock } from '../../lock';
 import { Puffer } from '../../puffer';
-import { update, entries, bound_method, merge_objects } from '../../lib/utils';
+import { update, entries, bound_method, merge_objects, enforce_always_never } from '../../lib/utils';
 import { World, get_initial_world } from '../../world';
 import { FutureSearchSpec } from '../../supervenience';
 import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../lib/static_resources';
-import { GistRenderer, gist_renderer_index } from '../../gist';
+import { GistRendererRule, GIST_RENDERER_INDEX, ValidTags } from '../../gist';
 
 export const StaticTopicIDs = {
     'Sam': null,
@@ -25,8 +25,39 @@ export type ActionID = NameOf<typeof StaticActionIDs>;
 export const StaticNoteIDs = StaticActionIDs;
 export type NoteID = ActionID;
 
+export type StaticFacets = {
+    'Sam': {
+        "Sam's presence": null,
+        "Sam's demeanor": null, 
+        "your friendship with Sam": null
+    },
+    "Sam's presence": {
+        'the old affinity': null
+    },
+    "your friendship with Sam": {
+        "your drifting apart": null,
+        "your culpability": null
+    }
+};
+
+type StaticFacetIds2 = NameOf<StaticFacets[keyof StaticFacets]>
+
+enforce_always_never(null as (
+    { [K in keyof StaticFacets]:
+        K extends ValidTags ?
+            StaticFacets[K] extends { [k in string]: null } ?
+                { [K2 in keyof StaticFacets[K]]:
+                    K2 extends ValidTags ?
+                        never :
+                        ['FacetIDs for', K, 'must be Gist tags.', K2, 'is not a Gist tag.']
+                }[keyof StaticFacets[K]] :
+                ['FacetIDs for', K, 'must be a mapping from Gist tags to null. Got', StaticFacets[K]] :
+            [K, 'is not a valid Gist tag']    
+    }[keyof StaticFacets]
+))
+
 export const StaticFacetIDs = {
-    "Sam": null,
+    "Sam's presence": null,
     "Sam's demeanor": null,
     "your friendship with Sam": null,
     "your drifting apart": null,
@@ -83,7 +114,7 @@ export interface StaticResources {
     initial_world_prelude: Pick<Venience, 'owner'>;
     puffer_index: StaticIndex<VeniencePuffer>;
     global_lock: (o: Owner | null) => Lock<Venience, Owner>;
-    gist_renderer_index: StaticIndex<GistRenderer>;
+    gist_renderer_index: StaticIndex<GistRendererRule>;
 };
 
 resource_registry.initialize('initial_world_prelude',
@@ -108,7 +139,7 @@ const puffer_index = resource_registry.initialize('puffer_index',
     ])
 );
 
-resource_registry.initialize('gist_renderer_index', gist_renderer_index);
+resource_registry.initialize('gist_renderer_index', GIST_RENDERER_INDEX);
 
 export const Puffers = bound_method(puffer_index, 'add');
 

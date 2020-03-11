@@ -1,7 +1,7 @@
 /**
  * TODO: move all x_utils files to a package
  */
-
+import './adt_utils';
 export {Updater, update, update_any} from './update';
 
 export type Point2 = [number, number];
@@ -71,6 +71,24 @@ export class Matrix2 {
     }
 }
 
+export function range(stop: number): number[];
+export function range(start: number, stop: number): number[];
+export function range(arg1: number, arg2?: number): number[] {
+    let start: number, stop: number;
+    if (arg2 === undefined) {
+        start = 0;
+        stop = arg1;
+    } else {
+        start = arg1;
+        stop = arg2;
+    }
+
+    const result = [];
+    for (let i = start; i < stop; i++) {
+        result.push(i);
+    }
+    return result;
+}
 
 export type Counter<T> = Map<T, number>;
 

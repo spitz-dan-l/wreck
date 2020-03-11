@@ -21,7 +21,7 @@
 */
 import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
 import { stages } from './lib/stages';
-import { apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan, add_input_text } from './story';
+import { apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan, add_input_text, StoryUpdateGroupOp } from './story';
 import { update } from './lib/utils';
 
 export interface World {
@@ -29,7 +29,7 @@ export interface World {
     readonly previous: this | null,
     readonly index: number,
     readonly story: Story,
-    readonly story_updates: StoryUpdatePlan
+    readonly story_updates: StoryUpdateGroupOp[]
 }
 
 export type WorldUpdater<W extends World> = (world: W) => W;
@@ -41,7 +41,7 @@ export type Narrator<W extends World> = (new_world: W, old_world: W) => W;
 
 const INITIAL_WORLD: World = {
     story: init_story,
-    story_updates: { effects: stages(), would_effects: [] },
+    story_updates: [],
     parsing: undefined,
     previous: null,
     index: 0

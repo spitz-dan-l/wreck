@@ -1,15 +1,29 @@
 import { Effects } from '../../lib/effect_utils';
-import { history_array } from '../../history';
-import { Parsing } from '../../parser';
-import { Stages, stages, stage_entries, stage_keys } from '../../lib/stages';
-import { ParsedTextStory } from '../../UI/components/parsed_text';
-import { append, update } from '../../lib/utils';
-import { World } from '../../world';
-import { createElement } from '../create';
-import { find_all_nodes, find_node, FoundNode, Fragment, is_story_hole, is_story_node, Path, replace_in, splice_in, StoryHole, StoryNode } from '../story';
-import { compile_story_update_op, StoryOpSpec, story_op, StoryOpSpecs } from './op';
-import { compile_story_query, StoryQueryIndex, StoryQuerySpec, story_query, StoryQueries, StoryQuerySpecs } from './query';
-import { StoryUpdateGroup } from './update_group';
+import { Stages, stage_entries, stages } from '../../lib/stages';
+import { FoundNode, Fragment, is_story_node, Path, replace_in, splice_in, StoryNode } from '../story';
+import { compile_story_update_op, StoryOpSpec, story_op } from './op';
+import { compile_story_query, StoryQuerySpec, story_query } from './query';
+import { StoryUpdateGroupOp, apply_story_update_group_op, PushGroup } from './update_group';
+
+/**
+ * TODO
+ * Merge effects and would_effects at a lower level
+ *  - I think this means, add "would_op?" to StoryUpdateSpec.
+ *  -
+ * 
+ * Because we are always updating the story by pushing UpdateGroups,
+ * let the raw world.story_updates be that list, rather than constantly
+ * merging it into stages along the way.
+ * 
+ * This means that move_group would have to become a special op
+ * which gets interpretted during "compilation" of all update groups
+ * into their final stages.
+ * 
+ * Doing this would have the benefit of making it easier to
+ * represent structure and updates of "player knowledge" by
+ * topic, and have that knowledge flow directly into
+ * the story that gets printed out. 
+ */
 
 export type Story = StoryNode & { __brand: 'Story' };
 
@@ -24,13 +38,12 @@ export type StoryUpdateSpec = {
 export type ReversibleOpSpec = StoryOpSpec & { name: 'css' };
 export type ReversibleUpdateSpec = StoryUpdateSpec & { op: ReversibleOpSpec };
 
-// StoryUpdates stages are the groupings of updates for animation.
+export type StoryUpdateStage = PushGroup[];
+
 export type StoryUpdatePlan = {
     would_effects: ReversibleUpdateSpec[]
-    effects: Stages<StoryUpdateGroup[]>;
+    effects: Stages<StoryUpdateStage>;
 }
-
-export type StoryUpdateStage = StoryUpdateGroup[];
 
 // export type StoryUpdatePlan = {
 //     would_effects: ReversibleUpdateSpec[]
@@ -130,12 +143,25 @@ export function remove_eph(story: Story, effects?: Effects<HTMLElement>) {
     );
 }
 
-export function apply_story_updates_all(story: Story, story_updates: StoryUpdatePlan) {
+export function apply_story_updates_all(story: Story, story_updates: StoryUpdateGroupOp[]) {
     let result = story;
 
-    for (const [stage, updates] of stage_entries(story_updates.effects)) {
+    const plan = compile_story_update_group_ops(story_updates);
+    
+
+    for (const [stage, updates] of stage_entries(plan.effects)) {
         result = apply_story_updates_stage(result, updates);
         result = remove_eph(result);
     }
     return result;
+}
+
+export function compile_story_update_group_ops(updates: StoryUpdateGroupOp[]): StoryUpdatePlan {
+    const plan: StoryUpdatePlan = { effects: stages(), would_effects: [] };
+
+    for (const group of updates) {
+        plan.effects = apply_story_update_group_op(plan.effects, group);
+    }
+
+    return plan;
 }

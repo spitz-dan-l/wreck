@@ -1,4 +1,4 @@
-import { gist, Gists, render_gist } from '../../gist';
+import { gist, GistRenderer, render_gist } from '../../gist';
 import { createElement, story_updater, Fragment, Updates } from '../../story';
 // import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
@@ -10,25 +10,35 @@ import { } from './metaphor';
 import { NoteID, Puffers, resource_registry, StaticNoteIDs, Venience } from './prelude';
 import { stages } from '../../lib/stages';
 
-type NoteGists = { [K in NoteID]: undefined };
+// type NoteGists = { [K in NoteID]: undefined };
 
-declare module '../../gist' {
-    export interface GistSpecs extends NoteGists {
-        notes: undefined;
-        'notes about': { topic: Gist<NoteID> };
+declare module '../../gist/gist' {
+    export interface StaticGistTypes {//extends NoteGists {
+        notes: {};
+        'notes about': { children: { topic: NoteID } };
     }
 }
 
-Gists({
-    tag: 'notes',
-    noun_phrase: () => 'your notes',
-    command_noun_phrase: () => 'my_notes'
+GistRenderer('notes', {
+    noun_phrase: {
+        order: 'TopDown',
+        impl: () => 'your notes'
+    },
+    command_noun_phrase: {
+        order: 'TopDown',
+        impl: () => 'my_notes'
+    }
 });
 
-Gists({
-    tag: 'notes about',
-    noun_phrase: ({topic}) => `your notes about ${topic}`,
-    command_noun_phrase: ({topic}) => ['my_notes about', topic]
+GistRenderer('notes about', {
+    noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {topic}) => `your notes about ${topic}`
+    },
+    command_noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {topic}) => ['my_notes about', topic]
+    }
 });
 
 export type NoteEntry = {
@@ -60,14 +70,14 @@ const note_index = resource_registry.initialize('note_index', new StaticMap(Stat
 export function add_to_notes(world: Venience, note_id: NoteID) {
     const entry = note_index.get(note_id)
 
-    return update(world,
-        { has_written_down: map([note_id, true]) },
-        story_updater(
+    return update(world, {
+        has_written_down: map([note_id, true]),
+        story_updates: story_updater(
             Updates.prompt(<div>
                 You write about {capitalize(render_gist.noun_phrase(gist(note_id)))} in your <strong>notes</strong>.
             </div>)
         )
-    );
+    });
 }
 
 Puffers({
@@ -83,9 +93,9 @@ Puffers({
                 tokens: 'notes',
                 used: Object.values(note_index.all()).every(n => !world.has_written_down.get(n.note_id) || world.has_read.get(n.note_id))
             }, () => parser.submit(() =>
-            update(world,
-                { gist: gist('notes') },
-                story_updater(Updates.description(<div>
+            update(world, {
+                gist: gist('notes'),
+                story_updates: story_updater(Updates.description(<div>
                     You have written down notes about the following:
                     {Object.values(note_index.all())
                         .filter(n => world.has_written_down.get(n.note_id))
@@ -93,7 +103,7 @@ Puffers({
                         .join('')}
                     </div>
                 ))
-            ))));
+            }))));
 
             let specific_threads: ParserThread<Venience>[] = [];
             
@@ -109,16 +119,14 @@ Puffers({
                 }, () =>
                 parser.submit(() => {
                 const g = gist(entry.note_id);
-                return update(world,
-                    {
-                        has_read: map([entry.note_id, true]),
-                        gist: () => gist('notes about', { topic: g })
-                    },
-                    story_updater(Updates.description(<div>
+                return update(world, {
+                    has_read: map([entry.note_id, true]),
+                    gist: () => gist({ tag: 'notes about', children: { topic: g } }),
+                    story_updates: story_updater(Updates.description(<div>
                         <strong>${capitalize(render_gist.noun_phrase(g))}</strong>
                         {entry.description()}
                     </div>))
-                )})));
+                })})));
             }
 
             return parser.split([list_thread, ...specific_threads]);

@@ -5,7 +5,7 @@ import { Effects } from "../../lib/effect_utils";
 
 import { update, append, map_values } from "../../lib/utils";
 import { ParametersFor } from "../../lib/dsl_utils";
-import { Gist, gist_to_string, GistParam, gist } from "../../gist";
+import { Gist, gist_to_string, GistConstructor, gist } from "../../gist";
 
 export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | Fragment[]
 
@@ -16,7 +16,7 @@ export interface StoryOps {
     remove_eph: () => StoryOp;
     replace: (replacement: Fragment[]) => StoryOp;
     insert_after: (siblings: Fragment | Fragment[], no_animate?: boolean) => StoryOp;
-    set_gist: (gist: GistParam) => StoryOp;
+    set_gist: (gist: GistConstructor) => StoryOp;
 }
 
 export type CSSUpdates = {
@@ -38,13 +38,13 @@ export function story_op<O extends keyof StoryOpParams>(name: O, ...parameters: 
     return  { name, parameters } as StoryOpSpecs[O];
 }
 
-export const StoryUpdateOps: StoryOps = {
+export const StoryOps: StoryOps = {
     add: (children, no_animate?) => (parent, effects?) => {
         if (!is_story_node(parent)) {
             throw new Error('Tried to append children to terminal node '+JSON.stringify(parent));
         }
         if (children instanceof Array) {
-            return children.reduce((p, c) => StoryUpdateOps.add(c, no_animate)(p, effects), parent);
+            return children.reduce((p, c) => StoryOps.add(c, no_animate)(p, effects), parent);
         }
         
         if (!no_animate && is_story_node(children)){
@@ -171,7 +171,7 @@ export const StoryUpdateOps: StoryOps = {
 }
 
 export function compile_story_update_op(op_spec: StoryOpSpec): StoryOp {
-    const f = (StoryUpdateOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp);
+    const f = (StoryOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp);
     return f.apply(null, op_spec.parameters);
     // return (StoryUpdateOps[op_spec.name] as (...params: StoryOpSpec['parameters']) => StoryOp)(...op_spec.parameters);
 }

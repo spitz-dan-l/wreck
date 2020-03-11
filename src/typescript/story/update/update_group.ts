@@ -1,4 +1,4 @@
-import { StoryUpdateSpec, StoryUpdateStage } from "./update";
+import { StoryUpdateSpec, StoryUpdateStage, StoryUpdatePlan } from "./update";
 import { Stages, stage_entries, stages } from "../../lib/stages";
 import { append, update, Updater, map } from "../../lib/utils";
 
@@ -7,14 +7,28 @@ export interface StoryUpdateGroups {
     updates: "Generic updates that you don't need a distinct group for.";
 }
 
-export type StoryUpdateGroup = {
-    kind: 'StoryUpdateGroup',
+export type StoryUpdateGroupOp =
+    | PushGroup
+    | MoveGroup;
+
+export type PushGroup = {
+    kind: 'PushGroup',
     name: keyof StoryUpdateGroups,
     stage?: number,
     updates: StoryUpdateSpec[]
 }
+export type MoveGroup = {
+    kind: 'MoveGroup',
+    name: keyof StoryUpdateGroups,
+    source_stage: number,
+    dest_stage: number
+};
 
-export function push_group(plan: Stages<StoryUpdateStage>, group: StoryUpdateGroup) {
+export function apply_story_update_group_op(plan: StoryUpdatePlan['effects'], group: StoryUpdateGroupOp) {
+    if (group.kind === 'MoveGroup') {
+        return move_group(plan, group.name, group.source_stage, group.dest_stage);
+    }
+    
     let group_index: number | undefined = undefined;
     let stage = group.stage;
 
@@ -55,7 +69,7 @@ export function push_group(plan: Stages<StoryUpdateStage>, group: StoryUpdateGro
     }
 }
 
-export function move_group(plan: Stages<StoryUpdateStage>, name: keyof StoryUpdateGroups, source_stage: number, dest_stage: number) {
+export function move_group(plan: StoryUpdatePlan['effects'], name: keyof StoryUpdateGroups, source_stage: number, dest_stage: number) {
     if (source_stage === dest_stage) {
         throw new Error('source_stage and dest_stage cannot be equal');
     }

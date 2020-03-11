@@ -2,7 +2,7 @@
 import './setup';
 import * as assert from 'assert';
 import 'mocha';
-import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
+import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope';
 // import { new_bird_world, bird_world_spec } from '../typescript/demo_worlds/bird_world';
 // import { new_bird_world as new_puffer_bird_world, bird_world_spec as puffer_bird_world_spec } from '../typescript/demo_worlds/puffer_bird_world';
 import { raw, traverse_thread } from '../typescript/parser';

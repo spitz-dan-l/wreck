@@ -1,7 +1,7 @@
 import { history_array } from "../history";
 import { make_consecutive, stages, stage_keys } from "../lib/stages";
 import { update } from "../lib/utils";
-import { apply_story_updates_all, Story, StoryUpdatePlan, StoryUpdateSpec } from "../story";
+import { apply_story_updates_all, Story, StoryUpdatePlan, StoryUpdateSpec, compile_story_update_group_ops } from "../story";
 import { World } from "../world";
 
 export type AnimationState = {
@@ -22,7 +22,7 @@ export function new_animation_state(world: World, previous_world: World | null):
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
     const index_threshold = previous_world ? previous_world.index : -1;//world.index - 1;
     const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();
-    const story_updates =  make_consecutive(new_frames.map(w => w.story_updates.effects));
+    const story_updates =  make_consecutive(new_frames.map(w => compile_story_update_group_ops(w.story_updates).effects));
     let stages = stage_keys(story_updates);
     let current_stage: number | undefined = stages[0];
     return {

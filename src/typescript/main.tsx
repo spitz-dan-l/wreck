@@ -2,7 +2,7 @@
 // import { new_bird_world as new_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
-import { new_venience_world as new_world } from './demo_worlds/narrascope/narrascope';
+import { new_venience_world as new_world } from './demo_worlds/narrascope';
 // import { new_world } from './demo_worlds/sam';
 import { AppState, initialize_app, new_animation_state } from './UI';
 

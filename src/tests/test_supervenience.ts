@@ -3,11 +3,12 @@ import * as assert from 'assert';
 import 'mocha';
 // import { new_hex_world, Hex } from '../typescript/demo_worlds/hex_port';
 // import { new_bird_world, BirdWorld } from '../typescript/demo_worlds/puffer_bird_world';
-import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope/narrascope';
+import { gist_matches, GistPattern } from '../typescript/gist';
+
+import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope';
 import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, CommandFilter } from '../typescript/supervenience';
 import { find_index } from '../typescript/history';
 import { deep_equal, included, array_last, drop_keys } from '../typescript/lib';
-import { gist_matches, GistPattern } from '../typescript/gist';
 
 const simulator_id = 'playtester';
 
