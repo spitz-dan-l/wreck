@@ -1,29 +1,31 @@
-import { Gist, GistPattern, Gists, gist_matches, ValidTags, InferPatternTags } from './gist';
+import { Gist, GistPattern, Gists, gist_matches, ValidTags, InferPatternTags, gist_to_string, GistConstructor, gist, pattern_based_dispatch } from './gist';
 import { StaticIndex, StaticNameIndexFor } from '../lib/static_resources';
-import { map_values } from '../lib/utils';
+import { map_values, lazy_map_values } from '../lib/utils';
 import { ConsumeSpec } from '../parser';
 
 type GistRenderFunction<OutType> =
-    (gist: Gist) => OutType;
+    (gist: GistConstructor) => OutType;
 
 type GistRendererType = {
     noun_phrase: string,
     command_noun_phrase: ConsumeSpec,
+    command_verb_phrase: ConsumeSpec
     // story: Fragment
 }
 const StaticGistRendererNames: StaticNameIndexFor<GistRendererType> = {
     noun_phrase: null,
     command_noun_phrase: null,
+    command_verb_phrase: null
     // story: null
 }
 
 type GistRenderMethods = {
-    [K in keyof GistRendererType]?: GistRenderFunction<GistRendererType[K]>
+    [K in keyof GistRendererType]: GistRenderFunction<GistRendererType[K]>
 }
 
 export type GistRendererRule<Tags extends ValidTags=ValidTags> = {
     pattern: GistPattern<Tags>,
-    methods: GistRenderMethods
+    methods: Partial<GistRenderMethods>
 }
 
 export const GIST_RENDERER_INDEX = new StaticIndex<GistRendererRule>();
@@ -95,45 +97,53 @@ export function GistRenderer(pattern: GistPattern, method_impls: GistRenderMetho
     return result;
 }
 
-function render_for_method<MethodName extends keyof GistRendererType>(method: MethodName, gist: Gist): GistRendererType[MethodName] {
+function render_for_method<MethodName extends keyof GistRendererType>(method: MethodName, gist_ctor: GistConstructor): GistRendererType[MethodName] {
+    const g = gist(gist_ctor);
+
     const renderers = GIST_RENDERER_INDEX.all();
 
     for (let i = renderers.length - 1; i >= 0; i--) {
         const r = renderers[i];
-        if (gist_matches(gist, r.pattern)) {
+        if (gist_matches(g, r.pattern)) {
             const m = r.methods[method];
             if (m !== undefined) {
-                return m(gist) as GistRendererType[MethodName];
+                return m(g) as GistRendererType[MethodName];
             }
         }
     }
-    throw new Error('No renderers matched with the gist: ' + JSON.stringify(gist));
+    throw new Error('No renderers matched with the gist: ' + JSON.stringify(g));
 }
 
 // the default renderer just prints out the gist tag.
 GistRenderer(undefined, {
     noun_phrase: {
         order: 'TopDown',
-        impl: (g) => g.tag
+        impl: (g) => {
+            if (Object.keys(g.children).length === 0 && Object.keys(g.parameters).length === 0) {
+                throw new Error(`No noun_phrase renderer matched a compound gist: ${gist_to_string(g)}`);
+            }
+            return g.tag
+        }
     },
     command_noun_phrase: {
         order: 'TopDown',
-        impl: (g) => g.tag.replace(' ', '_')
+        impl: (g) => {
+            if (Object.keys(g.children).length === 0 && Object.keys(g.parameters).length === 0) {
+                throw new Error(`No command_noun_phrase renderer matched a compound gist: ${gist_to_string(g)}`);
+            }
+            return g.tag.replace(' ', '_')
+        }
+    },
+    command_verb_phrase: {
+        order: 'TopDown',
+        impl: (g) => {
+            throw new Error(`No command_verb_phrase renderer matched a gist. (Verb phrases don't have default behavior even for atomic gists.) Gist: ${gist_to_string(g)}`);
+        }
     }
+    
 });
 
-export const render_gist: {
-    [K in keyof GistRendererType]: (gist: Gist) => GistRendererType[K]
-} = {
-    noun_phrase: (g: Gist) => render_for_method('noun_phrase', g),
-    command_noun_phrase: (g: Gist) => render_for_method('command_noun_phrase', g)
-    // story: make_renderer('story', g => g.tag, (result, gist) => {
-    //     if (is_story_node(result)) {
-    //         return update(result, {
-    //             data: { gist: () => gist }
-    //         });
-    //     } else {
-    //         return createElement('span', { gist: gist as GistParam }, result)
-    //     }
-    // })
-}
+export const render_gist: GistRenderMethods =
+    map_values(StaticGistRendererNames,
+        (_, method_name) =>
+            ((g: GistConstructor) => render_for_method(method_name, g)) as GistRenderMethods[typeof method_name]);

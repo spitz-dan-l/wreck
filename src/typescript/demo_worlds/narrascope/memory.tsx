@@ -1,4 +1,4 @@
-import { gist, GistRendererRule, render_gist, Gists, GistRenderer } from '../../gist';
+import { gist, GistRendererRule, render_gist, Gists, GistRenderer, ValidTags } from 'gist';
 import { find_historical } from '../../history';
 import { Puffer } from '../../puffer';
 import { StaticIndex } from '../../lib/static_resources';
@@ -21,10 +21,10 @@ declare module './prelude' {
     }
 }
 
-declare module '../../gist/gist' {
+declare module 'gist' {
     export interface StaticGistTypes{
-        'memory': { children: {
-            action: ActionID
+        'memory about': { children: {
+            subject: ValidTags
         } };
     }
 }
@@ -63,7 +63,7 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
             return update(world,
                 {
                     has_acquired: map([spec.action, true]),
-                    gist: () => gist({ tag: 'memory', children: { action: action.name } }),
+                    gist: () => gist({ tag: 'memory about', children: { subject: action.id } }),
                     story_updates: story_updater(Updates.consequence(<div>
                         You close your eyes, and hear Katya's voice:
                         {memory_description(spec)}
@@ -97,14 +97,25 @@ export function make_memory(spec: MemorySpec): Puffer<Venience> {
     }
 }
 
-GistRenderer('memory', {
+GistRenderer('Katya on', {
     noun_phrase: {
         order: 'BottomUp',
-        impl: (tag, {action}) => `your memory of ${action}`,
+        impl: (tag, {action}) => `Katya's words about ${action}`,
     },
     command_noun_phrase: {
         order: 'BottomUp',
-        impl: (tag, {action}) => ['my_memory of', action]
+        impl: (tag, {action}) => ["Katya's_words about", action]
+    }
+});
+
+GistRenderer('memory about', {
+    noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {subject}) => `your memory of ${subject}`,
+    },
+    command_noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {subject}) => ['my_memory of', subject]
     }
 });
 

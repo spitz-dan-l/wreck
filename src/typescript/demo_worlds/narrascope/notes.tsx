@@ -1,4 +1,4 @@
-import { gist, GistRenderer, render_gist } from '../../gist';
+import { gist, GistRenderer, render_gist, ValidTags } from 'gist';
 import { createElement, story_updater, Fragment, Updates } from '../../story';
 // import { Fragment, message_updater } from '../../message';
 import { ParserThread } from '../../parser';
@@ -12,10 +12,10 @@ import { stages } from '../../lib/stages';
 
 // type NoteGists = { [K in NoteID]: undefined };
 
-declare module '../../gist/gist' {
+declare module 'gist' {
     export interface StaticGistTypes {//extends NoteGists {
         notes: {};
-        'notes about': { children: { topic: NoteID } };
+        'notes about': { children: { subject: ValidTags /*NoteID*/ } };
     }
 }
 
@@ -33,11 +33,11 @@ GistRenderer('notes', {
 GistRenderer('notes about', {
     noun_phrase: {
         order: 'BottomUp',
-        impl: (tag, {topic}) => `your notes about ${topic}`
+        impl: (tag, {subject}) => `your notes about ${subject}`
     },
     command_noun_phrase: {
         order: 'BottomUp',
-        impl: (tag, {topic}) => ['my_notes about', topic]
+        impl: (tag, {subject}) => ['my_notes about', subject]
     }
 });
 
@@ -121,9 +121,9 @@ Puffers({
                 const g = gist(entry.note_id);
                 return update(world, {
                     has_read: map([entry.note_id, true]),
-                    gist: () => gist({ tag: 'notes about', children: { topic: g } }),
+                    gist: () => gist({ tag: 'notes about', children: { subject: g } }),
                     story_updates: story_updater(Updates.description(<div>
-                        <strong>${capitalize(render_gist.noun_phrase(g))}</strong>
+                        <strong>{capitalize(render_gist.noun_phrase(g))}</strong>
                         {entry.description()}
                     </div>))
                 })})));

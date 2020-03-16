@@ -1,4 +1,5 @@
 export * from './prelude';
+export * from './styles';
 export * from './metaphor';
 export * from './topic';
 export * from './notes';

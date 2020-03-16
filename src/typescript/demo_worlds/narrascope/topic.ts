@@ -1,4 +1,4 @@
-import { gist, GistRenderer, gists_equal } from '../../gist';
+import { gist, GistRenderer, gists_equal } from 'gist';
 import { StaticMap } from '../../lib/static_resources';
 import { cond, map, update } from '../../lib/utils';
 import { ConsumeSpec } from '../../parser';
@@ -34,7 +34,7 @@ resource_registry.initialize('initial_world_topic', {
 
 type TopicGists = { [K in TopicID]: {} };
 
-declare module '../../gist/gist' {
+declare module 'gist' {
     export interface StaticGistTypes extends TopicGists {
         'impression': { children: { subject: TopicID } };
     }

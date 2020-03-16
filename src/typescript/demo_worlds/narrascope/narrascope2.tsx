@@ -1,15 +1,16 @@
 import { createElement, story_updater, Updates, Groups } from '../../story';
-import { gist, gists_equal, find_tag, GistRenderer } from '../../gist';
+import { gist, gists_equal, find_tag, GistRenderer } from 'gist';
 import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
 import { cond, included, update, map } from '../../lib/utils';
 import { get_initial_world, WorldSpec, world_driver } from '../../world';
-import { Actions, Facets, RenderFacet } from './metaphor';
+import { Action, Facets, RenderFacet } from './metaphor';
 import { Puffers, resource_registry, Venience } from './prelude';
 import { find_world_at } from './supervenience_spec';
 import { Topics } from './topic';
 import { Memories } from './memory';
 import { add_to_notes } from './notes';
+import { Seal } from '../../lib/static_resources';
 
 
 interface PuzzleState {
@@ -43,8 +44,10 @@ resource_registry.initialize('initial_world_narrascope', {
     has_scrutinized_memory: map()
 });
 
-Actions({
-    name: 'to attend',
+const init_knowledge = resource_registry.get_resource('initial_world_knowledge');
+
+Action({
+    id: 'to attend',
     noun: 'attention',
     noun_cmd: 'attention',
     description: "The ability to attend to particular facets of one's perception.",
@@ -73,7 +76,7 @@ Facets({
     can_apply: (action) => true/*action.name === 'to scrutinize'*/,
     solved: w => w.has_scrutinized_memory.get(1) || false,
     handle_action: (action, world) => {
-        if (action.name === 'to scrutinize') {
+        if (action.id === 'to scrutinize') {
             return update(world, 
                 { has_scrutinized_memory: map( [1, Symbol()] )},
             );
@@ -125,10 +128,10 @@ Facets({
     noun_phrase_cmd: 'the_memory',
     can_recognize: (w2, w1) =>
         about_hammer(w1) && !!w2.has_acquired.get('to hammer'),
-    can_apply: (action) => action.name === 'to scrutinize',
+    can_apply: (action) => action.id === 'to scrutinize',
     solved: w => w.has_scrutinized_memory.get(3) || false,
     handle_action: (action, world) => {
-        if (action.name === 'to scrutinize') {
+        if (action.id === 'to scrutinize') {
             return update(world, 
                 { has_scrutinized_memory:  map([3, Symbol()])},
             );
@@ -148,10 +151,10 @@ Facets({
     noun_phrase_cmd: 'the_memory',
     can_recognize: (w2, w1) =>
         about_volunteer(w1) && !!w2.has_acquired.get('to volunteer'),
-    can_apply: (action) => action.name === 'to scrutinize',
+    can_apply: (action) => action.id === 'to scrutinize',
     solved: w => w.has_scrutinized_memory.get(4) || false,
     handle_action: (action, world) => {
-        if (action.name === 'to scrutinize') {
+        if (action.id === 'to scrutinize') {
             return update(world, 
                 { has_scrutinized_memory: map([4, Symbol()])},
             );
@@ -182,6 +185,17 @@ Facets({
                 Indeed. It's time to try to do something about it.
             </blockquote>
  */
+
+init_knowledge.update(k => k.ingest(
+    <div gist="Sam">
+        <div gist="your friendship with Sam">
+            An old friend on his way to work.
+        </div>
+        <div gist="Sam's demeanor">
+            He glances at you, smiling vaguely.
+        </div>
+    </div>
+));
 
 Topics({
     name: 'Sam',
@@ -291,8 +305,8 @@ Facets({
     }
 });
 
-Actions({
-    name: 'to scrutinize',
+Action({
+    id: 'to scrutinize',
     noun: 'scrunity',
     noun_cmd: 'scrutiny',
     description: "The ability to unpack details and look beyond your initial assumptions.",
@@ -343,8 +357,8 @@ Facets({
     }
 });
 
-Actions({
-    name: 'to hammer',
+Action({
+    id: 'to hammer',
     noun: 'the hammer',
     noun_cmd: 'the_hammer',
     description: "The act of dismantling one's own previously-held beliefs.",
@@ -377,7 +391,7 @@ Facets({
     can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
     solved: w => w.is_curious_about_history,
     handle_action: (action, world) => {
-        if (action.name === 'to hammer') {
+        if (action.id === 'to hammer') {
             return update(world, { 
                 story_updates: story_updater(
                     Updates.action([`You ask yourself a hard question: `, <i>Is Sam really your friend?</i>]),
@@ -470,7 +484,7 @@ Facets({
     can_apply: (action) => true/*included(action.name, ['to scrutinize'])*/,
     solved: w => w.has_unpacked_culpability,
     handle_action: (action, world) => {
-        if (action.name === 'to scrutinize') {
+        if (action.id === 'to scrutinize') {
             return update(world, {
                 has_unpacked_culpability: Symbol(),
                 story_updates: story_updater(Updates.consequence(<div>
@@ -486,8 +500,8 @@ Facets({
     }
 });
 
-Actions({
-    name: 'to volunteer',
+Action({
+    id: 'to volunteer',
     noun: 'the volunteer',
     noun_cmd: 'the_volunteer',
     description: "The offering of an active intervention in the world, to change it for the better.",
@@ -517,7 +531,7 @@ Facets({
     can_apply: (action) => true/*included(action.name, ['to volunteer'])*/,
     solved: w => w.has_volunteered,
     handle_action: (action, world) => {
-        if (action.name === 'to volunteer') {
+        if (action.id === 'to volunteer') {
             return update(world, {
                 has_volunteered: Symbol(),
                 story_updates: story_updater(Updates.consequence(`
@@ -588,6 +602,8 @@ Puffers({
 
 export { Venience } from './prelude';
 
+resource_registry.get_resource('initial_world_knowledge')[Seal]();
+
 let initial_venience_world: Venience = {
     ...get_initial_world<Venience>(),
     ...resource_registry.get('initial_world_prelude', false),
@@ -615,7 +631,7 @@ declare module './prelude' {
 }
 
 resource_registry.initialize('venience_world_spec', venience_world_spec);
-resource_registry.seal();
+resource_registry[Seal]();
 
 // StoryQueryIndex.seal();
 

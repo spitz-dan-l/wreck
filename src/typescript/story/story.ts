@@ -3,10 +3,10 @@ import { HTMLAttributesWithout } from '../lib/jsx_utils';
 import { update } from '../lib/update';
 import { NodeProps } from './create';
 import  {setAutoFreeze, produce} from 'immer';
-import { Gist } from '../gist';
+import { Gist } from 'gist';
 import { map, zip, zipLongest } from 'iterative';
 import {dangerous_assert, type_or_kind_name} from '../lib/type_predicate_utils';
-import { deep_equal, drop_keys, memoize } from '../lib';
+import { deep_equal, drop_keys } from '../lib';
 
 export type StoryHole = { kind: 'StoryHole' };
 

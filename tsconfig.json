@@ -20,6 +20,10 @@
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
         "noImplicitThis": true,
+        "baseUrl": "src/typescript",
+        // "paths": {
+        //     "gist": [ "gist" ]
+        // }
     },
     "include": [
         // "./src/typescript/main.tsx",
@@ -32,7 +36,7 @@
         // "./src/typescript",
         // "./src/typescript/main.tsx"
         "./src/tests",
-        "./src/typescript/demo_worlds/demo_worlds/narrascope",
+        // "./src/typescript/demo_worlds/demo_worlds/sam.tsx",
         // "./src/typescript/lib/adt_utils.ts",
         // "./src/typescript/*",
         // "./src/typescript/UI/**/*",

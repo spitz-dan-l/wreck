@@ -1,5 +1,5 @@
 import { createElement, story_updater, StoryQueryIndex, Updates } from '../../story';
-import { gist, Gists, gists_equal, includes_tag } from '../../gist';
+import { gist, Gists, gists_equal, includes_tag } from 'gist';
 import { make_puffer_world_spec } from '../../puffer';
 import { is_simulated } from '../../supervenience';
 import { cond, included, update, map } from '../../lib/utils';

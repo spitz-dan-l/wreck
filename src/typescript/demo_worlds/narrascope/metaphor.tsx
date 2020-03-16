@@ -1,19 +1,21 @@
 import { filter } from 'iterative';
 import * as TypeStyle from 'typestyle';
-import { Gist, gist, gists_equal, gist_to_string, has_tag, render_gist, GistRendererRule, ValidTags, GistRenderer } from '../../gist';
+import { Gist, gist, gists_equal, gist_to_string, has_tag, render_gist, GistRendererRule, ValidTags, GistRenderer, GistPattern, GistRenderMethodsImpl, Gists, gist_matches, InferPatternTags } from 'gist';
 import { find_historical, find_index, history_array, indices_where } from "../../history";
 import { stages } from '../../lib/stages';
-import { StaticMap } from '../../lib/static_resources';
-import { map, update, Updater, append, range } from "../../lib/utils";
-import { AssocList } from '../../lib/assoc';
+import { StaticMap, StaticIndex } from '../../lib/static_resources';
+import { map, update, Updater, range } from "../../lib/utils";
 import { ConsumeSpec, Parser, ParserThread } from "../../parser";
 import { Puffer } from "../../puffer";
 import { createElement, Fragment, Groups, Hole, move_group, story_updater, Updates as S, StoryNode, StoryUpdatePlan, apply_story_updates_all, Story, StoryUpdateSpec, StoryUpdateGroupOp, ReversibleUpdateSpec, remove_eph, apply_story_updates_stage, Updates, compile_story_query } from '../../story';
 import { is_simulated, search_future } from '../../supervenience';
 import { alpha_rule } from '../../UI/styles';
-import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, StaticActionIDs, StaticFacetIDs, Venience, VeniencePuffer } from "./prelude";
+import { ActionID, FacetID, lock_and_brand, Owner, Puffers, resource_registry, StaticActionIDs, StaticFacetIDs, Venience, VeniencePuffer, TopicID } from "./prelude";
 import { get_thread_maker } from './supervenience_spec';
 import { world_driver } from '../../world';
+import { Knowledge, make_knowledge_puffer } from '../../knowledge';
+import { capitalize } from '../../lib/text_utils';
+import { insight_text_class } from './styles';
 
 export interface Metaphors {
     gist: Gist | null,
@@ -35,88 +37,291 @@ declare module './prelude' {
         initial_world_metaphor: Metaphors;
         action_index: StaticMap<Record<ActionID, Action>>;
         facet_index: StaticMap<Record<FacetID, FacetSpec>>;
+        initial_world_knowledge: Knowledge;
     }
 }
 
-type KnowledgeEntry =  {
-    story: StoryNode,
-    story_updates: StoryUpdateGroupOp[]
-}
+declare module 'gist' {
+    export interface StaticGistTypes {
+        facet: {
+            children: {
+                parent?: ValidTags,
+                child: ValidTags
+            }
+        };
+        
+        // actions
+        // top-level actions
+        consider: {
+            children: { subject: TopicID }
+        };
+        contemplate: { 
+            children: { subject: ValidTags }
+        };
+        notes: {
+            children: {
+                topic?: 'action description'
+            }
+        };
+        remember: {};
 
-class Knowledge extends AssocList<Gist, KnowledgeEntry> {
-    key_equals(k1: Gist, k2: Gist) {
-        return gists_equal(k1, k2);
+        // contemplation-level actions
+        attend: {
+            children: {
+                facet: 'facet'
+            }
+        };
+        scrutinize: {
+            children: {
+                facet: 'facet'
+            }
+        };
+        hammer: {
+            children: {
+                facet: 'facet'
+            }
+        };
+        volunteer: {
+            children: {
+                facet: 'facet'
+            }
+        };
+
+        // action exposition/description gists
+        // use a parameter rather than child so we can just use the tag,
+        // without caring about children.
+        'action description': {
+            parameters: {
+                action: ActionID
+            }
+        };
+        'Katya on': { children: {
+            action_description: 'action description'
+        }};
+
     }
 }
 
+resource_registry.initialize('initial_world_knowledge',
+    new Knowledge(),
+    (k) => {
+        resource_registry.initialize('initial_world_metaphor', {
+            gist: null,
+            owner: null,
+            current_interpretation: null,
+            knowledge: k,
+            has_acquired: map(),
+            has_tried: map()
+        });
+    }
+);
 
-resource_registry.initialize('initial_world_metaphor', {
-    gist: null,
-    owner: null,
-    current_interpretation: null,
-    knowledge: new Knowledge([]),
-    has_acquired: map(),
-    has_tried: map()
-});
+const init_knowledge = resource_registry.get_resource('initial_world_knowledge');
 
 const global_lock = resource_registry.get('global_lock', false);
 
 let null_lock = global_lock(null);
 let metaphor_lock = global_lock('Metaphor');
 
-export type Action = {
-    name: ActionID,
-    noun: string,
-    noun_cmd: ConsumeSpec,
-    description: string,
-    slug: string,
-    get_wrong_msg: (facet_phrase: string) => Fragment,
-    get_cmd: (facet_phrase: ConsumeSpec) => ConsumeSpec
-}
-
-type ActionGists = { [K in ActionID]: {} }
-
-declare module '../../gist/gist' {
-    export interface StaticGistTypes extends ActionGists {
-        contemplation: { 
-            children: { subject: ValidTags }
-        };
+Puffers(make_knowledge_puffer({
+    get_knowledge: w => w.knowledge,
+    set_knowledge: (w, k) => update(w, { knowledge: () => k }),
+    get_dynamic_region: w => {
+        if (w.current_interpretation === null) {
+            return null;
+        }
+        return S.frame(range(w.current_interpretation!, w.index + 1));
     }
-}
+}));
 
-function make_action(spec: Action): VeniencePuffer {
-    return {
-        css_rules: [
-            `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
-                animation-name: interpreting, would-cite !important;
-                animation-duration: 2s, 2s !important;
-                animation-iteration-count: infinite, infinite !important;
-            }`
-        ]
-    };
+export type Action = {
+    id: ActionID,
+    
+    render_impls: GistRenderMethodsImpl<ActionID>
+
+    description_noun_phrase: string,
+    description_command_noun_phrase: ConsumeSpec,
+    description: string,
+    katya_quote: string,
+    memory: Fragment
+};
+
+function make_action(spec: Action) {
+    GistRenderer(spec.id, spec.render_impls);
+
+    const descr_gist = gist({ tag: 'action description', parameters: {action: spec.id}});
+
+    GistRenderer(descr_gist, {
+        noun_phrase: {
+            order: 'TopDown',
+            impl: () => spec.description_noun_phrase
+        },
+        command_noun_phrase: {
+            order: 'TopDown',
+            impl: () => spec.description_command_noun_phrase
+        }
+    });
+
+    const katya_on_gist = gist('Katya on', {action_description: descr_gist});
+    // const descr_gist = gist('action description', {}, {action: spec.id});
+    init_knowledge.update(k => k.ingest(
+        // main story bit about the action
+        <div gist={descr_gist}>
+            <div
+                gist={katya_on_gist}
+                className={insight_text_class}
+            >
+                {spec.katya_quote}
+            </div>
+            <br />
+            {capitalize(render_gist.noun_phrase(descr_gist))} confers:
+            <blockquote>
+                {spec.description}
+            </blockquote>
+        </div>,
+
+        // the notes about the action, which contains the main body above
+        (k) => <div gist={{ tag: 'notes about', children: { subject: descr_gist }}}>
+            <strong>{capitalize(render_gist.noun_phrase(descr_gist))}</strong>
+            {k.get(descr_gist)!}
+        </div>,
+
+        // the expanded memory associated w the action, once you uncover it
+        <blockquote
+            gist={{ tag: 'memory about', children: { subject: katya_on_gist }}}
+            className={insight_text_class}
+        >
+            {spec.memory}
+        </blockquote>
+    ));
+
+    return spec;
 }
 
 let action_index = resource_registry.initialize('action_index',
     new StaticMap(StaticActionIDs, [
-        function add_action_to_puffers(action: Action) {
-            Puffers(make_action(action));
-            
-            GistRenderer(action.name, {
-                noun_phrase: {
-                    order: 'TopDown',
-                    impl: () => action.noun
-                },
-                command_noun_phrase: {
-                    order: 'TopDown',
-                    impl: () => action.noun_cmd
-                }
-            });
-            return action;
-        }
+        make_action
     ])
 );
 
-export const Actions = (spec: Action) => action_index.initialize(spec.name, spec);
+
+type ActionHandlerRule<AID extends ActionID=ActionID> = {
+    action_pattern: GistPattern<AID>,
+
+    handle: (g: Gists[AID], w: Venience) => Venience
+}
+
+const ACTION_HANDLER_INDEX = new StaticIndex<ActionHandlerRule>();
+
+export function ActionHandler<Pat extends GistPattern<ActionID>>(pattern: Pat, handler: (g: Gists[InferPatternTags<Pat>], w: Venience) => Venience): ActionHandlerRule<InferPatternTags<Pat> & ActionID>;
+export function ActionHandler(pattern: GistPattern<ActionID>, handler: (g: Gists[ActionID], w: Venience) => Venience) {
+    const result: ActionHandlerRule = {
+        action_pattern: pattern,
+        handle: handler
+    }
+
+    ACTION_HANDLER_INDEX.add(result);
+    return result;
+}
+
+export function handle_action(action_gist: Gists[ActionID], w: Venience): Venience {    
+    const handlers = ACTION_HANDLER_INDEX.all();
+    
+    for (let i = handlers.length - 1; i >= 0; i--) {
+        const h = handlers[i]
+        if (gist_matches(action_gist, h.action_pattern)) {
+            return h.handle(action_gist, w);
+        }
+    }
+    throw new Error('No handlers matches with the action gist: ' + gist_to_string(action_gist));
+}
+
+type Exposition = {
+
+}
+
+
+declare function lookup_new_exposition(action: Gists['attend' | 'scrutinize' | 'hammer' | 'volunteer']): Gist | null;
+
+ActionHandler(['attend', 'scrutinize', 'hammer', 'volunteer'],
+    (g, w) => {
+        const new_exposition: Gist | null = lookup_new_exposition(g);
+    
+        if (new_exposition !== null) {
+            // set the gist for the frame
+            w = update(w, {
+                gist: () => g
+            });
+
+            // add a new animation stage where we do interpretation stuff first,
+            // then add any present tense stuff second.
+
+            const target_gist = g.children.facet.children.child;
+            
+            
+            // check if the child revealed text is already added
+            const target_story = w.knowledge.get(target_gist)!;
+            if ( !S.children(S.has_gist(new_exposition).to_query_spec()).to_query()(target_story) ) {
+                // if not, add it under the parent gist
+                w = update(w, {
+                    knowledge: k => k.update(target_gist, (S) => S.add(k.get(new_exposition)!))
+                });
+            } else {
+                // if yes, blink the parent and child
+            }
+            return w;
+        }
+
+        // Some kind of error message...
+        return w;
+    }
+);
+
+// export type Action = {
+//     name: ActionID,
+//     noun: string,
+//     noun_cmd: ConsumeSpec,
+//     description: string,
+//     slug: string,
+//     get_wrong_msg: (facet_phrase: string) => Fragment,
+//     get_cmd: (facet_phrase: ConsumeSpec) => ConsumeSpec
+// }
+
+
+
+// function make_action(spec: Action): VeniencePuffer {
+//     return {
+//         css_rules: [
+//             `.history .would-add-descr-${spec.slug}-blink .descr-${spec.slug} {
+//                 animation-name: interpreting, would-cite !important;
+//                 animation-duration: 2s, 2s !important;
+//                 animation-iteration-count: infinite, infinite !important;
+//             }`
+//         ]
+//     };
+// }
+
+// let action_index = resource_registry.initialize('action_index',
+//     new StaticMap(StaticActionIDs, [
+//         function add_action_to_puffers(action: Action) {
+//             Puffers(make_action(action));
+            
+//             GistRenderer(action.name, {
+//                 noun_phrase: {
+//                     order: 'TopDown',
+//                     impl: () => action.noun
+//                 },
+//                 command_noun_phrase: {
+//                     order: 'TopDown',
+//                     impl: () => action.noun_cmd
+//                 }
+//             });
+//             return action;
+//         }
+//     ])
+// );
+
+export const Action = (spec: Action) => action_index.initialize(spec.id, spec);
 
 
 function get_actions(world: Venience) {
@@ -150,18 +355,20 @@ function apply_action(world: Venience, facet: FacetSpec, action: Action) {
     }
 
     if (!facet.can_apply(action)) {
-        throw new Error(`Tried to apply action ${action.name} to facet ${facet.name}, but it can't be applied.`);
+        throw new Error(`Tried to apply action ${action.id} to facet ${facet.name}, but it can't be applied.`);
     }
     let already_solved = facet.solved(world);
     
     world = facet.handle_action(action, world);
 
     world = update(world, { 
-        has_tried: map([action.name, map([facet.name, true])]),
+        has_tried: map([action.id, map([facet.name, true])]),
         story_updates: story_updater(
             Groups.name('init_frame').stage(0).move_to(-1),
             Groups.name('interpretation_effects').stage(-1).push(
                 S.frame(indices_where(world, (w => w.index > world.current_interpretation!)))
+                    .has_gist({ tag: 'facet', children: { child: facet.name }})
+                
                     .css({
                         [`eph-descr-${action.slug}-blink`]: true,
                         [`eph-descr-${facet.slug}-blink`]: true
@@ -220,8 +427,14 @@ export const make_action_applicator = (world: Venience, facet_id: FacetID, actio
         return (
             parser.consume(
                 {
-                    tokens: action.get_cmd(facet.noun_phrase_cmd),
-                    used: !!already_solved || (world.has_tried.has(action.name) && world.has_tried.get(action.name)!.get(facet.name)),
+                    tokens: render_gist.command_verb_phrase({
+                        tag: 'action performance',
+                        children: {
+                            action: action_id,
+                            target: facet.name
+                        }
+                    }), // action.get_cmd(facet.noun_phrase_cmd),
+                    used: !!already_solved || (world.has_tried.has(action.id) && world.has_tried.get(action.id)!.get(facet.name)),
                     labels: { interp: true, filler: true }
                 }, () =>
             parser.submit(() => {
@@ -311,11 +524,8 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | null,
                 return parser.eliminate();
             }
 
-            const target_gist = gist({
-                tag: 'contemplation',
-                children: {
-                    subject: has_tag(g, 'memory') ? { tag: 'notes about', children: {topic: g.children.action}} : g
-                }
+            const target_gist = gist('contemplation', {
+                subject: has_tag(g, 'memory about') ? gist('notes about', {subject: g.children.subject}) : g
             });
 
             // move the next story hole inside the current frame
@@ -439,40 +649,51 @@ Puffers(lock_and_brand('Metaphor', {
 
 // FACETS
 
-type FacetSpec2 = {
-    parent?: ValidTags,
-    child: ValidTags,
-    noun_phrase?: string,
-    command_noun_phrase?: ConsumeSpec,
+type FacetGists = { [K in FacetID]: {} };
+declare module 'gist' {
+    export interface StaticGistTypes extends FacetGists {
+        facet: {
+            children: {
+                parent?: ValidTags,
+                child: ValidTags
+            }
+        };
+    }
+}
+
+
+type Facet = {
+    pattern: GistPattern<'facet'>,
+    render_impls?: GistRenderMethodsImpl<'facet'>,
 
     // assuming the facet's content occurs in the message of the world under interpretation,
     // can the player recognize it as a facet?
-    can_recognize?: (current_world: Venience, interpretted_world: Venience) => boolean,
+    can_recognize?: (facet: Gists['facet'], current_world: Venience, interpretted_world: Venience) => boolean,
     
-    // can action be applied to the facet?
-    can_apply?: (action: Action) => boolean,
+    // can action be applied to the facet? (ie should it show up in the typeahead?)
+    can_apply?: (facet: Gists['facet'], action: Action) => boolean,
 
-    handle_action?: (action: Action, world: Venience) => Venience,
+    handle_action: (facet: Gists['facet'], action: Action, world: Venience) => Venience,
 };
 
-function process_facet(spec: FacetSpec2) {
-    GistRenderer({
-        tag: 'facet',
-        children: {
-            parent: spec.parent,
-            child: spec.child
-        }
-    }, {
-        noun_phrase: {
-            order: 'TopDown',
-            impl: (g) => spec.noun_phrase ?? render_gist.noun_phrase(g.children.child)
-        },
-        command_noun_phrase: {
-            order: 'TopDown',
-            impl: (g) => spec.command_noun_phrase ?? render_gist.command_noun_phrase(g.children.child)
-        }
-    });
+function process_facet(spec: Facet) {
+    if (spec.render_impls !== undefined) {
+        GistRenderer(spec.pattern, spec.render_impls);
+    }
+    return spec;
 }
+
+// base renderer will just ignore the parent gist and refer to it as the child gist's rendering
+GistRenderer('facet', {
+    noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {child}) => child
+    },
+    command_noun_phrase: {
+        order: 'BottomUp',
+        impl: (tag, {child}) => child
+    }
+});
 
 type FacetSpec = {
     name: FacetID, // e.g. "the sense of dread"
@@ -489,18 +710,6 @@ type FacetSpec = {
 
     content?: Fragment
 };
-
-type FacetGists = { [K in FacetID]: {} };
-declare module '../../gist/gist' {
-    export interface StaticGistTypes extends FacetGists {
-        facet: {
-            children: {
-                parent?: ValidTags,
-                child: ValidTags
-            }
-        };
-    }
-}
 
 export function RenderFacet(props: { name: FacetID }) {
     const f = facet_index.get(props.name);
@@ -527,14 +736,14 @@ const make_facet = (spec: FacetSpec): Puffer<Venience> => lock_and_brand('Metaph
 
         let interpretted_world = find_index(world, world.current_interpretation)!;
 
-        if ( !spec.can_recognize(world, interpretted_world)){
+        if ( !spec.can_recognize?.(world, interpretted_world)){
             return parser.eliminate();
         }
 
         let threads: ParserThread<Venience>[] = [];
 
         for (let action of Object.values(action_index.all())) {
-            threads.push(make_action_applicator(world, spec.name, action.name));
+            threads.push(make_action_applicator(world, spec.name, action.id));
         }
 
         return parser.split(threads);

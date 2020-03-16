@@ -1,10 +1,9 @@
-import { gist, Gist, Gists, GistSpecs, gists_equal, gist_matches, gist_renderer_index, render_gist } from "../gist";
-import { Any, make_matcher, match, NotNull } from '../pattern_matching2';
+import { gist, Gist, gists_equal, gist_matches, render_gist } from "gist";
 import { make_puffer_world_spec, Puffer } from "../puffer";
-import { NameOf, StaticIndex, StaticMap } from "../static_resources";
-import { createElement, find_all_nodes, Fragment, Groups, is_story_node, StoryNode, StoryQueryIndex, story_updater, Updates as S } from "../story";
-import { update } from "../update";
-import { assert, bound_method, enforce_always_never } from "../utils";
+import { NameOf, StaticIndex, StaticMap } from "../lib/static_resources";
+import { createElement, find_all_nodes, Fragment, Groups, is_story_node, StoryNode, story_updater, Updates as S } from "../story";
+import { update } from "../lib/update";
+import { assert, bound_method, enforce_always_never } from "../lib/utils";
 import { get_initial_world, World, world_driver } from "../world";
 
 export interface SamWorld extends World {
@@ -14,7 +13,7 @@ export const PufferIndex = new StaticIndex<Puffer<SamWorld>>();
 const Puffers = bound_method(PufferIndex, 'add');
 
 
-declare module '../gist' {
+declare module 'gist' {
     export interface GistSpecs {
         'Sam': undefined;
         'Sam\'s identity': undefined;
@@ -26,36 +25,6 @@ declare module '../gist' {
         'contemplation': {event: Gist};
         'recollection': {event: Gist};
 
-        // 'recollectiona': {event: Gist};
-        // 'recollections': {event: Gist};
-        // 'recollectionq': {event: Gist};
-        // 'recollectionw': {event: Gist};
-        // 'recollectione': {event: Gist};
-        // 'recollectionr': {event: Gist};
-        // 'recollectiont': {event: Gist};
-        // 'recollectiony': {event: Gist};
-        // 'recollectionu': {event: Gist};
-        // 'recollectionoi': {event: Gist};
-        // 'recollectionp': {event: Gist};
-        // 'recollectiond': {event: Gist};
-        // 'recollectionf': {event: Gist};
-        // 'recollectiong': {event: Gist};
-        // 'recollectionh': {event: Gist};
-        // 'recollectionj': {event: Gist};
-        // 'recollectionk': {event: Gist};
-        // 'recollectionl': {event: Gist};
-        // 'recollectionz': {event: Gist};
-        // 'recollectionx': {event: Gist};
-        // 'recollectionc': {event: Gist};
-        // 'recollectionv': {event: Gist};
-        // 'recollectionb': {event: Gist};
-        // 'recollectionn': {event: Gist};
-        // 'recollectionm': {event: Gist};
-        // 'recollection,': {event: Gist};
-        // 'recollection.': {event: Gist};
-        // 'recollection;': {event: Gist};
-        // 'recollection1': {event: Gist};
-        // 'recollection2': {event: Gist};
     }
 }
 

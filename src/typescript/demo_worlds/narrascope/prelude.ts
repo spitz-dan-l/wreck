@@ -4,7 +4,7 @@ import { update, entries, bound_method, merge_objects, enforce_always_never } fr
 import { World, get_initial_world } from '../../world';
 import { FutureSearchSpec } from '../../supervenience';
 import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../lib/static_resources';
-import { GistRendererRule, GIST_RENDERER_INDEX, ValidTags } from '../../gist';
+import { GistRendererRule, GIST_RENDERER_INDEX, ValidTags } from 'gist';
 
 export const StaticTopicIDs = {
     'Sam': null,
@@ -14,13 +14,58 @@ export const StaticTopicIDs = {
  };
 export type TopicID = NameOf<typeof StaticTopicIDs>;
 
-export const StaticActionIDs = {
-    'to attend': null,
-    'to scrutinize': null,
-    'to hammer': null,
-    'to volunteer': null
+export interface StaticActionGistTypes {
+    // actions
+    // top-level actions
+    consider: {
+        children: { subject: TopicID }
+    };
+    contemplate: { 
+        children: { subject: ValidTags }
+    };
+    notes: {
+        children: {
+            topic?: 'action description'
+        }
+    };
+    remember: {};
+
+    // contemplation-level actions
+    attend: {
+        children: {
+            facet: 'facet'
+        }
+    };
+    scrutinize: {
+        children: {
+            facet: 'facet'
+        }
+    };
+    hammer: {
+        children: {
+            facet: 'facet'
+        }
+    };
+    volunteer: {
+        children: {
+            facet: 'facet'
+        }
+    };
 };
-export type ActionID = NameOf<typeof StaticActionIDs>;
+
+
+export type ActionID = keyof StaticActionGistTypes; //NameOf<typeof StaticActionIDs>;
+export const StaticActionIDs: StaticNameIndexFor<StaticActionGistTypes> = {
+    consider: null,
+    contemplate: null,
+    notes: null,
+    remember: null,
+    attend: null,
+    scrutinize: null,
+    hammer: null,
+    volunteer: null
+};
+
 
 export const StaticNoteIDs = StaticActionIDs;
 export type NoteID = ActionID;
@@ -86,6 +131,7 @@ export interface VeniencePuffer extends Puffer<Venience> {
 export interface StaticResources {};
 
 const static_resource_names: StaticNameIndexFor<StaticResources> = {
+    'initial_world_knowledge': null,
     'initial_world_prelude': null,
     'puffer_index': null,
     'global_lock': null,

@@ -1,4 +1,4 @@
-import { GistPattern, gist_pattern, gist_matches } from '../../gist';
+import { GistPattern, gist_pattern, gist_matches } from 'gist';
 import { find_index } from '../../history';
 import { CommandFilter, FutureSearchSpec, NarrativeDimension, NarrativeGoal, search_future } from '../../supervenience';
 import { update_thread_maker } from '../../world';

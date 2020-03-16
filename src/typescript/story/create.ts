@@ -1,5 +1,5 @@
 import { gensym } from '../lib/gensym';
-import { gist, GistConstructor } from '../gist';
+import { gist, GistConstructor } from 'gist';
 import { HTMLElementTags, MergeWithHTMLProps, remove_custom_props } from '../lib/jsx_utils';
 import { split_tokens } from '../lib/text_utils';
 import { DeepFragment, Fragment, StoryNode } from './story';
