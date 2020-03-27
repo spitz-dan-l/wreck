@@ -1,26 +1,20 @@
-import { StoryNode, StoryUpdateGroupOp, UpdatesBuilder, StoryUpdaterSpec, Updates, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "./story";
+import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "./story";
 import { AssocList } from "./lib/assoc";
-import { Gist, gists_equal, gist_to_string, GistConstructor, gist } from "./gist";
+import { Gist, gists_equal, gist_to_string, GistConstructor, gist, ValidTags, Gists } from "./gist";
 import { update } from "./lib/update";
 import { World } from "./world";
 import { Puffer } from "./puffer";
 import { stages } from "./lib/stages";
 import { range, compute_const } from "./lib/utils";
 
-declare module './story/update/update_group' {
-    export interface StoryUpdateGroups {
-        knowledge_updates: "Updates to in-game Knowledge."
-    }
-}
-
 type KnowledgeEntry =  {
     story: StoryNode,
-    story_updates: StoryUpdateGroupOp[]
+    story_updates: StoryUpdateCompilationOp[]
     dependencies: Gist[]
 }
 
-export class GistAssoc<T> extends AssocList<Gist, T> {    
-    key_equals(k1: Gist, k2: Gist) {
+export class GistAssoc<T, Tags extends ValidTags=ValidTags> extends AssocList<Gists[Tags], T> {    
+    key_equals(k1: Gists[Tags], k2: Gists[Tags]) {
         return gists_equal(k1, k2);
     }
 }
@@ -33,13 +27,16 @@ export class Knowledge {
         public knowledge: KnowledgeAssoc = new GistAssoc([]),
     ) {}
 
-    get(g: GistConstructor): StoryNode | null {
+    get_entry(g: GistConstructor): KnowledgeEntry | null {
         const entry = this.knowledge.get(gist(g));
         if (entry === null) {
             return null;
         }
+        return entry;
+    }
 
-        return entry.story;
+    get(g: GistConstructor): StoryNode | null {
+        return this.get_entry(g)?.story ?? null;
     }
 
     ingest(...stories: (Fragment | ((k: this) => Fragment))[]): this {
@@ -139,7 +136,7 @@ export class Knowledge {
 
         let result = this;
         for (const g of bottom_up_order) {
-            let updates: StoryUpdateGroupOp[] = [];
+            let updates: StoryUpdateCompilationOp[] = [];
 
             const entry = result.knowledge.get(g)!;
             const children = entry.dependencies;
@@ -168,15 +165,11 @@ export class Knowledge {
         return result;
     }
     
-    push_updates(builder: UpdatesBuilder): StoryUpdateGroupOp[] {
+    push_updates(builder: UpdatesBuilder): StoryUpdateCompilationOp[] {
         return this.bottom_up_order().flatMap(g => {
             const us = this.knowledge.get(g)!.story_updates;
             return us.map(u =>
-                u.kind === 'PushGroup' ?
-                    update(u, {
-                        updates: _ => _.map(u1 => builder.prepend_to(u1))
-                    }) :
-                    u
+                builder.prepend_to(u)
             );                    
         });
     }
@@ -195,14 +188,16 @@ export class Knowledge {
 export type KnowledgePufferSpec<W extends World> = {
     get_knowledge: (w: W) => Knowledge,
     set_knowledge: (w: W, k: Knowledge) => W,
-    get_dynamic_region: (w: W) => UpdatesBuilder | null
+    get_dynamic_region: (w: W) => UpdatesBuilder | null,
+    push_updates_stage?: number
 };
 
 export function make_knowledge_puffer<W extends World>(
     {
         get_knowledge,
         set_knowledge,
-        get_dynamic_region
+        get_dynamic_region,
+        push_updates_stage
     }: KnowledgePufferSpec<W>
 ): Puffer<W> {
     return {
@@ -211,7 +206,7 @@ export function make_knowledge_puffer<W extends World>(
             return set_knowledge(w, get_knowledge(w).consolidate());
         },
 
-        post: stages([2,
+        post: stages([push_updates_stage ?? 2,
             (w) => {
                 const selector = get_dynamic_region(w);
                 if (selector === null) {

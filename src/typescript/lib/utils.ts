@@ -214,6 +214,41 @@ export function set_eq(arr1: any[], arr2: any[]) {
     return arr1.every(x => arr2.includes(x)) && arr2.every(x => arr1.includes(x));
 }
 
+export function if_array<R>(cond: boolean | (() => boolean), r: () => R[]) {
+    const cond_result = (typeof cond === 'function' ?
+        cond() :
+        cond
+    );
+    if (cond_result) {
+        return r();
+    }
+    return [];
+}
+
+export function not_null(value: undefined | null): value is never;
+export function not_null<T>(value: T | undefined | null): value is T;
+export function not_null<T>(value: T | undefined | null): value is T {
+    return (value !== undefined && value !== null);
+}
+
+export function if_not_null(cond: undefined | null, r: (t: unknown) => unknown): undefined;
+export function if_not_null<T, R>(cond: T | undefined | null, r: (t: T) => R): R | undefined;
+export function if_not_null<T, R>(cond: T | undefined | null, r: (t: T) => R): R | undefined {
+    if (not_null(cond)) {
+        return r(cond);
+    }
+    return undefined;
+}
+
+export function if_not_null_array(cond: undefined | null, r: (t: unknown) => unknown): [];
+export function if_not_null_array<T, R>(cond: T | undefined | null, r: (t: T) => R[]): R[];
+export function if_not_null_array<T, R>(cond: T | undefined | null, r: (t: T) => R[]): R[] {
+    if (not_null(cond)) {
+        return r(cond);
+    }
+    return [];
+}
+
 // Helper for building lists with optional elements
 export function cond<R>(c: boolean, r: () => R) {
     if (c) {

@@ -173,6 +173,11 @@ type InferTags<DSLOrGist> =
         DSLOrGist['tag'] :
     never;
 
+
+type TagsWithRequiredParameters = {
+    [Tag in ValidTags]: object extends Gists[Tag]['parameters'] ? never : Tag
+}[ValidTags]
+
 type TagsWithOptionalParameters = {
     [Tag in ValidTags]: object extends Gists[Tag]['parameters'] ? Tag : never 
 }[ValidTags];
@@ -183,8 +188,9 @@ type TagsWithOptionalChildren = {
 
 export function gist<DSL extends GistDSL[ValidTags]>(spec: DSL): Gists[InferTags<DSL>];
 export function gist(spec: GistDSL[ValidTags]): Gist;
-export function gist<Tag extends TagsWithOptionalParameters & TagsWithOptionalChildren>(tag: Tag, children?: GistDSLObject[Tag]['children'], parameters?: GistDSLObject[Tag]['parameters']): Gists[Tag]
-export function gist<Tag extends TagsWithOptionalParameters>(tag: Tag, children: GistDSLObject[Tag]['children'], parameters?: GistDSLObject[Tag]['parameters']): Gists[Tag]
+export function gist<Tag extends ValidTags>(tag: Tag, children: GistDSLObject[Tag]['children'], parameters: GistDSLObject[Tag]['parameters']): Gists[Tag];
+export function gist<Tag extends TagsWithOptionalParameters>(tag: Tag, children: GistDSLObject[Tag]['children'], parameters?: GistDSLObject[Tag]['parameters']): Gists[Tag];
+export function gist<Tag extends TagsWithOptionalParameters & TagsWithOptionalChildren>(tag: Tag, children?: GistDSLObject[Tag]['children'], parameters?: GistDSLObject[Tag]['parameters']): Gists[Tag];
 export function gist(spec: GistDSLStructure, children?: GistDSLStructureObject['children'], parameters?: GistDSLStructureObject['parameters']): Gist {
     const result = translate_dsl(spec as GistDSL[ValidTags]);
     if (children !== undefined) {

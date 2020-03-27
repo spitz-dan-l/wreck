@@ -6,53 +6,30 @@ import { FutureSearchSpec } from '../../supervenience';
 import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../lib/static_resources';
 import { GistRendererRule, GIST_RENDERER_INDEX, ValidTags } from 'gist';
 
-export const StaticTopicIDs = {
+export const STATIC_TOPIC_IDS = {
     'Sam': null,
     'yourself': null,
     'your notebook': null,
     'your history with Sam': null
  };
-export type TopicID = NameOf<typeof StaticTopicIDs>;
+export type TopicID = NameOf<typeof STATIC_TOPIC_IDS>;
 
 export interface StaticActionGistTypes {
-    // actions
-    // top-level actions
-    consider: {
-        children: { subject: TopicID }
-    };
-    contemplate: { 
-        children: { subject: ValidTags }
-    };
     notes: {
         children: {
             topic?: 'action description'
         }
     };
-    remember: {};
-
-    // contemplation-level actions
-    attend: {
+    remember: {
         children: {
-            facet: 'facet'
-        }
-    };
-    scrutinize: {
-        children: {
-            facet: 'facet'
-        }
-    };
-    hammer: {
-        children: {
-            facet: 'facet'
-        }
-    };
-    volunteer: {
-        children: {
-            facet: 'facet'
+            topic: 'action description'
         }
     };
 };
 
+declare module 'gist' {
+    export interface StaticGistTypes extends StaticActionGistTypes {}
+}
 
 export type ActionID = keyof StaticActionGistTypes; //NameOf<typeof StaticActionIDs>;
 export const StaticActionIDs: StaticNameIndexFor<StaticActionGistTypes> = {
@@ -60,46 +37,10 @@ export const StaticActionIDs: StaticNameIndexFor<StaticActionGistTypes> = {
     contemplate: null,
     notes: null,
     remember: null,
-    attend: null,
     scrutinize: null,
     hammer: null,
     volunteer: null
 };
-
-
-export const StaticNoteIDs = StaticActionIDs;
-export type NoteID = ActionID;
-
-export type StaticFacets = {
-    'Sam': {
-        "Sam's presence": null,
-        "Sam's demeanor": null, 
-        "your friendship with Sam": null
-    },
-    "Sam's presence": {
-        'the old affinity': null
-    },
-    "your friendship with Sam": {
-        "your drifting apart": null,
-        "your culpability": null
-    }
-};
-
-type StaticFacetIds2 = NameOf<StaticFacets[keyof StaticFacets]>
-
-enforce_always_never(null as (
-    { [K in keyof StaticFacets]:
-        K extends ValidTags ?
-            StaticFacets[K] extends { [k in string]: null } ?
-                { [K2 in keyof StaticFacets[K]]:
-                    K2 extends ValidTags ?
-                        never :
-                        ['FacetIDs for', K, 'must be Gist tags.', K2, 'is not a Gist tag.']
-                }[keyof StaticFacets[K]] :
-                ['FacetIDs for', K, 'must be a mapping from Gist tags to null. Got', StaticFacets[K]] :
-            [K, 'is not a valid Gist tag']    
-    }[keyof StaticFacets]
-))
 
 export const StaticFacetIDs = {
     "Sam's presence": null,
@@ -140,12 +81,12 @@ const static_resource_names: StaticNameIndexFor<StaticResources> = {
     'topic_index': null,
     'initial_world_metaphor': null,
     'action_index': null,
-    'facet_index': null,
     'initial_world_notes': null,
     'note_index': null,
     'memory_index': null,
     'initial_world_narrascope': null,
-    'venience_world_spec': null
+    'venience_world_spec': null,
+    'initial_world_can_consider': null
 }
 
 export const resource_registry = new StaticMap<StaticResources>(static_resource_names);

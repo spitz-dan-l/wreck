@@ -6,7 +6,7 @@ import { StaticMap } from '../../lib/static_resources';
 import { capitalize } from '../../lib/text_utils';
 import { update } from '../../lib/update';
 import { map } from '../../lib/utils';
-import { } from './metaphor';
+import { } from './action';
 import { NoteID, Puffers, resource_registry, StaticNoteIDs, Venience } from './prelude';
 import { stages } from '../../lib/stages';
 

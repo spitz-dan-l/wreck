@@ -7,37 +7,62 @@ export interface StoryUpdateGroups {
     updates: "Generic updates that you don't need a distinct group for.";
 }
 
-export type StoryUpdateGroupOp =
-    | PushGroup
+export type GroupName = keyof StoryUpdateGroups;
+
+export type StoryUpdateGroup = {
+    kind: 'StoryUpdateGroup',
+    name: GroupName,
+    update_specs: StoryUpdateSpec[]
+}
+
+export type StoryUpdateCompilationOp =
+    | PushStoryUpdate
+    | PushWouldUpdate
     | MoveGroup;
 
-export type PushGroup = {
-    kind: 'PushGroup',
-    name: keyof StoryUpdateGroups,
+export type PushStoryUpdate = {
+    kind: 'PushStoryUpdate',
+    group_name?: GroupName,
     stage?: number,
-    updates: StoryUpdateSpec[]
-}
+    update_spec: StoryUpdateSpec,
+};
+
+export type PushWouldUpdate = {
+    kind: 'PushWouldUpdate',
+    update_spec: StoryUpdateSpec
+};
+
 export type MoveGroup = {
     kind: 'MoveGroup',
-    name: keyof StoryUpdateGroups,
+    name: GroupName,
     source_stage: number,
     dest_stage: number
 };
 
-export function apply_story_update_group_op(plan: StoryUpdatePlan['effects'], group: StoryUpdateGroupOp) {
-    if (group.kind === 'MoveGroup') {
-        return move_group(plan, group.name, group.source_stage, group.dest_stage);
+export function apply_story_update_compilation_op(plan: StoryUpdatePlan, op: StoryUpdateCompilationOp) {
+    if (op.kind === 'MoveGroup') {
+        return {
+            effects: move_group(plan.effects, op.name, op.source_stage, op.dest_stage),
+            would_effects: plan.would_effects
+        };
+    }
+
+    if (op.kind === 'PushWouldUpdate') {
+        return update(plan, {
+            would_effects: append(op.update_spec)
+        })
     }
     
+    const group_name = op.group_name ?? 'updates';
     let group_index: number | undefined = undefined;
-    let stage = group.stage;
+    let stage = op.stage;
 
     function find_group_index(groups: StoryUpdateStage) {
-        return groups.findIndex(g => g.name === group.name);
+        return groups.findIndex(g => g.name === group_name);
     }
 
     if (stage === undefined) {
-        for (const [s, groups] of stage_entries(plan)) {
+        for (const [s, groups] of stage_entries(plan.effects)) {
             const idx = find_group_index(groups);
             if (idx !== -1) {
                 stage = s;
@@ -50,22 +75,30 @@ export function apply_story_update_group_op(plan: StoryUpdatePlan['effects'], gr
         stage = 0;
     }
 
-    if (!plan.has(stage)) {
+    if (!plan.effects.has(stage)) {
         group_index = -1;
     }
 
     if (group_index === undefined) {
-        group_index = find_group_index(plan.get(stage)!);
+        group_index = find_group_index(plan.effects.get(stage)!);
     }
 
     if (group_index === -1) {
-        return update(plan, stages([stage, append(group)]));
+        return update(plan, {
+            effects: stages([stage, append<StoryUpdateGroup>({
+                kind: 'StoryUpdateGroup',
+                name: group_name,
+                update_specs: [op.update_spec]
+            })])
+        });
     } else {
-        return update(plan, stages([stage, {
-            [group_index]: {
-                updates: append(...group.updates)
-            }
-        }]));
+        return update(plan, {
+            effects: stages([stage, {
+                [group_index]: {
+                    update_specs: append(op.update_spec)
+                }
+            }])
+        });
     }
 }
 

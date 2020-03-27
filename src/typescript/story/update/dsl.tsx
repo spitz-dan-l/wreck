@@ -1,17 +1,18 @@
-import { make_dsl, ParametersFor, ReplaceReturn } from '../../lib/dsl_utils';
+import { make_dsl, ParametersFor, ReplaceReturn, DMFParameters } from '../../lib/dsl_utils';
 import { history_array } from "../../history";
 import { Parsing } from '../../parser';
 import { stages } from "../../lib/stages";
 import { ParsedTextStory } from '../../UI/components/parsed_text';
-import { keys, update, Updater, flat_deep, append } from "../../lib/utils";
+import { keys, update, Updater, flat_deep, append, included, compute_const } from "../../lib/utils";
 import { World } from "../../world";
 import { createElement } from '../create';
-import { Fragment, StoryHole, StoryNode } from "../story";
+import { Fragment, StoryHole, StoryNode, FoundNode } from "../story";
 import { StoryOps, StoryOpSpec, story_op } from './op';
 import { StoryQueries, StoryQuerySpec, story_query, StoryQuery, compile_story_query } from './query';
 import { Story, StoryUpdatePlan, StoryUpdateSpec, story_update } from "./update";
-import { apply_story_update_group_op, StoryUpdateGroupOp, StoryUpdateGroups } from './update_group';
+import { apply_story_update_compilation_op, StoryUpdateCompilationOp, StoryUpdateGroups, GroupName, MoveGroup } from './update_group';
 import { A } from 'ts-toolbelt';
+import { StaticNameIndex } from 'lib/static_resources';
 
 type QuerySpecDomain = ReplaceReturn<StoryQueries, StoryQuerySpec>;
 export const Queries = make_dsl<QuerySpecDomain>((name) => (...params) => story_query(name, params))
@@ -20,23 +21,83 @@ type OpSpecDomain = ReplaceReturn<StoryOps, StoryOpSpec>;
 export const Ops = make_dsl<OpSpecDomain>(name => (...params) => story_op(name, ...params));
 
 
-
-type UpdateSpecs = StoryUpdateSpec | UpdateSpecArray;
-interface UpdateSpecArray extends Array<UpdateSpecs> {};
-
 type StoryUpdateBuilderContext = {
     query?: StoryQuerySpec;
+    would_effect?: boolean;
+    group_name?: GroupName;
+    group_stage?: number;
 };
 
 export class UpdatesBuilder {
+    ['constructor']: new (context?: StoryUpdateBuilderContext) => this;
     constructor(public context: StoryUpdateBuilderContext = {}) {};
 
-    update_context(updater: Updater<StoryUpdateBuilderContext>): UpdatesBuilder {
-        return new UpdatesBuilder(update(this.context, updater));
+    update_context(updater: Updater<StoryUpdateBuilderContext>): this {
+        return new (this.constructor)(update(this.context, updater));
     }
 
-    apply(f: (builder: UpdatesBuilder) => UpdateSpecs): StoryUpdateSpec[] {
+    apply(f: (builder: UpdatesBuilder) => StoryUpdaterSpec): StoryUpdaterSpec[] {
         return flat_deep([f(this)]);
+    }
+
+    apply_op(op: StoryOpSpec): StoryUpdateCompilationOp {
+        const q = compute_const(() => {
+            if (this.context.query === undefined) {
+                return Queries.frame(); //Queries.story_root();
+            } else {
+                return this.context.query;
+            }
+        });
+
+        if (this.context.would_effect) {
+            return {
+                kind: 'PushWouldUpdate',
+                update_spec: story_update(q, op)
+            }
+        }
+
+        return {
+            kind: 'PushStoryUpdate',
+            group_name: this.context.group_name,
+            stage: this.context.group_stage,
+            update_spec: story_update(q, op)
+        };
+    }
+
+    would(would: boolean=true): this {
+        if (this.context.would_effect !== undefined) {
+            throw new Error('Tried to redefine the group name on an UpdatesBuilder.');
+        }
+        return this.update_context({ would_effect: would });
+    }
+
+    group_name(name: GroupName): this {
+        if (this.context.group_name !== undefined) {
+            throw new Error('Tried to redefine the group name on an UpdatesBuilder.');
+        }
+        return this.update_context({ group_name: name });
+    }
+
+    group_stage(stage: number): this {
+        if (this.context.group_stage !== undefined) {
+            throw new Error('Tried to redefine the group stage on an UpdatesBuilder.');
+        }
+        return this.update_context({ group_stage: stage });
+    }
+
+    move_group_to(dest_stage: number): MoveGroup {
+        if (this.context.group_name === undefined) {
+            throw new Error('Tried to call move_group_to() without defining a group_name.');
+        }
+        if (this.context.group_stage === undefined) {
+            throw new Error('Tried to call move_group_to() without defining a group_stage (source stage).');
+        }
+        return {
+            kind: 'MoveGroup',
+            name: this.context.group_name,
+            source_stage: this.context.group_stage,
+            dest_stage
+        };
     }
 
     to_query_spec(): StoryQuerySpec {
@@ -50,15 +111,39 @@ export class UpdatesBuilder {
         return compile_story_query(this.to_query_spec());
     }
 
-    prepend_to(update_spec: StoryUpdateSpec): StoryUpdateSpec {
-        return {
-            query: this.chain(update_spec.query).to_query_spec(),
-            op: update_spec.op
-        };
+    query(story: Fragment): FoundNode[] {
+        return this.to_query()(story);
     }
 
-    map_worlds<W extends World>(world: W, f: (w: W, frame: UpdatesBuilder) => UpdateSpecs): StoryUpdateSpec[] {
-        const results: UpdateSpecs[] = [];
+    prepend_to(update_spec: StoryUpdateCompilationOp | StoryUpdateSpec): StoryUpdateCompilationOp {
+        let b = this;
+
+        if (is_compilation_op(update_spec)) {
+            if (update_spec.kind === 'MoveGroup') {
+                return update_spec;
+            }
+            
+            if (update_spec.kind === 'PushWouldUpdate') {
+                if (this.context.would_effect === undefined) {
+                    b = b.would();
+                }
+            } else {
+                if (this.context.group_name === undefined && update_spec.group_name !== undefined) {
+                    b = b.group_name(update_spec.group_name);
+                }
+
+                if (this.context.group_stage === undefined && update_spec.stage !== undefined) {
+                    b = b.group_stage(update_spec.stage);
+                }
+            }
+
+            update_spec = update_spec.update_spec;
+        }
+        return b.chain(update_spec.query).apply_op(update_spec.op)
+    }
+
+    map_worlds<W extends World>(world: W, f: (w: W, frame: UpdatesBuilder) => StoryUpdaterSpec): StoryUpdateSpec[] {
+        const results: StoryUpdaterSpec[] = [];
         for (const w of history_array(world).reverse()) {
             const w_frame = this.frame(w.index);
             results.push(f(w, w_frame));
@@ -72,7 +157,7 @@ type TextMethodNames = (typeof TEXT_CATEGORY_NAMES)[number];
 
 type TextAddMethods = {
     [K in TextMethodNames]:
-        (children: Fragment | Fragment[]) => StoryUpdateSpec
+        (children: Fragment | Fragment[]) => StoryUpdateCompilationOp
 }
 
 // Merge in the text add methods to the interface
@@ -81,14 +166,14 @@ export interface UpdatesBuilder extends TextAddMethods {}
 // Merge in the implementations to the class proto
 for (const prop of TEXT_CATEGORY_NAMES) {
     UpdatesBuilder.prototype[prop] = function(children) {
-        let base_query = this.context.query;
-        if (base_query === undefined) {
-            base_query = Queries.frame();
+        let b = this;
+        if (b.context.query === undefined) {
+            b = b.frame();
         }
-        return story_update(
-            Queries.chain(base_query, Queries.children(Queries.has_class('output-text')), Queries.children(Queries.has_class(prop))),
-            Ops.add(children)
-        );
+        return b
+            .children(Updates.has_class('output-text'))
+            .children(Updates.has_class(prop))
+            .add(children);
     }
 }
 
@@ -97,13 +182,27 @@ type QueryMethods = {
         ((...params: ParametersFor<QuerySpecDomain>[K]) => UpdatesBuilder)
 }
 
-export interface UpdatesBuilder extends QueryMethods {
-    // has_gist(gist_pattern: GistPattern): UpdatesBuilder;
 
+
+export interface UpdatesBuilder extends QueryMethods {
+    // override some signatures to accept an UpdatesBuilder where a StoryQuerySpec would be expected
+    first: (query: StoryQuerySpec | UpdatesBuilder) => UpdatesBuilder;
+    first_level: (query: StoryQuerySpec | UpdatesBuilder) => UpdatesBuilder;
+    chain: (...queries: (StoryQuerySpec | UpdatesBuilder)[]) => UpdatesBuilder;
+    children: (subquery?: StoryQuerySpec | UpdatesBuilder) => UpdatesBuilder;
+    
 }
 
-function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<QueryMethods>[K]): UpdatesBuilder {
-    const q = story_query(k, params);
+// function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<QueryMethods>[K]): UpdatesBuilder {
+function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<Pick<UpdatesBuilder, keyof QueryMethods>>[K]): UpdatesBuilder {   
+    const converted_params: ParametersFor<QueryMethods>[K] =
+        (params as unknown[]).map(
+            p => p instanceof UpdatesBuilder ?
+                p.to_query_spec() :
+                p
+        ) as ParametersFor<QueryMethods>[K];
+
+    const q = story_query(k, converted_params);
     const base_query = this.context.query;
     
     if (base_query === undefined) {
@@ -124,20 +223,14 @@ for (const k of keys(StoryQueries)) {
 
 type OpMethods = A.Compute<{
     [K in keyof StoryOps]:
-        (...params: ParametersFor<StoryOps>[K]) => StoryUpdateSpec
+        (...params: ParametersFor<StoryOps>[K]) => StoryUpdateCompilationOp
 }>
 
 export interface UpdatesBuilder extends OpMethods {}
 
-function op_method<K extends keyof StoryOps>(this: UpdatesBuilder, k: K, ...params: ParametersFor<StoryOps>[K]): StoryUpdateSpec {
+function op_method<K extends keyof StoryOps>(this: UpdatesBuilder, k: K, ...params: ParametersFor<StoryOps>[K]): StoryUpdateCompilationOp {
     const op = story_op(k, ...params);
-    let q: StoryQuerySpec;
-    if (this.context.query === undefined) {
-        q = Queries.frame(); //Queries.story_root();
-    } else {
-        q = this.context.query;
-    }
-    return story_update(q, op);
+    return this.apply_op(op);
 }
 
 for (const k of keys(StoryOps)){
@@ -148,102 +241,66 @@ for (const k of keys(StoryOps)){
 
 export const Updates = new UpdatesBuilder();
 
-type GroupBuilderContext = {
-    name?: keyof StoryUpdateGroups,
-    stage?: number
-}
 
-class GroupBuilder {
-    constructor(public context: GroupBuilderContext = {}) {  
-    }
-
-    update_context(updater: Updater<GroupBuilderContext>): GroupBuilder {
-        return new GroupBuilder(update(this.context, updater));
-    }
-
-    name(name: keyof StoryUpdateGroups): GroupBuilder {
-        if (this.context.name !== undefined) {
-            throw new Error('Tried to redefine the group name which is probably a mistake.');
-        }
-        return this.update_context({ name }); //as Omit<GroupBuilder, 'name'>;
-    }
-
-    stage(stage: number): GroupBuilder {
-        if (this.context.stage !== undefined) {
-            throw new Error('Tried to redefine the group stage which is probably a mistake.');
-        }
-        return this.update_context({ stage }); // as Omit<GroupBuilder, 'stage'>;
-    }
-
-    move_to(dest_stage: number): StoryUpdateGroupOp {
-        if (this.context.name === undefined) {
-            throw new Error('Tried to move a group without specifying the name.');
-        }
-        if (this.context.stage === undefined) {
-            throw new Error('Tried to move a group without defining the source stage');
-        }
-        return {
-            kind: 'MoveGroup',
-            name: this.context.name!,
-            source_stage: this.context.stage!,
-            dest_stage
-        };
-    }
-
-    push(...update_specs: UpdateSpecs[]): StoryUpdateGroupOp {
-        return {
-            kind: 'PushGroup',
-            name: this.context.name || 'updates',
-            stage: this.context.stage,
-            updates: flat_deep(update_specs) //.flat(Infinity)
-        };
-    }
-}
-
-export const Groups = new GroupBuilder();
-
-export type StoryUpdaterSpec = StoryUpdateGroupOp | StoryUpdateSpec | StoryUpdaterSpecArray;
+export type StoryUpdaterSpec = StoryUpdateCompilationOp | StoryUpdateSpec | StoryUpdaterSpecArray;
 interface StoryUpdaterSpecArray extends Array<StoryUpdaterSpec> {}
 
-function is_group(x: StoryUpdateGroupOp | StoryUpdateSpec): x is StoryUpdateGroupOp {
-    return (x as any).kind === 'MoveGroup' || (x as any).kind === 'PushGroup';
+function is_compilation_op(x: StoryUpdateCompilationOp | StoryUpdateSpec): x is StoryUpdateCompilationOp {
+    const accepted_kinds: StaticNameIndex<StoryUpdateCompilationOp['kind']> = {
+        MoveGroup: null,
+        PushStoryUpdate: null,
+        PushWouldUpdate: null
+    }
+    return included((x as any).kind, keys(accepted_kinds));
 }
 
 export function story_updater(...updates: StoryUpdaterSpec[]) {
-    const flat_updates = flat_deep(updates)/*.flat(Infinity)*/ as (StoryUpdateGroupOp | StoryUpdateSpec)[];
+    const flat_updates = flat_deep(updates) as (StoryUpdateCompilationOp | StoryUpdateSpec)[];
     
-    const groups: StoryUpdateGroupOp[] = []
-    let default_group_updates: StoryUpdateSpec[] = [];
+    const normalized_updates: StoryUpdateCompilationOp[] = flat_updates.map(up => {
+        if (is_compilation_op(up)) {
+            return up;
+        }
+        return {
+            kind: 'PushStoryUpdate',
+            update_spec: up
+        };
+    });
+
+    return (prev_updates: StoryUpdateCompilationOp[]) => [...prev_updates, ...normalized_updates];
+
+    // const groups: StoryUpdateCompilationOp[] = []
+    // let default_group_updates: StoryUpdateSpec[] = [];
     
-    function flush_default_group() {
-        if (default_group_updates.length > 0) {
-            groups.push(Groups.push(...default_group_updates));
-            default_group_updates = [];
-        }
-    }
+    // function flush_default_group() {
+    //     if (default_group_updates.length > 0) {
+    //         groups.push(Groups.push(...default_group_updates));
+    //         default_group_updates = [];
+    //     }
+    // }
 
-    for (const up of flat_updates) {
-        if (is_group(up)) {
-            flush_default_group();
-            groups.push(up);
-        } else {
-            default_group_updates.push(up);
-        }
-    }
-    flush_default_group();
+    // for (const up of flat_updates) {
+    //     if (is_group(up)) {
+    //         flush_default_group();
+    //         groups.push(up);
+    //     } else {
+    //         default_group_updates.push(up);
+    //     }
+    // }
+    // flush_default_group();
 
-    return (updates: StoryUpdateGroupOp[]) => [...updates, ...groups];
+    // return (updates: StoryUpdateCompilationOp[]) => [...updates, ...groups];
 }
 
 
 export const add_input_text = (world: World, parsing: Parsing) => {
     return update(world, {
         story_updates: story_updater(
-            Groups.name('init_frame').push(
-                Updates
-                    .frame(world.index).first(Updates.has_class('input-text').to_query_spec())
-                    .add(<ParsedTextStory parsing={parsing} />, true)
-            )
+            Updates
+                .group_name('init_frame')
+                .frame(world.index).first(Updates.has_class('input-text'))
+                .add(<ParsedTextStory parsing={parsing} />, true)
+
         )
     });
 }
@@ -268,14 +325,16 @@ export const init_story = <div className="story">
     <Hole />
 </div> as Story;
 
-export function init_story_updates(new_index: number): StoryUpdateGroupOp[] {
+export function init_story_updates(new_index: number): StoryUpdateCompilationOp[] {
     return [
-            Groups.name('init_frame').push(
-                Updates.story_hole().replace([
+            Updates
+                .group_name('init_frame')
+                .story_hole()
+                .replace([
                     <EmptyFrame index={new_index} />,
                     <Hole />
                 ])
-            )
+            
     ];
 }
 

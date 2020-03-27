@@ -1,4 +1,4 @@
-import { Gist, GistPattern, Gists, gist_matches, ValidTags, InferPatternTags, gist_to_string, GistConstructor, gist, pattern_based_dispatch } from './gist';
+import { Gist, GistPattern, Gists, gist_matches, ValidTags, InferPatternTags, gist_to_string, GistConstructor, gist } from './gist';
 import { StaticIndex, StaticNameIndexFor } from '../lib/static_resources';
 import { map_values, lazy_map_values } from '../lib/utils';
 import { ConsumeSpec } from '../parser';

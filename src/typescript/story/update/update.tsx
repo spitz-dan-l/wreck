@@ -3,13 +3,15 @@ import { Stages, stage_entries, stages } from '../../lib/stages';
 import { FoundNode, Fragment, is_story_node, Path, replace_in, splice_in, StoryNode } from '../story';
 import { compile_story_update_op, StoryOpSpec, story_op } from './op';
 import { compile_story_query, StoryQuerySpec, story_query } from './query';
-import { StoryUpdateGroupOp, apply_story_update_group_op, PushGroup } from './update_group';
+import { StoryUpdateCompilationOp, apply_story_update_compilation_op, PushStoryUpdate, GroupName, StoryUpdateGroup } from './update_group';
 
 /**
  * TODO
  * Merge effects and would_effects at a lower level
  *  - I think this means, add "would_op?" to StoryUpdateSpec.
- *  -
+ *  
+ *  - Let the StoryUpdateSpec optionally specify its group info,
+ *      rather than requiring all to be pushed into Groups manually
  * 
  * Because we are always updating the story by pushing UpdateGroups,
  * let the raw world.story_updates be that list, rather than constantly
@@ -32,23 +34,18 @@ export type StoryUpdate = (story: Story, effects?: Effects<HTMLElement>) => Stor
 
 export type StoryUpdateSpec = {
     query: StoryQuerySpec,
-    op: StoryOpSpec
+    op: StoryOpSpec,
 };
 
 export type ReversibleOpSpec = StoryOpSpec & { name: 'css' };
 export type ReversibleUpdateSpec = StoryUpdateSpec & { op: ReversibleOpSpec };
 
-export type StoryUpdateStage = PushGroup[];
+export type StoryUpdateStage = StoryUpdateGroup[];
 
 export type StoryUpdatePlan = {
-    would_effects: ReversibleUpdateSpec[]
+    would_effects: StoryUpdateSpec[]; //ReversibleUpdateSpec[]
     effects: Stages<StoryUpdateStage>;
 }
-
-// export type StoryUpdatePlan = {
-//     would_effects: ReversibleUpdateSpec[]
-//     effects: Stages<StoryUpdateSpec[]>;
-// }
 
 export function story_update(query: StoryQuerySpec, op: StoryOpSpec): StoryUpdateSpec {
     return { query, op };
@@ -126,7 +123,7 @@ export function apply_story_update(story: Story, story_update: StoryUpdateSpec, 
 
 export function apply_story_updates_stage(story: Story, story_updates: StoryUpdateStage, effects?: Effects<HTMLElement>) {
     return story_updates.reduce((story, update_group) => 
-        update_group.updates.reduce((story, update) =>
+        update_group.update_specs.reduce((story, update) =>
             apply_story_update(story, update, effects),
             story),
         story);
@@ -143,7 +140,7 @@ export function remove_eph(story: Story, effects?: Effects<HTMLElement>) {
     );
 }
 
-export function apply_story_updates_all(story: Story, story_updates: StoryUpdateGroupOp[]) {
+export function apply_story_updates_all(story: Story, story_updates: StoryUpdateCompilationOp[]) {
     let result = story;
 
     const plan = compile_story_update_group_ops(story_updates);
@@ -156,11 +153,11 @@ export function apply_story_updates_all(story: Story, story_updates: StoryUpdate
     return result;
 }
 
-export function compile_story_update_group_ops(updates: StoryUpdateGroupOp[]): StoryUpdatePlan {
-    const plan: StoryUpdatePlan = { effects: stages(), would_effects: [] };
+export function compile_story_update_group_ops(updates: StoryUpdateCompilationOp[]): StoryUpdatePlan {
+    let plan: StoryUpdatePlan = { effects: stages(), would_effects: [] };
 
-    for (const group of updates) {
-        plan.effects = apply_story_update_group_op(plan.effects, group);
+    for (const op of updates) {
+        plan = apply_story_update_compilation_op(plan, op);
     }
 
     return plan;
