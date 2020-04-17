@@ -178,14 +178,14 @@ export function match(gist: Gist | undefined) {
                     return false;
                 }
                 //traverse children uhhhh, depth first, to find child.
-                const frontier: GistStructure[] = [...values(g[1])];
+                const frontier: GistStructure[] = [...values(g[1] ?? {})];
                 while (frontier.length > 0) {
                     const child = frontier.pop()!;
                     const child_match = _match(child)(pattern[2]);
                     if (child_match !== false) {
                         return root_match;
                     }
-                    frontier.push(...values(child[1]));
+                    frontier.push(...values(child[1] ?? {}));
                 }
                 return false;
             }
@@ -202,11 +202,11 @@ export function match(gist: Gist | undefined) {
                 if (p_params !== undefined) {
                     for (const [k, v] of entries(p_params)) {
                         if (v instanceof Array) {
-                            if (!v.includes(g_params[k])) {
+                            if (!v.includes((g_params ?? {})[k])) {
                                 return false;
                             }
                         } else {
-                            if (v !== g_params[k]) {
+                            if (v !== (g_params ?? {})[k]) {
                                 return false;
                             }
                         }
@@ -214,7 +214,7 @@ export function match(gist: Gist | undefined) {
                 }
                 if (p_children !== undefined) {
                     for (const [k, v] of entries(p_children)) {
-                        if (_match(g_children[k])(v) === false) {
+                        if (_match((g_children ?? {})[k])(v) === false) {
                             return false;
                         }
                     }
