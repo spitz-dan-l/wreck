@@ -189,47 +189,47 @@ const init_knowledge = resource_registry.get_resource('initial_world_knowledge')
 
 declare module 'gist' {
     export interface StaticGistTypes {
-        'your friendship with Sam': {};
-        "Sam's demeanor": {};
-        "description": { children: { subject: ValidTags } };
+        'your friendship with Sam': [];
+        "Sam's demeanor": [];
+        "description": [{ subject: ValidTags }];
     }
 }
 
-GistRenderer('your friendship with Sam', {
+GistRenderer(['your friendship with Sam'], {
     command_noun_phrase: () => 'my_friendship_with_Sam'
 });
 
-Topic(<div gist="the present moment">
+Topic(<div gist={["the present moment"]}>
     You and Sam are sitting together on the bus.
 </div>);
 
-Topic(<div gist="Sam">
-    <div gist="your friendship with Sam">
+Topic(<div gist={["Sam"]}>
+    <div gist={["your friendship with Sam"]}>
         An old friend on his way to work.
     </div>
-    <div gist="Sam's demeanor">
+    <div gist={["Sam's demeanor"]}>
         He glances at you, smiling vaguely.
     </div>
 </div>);
 
-Topic(<div gist="yourself">
+Topic(<div gist={["yourself"]}>
     You haven't entirely woken up.
     <br/>
-    <div gist={gist('description', { subject: 'your notebook'})}>
+    <div gist={['description', { subject: ['your notebook']}]}>
         A <strong>thick notebook</strong> sits in your lap.
     </div>}
 </div>);
 
-Topic(<div gist="your notebook">
+Topic(<div gist={["your notebook"]}>
     You keep it with you at all times.
     <br/>
     It is filled with the words of someone very wise, who you once knew.
 </div>);
 
-ActionHandler({ tag: 'consider', children: { subject: 'your notebook' }},
+ActionHandler(['consider', { subject: ['your notebook'] }],
     g => w => {
         if (!w.has_tried.get(g)) {
-            const descr_gist = gist('description', { subject: 'your notebook'});
+            const descr_gist = gist('description', { subject: ['your notebook']});
             return update(w, {
                 knowledge: k => k.update(descr_gist, (s) => [
                     s.replace_children(['Your notebook sits in your lap.'])
