@@ -1,6 +1,6 @@
-import { gist, Gist, gists_equal, gist_to_string, has_tag, render_gist, ValidTags } from "gist";
+import { gist, Gist, gists_equal, gist_to_string, render_gist, ValidTags, match, Gists, bottom_up } from "gist";
 import { history_array } from "history";
-import { update } from "lib";
+import { update, keys, included } from "lib";
 import { stages } from "lib/stages";
 import { Parser, ParserThread } from "parser";
 import { createElement, Hole, story_updater, Updates as S } from "story";
@@ -10,13 +10,12 @@ import { get_facets, render_facet_list } from "../facet";
 import { lock_and_brand, resource_registry, Venience } from "../prelude";
 import { interpreting_class, unfocused_class, would_start_interpreting_class, would_stop_interpreting_class } from "../styles";
 import { get_thread_maker } from "../supervenience_spec";
+import { INNER_ACTION_IDS } from "./inner_action";
 
 
 declare module '../prelude' {
     export interface StaticActionGistTypes {
-        contemplate: { 
-            children: { subject: ValidTags }
-        };
+        contemplate: [{ subject: ValidTags }];
     }
 }
 
@@ -25,13 +24,12 @@ let metaphor_lock = global_lock('Metaphor');
 
 
 function begin_contemplation(world: Venience, parser: Parser) {
-    if (world.previous === null) {
+    if (world.previous === undefined) {
         return parser.eliminate();
     }
 
-    let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== null && w.gist.tag !== 'contemplate');
-    // let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== null && w.gist.tag !== 'contemplation');
-
+    let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== undefined && w.gist[0] !== 'contemplate');
+    
     let gists: Gist[] = [];
     for (let w of contemplatable_worlds) {
         if (gists.findIndex(g2 => gists_equal(w.gist!, g2)) === -1) {
@@ -41,9 +39,9 @@ function begin_contemplation(world: Venience, parser: Parser) {
 
     parser.label_context = { interp: true, filler: true };
 
-    const immediate_world: Venience | null = (world.previous.gist !== null && world.previous.gist.tag !== 'contemplate') ?
+    const immediate_world: Venience | undefined = (world.previous.gist !== undefined && world.previous.gist[0] !== 'contemplate') ?
         world.previous :
-        null;
+        undefined;
 
     const direct_thread = make_direct_thread(world, immediate_world);
 
@@ -58,9 +56,9 @@ function begin_contemplation(world: Venience, parser: Parser) {
 }
 
 
-function make_direct_thread(world: Venience, immediate_world: Venience | null): ParserThread<Venience> {
+function make_direct_thread(world: Venience, immediate_world: Venience | undefined): ParserThread<Venience> {
     return (parser) => {
-        if (immediate_world === null) {
+        if (immediate_world === undefined) {
             return parser.eliminate();
         }
         return parser.consume(['contemplate', render_gist.command_noun_phrase(immediate_world.gist!)], () =>
@@ -101,7 +99,7 @@ function make_direct_thread(world: Venience, immediate_world: Venience | null): 
 
 const indirect_simulator = 'indirect_contemplation';
                 
-function make_indirect_thread(world: Venience, immediate_world: Venience | null, gists: Gist[]): ParserThread<Venience> {
+function make_indirect_thread(world: Venience, immediate_world: Venience | undefined, gists: Gist[]): ParserThread<Venience> {
     return (parser) =>
         parser.consume({
             tokens: 'contemplate',
@@ -110,12 +108,13 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | null,
         const indirect_threads: ParserThread<Venience>[] = gists.map((g: Gist) => () => {
             const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
 
-            if (immediate_world !== null && gists_equal(g, immediate_world.gist!)) {
+            if (immediate_world !== undefined && gists_equal(g, immediate_world.gist!)) {
                 return parser.eliminate();
             }
 
+            let matched = match(g)(['remember', { subject: ['action description']}]);
             const target_gist = gist('contemplate', {
-                subject: has_tag(g, 'memory about') ? gist('notes about', {subject: g.children.subject}) : g
+                subject: matched ? gist('notes', {subject: matched[1].subject}) : g
             });
 
             // move the next story hole inside the current frame
@@ -138,14 +137,14 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | null,
                 command_filter: (w, cmd) => {
                     let would_contemplate = cmd[0] && cmd[0].token === 'contemplate';
 
-                    if (w.gist && gists_equal(w.gist, target_gist.children.subject)) {
+                    if (w.gist && gists_equal(w.gist, target_gist[1].subject)) {
                         return would_contemplate;
                     }
                     return !would_contemplate;
                 }
             }, world);
 
-            if (result.result === null) {
+            if (result.result === undefined) {
                 return parser.eliminate();
             }
 
@@ -191,8 +190,18 @@ function end_contemplation(world: Venience, parser: Parser) {
                 ]),
                 S.action('Your mind returns to a less focused state.')
             ),
-            current_interpretation: null,
-            // has_tried: () => new Map(),
+            current_interpretation: undefined,
+            has_tried: _ => {
+                let result = _;
+
+                for (const action_gist of _.keys()) {
+                    if (included(action_gist[0], keys(INNER_ACTION_IDS))) {
+                        result = result.set(action_gist, false);
+                    }
+                }
+
+                return result;
+            }
         }
     )));
 }
@@ -200,14 +209,14 @@ function end_contemplation(world: Venience, parser: Parser) {
 Action({
     id: 'contemplate',
     render_impls: {
-        noun_phrase: {
-            order: 'BottomUp',
-            impl: (tag, {subject}) => `your contemplation of ${subject}`
-        },
-        command_noun_phrase: {
-            order: 'BottomUp',
-            impl: (tag, {subject}) => ['my_contemplation_of', subject]
-        }
+        noun_phrase: (g) => bottom_up(g)(
+            (tag, {subject}) => `your contemplation of ${subject}`,
+            render_gist.noun_phrase
+        ),
+        command_noun_phrase: (g) => bottom_up(g)(
+            (tag, {subject}) => ['my_contemplation_of', subject],
+            render_gist.command_noun_phrase
+        )
     },
 
     description_noun_phrase: 'contemplation',
@@ -230,7 +239,7 @@ Action({
                     return parser.eliminate();
                 }
                 
-                if (world.current_interpretation === null) {
+                if (world.current_interpretation === undefined) {
                     return begin_contemplation(world, parser);
                 } else {
                     return end_contemplation(world, parser);

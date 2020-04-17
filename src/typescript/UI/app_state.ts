@@ -59,7 +59,7 @@ export function app_reducer_(state: AppState, action: AppAction): AppState {
             return update(state, { undo_selected: true });
         case 'ToggleUndoSelected': {
             // Question here of whether this elimination logic should actually be in the view
-            if (state.command_result.world.previous === null) {
+            if (state.command_result.world.previous === undefined) {
                 return state;
             }
             return update(state, { undo_selected: _ => !_});
@@ -105,10 +105,7 @@ function update_animation_state(new_state: AppState, old_state: AppState): AppSt
 function undo(state: AppState) {
     // find the beginning of the current (possibly-compound) world
     let w = state.command_result.world;
-    // while (w.parent !== null) {
-    //     w = w.parent;
-    // }
-
+    
     let prev_command_result = state.updater(
         w.previous!,
         update(w.parsing!.raw, { submit: false })
@@ -154,7 +151,7 @@ function submit_typeahead(state: AppState) {
     let synthesized_tokens: Token[] = [...parsing.tokens];
 
     row.option.forEach((m, i) => {
-        if (m !== null) {
+        if (m !== undefined) {
             synthesized_tokens[i] = m.expected.token;
         }
     });

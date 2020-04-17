@@ -3,13 +3,13 @@ import { construct_from_keys, keys } from './utils';
 
 type StaticResourceState = 'Uninitialized' | 'Initialized' | 'Sealed';
 
-const IsSealed: unique symbol = Symbol('IsSealed');
-type IsSealed = typeof IsSealed;
+export const IsSealed: unique symbol = Symbol('IsSealed');
+export type IsSealed = typeof IsSealed;
 
 export const Seal: unique symbol = Symbol('Seal');
 export type Seal = typeof Seal;
 
-interface Sealable {
+export interface Sealable {
     [IsSealed](): boolean;
     [Seal](): void;
 }

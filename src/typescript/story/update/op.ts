@@ -15,6 +15,8 @@ export interface StoryOps {
     css: (updates: CSSUpdates) => StoryOp;
     remove_eph: () => StoryOp;
     replace: (replacement: Fragment[]) => StoryOp;
+    replace_children: (replacement: Fragment[]) => StoryOp;
+    // TODO: replace_children
     insert_after: (siblings: Fragment | Fragment[], no_animate?: boolean) => StoryOp;
     set_gist: (gist: GistConstructor) => StoryOp;
 }
@@ -38,6 +40,8 @@ export function story_op<O extends keyof StoryOpParams>(name: O, ...parameters: 
     return  { name, parameters } as StoryOpSpecs[O];
 }
 
+
+// TODO: Possibly update the key on updated nodes.
 export const StoryOps: StoryOps = {
     add: (children, no_animate?) => (parent, effects?) => {
         if (!is_story_node(parent)) {
@@ -153,6 +157,28 @@ export const StoryOps: StoryOps = {
             });
         }
         return replacement;
+    },
+    replace_children: (replacement) => (elt, effects?) => {
+        if (!is_story_node(elt)) {
+            throw new Error('Tried to replace the children on a non-story-node element.');
+        }
+        
+        if (effects) {
+            effects.push(dom => {
+                dom.childNodes.forEach(c => c.remove());
+                if (replacement instanceof Array) {
+                    for (const new_elt of replacement.map(story_to_dom)) {
+                        dom.appendChild(new_elt);
+                    }
+                } else {
+                    dom.appendChild(story_to_dom(replacement));
+                }
+            });
+        }
+
+        return update(elt, {
+            children: () => replacement
+        });
     },
     set_gist: (gist_param) => (elt, effects?) => {
         if (!is_story_node(elt)) {

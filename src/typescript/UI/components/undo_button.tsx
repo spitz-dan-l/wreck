@@ -16,7 +16,7 @@ export const UndoButton: Renderer<UndoProps> = ({world, undo_selected}, old?) =>
         if (undo_selected) {
             classes.push('selected');
         }
-        if (world.previous === null) {
+        if (world.previous === undefined) {
             classes.push('disabled');
         }
 

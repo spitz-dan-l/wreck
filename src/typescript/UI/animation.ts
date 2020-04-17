@@ -18,7 +18,7 @@ export const empty_animation_state: AnimationState = {
     lock_input: false
 };
   
-export function new_animation_state(world: World, previous_world: World | null): AnimationState {
+export function new_animation_state(world: World, previous_world: World | undefined): AnimationState {
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
     const index_threshold = previous_world ? previous_world.index : -1;//world.index - 1;
     const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();

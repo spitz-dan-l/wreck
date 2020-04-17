@@ -50,9 +50,9 @@ export function is_path_full(x: Path): x is [number, ...number[]] {
 
 export type FoundNode<F extends Fragment=Fragment> = [F, Path];
 
-export function find_node<F extends Fragment>(node: Fragment, predicate: StoryTypePredicate<F>): FoundNode<F> | null
-export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode | null;
-export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode | null {
+export function find_node<F extends Fragment>(node: Fragment, predicate: StoryTypePredicate<F>): FoundNode<F> | undefined
+export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode | undefined;
+export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode | undefined {
     if (predicate(node)) {
         return [node, []];
     }
@@ -60,13 +60,13 @@ export function find_node(node: Fragment, predicate: StoryPredicate): FoundNode 
         for (let i = 0; i < node.children.length; i++) {
             const child = node.children[i];
             const result = find_node(child, predicate);
-            if (result !== null) {
+            if (result !== undefined) {
                 const [target, path] = result;
                 return [target, [i, ...path]];
             }
         }
     }
-    return null;
+    return undefined;
 }
 
 export function find_all_nodes<F extends Fragment>(node: Fragment, predicate: StoryTypePredicate<F>): FoundNode<F>[];
@@ -141,7 +141,7 @@ export function find_all_nodes_recursive(node: Fragment, predicate: StoryPredica
 }
 
 // Find from a sequence of predicates. Makes it easy to get querySelector-like behavior.
-export function find_chain(node: Fragment, predicates: StoryPredicate[]): FoundNode | null {
+export function find_chain(node: Fragment, predicates: StoryPredicate[]): FoundNode | undefined {
     if (predicates.length === 0) {
         return [node, []];
     }
@@ -149,12 +149,12 @@ export function find_chain(node: Fragment, predicates: StoryPredicate[]): FoundN
     const xs = find_all_nodes(node, predicates[0])
     for (const [x, p] of xs) {
         const c = find_chain(x, predicates.slice(0));
-        if (c !== null && c[0] !== x) {
+        if (c !== undefined && c[0] !== x) {
             return [c[0], [...p, ...c[1]]];
         }
     }
 
-    return null;
+    return undefined;
 }
 
 export function find_all_chain(node: Fragment, predicates: StoryPredicate[]): FoundNode[] {
@@ -173,7 +173,7 @@ export function find_all_chain(node: Fragment, predicates: StoryPredicate[]): Fo
     return result;
 }
 
-export function story_lookup_path(node: Fragment, path: Path): Fragment | null {
+export function story_lookup_path(node: Fragment, path: Path): Fragment | undefined {
     if (path.length === 0) {
         return node;
     }
@@ -182,14 +182,14 @@ export function story_lookup_path(node: Fragment, path: Path): Fragment | null {
     }
     const i = path[0]
     if (i >= node.children.length) {
-        return null;
+        return undefined;
     }
 
     const c = node.children[i];
     return story_lookup_path(c, path.slice(0));
 } 
 
-export function path_to(parent: Fragment, target: Fragment): Path | null {
+export function path_to(parent: Fragment, target: Fragment): Path | undefined {
     if (parent === target) {
         return [];
     }
@@ -197,13 +197,13 @@ export function path_to(parent: Fragment, target: Fragment): Path | null {
         for (let i = 0; i < parent.children.length; i++) {
             const child = parent.children[i];
             const p = path_to(child, target);
-            if (p === null) {
+            if (p === undefined) {
                 continue;
             }
             return [i, ...p];
         }
     }
-    return null;
+    return undefined;
 }
 
 export function parent_path(root: Fragment, path: Path): Fragment[] {

@@ -1,9 +1,9 @@
 import { createElement } from 'story'
-import { Action, ActionHandler } from "../action";
-import { Exposition, INNER_ACTION_IDS } from "./inner_action";
-import { render_gist, gist } from "gist";
+import { Exposition, INNER_ACTION_IDS, InnerActionID } from "./inner_action";
+import { Action, ActionHandler, action_consume_spec, ACTION_HANDLER_FALLTHROUGH_STAGE } from "../action";
+import { bottom_up, render_gist, gist, Gists, Gist, GistConstructor, GistDSL } from "gist";
 import { Puffers, lock_and_brand, Venience } from '../prelude';
-import { keys, update } from 'lib/utils';
+import { keys, update, bound_method, for_each_entries } from 'lib/utils';
 import { get_facets } from '../facet';
 import { find_historical } from 'history';
 import { ParserThread } from 'parser';
@@ -12,10 +12,10 @@ import { ParserThread } from 'parser';
 Action({
     id: 'scrutinize',
     render_impls: {
-        command_verb_phrase: {
-            order: 'BottomUp',
-            impl: (tag, {facet}) => ['scrutinize', facet]
-        }
+        command_verb_phrase: (g) => bottom_up(g)(
+            (tag, {facet}) => ['scrutinize', facet],
+            render_gist.command_verb_phrase
+        )
     },
 
     description_noun_phrase: 'scrutiny',
@@ -32,20 +32,23 @@ Action({
     </div>
 });
 
-ActionHandler('scrutinize', Exposition({
-    commentary: (action, frame) => [
-        frame.description('There is nothing particular about ' + render_gist.noun_phrase(action.children.facet))
-    ]
-}));
+ActionHandler(['scrutinize'], 
+    Exposition({
+        commentary: (action, frame) => [
+            frame.description('There is nothing particular about ' + render_gist.noun_phrase(action[1].facet))
+        ]
+    }),
+    ACTION_HANDLER_FALLTHROUGH_STAGE
+);
 
 // hammer
 Action({
     id: 'hammer',
     render_impls: {
-        command_verb_phrase: {
-            order: 'BottomUp',
-            impl: (tag, {facet}) => ['hammer_against the_foundations_of', facet]
-        }
+        command_verb_phrase: (g) => bottom_up(g)(
+            (tag, {facet}) => ['hammer_against the_foundations_of', facet],
+            render_gist.command_verb_phrase
+        )
     },
 
     description_noun_phrase: 'the Hammer',
@@ -64,20 +67,23 @@ Action({
     </div>
 });
 
-ActionHandler('hammer', Exposition({
-    commentary: (action, frame, world) => [
-        frame.description(`Despite your attempts to dismantle ${render_gist.noun_phrase(action.children.facet)}, its foundation appears strong.`)
-    ]
-}));
+ActionHandler(['hammer'],
+    Exposition({
+        commentary: (action, frame, world) => [
+            frame.description(`Despite your attempts to dismantle ${render_gist.noun_phrase(action[1].facet)}, its foundation appears strong.`)
+        ]
+    }),
+    ACTION_HANDLER_FALLTHROUGH_STAGE    
+);
 
 // volunteer
 Action({
     id: 'volunteer',
     render_impls: {
-        command_verb_phrase: {
-            order: 'BottomUp',
-            impl: (tag, {facet}) => ['volunteer to_foster', facet]
-        }
+        command_verb_phrase: (g) => bottom_up(g)(
+            (tag, {facet}) => ['volunteer to_foster', facet],
+            render_gist.command_verb_phrase
+        )
     },
 
     description_noun_phrase: 'the Volunteer',
@@ -94,11 +100,14 @@ Action({
     </div>
 });
 
-ActionHandler('volunteer', Exposition({
-    commentary: (action, frame, world) => [
-        frame.description(`You don't feel as if a mere act of will could improve ${render_gist.noun_phrase(action.children.facet)}.`)
-    ]
-}));
+ActionHandler(['volunteer'],
+    Exposition({
+        commentary: (action, frame, world) => [
+            frame.description(`You don't feel as if a mere act of will could improve ${render_gist.noun_phrase(action[1].facet)}.`)
+        ]
+    }),
+    ACTION_HANDLER_FALLTHROUGH_STAGE    
+);
 
 
 // The inner action command handler.
@@ -110,19 +119,47 @@ Puffers(lock_and_brand('Metaphor', {
         const observable_facets = get_facets(world, interp_world.gist!)
         
         const threads: ParserThread<Venience>[] = [];
+        // for_each_entries(INNER_ACTION_IDS, ([action]) => {
+        //     if (!world.has_acquired.get(action)) {
+        //         return;
+        //         //continue;
+        //     }
+        //     for (const facet of observable_facets) {
+        //         threads.push(() => {
+        //             // const action_gist = gist(action, { facet });
+        //             const action_gist = gist([action, { facet }] as {
+        //                 [T in typeof action]: GistDSL[T]
+        //             }[typeof action]);
+        //             return (
+        //                 parser.consume(action_consume_spec(action_gist, world), () =>
+        //                 parser.submit(() =>
+        //                 update(world, {
+        //                     gist: () => action_gist
+        //                 })))
+        //             );
+        //         })
+        //     }
+        // });
         for (const action of keys(INNER_ACTION_IDS)) {
             if (!world.has_acquired.get(action)) {
                 continue;
             }
             for (const facet of observable_facets) {
                 threads.push(() => {
-                    const action_gist = gist(action, { facet });
+                    const xxx = gist('Sam');
+                    const action_gist = gist(...[action, { facet }] as GistDSL[typeof action]);
+                    // const action_gist = gist([action, { facet }] as GistDSL[typeof action]);
+                    // const action_gist = gist([action, { facet }] as {
+                    //     [T in typeof action]: GistDSL[T]
+                    // }[typeof action]);
                     return (
-                        parser.consume(render_gist.command_verb_phrase(action_gist), () =>
+                        parser.consume(
+                            action_consume_spec(action_gist, world), () =>
                         parser.submit(() =>
                         update(world, {
                             gist: () => action_gist
-                        }))));
+                        })))
+                    );
                 })
             }
         }

@@ -125,7 +125,7 @@ export function make_ui<State, Action>(
         return render();
     }
 
-    let render_task: number | null = null;
+    let render_task: number | undefined = undefined;
     
     const action_queue: Action[] = [];
     const effect_queue: (() => void)[] = [];
@@ -136,7 +136,7 @@ export function make_ui<State, Action>(
         }
         action_queue.push(action);
 
-        if (render_task === null) {
+        if (render_task === undefined) {
             render_task = setTimeout(render);
         }
     }
@@ -160,7 +160,7 @@ export function make_ui<State, Action>(
         if (old_state === undefined) {
             throw new Error('dispatch or effect function was called before initializer.');
         }
-        render_task = null;
+        render_task = undefined;
 
         let new_state = old_state;
         while (action_queue.length > 0) {

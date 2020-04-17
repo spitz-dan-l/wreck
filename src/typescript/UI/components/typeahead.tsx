@@ -60,8 +60,8 @@ export const Typeahead: Renderer<TypeaheadProps> = ({parsing, typeahead_index, u
         return classes.join(' ');
     }
 
-    function get_option_token_class(match: TokenMatch | null): string {
-        if (match === null) {
+    function get_option_token_class(match: TokenMatch | undefined): string {
+        if (match === undefined) {
             return '';
         }
 
@@ -91,7 +91,7 @@ export const Typeahead: Renderer<TypeaheadProps> = ({parsing, typeahead_index, u
                     <span>{'  '}</span>
                     { option.option.map((m, j) =>
                         <span className={get_option_token_class(m)}>
-                            { m === null ?
+                            { m === undefined ?
                                 parsing.whitespace[j] + whitespace(convert_token(parsing.tokens[j])) :
                                 (j >= parsing.whitespace.length || j !== 0 && parsing.whitespace[j] === '' ?
                                 ' ' :

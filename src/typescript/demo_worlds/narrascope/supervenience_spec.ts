@@ -15,7 +15,7 @@ export const goals: NarrativeGoal<Venience>[] = [
 ];
 
 const gist_pat: GistPattern = {
-    tag: 'impression',
+    tag: 'consider',
     children: {
         subject: [
             { tag: 'Sam'},
@@ -32,15 +32,15 @@ export const space: NarrativeDimension<Venience>[] = [
 
         let g = find_index(w, w.current_interpretation!)!.gist;
 
-        if (g === null) {
-            return null;
+        if (g === undefined) {
+            return undefined;
         }
         if (gist_matches(g, gist_pat)) {
             return g;
         }
-        return null;
+        return undefined;
     },
-    w => w.has_considered,
+    w => w.has_tried,
     w => w.has_acquired,
     w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
 ];

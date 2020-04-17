@@ -26,7 +26,7 @@ import { update } from './lib/utils';
 
 export interface World {
     readonly parsing: Parsing | undefined,
-    readonly previous: this | null,
+    readonly previous: this | undefined,
     readonly index: number,
     readonly story: Story,
     readonly story_updates: StoryUpdateCompilationOp[]
@@ -43,7 +43,7 @@ const INITIAL_WORLD: World = {
     story: init_story,
     story_updates: [],
     parsing: undefined,
-    previous: null,
+    previous: undefined,
     index: 0
 };
 
@@ -83,7 +83,7 @@ export type CommandResult<W extends World> = {
     kind: 'CommandResult',
     parsing: Parsing,
     world: W,
-    possible_world: W | null
+    possible_world: W | undefined
 };
 
 export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
@@ -145,7 +145,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
     let thread = make_update_thread(spec, world);
     let result = Parser.run_thread(command, thread);
     if (result.kind === 'NotParsed') {
-        let possible_world: World | null = null;
+        let possible_world: World | undefined = undefined;
         // TODO: Do a bunch more validation here to make sure we're good
         if (result.parsing.view.submittable) {
             possible_world = apply_command(spec, world, update(command, { submit: true })).world;
@@ -167,7 +167,7 @@ export function apply_command(spec: WorldSpec<World>, world: World, command: Raw
         kind: 'CommandResult',
         parsing: next_parsing,
         world: w,
-        possible_world: null
+        possible_world: undefined
     };
 }
 

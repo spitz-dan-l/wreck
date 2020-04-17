@@ -1,37 +1,36 @@
-import { gist, GistPattern, GistRenderer, GistRenderMethodsImpl, Gists, gist_matches, gist_to_string, InferPatternTags, render_gist } from 'gist';
+import { gist, GistPattern, GistRenderer, Gists, match, gist_to_string, InferPatternTags, render_gist, RenderImplsForPattern, GistPatternUpdateDispatcher, gist_pattern, ValidTags, G } from 'gist';
 import { GistAssoc, Knowledge, make_knowledge_puffer } from '../../knowledge';
 import { StaticIndex, StaticMap } from '../../lib/static_resources';
 import { capitalize } from '../../lib/text_utils';
-import { map, range, update } from "../../lib/utils";
+import { map, range, update, bound_method } from "../../lib/utils";
 import { ConsumeSpec } from "../../parser";
 import { createElement, Fragment, StoryNode, story_updater, Updates as S } from '../../story';
 import { Exposition } from './contemplate';
-import { ActionID, lock_and_brand, Owner, Puffers, resource_registry, StaticActionIDs, Venience, VeniencePuffer } from "./prelude";
+import { ActionID, lock_and_brand, Owner, Puffers, resource_registry, STATIC_ACTION_IDS, Venience, VeniencePuffer } from "./prelude";
 import { insight_text_class } from './styles';
+import { gate_puffer } from 'puffer';
 
-export interface Metaphors {
-    gist: Gists[ActionID] | null,
+export interface Actions {
+    gist: Gists[ActionID] | undefined,
 
-    readonly current_interpretation: number | null;
+    readonly current_interpretation: number | undefined;
 
     knowledge: Knowledge,
 
     has_acquired: Map<ActionID, boolean>;
 
     has_tried: GistAssoc<boolean, ActionID>;
-    // has_tried: Map<ActionID, Map<FacetID, boolean>>;
-    owner: Owner | null;
+    owner: Owner | undefined;
 }
 
 declare module './prelude' {
-    export interface Venience extends Metaphors {}
+    export interface Venience extends Actions {}
 
     export interface StaticResources {
-        initial_world_metaphor: Metaphors;
+        initial_world_metaphor: Actions;
         action_index: StaticMap<Record<ActionID, Action>>;
-        // facet_index: GistAssoc<FacetSpec, 'facet'>; //StaticMap<Record<FacetID, FacetSpec>>;
         initial_world_knowledge: Knowledge;
-        // exposition_index: GistAssoc<Exposition>;
+        action_handler_dispatcher: GistPatternUpdateDispatcher<Venience, ActionID>
     }
 }
 
@@ -40,17 +39,10 @@ declare module 'gist' {
         // action exposition/description gists
         // use a parameter rather than child so we can just use the tag,
         // without caring about children.
-        'action description': {
-            parameters: {
-                action: ActionID
-            }
-        };
-        'Katya on': { children: {
+        'action description': [{}, { action: ActionID }];
+        'Katya on': [{
             action_description: 'action description'
-        }};
-
-        // details: { children: {subject: ValidTags } };
-
+        }];
     }
 }
 
@@ -58,9 +50,9 @@ resource_registry.initialize('initial_world_knowledge',
     new Knowledge(),
     (k) => {
         resource_registry.initialize('initial_world_metaphor', {
-            gist: null,
-            owner: null,
-            current_interpretation: null,
+            gist: undefined,
+            owner: undefined,
+            current_interpretation: undefined,
             knowledge: k,
             has_acquired: map(),
             has_tried: new GistAssoc([])// map()
@@ -69,15 +61,12 @@ resource_registry.initialize('initial_world_knowledge',
 );
 const init_knowledge = resource_registry.get_resource('initial_world_knowledge');
 
-// resource_registry.initialize('exposition_index', new GistAssoc<Exposition>([]));
-// const exposition_index = resource_registry.get_resource('exposition_index');
-
 Puffers(make_knowledge_puffer({
     get_knowledge: w => w.knowledge,
     set_knowledge: (w, k) => update(w, { knowledge: () => k }),
     get_dynamic_region: w => {
-        if (w.current_interpretation === null) {
-            return null;
+        if (w.current_interpretation === undefined) {
+            return undefined;
         }
         return S.frame(range(w.current_interpretation!, w.index + 1));
     }
@@ -88,7 +77,7 @@ export type Action =
     [ID in ActionID]: {
         id: ID,
         
-        render_impls: GistRenderMethodsImpl<ID>
+        render_impls: RenderImplsForPattern<Gists[ID]>
     }
 }[ActionID]
 & {
@@ -102,30 +91,24 @@ export type Action =
 };
 
 let action_index = resource_registry.initialize('action_index',
-    new StaticMap(StaticActionIDs)
+    new StaticMap(STATIC_ACTION_IDS)
 );
 
 export function Action(spec: Action) {
-    GistRenderer(spec.id, spec.render_impls);
+    GistRenderer([spec.id] as GistPattern<typeof spec.id>, spec.render_impls);
 
-    const descr_gist = gist({ tag: 'action description', parameters: {action: spec.id}});
+    const descr_gist = gist('action description', undefined, {action: spec.id});
 
     GistRenderer(descr_gist, {
-        noun_phrase: {
-            order: 'TopDown',
-            impl: () => spec.description_noun_phrase
-        },
-        command_noun_phrase: {
-            order: 'TopDown',
-            impl: () => spec.description_command_noun_phrase
-        }
+        noun_phrase: () => spec.description_noun_phrase,
+        command_noun_phrase: () => spec.description_command_noun_phrase
     });
 
     const katya_on_gist = gist('Katya on', {action_description: descr_gist});
     // const descr_gist = gist('action description', {}, {action: spec.id});
-    init_knowledge.update(k => k.ingest(
+    init_knowledge.update(k => (k
         // main story bit about the action
-        <div gist={descr_gist}>
+        .ingest(<div gist={descr_gist}>
             <div
                 gist={katya_on_gist}
                 className={insight_text_class}
@@ -137,29 +120,28 @@ export function Action(spec: Action) {
             <blockquote>
                 {spec.description}
             </blockquote>
-        </div>,
-
+        </div>)
+        
         // the notes about the action, which contains the main body above
-        (k) => <div gist={{ tag: 'notes about', children: { subject: descr_gist }}}>
+        .ingest((k) => <div gist={['notes', { subject: descr_gist }]}>
             <strong>{capitalize(render_gist.noun_phrase(descr_gist))}</strong>
             {k.get(descr_gist)!}
-        </div>
+        </div>)
+
+        .ingest((k) => <div gist={['remember', { subject: descr_gist }]}>
+            You close your eyes, and hear Katya's voice:
+            {k.get(descr_gist)!}
+        </div>)
     ));
 
     if (spec.memory !== undefined) {
-        ActionHandler({
-            tag: 'scrutinize',
-            children: {
-                facet: {
-                    tag: 'facet', 
-                    children: { child: katya_on_gist }
-                }
-            }
-        }, Exposition({
+        ActionHandler(['scrutinize', {
+            facet: ['facet', { knowledge: ['knowledge', { content: katya_on_gist }]}]
+        }], Exposition({
             // the expanded memory associated w the action, once you uncover it
             revealed_child_story:
                 <blockquote
-                    gist={{ tag: 'memory about', children: { subject: katya_on_gist }}}
+                    gist={['remember', { subject: katya_on_gist }]}
                     className={insight_text_class}
                 >
                     {spec.memory}
@@ -168,7 +150,12 @@ export function Action(spec: Action) {
     }
 
     if (spec.puffer !== undefined) {
-        Puffers(spec.puffer);
+        Puffers(
+            gate_puffer(
+                (w, is_old) => w.has_acquired.get(spec.id)!!,
+                spec.puffer
+            )
+        );
     }
 
     action_index.initialize(spec.id, spec);
@@ -176,143 +163,58 @@ export function Action(spec: Action) {
     return spec;
 }
 
-// type InnerActionGist = Gists['attend' | 'scrutinize' | 'hammer' | 'volunteer'];
+const ACTION_HANDLER_DISPATCHER = resource_registry.initialize('action_handler_dispatcher', new GistPatternUpdateDispatcher());
+export const ACTION_HANDLER_FALLTHROUGH_STAGE = 5;
 
-// type Exposition = {
-//     revealed_child_story?: StoryNode,
-//     knowledge_updater?: (k: Knowledge, action_gist?: InnerActionGist) => Knowledge,
-//     commentary?: (current_frame_builder: UpdatesBuilder, w?: Venience, action_gist?: InnerActionGist) => StoryUpdaterSpec[],
-// };
-
-// export function Exposition(exposition: Exposition) {
-//     // exposition_index.update(e => e.set(spec.triggering_action, spec));
-
-//     if (exposition.revealed_child_story !== undefined) {
-//         init_knowledge.update(k => k.ingest(exposition.revealed_child_story!));
-//     }
-
-//     return (action_gist: InnerActionGist, world: Venience) => {
-//         const parent_gist = action_gist.children.facet.children.child;
-//         const child_gist = exposition.revealed_child_story?.data.gist;
-
-//         return update(world,
-//             w => apply_facet_interpretation(w, {parent_gist, child_gist, commentary: exposition.commentary}),
-//             {
-//                 ...if_not_null(exposition.knowledge_updater, (ku) => ({
-//                     knowledge: k => ku(k, action_gist)
-//                 }))
-//             }
-//         );
-//     }
-// }
-
-// declare module '../../story/update/update_group' {
-//     interface StoryUpdateGroups {
-//         'interpretation_effects': 'Effects on text that occurs in the past.'
-//     }
-// }
-
-// type FacetInterpretationSpec = {
-//     parent_gist: Gist,
-//     child_gist?: Gist,
-//     commentary?: (current_frame_builder: UpdatesBuilder, w?: Venience, action_gist?: Gist) => StoryUpdaterSpec[]
-// }
-
-// function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, commentary}: FacetInterpretationSpec) {
-//     // add a new animation stage where we do interpretation stuff first,
-//     // then add any present tense stuff second.
-//     const interp_class = child_gist === undefined ? misinterpret_facet_class : interpret_facet_class;
-
-//     return update(world, {
-//         story_updates: story_updater(
-//             S.group_name('init_frame').group_stage(0).move_group_to(-1),
-//             ...if_not_null_array(commentary, (c) => [
-//                 c(S.group_stage(0).frame(), world)
-//             ])
-//         ),
-//         knowledge: k =>
-//             k.update(parent_gist, b => [b
-//                 .group_name('interpretation_effects')
-//                 .group_stage(-1)
-//                 .apply(b => [
-//                     b.css({ [interp_class]: true }),
-//                     b.would().css({ [would_interpret_facet_class]: true })
-//                 ]),
-//                 ...if_array(() => {
-//                     if (child_gist === undefined) {
-//                         return false;
-//                     }
-//                     const parent_story = k.get(parent_gist);
-//                     if (parent_story === null) {
-//                         throw new Error('Tried to add a timbre to a story whose gist is not in knowledge base.');
-//                     }
-
-//                     const has_timbre_already = S.children(S.has_gist(child_gist)).query(parent_story);
-//                     return has_timbre_already.length === 0;
-//                 }, () => [
-//                     b.add(k.get(child_gist!)!)
-//                 ])
-//             ]).update({ tag: 'facet', children: { child: parent_gist }}, b => b
-//                 .group_name('interpretation_effects')
-//                 .group_stage(-1)
-//                 .apply(b => [
-//                     b.css({ [cite_facet_class]: true }),
-//                     b.would().css({ [would_cite_facet_class]: true })
-//                 ])
-//             )
-//     });
-// }
-
-type ActionHandlerRule<AID extends ActionID=ActionID> = {
-    action_pattern: GistPattern<AID>,
-
-    handle: (g: Gists[AID], w: Venience) => Venience
-}
-
-const ACTION_HANDLER_INDEX = new StaticIndex<ActionHandlerRule>();
-
-export function ActionHandler<Pat extends GistPattern<ActionID>>(pattern: Pat, handler: (g: Gists[InferPatternTags<Pat>], w: Venience) => Venience): ActionHandlerRule<InferPatternTags<Pat> & ActionID>;
-export function ActionHandler(pattern: GistPattern<ActionID>, handler: (g: Gists[ActionID], w: Venience) => Venience) {
-    const result: ActionHandlerRule = {
-        action_pattern: pattern,
-        handle: handler
-    }
-
-    ACTION_HANDLER_INDEX.add(result);
-    return result;
-}
+export const ActionHandler = bound_method(ACTION_HANDLER_DISPATCHER, 'add_rule');
 
 export function handle_action(action_gist: Gists[ActionID], w: Venience): Venience {    
-    const handlers = ACTION_HANDLER_INDEX.all();
-    
-    for (let i = handlers.length - 1; i >= 0; i--) {
-        const h = handlers[i]
-        if (gist_matches(action_gist, h.action_pattern)) {
-            return h.handle(action_gist, w);
-        }
-    }
-    throw new Error('No handlers matches with the action gist: ' + gist_to_string(action_gist));
+    return ACTION_HANDLER_DISPATCHER.apply_all(action_gist, w, ACTION_HANDLER_FALLTHROUGH_STAGE);
+}
+
+export function action_consume_spec(action_gist: Gists[ActionID], world: Venience): ConsumeSpec {
+    return {
+        tokens: render_gist.command_verb_phrase(action_gist),
+        used: world.has_tried.get(action_gist)
+    };
 }
 
 // trigger action handlers based on the action that just occurred.
-Puffers(lock_and_brand('Metaphor', {
-    pre: world => update(world, { gist: null }),
+Puffers({
+    pre: world => update(world, { gist: undefined }),
     
     post: (w2, w1) => {
-        if (w2.gist !== null) {
-            
-            w2 = handle_action(w2.gist, w2);
-
+        if (w2.gist !== undefined) {
             w2 = update(w2, {
-                has_tried: _ => _.set(w2.gist!, true),
                 story_updates: story_updater(
                     S.frame().set_gist(w2.gist!)
                 )
             });
+
+            w2 = handle_action(w2.gist!, w2);
+
+            w2 = update(w2, {
+                has_tried: _ => _.set(w2.gist!, true),
+            });
+
+            
         }
+
         return w2;
     }
-}));
+});
+
+// for the special case of remembering an action description,
+// now add the action id to has_acquired so the player can do that action.
+ActionHandler(['remember', { subject: ['action description'] } ],
+    (action_gist) => (world) => {
+       const new_action_id = action_gist[1].subject[2].action;
+
+        return update(world, {
+            has_acquired: _ => map([new_action_id, true])
+        })
+    }
+);
 
 
 // export const Action = (spec: Action) => action_index.initialize(spec.id, spec);

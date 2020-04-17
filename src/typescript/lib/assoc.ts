@@ -8,7 +8,7 @@ interface AssocListConstructor<K, V, A extends AssocList<K, V>> {
 }
 
 export class AssocList<K, V> {
-    ['constructor']: AssocListConstructor<K, V, this>
+    ['constructor']: AssocListConstructor<K, V, this>;
     constructor(public data: Assoc<K, V>[]) {}
 
     key_equals(k1: K, k2: K): boolean {
@@ -18,6 +18,12 @@ export class AssocList<K, V> {
     find_index(k: K): number {
         return this.data.findIndex(
             ({key}) => this.key_equals(key, k));
+    }
+
+    filter(predicate: (k: K) => boolean) {
+        return new (this.constructor)(this.data.filter(
+            ({key}) => predicate(key)
+        ));
     }
 
     set(k: K, v: V): this {
@@ -32,16 +38,16 @@ export class AssocList<K, V> {
         return new (this.constructor)(new_data);
     }
 
-    get(k: K): V | null {
+    get(k: K): V | undefined {
         const idx = this.find_index(k);
         if (idx === -1) {
-            return null;
+            return undefined;
         } else {
             return this.data[idx].value;
         }
     }
 
-    map(f: (v: V, k?: K) => V): this {
+    map(f: (v: V, k: K) => V): this {
         const new_data = this.data.map((entry) => ({
             key: entry.key,
             value: f(entry.value, entry.key)

@@ -569,35 +569,6 @@ export function bound_method<T, K extends MethodProperties<T>>(instance: T, name
     return (instance[name] as unknown as F.Function).bind(instance) as unknown as T[K];
 }
 
-type Maybe<T> = T | null;
-
-let div = (a: number, b: number) => {
-    let result = a / b;
-    return new Promise<number>((resolve, reject) => {
-        if (result === NaN) {
-            reject();
-        } else {
-            resolve(result);
-        }
-    })   
-}
-
-async function buh() {
-    return await div(1, 0);
-}
-
-export function unwrap<T>(f: Promise<T>): Maybe<T> {
-    let result: T | null = null;
-
-    Promise.resolve(f.then(r => {
-        console.log(r);
-        result = r;
-    }));
-
-    return result;
-}
-
-
 export function with_context<C, R>(f: (set: (c: C) => void) => R): [R, C | undefined] {
     let context: C | undefined;
 

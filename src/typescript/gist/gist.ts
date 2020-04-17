@@ -1,6 +1,6 @@
-import { AsProperty, deep_equal, enforce_always_never, entries, key_union } from '../lib/utils';
-
+import { AsProperty, deep_equal, entries, key_union } from '../lib/utils';
 import { StaticGistTypes } from './static_gist_types';
+
 
 /*
     A gist is a composable structure that can be rendered into a noun phrase as a game command or as output text
@@ -24,36 +24,7 @@ export type MakeStaticGistType<Children extends ChildrenType | undefined=undefin
     & AsProperty<'parameters', Parameters>
     ;
 
-
-
-// enforce_always_never( // Static check that when StaticGistTypes is extended, it is done correctly
-//     null as (
-//         { [K in keyof StaticGistTypes]:
-//             {} extends StaticGistTypes[K] ? never :
-//             StaticGistTypes[K] extends object ?
-//                 | StaticGistTypes[K] extends { children?: object } ?
-//                     undefined extends StaticGistTypes[K]['children'] ?
-//                         [K, 'children property itself cannot be optional/undefined'] :     
-//                     StaticGistTypes[K]['children'] extends {[C in string]?: keyof StaticGistTypes} ?
-//                         never :
-//                         [K, 'has invalid children:', StaticGistTypes[K]['children']] :
-//                     never
-//                 | StaticGistTypes[K] extends { parameters?: object } ?
-//                     undefined extends StaticGistTypes[K]['parameters'] ?
-//                         [K, 'parameters property itself cannot be optional/undefined'] :
-//                     StaticGistTypes[K]['parameters'] extends {[C in string]?: unknown} ?
-//                         never :
-//                         [K, 'has invalid parameters:', StaticGistTypes[K]['parameters']] :
-//                     never
-//                 | keyof StaticGistTypes[K] extends ValidGistKeys ?
-//                     never :
-//                     [K, 'has extra properties', Exclude<keyof StaticGistTypes[K], ValidGistKeys>] :
-//                 [K, 'is not an object type. It is', StaticGistTypes[K]]
-//         }[keyof StaticGistTypes]
-//     )
-// )
-
-type FillMissing<Obj, Key extends string> =
+export type FillMissing<Obj, Key extends string> =
     Key extends keyof Obj ?
         Obj[Key] :
         object;
@@ -213,13 +184,13 @@ export function gists_equal(gist1: GistStructure, gist2: GistStructure): boolean
         return false;
     }
 
-    for (const k in key_union(gist1.parameters, gist2.parameters)) {
+    for (const k of key_union(gist1.parameters, gist2.parameters)) {
         if (!deep_equal((gist1.parameters)[k], (gist2.parameters)[k])) {
             return false;
         }
     }
 
-    for (const k in key_union(gist1.children, gist2.children)) {
+    for (const k of key_union(gist1.children, gist2.children)) {
         const c1 = gist1.children[k];
         const c2 = gist2.children[k];
 
@@ -243,7 +214,7 @@ export function has_tag<Tag extends ValidTags>(gist: Gist, tag: Tag): gist is Gi
     return gist.tag === tag;
 }
 
-export function find_tag(tag: ValidTags, gist: Gist): Gist | null;
+export function find_tag(tag: ValidTags, gist: Gist): Gist | undefined;
 export function find_tag(tag: ValidTags, gist: GistStructure) {
     if (gist.tag === tag) {
         return gist;
@@ -252,12 +223,12 @@ export function find_tag(tag: ValidTags, gist: GistStructure) {
     for (const k in gist.children) {
         const g = gist.children[k];
         const found = find_tag(tag, g as Gist);
-        if (found !== null) {
+        if (found !== undefined) {
             return found;
         }
     }
 
-    return null;
+    return undefined;
 }
 
 type GistPatternObjectStructure = {
@@ -330,15 +301,37 @@ export type GistPattern<Tags extends ValidTags=ValidTags> =
         | GistPatternSingle[Tags]
         | GistPatternSingle[Tags][];
 
+// export type InferPatternTags<Tags extends ValidTags, Pat extends GistPattern<Tags>> =
+//     & Tags
+//     & (
+//         Pat extends undefined ? Tags :
+//         Pat extends Array<infer SubPat> ?
+//             SubPat extends GistPatternSingle[Tags] ?
+//                 InferPatternTagsSingle<Tags, SubPat> :
+//                 never :
+//         Pat extends GistPatternSingle[Tags] ?
+//             InferPatternTagsSingle<Tags, Pat> :
+//         never
+//     );
+
+// type InferPatternTagsSingle<Tags extends ValidTags, PatSingle extends GistPatternSingle[Tags]> =
+//     PatSingle extends Tags ?
+//         PatSingle :
+//     PatSingle extends { 'tag': infer Tag } ?
+//         Tag :
+//     never;
+
 export type InferPatternTags<Pat extends GistPattern> =
-    Pat extends undefined ? ValidTags :
-    Pat extends Array<infer SubPat> ?
-        SubPat extends GistPatternSingle[ValidTags] ?
-            InferPatternTagsSingle<SubPat> :
-            never :
-    Pat extends GistPatternSingle[ValidTags] ?
-        InferPatternTagsSingle<Pat> :
-    never;
+    & (
+        Pat extends undefined ? ValidTags :
+        Pat extends Array<infer SubPat> ?
+            SubPat extends GistPatternSingle[ValidTags] ?
+                InferPatternTagsSingle<SubPat> :
+                never :
+        Pat extends GistPatternSingle[ValidTags] ?
+            InferPatternTagsSingle<Pat> :
+        never
+    );
 
 type InferPatternTagsSingle<PatSingle extends GistPatternSingle[ValidTags]> =
     PatSingle extends ValidTags ?
@@ -352,26 +345,35 @@ export function gist_pattern<PatternTags extends ValidTags>(pattern: GistPattern
     return pattern;
 }
 
-export function gist_matches<PatternTags extends ValidTags, GistTags extends ValidTags>(value: Gists[GistTags], pattern: GistPattern<PatternTags>): boolean;
-export function gist_matches(value: GistStructure, pattern: GistPatternStructure): boolean {
+export function gist_matches<PatternTags extends ValidTags, GistTags extends ValidTags>(value: Gists[GistTags] | undefined, pattern: GistPattern<PatternTags>): boolean;
+export function gist_matches(value: GistStructure | undefined, pattern: GistPatternStructure): boolean {
     if (pattern === undefined) {
         return true;
+    }
+
+    if (pattern instanceof Array) {
+        // empty array is a special pattern for undefined
+        if (pattern.length === 0 && value === undefined) {
+            return true;
+        }
+        return pattern.some(p => gist_matches(value as Gist, p as GistPattern));
+    }
+
+    if (value === undefined) {
+        return false;
     }
 
     if (typeof(pattern) === 'string') {
         return pattern === value.tag;
     }
 
-    if (pattern instanceof Array) {
-        return pattern.some(p => gist_matches(value as Gist, p as GistPattern));
-    }
-    
     if (pattern.tag !== undefined) {
         if (typeof pattern.tag === 'string' && pattern.tag !== value.tag) {
             return false;
         }
     }
 
+    // TODO: Possibly switch this to deep_equals if params become more complicated.
     if (pattern.parameters !== undefined) {
         for (const [p, v] of entries(pattern.parameters)) {
             const test = pattern.parameters[p];
@@ -390,11 +392,7 @@ export function gist_matches(value: GistStructure, pattern: GistPatternStructure
     for (const k in pattern?.children) {
         const vc = value.children[k];
         const pc = pattern.children[k];
-        if ((vc === undefined) || (pc === undefined)) {
-            if (vc !== pc) {
-                return false;
-            }
-        } else if (!gist_matches(vc as Gist, pc as GistPattern)) {
+        if (!gist_matches(vc as Gist, pc as GistPattern)) {
             return false;
         }
     }

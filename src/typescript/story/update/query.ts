@@ -4,7 +4,7 @@ import { Gensym } from "../../lib/gensym";
 import { StaticMap, StaticNameIndexFor } from "../../lib/static_resources";
 import { included } from "../../lib/utils";
 import { find_all_nodes, find_node, FoundNode, Fragment, is_story_hole, is_story_node, Path, StoryNode, story_lookup_path } from "../story";
-import { GistPattern, gist_matches } from "../../gist";
+import { GistPattern, match } from "../../gist";
 
 
 export type StoryQuery = (story: Fragment) => FoundNode[];
@@ -75,7 +75,7 @@ export const StoryQueries: StoryQueries = {
         root => {
             const result: FoundNode[] = []
             const found = story_lookup_path(root, path)
-            if (found !== null) {
+            if (found !== undefined) {
                 result.push([found, path]);
             }
             return result;
@@ -84,7 +84,7 @@ export const StoryQueries: StoryQueries = {
         root => {
             const result: FoundNode[] = []
             const found = find_node(root, n => is_story_node(n) && n.key === key);
-            if (found !== null) {
+            if (found !== undefined) {
                 result.push(found);
             }
             return result;
@@ -173,7 +173,7 @@ export const StoryQueries: StoryQueries = {
         },
     has_gist: (pat) => 
         (story) => find_all_nodes(story,
-            (n) => is_story_node(n) && n.data.gist !== undefined && gist_matches(n.data.gist, pat))
+            (n) => is_story_node(n) && n.data.gist !== undefined && match(n.data.gist)(pat))
 }
 
 // StoryQueryIndex.initialize('path', (path) =>

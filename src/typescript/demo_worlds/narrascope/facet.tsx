@@ -1,41 +1,36 @@
 import { Venience } from "./prelude";
 
-import { ValidTags, GistPattern, GistRenderMethodsImpl, Gists, GistRenderer, Gist, gist_to_string, gist, render_gist } from "gist";
+import { ValidTags, Gists, GistRenderer, Gist, gist_to_string, gist, render_gist, bottom_up } from "gist";
 import { createElement, Fragment } from "story";
 
 // FACETS
 
 declare module 'gist' {
     export interface StaticGistTypes {
-        facet: {
-            children: {
-                parent?: ValidTags,
-                child: ValidTags
-            }
-        };
+        facet: [{ knowledge: 'knowledge' }];
     }
 }
 
 // base renderer will just ignore the parent gist and refer to it as the child gist's rendering
-GistRenderer('facet', {
-    noun_phrase: {
-        order: 'BottomUp',
-        impl: (tag, {child}) => child
-    },
-    command_noun_phrase: {
-        order: 'BottomUp',
-        impl: (tag, {child}) => child
-    }
+GistRenderer(['facet'], {
+    noun_phrase: g => bottom_up(g[1].knowledge)(
+        (tag, {content: child}) => child,
+        render_gist.noun_phrase
+    ),
+    command_noun_phrase: g => bottom_up(g[1].knowledge)(
+        (tag, {content: child}) => child,
+        render_gist.command_noun_phrase
+    )
 });
 
 // Given a gist, return the list of its facets.
 export function get_facets(w: Venience, parent: Gist): Gists['facet'][] {
     const entry = w.knowledge.get_entry(parent);
-    if (entry === null) {
+    if (entry === undefined) {
         throw new Error('Tried to look up gist '+gist_to_string(parent)+' without an entry in the knowledge base.');
     }
 
-    return entry.dependencies.map((d) => gist('facet', { parent, child: d }));
+    return entry.children.map((knowledge) => gist('facet', { knowledge }));
 }
 
 // render story for listing facets and their descriptions

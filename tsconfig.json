@@ -29,8 +29,9 @@
         // "./src/typescript/main.tsx",
         // "./src/typescript/demo_worlds/sam.tsx",
         // "./src/typescript/type_predicate_utils.ts",
+        "./src/typescript/main.tsx",
         "./src/typescript/gist",
-        "./src/typescript/knowledge.ts",
+        "src/typescript/knowledge",
         // "src/typescript/scratch.ts",
         // "./src/typescript/pattern_matching2.ts"
         // "./src/typescript",

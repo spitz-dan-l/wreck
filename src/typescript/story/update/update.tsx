@@ -106,7 +106,7 @@ export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate
                 throw new Error('Update deleted the entire story: '+JSON.stringify(story_update));
             }
             if (!is_story_node(result)) {
-                throw new Error('Updated replaced the story root with invalid value: ' + JSON.stringify(result));
+                throw new Error('Update replaced the story root with invalid value: ' + JSON.stringify(result));
             }
 
             story = result as Story;

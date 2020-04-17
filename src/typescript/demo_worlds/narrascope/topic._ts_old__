@@ -4,7 +4,7 @@ import { cond, map, update } from '../../lib/utils';
 import { ConsumeSpec } from '../../parser';
 import { Puffer } from '../../puffer';
 import { StoryUpdaterSpec, story_updater } from '../../story';
-import { Puffers, resource_registry, StaticTopicIDs, TopicID, Venience } from "./prelude";
+import { Puffers, resource_registry, STATIC_TOPIC_IDS, TopicID, Venience } from "./prelude";
 
 export interface Topics {
     has_considered: Map<TopicID, boolean>;
@@ -87,7 +87,7 @@ export function make_topic(spec: TopicSpec): Puffer<Venience> {
 }
 
 const topic_index = resource_registry.initialize('topic_index',
-    new StaticMap(StaticTopicIDs, [
+    new StaticMap(STATIC_TOPIC_IDS, [
         function add_topic_to_puffers(spec) {
             Puffers(make_topic(spec));
             return spec;

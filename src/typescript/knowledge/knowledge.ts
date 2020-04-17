@@ -1,16 +1,16 @@
-import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "./story";
-import { AssocList } from "./lib/assoc";
-import { Gist, gists_equal, gist_to_string, GistConstructor, gist, ValidTags, Gists } from "./gist";
-import { update } from "./lib/update";
-import { World } from "./world";
-import { Puffer } from "./puffer";
-import { stages } from "./lib/stages";
-import { range, compute_const } from "./lib/utils";
+import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "../story";
+import { AssocList } from "../lib/assoc";
+import { Gist, gists_equal, gist_to_string, GistConstructor, gist, ValidTags, Gists } from "../gist";
+import { update } from "../lib/update";
+import { World } from "../world";
+import { Puffer } from "../puffer";
+import { stages } from "../lib/stages";
+import { compute_const } from "../lib/utils";
 
 type KnowledgeEntry =  {
     story: StoryNode,
     story_updates: StoryUpdateCompilationOp[]
-    dependencies: Gist[]
+    children: Gist[]
 }
 
 export class GistAssoc<T, Tags extends ValidTags=ValidTags> extends AssocList<Gists[Tags], T> {    
@@ -27,16 +27,12 @@ export class Knowledge {
         public knowledge: KnowledgeAssoc = new GistAssoc([]),
     ) {}
 
-    get_entry(g: GistConstructor): KnowledgeEntry | null {
-        const entry = this.knowledge.get(gist(g));
-        if (entry === null) {
-            return null;
-        }
-        return entry;
+    get_entry(g: GistConstructor): KnowledgeEntry | undefined {
+        return this.knowledge.get(gist(g));
     }
 
-    get(g: GistConstructor): StoryNode | null {
-        return this.get_entry(g)?.story ?? null;
+    get(g: GistConstructor): StoryNode | undefined {
+        return this.get_entry(g)?.story;
     }
 
     ingest(...stories: (Fragment | ((k: this) => Fragment))[]): this {
@@ -60,7 +56,7 @@ export class Knowledge {
             const g = story.data.gist!;
 
             const old_child_entry = this.knowledge.get(g);
-            if (old_child_entry !== null) {
+            if (old_child_entry !== undefined) {
                 if (story === old_child_entry.story) {
                     console.log('saving time by skipping a knowledge subtree update')
                     continue;
@@ -86,7 +82,7 @@ export class Knowledge {
             let new_knowledge = result.knowledge.set(g, {
                 story,
                 story_updates: [],
-                dependencies: child_gists
+                children: child_gists
             });
 
             result = new (this.constructor)(new_knowledge);
@@ -98,7 +94,7 @@ export class Knowledge {
         const g = gist(k)
         const old_entry = this.knowledge.get(g);
 
-        if (old_entry === null) {
+        if (old_entry === undefined) {
             throw new Error('Tried to update a non-existent knowledge entry: ' + gist_to_string(g));
         }
         
@@ -120,7 +116,7 @@ export class Knowledge {
         
         while (remaining.length > 0) {
             const g = remaining.pop()!;
-            const {dependencies: cs} = this.knowledge.get(g)!;
+            const {children: cs} = this.knowledge.get(g)!;
             if (cs.every(c => result.some(r => gists_equal(c, r)))) {
                 result.push(g);
             } else {
@@ -139,7 +135,7 @@ export class Knowledge {
             let updates: StoryUpdateCompilationOp[] = [];
 
             const entry = result.knowledge.get(g)!;
-            const children = entry.dependencies;
+            const children = entry.children;
 
             for (const c of children) {
                 const prev_entry = this.knowledge.get(c)!;
@@ -188,7 +184,7 @@ export class Knowledge {
 export type KnowledgePufferSpec<W extends World> = {
     get_knowledge: (w: W) => Knowledge,
     set_knowledge: (w: W, k: Knowledge) => W,
-    get_dynamic_region: (w: W) => UpdatesBuilder | null,
+    get_dynamic_region: (w: W) => UpdatesBuilder | undefined,
     push_updates_stage?: number
 };
 
@@ -209,7 +205,7 @@ export function make_knowledge_puffer<W extends World>(
         post: stages([push_updates_stage ?? 2,
             (w) => {
                 const selector = get_dynamic_region(w);
-                if (selector === null) {
+                if (selector === undefined) {
                     return w;
                 }
 

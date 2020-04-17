@@ -122,20 +122,20 @@ export function stree_to_array<X>(stree: StageTree<X>): X[] {
 }
 
 export type StagePath = number[];
-export function stree_find<X>(stree: StageTree<X>, f: (x: X) => boolean): StagePath | null {
+export function stree_find<X>(stree: StageTree<X>, f: (x: X) => boolean): StagePath | undefined {
     if (is_stree_branch(stree)) {
         for (const [stage, x] of stage_entries(stree)) {
             const child_path = stree_find(x, f);
-            if (child_path !== null) {
+            if (child_path !== undefined) {
                 return [stage, ...child_path];
             }
         }
-        return null;
+        return undefined;
     }
     if (stree === undefined) {
-        return null;
+        return undefined;
     }
-    return f(stree) ? [] : null;
+    return f(stree) ? [] : undefined;
 }
 
 export function stree_find_all<X>(stree: StageTree<X>, f: (x: X) => boolean): StagePath[] {

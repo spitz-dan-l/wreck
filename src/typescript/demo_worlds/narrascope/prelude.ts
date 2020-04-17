@@ -4,9 +4,10 @@ import { update, entries, bound_method, merge_objects, enforce_always_never } fr
 import { World, get_initial_world } from '../../world';
 import { FutureSearchSpec } from '../../supervenience';
 import {ResourcesFor, StaticMap, StaticResource, StaticIndex, StaticNameIndexFor, NameOf} from '../../lib/static_resources';
-import { GistRendererRule, GIST_RENDERER_INDEX, ValidTags } from 'gist';
+import { GistRendererRule, GIST_RENDERER_DISPATCHERS, ValidTags, GistPatternDispatcher } from 'gist';
 
 export const STATIC_TOPIC_IDS = {
+    'the present moment': null,
     'Sam': null,
     'yourself': null,
     'your notebook': null,
@@ -15,16 +16,6 @@ export const STATIC_TOPIC_IDS = {
 export type TopicID = NameOf<typeof STATIC_TOPIC_IDS>;
 
 export interface StaticActionGistTypes {
-    notes: {
-        children: {
-            topic?: 'action description'
-        }
-    };
-    remember: {
-        children: {
-            topic: 'action description'
-        }
-    };
 };
 
 declare module 'gist' {
@@ -32,7 +23,7 @@ declare module 'gist' {
 }
 
 export type ActionID = keyof StaticActionGistTypes; //NameOf<typeof StaticActionIDs>;
-export const StaticActionIDs: StaticNameIndexFor<StaticActionGistTypes> = {
+export const STATIC_ACTION_IDS: StaticNameIndexFor<StaticActionGistTypes> = {
     consider: null,
     contemplate: null,
     notes: null,
@@ -61,7 +52,7 @@ export type Owner =
     'Outro';
 
 export interface Venience extends World {
-    owner: Owner | null;
+    owner: Owner | undefined;
 }
 
 export interface VeniencePuffer extends Puffer<Venience> {
@@ -76,17 +67,15 @@ const static_resource_names: StaticNameIndexFor<StaticResources> = {
     'initial_world_prelude': null,
     'puffer_index': null,
     'global_lock': null,
-    'gist_renderer_index': null,
-    'initial_world_topic': null,
+    'gist_renderer_dispatchers': null,
     'topic_index': null,
     'initial_world_metaphor': null,
     'action_index': null,
-    'initial_world_notes': null,
-    'note_index': null,
-    'memory_index': null,
+    'action_handler_dispatcher': null,
     'initial_world_narrascope': null,
     'venience_world_spec': null,
-    'initial_world_can_consider': null
+    'initial_world_consider': null,
+    'initial_world_memory': null
 }
 
 export const resource_registry = new StaticMap<StaticResources>(static_resource_names);
@@ -100,12 +89,12 @@ export const resource_registry = new StaticMap<StaticResources>(static_resource_
 export interface StaticResources {
     initial_world_prelude: Pick<Venience, 'owner'>;
     puffer_index: StaticIndex<VeniencePuffer>;
-    global_lock: (o: Owner | null) => Lock<Venience, Owner>;
-    gist_renderer_index: StaticIndex<GistRendererRule>;
+    global_lock: (o: Owner | undefined) => Lock<Venience, Owner>;
+    gist_renderer_dispatchers: typeof GIST_RENDERER_DISPATCHERS;
 };
 
 resource_registry.initialize('initial_world_prelude',
-    {owner: null});
+    {owner: undefined});
 
 
 const global_lock = resource_registry.initialize('global_lock',
@@ -119,18 +108,18 @@ const puffer_index = resource_registry.initialize('puffer_index',
     new StaticIndex([
         function ensure_lock(puffer) {
             if (puffer.role_brand === undefined) {
-                return lock_and_brand(null, puffer);
+                return lock_and_brand(undefined, puffer);
             }
             return puffer;
         }
     ])
 );
 
-resource_registry.initialize('gist_renderer_index', GIST_RENDERER_INDEX);
+resource_registry.initialize('gist_renderer_dispatchers', GIST_RENDERER_DISPATCHERS);
 
 export const Puffers = bound_method(puffer_index, 'add');
 
-export function lock_and_brand(owner: Owner | null, puffer: VeniencePuffer) {
+export function lock_and_brand(owner: Owner | undefined, puffer: VeniencePuffer) {
     return update<VeniencePuffer>(puffer,
         global_lock(owner).lock_puffer,
         { role_brand: true }

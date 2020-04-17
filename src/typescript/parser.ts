@@ -102,16 +102,9 @@ export type TokenMatch = {
 export type TypeaheadOption = {
     kind: 'TypeaheadOption',
     availability: TokenAvailability,
-    option: ((TokenMatch & { status: 'PartialMatch' }) | null)[] // null left-padded to match length of token match
+    option: ((TokenMatch & { status: 'PartialMatch' }) | undefined)[] // undefined left-padded to match length of token match
 };
 
-/*
-
-    Filler, Option, Error
-
-    Ready, Not Ready (to execute)
-
-*/
 export type ParsingView = {
     kind: 'ParsingView',
     
@@ -169,7 +162,7 @@ export function is_parse_result_valid(result: TokenMatch[]) {
     return result.length === 0 || array_last(result)!.status === 'Match';
 }
 
-type GroupableRow = (TokenMatch | null)[]
+type GroupableRow = (TokenMatch | undefined)[]
 // export function group_rows(options: GroupableRow[], consider_labels=true) {
 export function group_rows(options: Iterable<GroupableRow>, consider_labels=true) {
     let grouped_options: {
@@ -179,7 +172,7 @@ export function group_rows(options: Iterable<GroupableRow>, consider_labels=true
     function stringify_option(x: GroupableRow): string {
         let result = '';
         result += x.length+';';
-        let n_nulls = x.findIndex(l => l !== null);
+        let n_nulls = x.findIndex(l => l !== undefined);
         result += n_nulls + ';';
 
         function stringify_elt(elt: TokenMatch): string {
@@ -307,11 +300,11 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
     //     && pr.slice(input_stream.length - 1).some(is_partial)
     // );
 
-    type groups_of_partials = { [k: string]: (PartialMatch | null)[][] };
+    type groups_of_partials = { [k: string]: (PartialMatch | undefined)[][] };
     let grouped_options: groups_of_partials = <groups_of_partials> group_rows(
         map(rows_with_typeahead, pr => {
             let start_idx = pr.findIndex(is_partial);
-            let option: (PartialMatch | null)[] = Array(start_idx).fill(null);
+            let option: (PartialMatch | undefined)[] = Array(start_idx).fill(undefined);
             let elts = <PartialMatch[]>pr.slice(start_idx);
             option.push(...elts);
             return option
@@ -510,7 +503,7 @@ export class Parser {
         return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'))
     }
 
-    clamp_availability(spec: TaintedRawConsumeSpec): void {
+    private clamp_availability_MUTATE(spec: TaintedRawConsumeSpec): void {
         if (availability_order[spec.availability] < availability_order[this.current_availability]) {
             spec.availability = this.current_availability;
             // return {...spec, availability: this.current_availability};
@@ -530,7 +523,7 @@ export class Parser {
         }
 
         for (let t of tokens) {
-            this.clamp_availability(t);
+            this.clamp_availability_MUTATE(t);
         }
         // tokens = tokens.map(t => this.clamp_availability(t));
 
@@ -579,15 +572,12 @@ export class Parser {
             break;
         }
 
-        function sanitize(spec: TaintedRawConsumeSpec): RawConsumeSpec {
+        function sanitize_MUTATE(spec: TaintedRawConsumeSpec): RawConsumeSpec {
             if (spec.token !== NEVER_TOKEN) {
                 return <RawConsumeSpec>spec;
             }
             spec.token = '';
             return <RawConsumeSpec>spec;
-            // let result = {...spec};
-            // result.token = '';
-            // return <RawConsumeSpec>result;
         }
 
         if (partial) {
@@ -597,7 +587,7 @@ export class Parser {
                     kind: 'TokenMatch',
                     status: 'PartialMatch',
                     actual: this.input_stream[this.pos + j] || '',
-                    expected: sanitize(t)
+                    expected: sanitize_MUTATE(t)
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
@@ -610,7 +600,7 @@ export class Parser {
                     kind: 'TokenMatch',
                     status: 'ErrorMatch',
                     actual: this.input_stream[this.pos + j] || '',
-                    expected: sanitize(t)
+                    expected: sanitize_MUTATE(t)
                 } as const)));
             // increment pos
             this.pos = this.input_stream.length;
@@ -624,7 +614,7 @@ export class Parser {
                 kind: 'TokenMatch',
                 status: 'Match',
                 actual: this.input_stream[this.pos + j],
-                expected: sanitize(t)
+                expected: sanitize_MUTATE(t)
             } as const)));
         // increment pos
         this.pos += tokens.length;
@@ -635,9 +625,6 @@ export class Parser {
         /*
             It is important that we not just throw NoMatch, and instead actully attempt to consume a never token.
         */
-        // return <NoMatch>this._consume([
-        //     rcs_pool.create(NEVER_TOKEN, 'Available', {})
-        // ]);
         return <NoMatch>this._consume([{
             kind: 'RawConsumeSpec',
             token: NEVER_TOKEN,
@@ -650,9 +637,6 @@ export class Parser {
     submit<T>(callback: ParserThread<T>): ParseValue<T>;
     submit<T>(result: T): ParseValue<T>;
     submit<T>(result?: any) {
-        // let status = this._consume([
-        //     rcs_pool.create(SUBMIT_TOKEN, 'Available', {})
-        // ]);
         const status = this._consume([{
             kind: 'RawConsumeSpec',
             token: SUBMIT_TOKEN,
@@ -726,22 +710,18 @@ export class Parser {
 
                 const p = new Parser(tokens, splits_to_take);
 
-                let result: ParseValue<T> = NO_MATCH; //new NoMatch();
+                let result: ParseValue<T> = NO_MATCH;
                 n_iterations++;
 
                 result = t(p);
 
-                if (is_parse_restart(result)) { //result instanceof ParseRestart) {
+                if (is_parse_restart(result)) {
                     n_splits++;
-                    // const new_splits: number[] = [];
-                    // for (let i = 0; i < result.n_splits; i++) {
-                    //     new_splits.push(i);
-                    // }
                     frontier.push([...splits_to_take, new Array(result.n_splits).keys()]); //new_splits[Symbol.iterator]()]);
                     continue;
                 }
 
-                if (!is_no_match(result)/*( result instanceof NoMatch)*/ && (p.parse_result.length === 0 || array_last(p.parse_result)!.expected.token !== SUBMIT_TOKEN)) {
+                if (!is_no_match(result) && (p.parse_result.length === 0 || array_last(p.parse_result)!.expected.token !== SUBMIT_TOKEN)) {
                     const expected_command: string = p.parse_result.map(r => r.expected.token).join(' ');
 
                     throw new ParseError("Command did not end in SUBMIT: " + expected_command);
@@ -819,12 +799,11 @@ Options
       and only ever do walks with filters
     - Find a way to drastically speed up parsing
         - wasm
-        - no exceptions
+        - no exceptions (Done)
         - something else clever
 
 */
-
-export function traverse_thread<T>(thread: ParserThread<T>, command_filter?: (consume_spec: RawConsumeSpec[]) => boolean) {
+export function traverse_thread<T>(thread: ParserThread<T>, command_filter?: (consume_spec: RawConsumeSpec[]) => boolean): { [cmd: string]: Parsed<T> } {
     let n_partials = 0;
     let n_matches = 0;
 

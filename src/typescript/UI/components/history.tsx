@@ -9,7 +9,7 @@ import { ui_resources } from '../prelude';
 
 type HistoryProps = {
     world: World,
-    possible_world: World | null,
+    possible_world: World | undefined,
     animation_state: AnimationState,
     undo_selected: boolean
 }
@@ -107,11 +107,11 @@ function push_animation(story: Story, dom_effects: Effects<History>) {
 
 
 function show_possible_effects(props: HistoryProps) {
-    return props.undo_selected ? null : props.possible_world;
+    return props.undo_selected ? undefined : props.possible_world;
 }
 
 function possible_effects(props: HistoryProps) {
-    if (props.undo_selected || props.possible_world === null) {
+    if (props.undo_selected || props.possible_world === undefined) {
         return [];
     }
     return compute_possible_effects(props.world, props.possible_world);

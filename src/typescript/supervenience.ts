@@ -65,8 +65,8 @@ export type FutureSearchStatus =
 export type FutureSearchResult<W extends World> = {
     kind: 'FutureSearchResult',
     status: FutureSearchStatus,
-    result: W | null,
-    stats: FutureSearchStats | null
+    result: W | undefined,
+    stats: FutureSearchStats | undefined
 };
 
 // do a breadth-first search of possible futures for some goal state
@@ -75,14 +75,14 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
     if (is_simulated(spec.simulator_id, world)) {
         // A future search for this world's timeline is already running.
         // Recursive future searches are most likely too inefficient to allow, so
-        // we return null in this case, indicating to the caller who would have
+        // we return undefined in this case, indicating to the caller who would have
         // conducted the future search that she is already in a simulation, and should
         // therefore only take atomic/non-recursive actions.
         return {
             kind: 'FutureSearchResult',
             status: 'InSimulation',
-            result: null,
-            stats: null
+            result: undefined,
+            stats: undefined
         };
     }
     if (spec.search_id !== undefined) {
@@ -130,7 +130,7 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
                 return cache({
                     kind: 'FutureSearchResult',
                     status: 'Unreachable',
-                    result: null,
+                    result: undefined,
                     stats: make_stats()
                 });
             }
@@ -189,7 +189,7 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
         return cache({
             kind: 'FutureSearchResult',
             status: 'Timeout',
-            result: null,
+            result: undefined,
             stats: make_stats()
         });
 
@@ -206,7 +206,7 @@ export function is_simulated<W extends World>(simulator_id: string, world: W) {
     }
 
     const entry = ACTIVE_SIMULATORS[simulator_id];
-    return find_historical(world, w => entry.has(w)) !== null;
+    return find_historical(world, w => entry.has(w)) !== undefined;
 }
 
 function begin_search<W extends World>(simulator_id: string, world: W) {

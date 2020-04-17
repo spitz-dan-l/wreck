@@ -1,23 +1,23 @@
 import { World } from "./world";
 
-export function find_historical<W extends World>(world: W, f: (w: W) => boolean): W | null {
-    let w: W | null = world;
+export function find_historical<W extends World>(world: W, f: (w: W) => boolean): W | undefined {
+    let w: W | undefined = world;
 
-    while (w != null) {
+    while (w !== undefined) {
         if (f(w)) {
             return w;
         }
         w = w.previous;
     }
 
-    return null;
+    return undefined;
 }
 
 export function find_historical_all<W extends World>(world: W, f: (w: W) => boolean): W[] {
     const result: W[] = [];
-    let w: W | null = world;
+    let w: W | undefined = world;
 
-    while (w != null) {
+    while (w !== undefined) {
         if (f(w)) {
             result.push(w);
         }
@@ -38,9 +38,9 @@ export function indices_where<W extends World>(world: W, f: (w: W) => boolean): 
 // When mapping or filtering history, simply converting to an array is easier than
 // reimplementing all the various traversal methods on the linked list
 export function history_array<W extends World>(world: W, take_while?: (w: W) => boolean) {
-    let w: W | null = world;
+    let w: W | undefined = world;
     let result: W[] = [];
-    while (w != null) {
+    while (w !== undefined) {
         if (take_while !== undefined && !take_while(w)) {
             break;
         }

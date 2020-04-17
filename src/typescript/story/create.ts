@@ -38,7 +38,6 @@ export type StoryRenderer<P extends {}> = (props: P & RendererBaseProps) => Stor
 export function createElement<P extends {}>(tag: StoryRenderer<P>, props: P, ...deep_children: DeepFragment[]): StoryNode;
 export function createElement<P extends NodeProps>(tag: string, props: MergeWithHTMLProps<P>, ...deep_children: DeepFragment[]): StoryNode;
 export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithHTMLProps<NodeProps>, ...deep_children: DeepFragment[]): StoryNode {
-    // The jsx transformation appears to pass null as the second argument if none are provided.
     props = props || {};
     const children = flat_deep(deep_children);
     // const children = deep_children.flat(Infinity);

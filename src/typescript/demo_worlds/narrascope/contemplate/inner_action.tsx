@@ -6,23 +6,12 @@ import { update, if_not_null, if_not_null_array, if_array } from "../../../lib";
 import { misinterpret_facet_class, interpret_facet_class, would_interpret_facet_class, cite_facet_class, would_cite_facet_class } from "../styles";
 import { StaticNameIndex } from "lib/static_resources";
 
+
 interface StaticInnerActionGistTypes {
     // contemplation-level actions
-    scrutinize: {
-        children: {
-            facet: 'facet'
-        }
-    };
-    hammer: {
-        children: {
-            facet: 'facet'
-        }
-    };
-    volunteer: {
-        children: {
-            facet: 'facet'
-        }
-    };
+    scrutinize:[{ facet: 'facet' }];
+    hammer: [{ facet: 'facet' }];
+    volunteer: [{ facet: 'facet' }];
 }
 
 export type InnerActionID = keyof StaticInnerActionGistTypes;
@@ -52,8 +41,8 @@ export function Exposition(exposition: Exposition) {
         init_knowledge.update(k => k.ingest(exposition.revealed_child_story!));
     }
 
-    return (action_gist: InnerActionGist, world: Venience): Venience => {
-        const parent_gist = action_gist.children.facet.children.child;
+    return <G extends InnerActionGist>(action_gist: G) => (world: Venience): Venience => {
+        const parent_gist = action_gist[1].facet[1].knowledge[1].content;
         const child_gist = exposition.revealed_child_story?.data.gist;
 
         return update(world,
@@ -109,7 +98,7 @@ function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, c
                         return false;
                     }
                     const parent_story = k.get(parent_gist);
-                    if (parent_story === null) {
+                    if (parent_story === undefined) {
                         throw new Error('Tried to add a timbre to a story whose gist is not in knowledge base.');
                     }
 
@@ -118,7 +107,7 @@ function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, c
                 }, () => [
                     b.add(k.get(child_gist!)!)
                 ])
-            ]).update({ tag: 'facet', children: { child: parent_gist }}, b => b
+            ]).update(['facet', { knowledge: ['knowledge', {content: parent_gist}]}], b => b
                 .group_name('interpretation_effects')
                 .group_stage(-1)
                 .apply(b => [
