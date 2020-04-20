@@ -1,6 +1,6 @@
-import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "../story";
+import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "story";
 import { AssocList } from "../lib/assoc";
-import { Gist, gists_equal, gist_to_string, GistConstructor, gist, ValidTags, Gists, match, GistRenderer, GistPattern } from "../gist";
+import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, GistRenderer, GistPattern } from "gist";
 import { update } from "../lib/update";
 import { World } from "../world";
 import { Puffer } from "../puffer";
@@ -16,7 +16,7 @@ declare module 'gist' {
     }
 };
 
-gist(['knowledge', { content: ['Sam']}])
+gist('knowledge', { content: ['Sam']})
 
 // It's always an error to render a pure knowledge gist.
 // It always has to be wrapped or unpacked as something "observable" for the player.
@@ -53,26 +53,23 @@ export class Knowledge {
         public knowledge: KnowledgeAssoc = new GistAssoc([]),
     ) {}
 
-    construct_key(g: GistConstructor) {
-        const g1 = gist(g);
+    construct_key(g: Gist): Gists['knowledge'] {
         const k: Gists['knowledge'] = compute_const(() => {
-            if (g1[0] === 'knowledge') {
-                return g1;
+            if (g[0] === 'knowledge') {
+                return g;
             }
-            return gist(['knowledge', { content: g1 }]);
+            return ['knowledge', { content: g }];
         });
 
         return k;
     }
 
-    get_entries(g: GistConstructor): KnowledgeAssoc {
-        const g1 = gist(g);
-
+    get_entries(g: Gist): KnowledgeAssoc {
         const pat: GistPattern<'knowledge'> = compute_const(() => {
-            if (g1[0] === 'knowledge') {
-                return g1;
+            if (g[0] === 'knowledge') {
+                return g;
             }
-            return ['knowledge', { content: g1 }];
+            return ['knowledge', { content: g }];
         })
 
         return this.knowledge.filter((k) =>
@@ -80,7 +77,7 @@ export class Knowledge {
         );
     }
 
-    get_entry(g: GistConstructor): KnowledgeEntry | undefined {
+    get_entry(g: Gist): KnowledgeEntry | undefined {
         const matches = this.get_entries(g);
         if (matches.data.length > 1) {
             throw new Error(`Ambiguous knowledge key: ${JSON.stringify(g)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
@@ -89,7 +86,7 @@ export class Knowledge {
         return matches.get(k);
     }
 
-    get(g: GistConstructor): StoryNode | undefined {
+    get(g: Gist): StoryNode | undefined {
         return this.get_entry(g)?.story;
     }
 
@@ -116,7 +113,7 @@ export class Knowledge {
             throw new Error('Gist must not be a pure knowledge gist. "knowledge" is a special tag used internally by the knowledge base only.');
         }
 
-        const k = gist(['knowledge', { content: g, context: parent_context}]);
+        const k = gist('knowledge', { content: g, context: parent_context});
 
         const old_child_entry = this.get_entry(k); //this.knowledge.get(g);
         if (old_child_entry !== undefined) {
@@ -136,7 +133,7 @@ export class Knowledge {
         }
         
         const child_gists = sort_targets(child_knowledge).map(([node, path]) =>
-            gist(['knowledge', { content: (node as StoryNode).data.gist!, context: k }])
+            gist('knowledge', { content: (node as StoryNode).data.gist!, context: k })
         )
         
         let new_knowledge = result.knowledge.set(k, {
@@ -149,7 +146,7 @@ export class Knowledge {
         return new (this.constructor)(new_knowledge);
     }
 
-    update(k: GistConstructor, f: (builder: UpdatesBuilder) => StoryUpdaterSpec): this {
+    update(k: Gist, f: (builder: UpdatesBuilder) => StoryUpdaterSpec): this {
         const old_entry = this.get_entry(k);
 
         if (old_entry === undefined) {
@@ -252,16 +249,18 @@ export function knowledge_selector(g: Gists['knowledge']) {
     return builder;
 }
 
-/**
- * TODO:
- * A piece of world state that maps gists to the current
- * story subtree to print when "considering" that gist
- * 
- * This should get updated when the player "solves a puzzle"
- * or otherwise changes how they think about a given topic
- * 
- * It should be used when rendering most parts of the story
- */
+export function knowledge_gist(content0: Gist, ...content: Gist[]): Gists['knowledge'] {
+    return _knowledge_gist(content0, ...content) as Gists['knowledge'];
+}
+function _knowledge_gist(...content: Gist[]): Gists['knowledge'] | undefined {
+    if (content.length === 0) {
+        return undefined;
+    }
+
+    return ['knowledge', { content: content.shift()!, context: _knowledge_gist(...content) }]
+}
+
+
 export type KnowledgePufferSpec<W extends World> = {
     get_knowledge: (w: W) => Knowledge,
     set_knowledge: (w: W, k: Knowledge) => W,
@@ -297,3 +296,12 @@ export function make_knowledge_puffer<W extends World>(
         ])
     };
 }
+
+/*
+    TODO: Try out this knowledge base, but getting and updating are done using
+    GistPatterns, not Gists. Insertion still uses Gists.
+
+    Given a pattern, you'd need to find the *most specific* matching gist, not just the first one.
+    There would be ties. Unsure if you'd want to prioritize the context-level
+    specificity before the content-level, or vice-versa?
+*/

@@ -1,5 +1,5 @@
 import { gensym } from '../lib/gensym';
-import { gist, GistConstructor } from 'gist';
+import { gist, Gist } from 'gist';
 import { HTMLElementTags, MergeWithHTMLProps, remove_custom_props } from '../lib/jsx_utils';
 import { split_tokens } from '../lib/text_utils';
 import { DeepFragment, Fragment, StoryNode } from './story';
@@ -22,7 +22,7 @@ export type NodeProps = (
 		type?: undefined
 		children?: DeepFragment,
         frame_index?: number,
-        gist?: GistConstructor
+        gist?: Gist
 	}
     & {
         className?: string
@@ -56,8 +56,8 @@ export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithH
     if (props.frame_index !== undefined) {
         data.frame_index = props.frame_index;
     }
-    if (props.gist) {
-        data.gist = gist(props.gist);
+    if (props.gist !== undefined) {
+        data.gist = props.gist;
     }
 
     const key = gensym();

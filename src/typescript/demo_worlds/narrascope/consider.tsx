@@ -59,7 +59,7 @@ export function assert_is_topic(x: Fragment): asserts x is Topic {
         throw new Error('Topic must actually be a StoryNode even though the type says any Fragment. (JSX limitation.)');
     }
 
-    if (!included(x.data.gist?.tag, keys(STATIC_TOPIC_IDS))) {
+    if (!included(x.data.gist?.[0], keys(STATIC_TOPIC_IDS))) {
         throw new Error('StoryNode must have a gist and its tag must be a topic id.');
     }
 }
@@ -69,7 +69,7 @@ const init_knowledge = resource_registry.get_resource('initial_world_knowledge')
 export function Topic(topic: Fragment) {
     assert_is_topic(topic);
 
-    const topic_id: TopicID = topic.data.gist!.tag;
+    const topic_id: TopicID = topic.data.gist![0];
     init_knowledge.update(k => k.ingest(topic));
 
     topic_index.initialize(topic_id, topic);
@@ -80,15 +80,15 @@ export function Topic(topic: Fragment) {
 Action({
     id: 'consider',
     render_impls: {
-        noun_phrase: g => bottom_up(g,
+        noun_phrase: g => bottom_up(g)(
             (tag, {subject}) => `your impression of ${subject}`,
             render_gist.noun_phrase
         ),
-        command_noun_phrase: g => bottom_up(g,
+        command_noun_phrase: g => bottom_up(g)(
             (tag, {subject}) => ['my_impression_of', subject],
             render_gist.command_noun_phrase,
         ),
-        command_verb_phrase: g => bottom_up(g,
+        command_verb_phrase: g => bottom_up(g)(
             (tag, {subject}) => ['consider', subject],
             render_gist.command_verb_phrase
         )
@@ -110,10 +110,10 @@ Action({
         handle_command: (world, parser) => {
             const threads: ParserThread<Venience>[] = [];
             for (const topic of keys(STATIC_TOPIC_IDS)) {
-                const topic_gist = gist(topic);
+                const topic_gist = [topic] as Gists[TopicID];
                 if (world.can_consider.get(topic_gist)) {
                     threads.push(() => {
-                        const action_gist = gist('consider', {subject: topic});
+                        const action_gist = gist('consider', {subject: topic_gist});
                         return (
                             parser.consume(action_consume_spec(action_gist, world), () =>
                             parser.submit(() =>

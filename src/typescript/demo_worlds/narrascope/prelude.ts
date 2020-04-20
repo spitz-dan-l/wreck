@@ -75,7 +75,7 @@ const static_resource_names: StaticNameIndexFor<StaticResources> = {
     'initial_world_narrascope': null,
     'venience_world_spec': null,
     'initial_world_consider': null,
-    'initial_world_memory': null
+    'initial_world_memories': null
 }
 
 export const resource_registry = new StaticMap<StaticResources>(static_resource_names);

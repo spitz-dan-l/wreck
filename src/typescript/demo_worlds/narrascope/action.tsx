@@ -1,14 +1,14 @@
-import { gist, GistPattern, GistRenderer, Gists, match, gist_to_string, InferPatternTags, render_gist, RenderImplsForPattern, GistPatternUpdateDispatcher, gist_pattern, ValidTags, G } from 'gist';
+import { gist, GistPattern, GistPatternUpdateDispatcher, GistRenderer, Gists, RenderImplsForPattern, render_gist, Gist, match, MatchResult, ValidTags, _MatchResult, FilledGists } from 'gist';
+import { gate_puffer } from 'puffer';
 import { GistAssoc, Knowledge, make_knowledge_puffer } from '../../knowledge';
-import { StaticIndex, StaticMap } from '../../lib/static_resources';
+import { StaticMap } from '../../lib/static_resources';
 import { capitalize } from '../../lib/text_utils';
-import { map, range, update, bound_method } from "../../lib/utils";
+import { bound_method, map, range, update } from "../../lib/utils";
 import { ConsumeSpec } from "../../parser";
 import { createElement, Fragment, StoryNode, story_updater, Updates as S } from '../../story';
 import { Exposition } from './contemplate';
-import { ActionID, lock_and_brand, Owner, Puffers, resource_registry, STATIC_ACTION_IDS, Venience, VeniencePuffer } from "./prelude";
+import { ActionID, Owner, Puffers, resource_registry, STATIC_ACTION_IDS, Venience, VeniencePuffer } from "./prelude";
 import { insight_text_class } from './styles';
-import { gate_puffer } from 'puffer';
 
 export interface Actions {
     gist: Gists[ActionID] | undefined,
@@ -77,7 +77,13 @@ export type Action =
     [ID in ActionID]: {
         id: ID,
         
-        render_impls: RenderImplsForPattern<Gists[ID]>
+        render_impls: RenderImplsForPattern<Gists[ID]>,
+
+        memory_prompt_impls?: RenderImplsForPattern<
+            ['memory prompt', { memory:
+                ['remember', { subject:
+                    ['action description', undefined, {action: ID}]}]}]
+        >
     }
 }[ActionID]
 & {
@@ -85,6 +91,7 @@ export type Action =
     description_command_noun_phrase: ConsumeSpec,
     description: Fragment, // probably make this a fragment
     katya_quote: Fragment, // probably make this a fragment
+
     memory?: Fragment,
 
     puffer?: VeniencePuffer
@@ -133,6 +140,10 @@ export function Action(spec: Action) {
             {k.get(descr_gist)!}
         </div>)
     ));
+
+    if (spec.memory_prompt_impls !== undefined) {
+        GistRenderer(['memory prompt', {memory: ['remember', {subject: descr_gist}]}], spec.memory_prompt_impls);
+    }
 
     if (spec.memory !== undefined) {
         ActionHandler(['scrutinize', {

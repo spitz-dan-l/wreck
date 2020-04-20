@@ -1,12 +1,12 @@
-import { createElement } from 'story'
-import { Exposition, INNER_ACTION_IDS, InnerActionID } from "./inner_action";
-import { Action, ActionHandler, action_consume_spec, ACTION_HANDLER_FALLTHROUGH_STAGE } from "../action";
-import { bottom_up, render_gist, gist, Gists, Gist, GistConstructor, GistDSL } from "gist";
-import { Puffers, lock_and_brand, Venience } from '../prelude';
-import { keys, update, bound_method, for_each_entries } from 'lib/utils';
-import { get_facets } from '../facet';
+import { bottom_up, gist, Gist, render_gist, Gists } from "gist";
 import { find_historical } from 'history';
+import { keys, update } from 'lib/utils';
 import { ParserThread } from 'parser';
+import { createElement } from 'story';
+import { Action, ActionHandler, action_consume_spec, ACTION_HANDLER_FALLTHROUGH_STAGE } from "../action";
+import { get_facets } from '../facet';
+import { lock_and_brand, Puffers, Venience } from '../prelude';
+import { Exposition, INNER_ACTION_IDS } from "./inner_action";
 
 // scrutinize
 Action({
@@ -16,6 +16,11 @@ Action({
             (tag, {facet}) => ['scrutinize', facet],
             render_gist.command_verb_phrase
         )
+    },
+
+    memory_prompt_impls: {
+        noun_phrase: g => 'something focused',
+        command_noun_phrase: g => 'something_focused'
     },
 
     description_noun_phrase: 'scrutiny',
@@ -51,6 +56,11 @@ Action({
         )
     },
 
+    memory_prompt_impls: {
+        noun_phrase: g => 'something blasphemous',
+        command_noun_phrase: g => 'something_blasphemous'
+    },
+
     description_noun_phrase: 'the Hammer',
     description_command_noun_phrase: 'the Hammer',
 
@@ -84,6 +94,11 @@ Action({
             (tag, {facet}) => ['volunteer to_foster', facet],
             render_gist.command_verb_phrase
         )
+    },
+
+    memory_prompt_impls: {
+        noun_phrase: g => 'something generous',
+        command_noun_phrase: g => 'something_generous'
     },
 
     description_noun_phrase: 'the Volunteer',
@@ -146,12 +161,7 @@ Puffers(lock_and_brand('Metaphor', {
             }
             for (const facet of observable_facets) {
                 threads.push(() => {
-                    const xxx = gist('Sam');
-                    const action_gist = gist(...[action, { facet }] as GistDSL[typeof action]);
-                    // const action_gist = gist([action, { facet }] as GistDSL[typeof action]);
-                    // const action_gist = gist([action, { facet }] as {
-                    //     [T in typeof action]: GistDSL[T]
-                    // }[typeof action]);
+                    const action_gist = [action, { facet }] as Gists[typeof action];
                     return (
                         parser.consume(
                             action_consume_spec(action_gist, world), () =>

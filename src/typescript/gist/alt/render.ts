@@ -1,13 +1,13 @@
-import { Gist, Gists, gist_to_string, GistConstructor, gist } from './gist';
+import { Gist, Gists, gist_to_string, gist, FilledGists } from './gist';
 import { StaticIndex, StaticNameIndexFor, StaticMap } from '../../lib/static_resources';
 import { map_values, keys, values, entries } from '../../lib/utils';
 import { ConsumeSpec } from 'parser';
 import { GistPatternDispatcher } from './dispatch';
 import { ValidTags } from './static_gist_types';
-import { GistPattern, InferPatternTags, PositiveMatchResult } from './pattern';
+import { GistPattern, PositiveMatchResult } from './pattern';
 
 type GistRenderFunction<OutType> =
-    (gist: GistConstructor) => OutType;
+    (gist: Gist) => OutType;
 
 type GistRendererType = {
     noun_phrase: string,
@@ -57,10 +57,9 @@ export function GistRenderer(pattern: GistPattern, impls: RenderImpls, stage: nu
 export const render_gist: GistRenderMethods =
     map_values(STATIC_GIST_RENDERER_NAMES,
         (_, method_name) =>
-            ((g: GistConstructor) => {
-                const gi = gist(...g);   
+            ((g: Gist) => {
                 const dispatcher = GIST_RENDERER_DISPATCHERS.get(method_name);
-                return dispatcher.dispatch(gi);
+                return dispatcher.dispatch(g);
             }) as GistRenderMethods[typeof method_name]);
 
 
@@ -100,7 +99,7 @@ export const render_gist: GistRenderMethods =
 export function bottom_up<G extends Gist>(g: G): <R>(
         f: (
             tag: G[0],
-            children: {[CK in keyof G[1]]: R | (undefined extends G[1][CK] ? undefined : never)},
+            children: {[CK in keyof FilledGists[G[0]][1]]: R | (undefined extends FilledGists[G[0]][1][CK] ? undefined : never)},
             parameters: G[2]
         ) => R,
         render_child: (g: Gist) => R

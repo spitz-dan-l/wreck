@@ -2,7 +2,7 @@ import { Gists, gist_to_string } from "./gist";
 
 import { Stages, stages, stage_values } from "lib/stages";
 import { Sealable, IsSealed, Seal } from "lib/static_resources";
-import { GistPattern, match, InferPatternTags, MatchResult, PositiveMatchResult } from "./pattern";
+import { GistPattern, match, PositiveMatchResult } from "./pattern";
 import { ValidTags } from "./static_gist_types";
 
 /*

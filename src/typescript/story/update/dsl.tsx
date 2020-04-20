@@ -242,8 +242,7 @@ for (const k of keys(StoryOps)){
 export const Updates = new UpdatesBuilder();
 
 
-export type StoryUpdaterSpec = StoryUpdateCompilationOp | StoryUpdateSpec | StoryUpdaterSpecArray;
-interface StoryUpdaterSpecArray extends Array<StoryUpdaterSpec> {}
+export type StoryUpdaterSpec = StoryUpdateCompilationOp | StoryUpdateSpec | StoryUpdaterSpec[];
 
 function is_compilation_op(x: StoryUpdateCompilationOp | StoryUpdateSpec): x is StoryUpdateCompilationOp {
     const accepted_kinds: StaticNameIndex<StoryUpdateCompilationOp['kind']> = {
@@ -268,28 +267,6 @@ export function story_updater(...updates: StoryUpdaterSpec[]) {
     });
 
     return (prev_updates: StoryUpdateCompilationOp[]) => [...prev_updates, ...normalized_updates];
-
-    // const groups: StoryUpdateCompilationOp[] = []
-    // let default_group_updates: StoryUpdateSpec[] = [];
-    
-    // function flush_default_group() {
-    //     if (default_group_updates.length > 0) {
-    //         groups.push(Groups.push(...default_group_updates));
-    //         default_group_updates = [];
-    //     }
-    // }
-
-    // for (const up of flat_updates) {
-    //     if (is_group(up)) {
-    //         flush_default_group();
-    //         groups.push(up);
-    //     } else {
-    //         default_group_updates.push(up);
-    //     }
-    // }
-    // flush_default_group();
-
-    // return (updates: StoryUpdateCompilationOp[]) => [...updates, ...groups];
 }
 
 

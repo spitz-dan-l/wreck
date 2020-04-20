@@ -219,6 +219,11 @@ Action({
         )
     },
 
+    memory_prompt_impls: {
+        noun_phrase: (g) => 'something meditative',
+        command_noun_phrase: (g) => 'something_meditative',
+    },
+
     description_noun_phrase: 'contemplation',
     description_command_noun_phrase: 'contemplation',
 

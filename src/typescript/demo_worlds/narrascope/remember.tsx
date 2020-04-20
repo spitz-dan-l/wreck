@@ -1,21 +1,21 @@
-import {createElement, story_updater, Updates as S} from 'story';
-import { ValidTags, Gist, gist, bottom_up, render_gist } from "gist";
-import { Action, action_consume_spec, ActionHandler } from "./action";
-import { insight_text_class } from './styles';
+import { bottom_up, Gist, gist, render_gist, ValidTags, Gists, GistRenderer } from "gist";
+import { append, map, update } from 'lib';
+import { createElement, story_updater, Updates as S } from 'story';
+import { Action, ActionHandler, action_consume_spec } from "./action";
 import { resource_registry, Venience } from './prelude';
-import { update, append } from 'lib';
+import { insight_text_class } from './styles';
 
 
-interface Memory {
+interface Memories {
     could_remember: Gist[];
 }
 
 declare module './prelude' {
-    export interface Venience extends Memory {
+    export interface Venience extends Memories {
     }
 
     export interface StaticResources {
-        initial_world_memory: Memory
+        initial_world_memories: Memories
     }
 
     export interface StaticActionGistTypes {
@@ -23,7 +23,13 @@ declare module './prelude' {
     }
 }
 
-resource_registry.initialize('initial_world_memory', {
+declare module 'gist' {
+    export interface StaticGistTypes {
+        'memory prompt': [{ memory: 'remember' }];
+    }
+}
+
+resource_registry.initialize('initial_world_memories', {
     could_remember: []
 });
 
@@ -38,7 +44,7 @@ Action({
             (tag, {subject}) => ['my_memory of', subject],
             render_gist.command_noun_phrase
         ),
-        command_verb_phrase: () => 'remember_something'
+        command_verb_phrase: (g) => ['remember', render_gist.command_noun_phrase(['memory prompt', {memory: g}])]
     },
 
     description_noun_phrase: 'memory',
@@ -58,7 +64,8 @@ Action({
                 return parser.eliminate();
             }
 
-            const action_gist = gist('remember', {subject: world.could_remember[0]});
+            const memory = world.could_remember[0];
+            const action_gist = gist('remember', {subject: memory});
             return (
                 parser.consume(action_consume_spec(action_gist, world), () =>
                 parser.submit(() =>
@@ -79,11 +86,32 @@ ActionHandler(['remember'], (action_gist) => (world) =>
     })
 );
 
-export function make_memory_available(world: Venience, subject_gist: Gist) {
-    return update(world, {
-        could_remember: append(subject_gist),
-        story_updates: story_updater(
-            S.prompt(<div>You feel as though you might <strong>remember something...</strong></div>)
-        )
-    });
+ActionHandler(['remember', {subject: ['action description']}],
+    (action_gist) => (world) =>
+        update(world, {
+            has_acquired: map([ action_gist[1].subject[2].action, true ])
+        })
+);
+
+GistRenderer(['memory prompt'], {
+    noun_phrase: (g) => 'something',
+    command_noun_phrase: (g) => 'something'
+}, 5);
+
+export function make_memory_available(subject_gist: Gist) {
+    return (world: Venience) =>  {
+        const memory_gist: Gists['remember'] = ['remember', {subject: subject_gist}];
+
+        const memory_prompt = <div>
+            You feel as though you might <strong>remember {render_gist.noun_phrase(['memory prompt', {memory: memory_gist}])}</strong>...
+        </div>
+    
+        return update(world, {
+            could_remember: append(subject_gist),
+            story_updates: story_updater(
+                S.prompt(memory_prompt)
+            )
+        });
+        
+    };
 }

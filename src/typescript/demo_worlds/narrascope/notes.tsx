@@ -1,14 +1,12 @@
-import { gist, GistRenderer, render_gist, ValidTags, Gists, bottom_up, EMPTY, PositiveMatchResult } from 'gist';
-import { createElement, story_updater, Fragment, Updates as S } from '../../story';
-// import { Fragment, message_updater } from '../../message';
-import { ParserThread } from '../../parser';
-import { StaticMap } from '../../lib/static_resources';
+import { bottom_up, EMPTY, gist, Gists, PositiveMatchResult, render_gist } from 'gist';
+import { stages } from '../../lib/stages';
 import { capitalize } from '../../lib/text_utils';
 import { update } from '../../lib/update';
-import { map, if_not_null_array, keys } from '../../lib/utils';
-import { action_consume_spec, ActionHandler, Action } from './action';
-import { Puffers, resource_registry, Venience, STATIC_ACTION_IDS } from './prelude';
-import { stages } from '../../lib/stages';
+import { if_not_null_array, keys } from '../../lib/utils';
+import { ParserThread } from '../../parser';
+import { createElement, story_updater, Updates as S } from '../../story';
+import { Action, ActionHandler, action_consume_spec } from './action';
+import { STATIC_ACTION_IDS, Venience } from './prelude';
 
 declare module './prelude' {
     export interface StaticActionGistTypes {
@@ -34,6 +32,11 @@ Action({
             (tag, {subject}) => ['notes', ...if_not_null_array(subject, (t) => ['about', t])],
             render_gist.command_verb_phrase
         )
+    },
+
+    memory_prompt_impls: {
+        noun_phrase: g => 'something scholarly',
+        command_noun_phrase: g => 'something_scholaraly'
     },
 
     description_noun_phrase: 'your notes',
