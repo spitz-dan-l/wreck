@@ -30,7 +30,7 @@ export function get_facets(w: Venience, parent: Gist): Gists['facet'][] {
         throw new Error('Tried to look up gist '+gist_to_string(parent)+' without an entry in the knowledge base.');
     }
 
-    return entry.children.map((knowledge) => gist('facet', { knowledge }));
+    return [['facet', {knowledge: entry.key}], ...entry.children.map((knowledge) => gist('facet', { knowledge }))];
 }
 
 // render story for listing facets and their descriptions

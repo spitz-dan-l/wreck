@@ -6,7 +6,7 @@ import { createElement } from 'story';
 import { Action, ActionHandler, action_consume_spec, ACTION_HANDLER_FALLTHROUGH_STAGE } from "../action";
 import { get_facets } from '../facet';
 import { lock_and_brand, Puffers, Venience } from '../prelude';
-import { Exposition, INNER_ACTION_IDS } from "./inner_action";
+import { Exposition, INNER_ACTION_IDS, InnerActionID } from "./inner_action";
 
 // scrutinize
 Action({
@@ -19,8 +19,8 @@ Action({
     },
 
     memory_prompt_impls: {
-        noun_phrase: g => 'something focused',
-        command_noun_phrase: g => 'something_focused'
+        noun_phrase: () => 'something focused',
+        command_noun_phrase: () => 'something_focused'
     },
 
     description_noun_phrase: 'scrutiny',
@@ -57,8 +57,8 @@ Action({
     },
 
     memory_prompt_impls: {
-        noun_phrase: g => 'something blasphemous',
-        command_noun_phrase: g => 'something_blasphemous'
+        noun_phrase: () => 'something blasphemous',
+        command_noun_phrase: () => 'something_blasphemous'
     },
 
     description_noun_phrase: 'the Hammer',
@@ -97,8 +97,8 @@ Action({
     },
 
     memory_prompt_impls: {
-        noun_phrase: g => 'something generous',
-        command_noun_phrase: g => 'something_generous'
+        noun_phrase: () => 'something generous',
+        command_noun_phrase: () => 'something_generous'
     },
 
     description_noun_phrase: 'the Volunteer',
@@ -130,38 +130,20 @@ ActionHandler(['volunteer'],
 // Hence
 Puffers(lock_and_brand('Metaphor', {
     handle_command: (world, parser) => {
+        if (world.current_interpretation === undefined) {
+            return parser.eliminate();
+        }
         const interp_world = find_historical(world, w => w.index === world.current_interpretation!)!;
         const observable_facets = get_facets(world, interp_world.gist!)
         
         const threads: ParserThread<Venience>[] = [];
-        // for_each_entries(INNER_ACTION_IDS, ([action]) => {
-        //     if (!world.has_acquired.get(action)) {
-        //         return;
-        //         //continue;
-        //     }
-        //     for (const facet of observable_facets) {
-        //         threads.push(() => {
-        //             // const action_gist = gist(action, { facet });
-        //             const action_gist = gist([action, { facet }] as {
-        //                 [T in typeof action]: GistDSL[T]
-        //             }[typeof action]);
-        //             return (
-        //                 parser.consume(action_consume_spec(action_gist, world), () =>
-        //                 parser.submit(() =>
-        //                 update(world, {
-        //                     gist: () => action_gist
-        //                 })))
-        //             );
-        //         })
-        //     }
-        // });
         for (const action of keys(INNER_ACTION_IDS)) {
             if (!world.has_acquired.get(action)) {
                 continue;
             }
             for (const facet of observable_facets) {
                 threads.push(() => {
-                    const action_gist = [action, { facet }] as Gists[typeof action];
+                    const action_gist = gist(action, { facet });
                     return (
                         parser.consume(
                             action_consume_spec(action_gist, world), () =>

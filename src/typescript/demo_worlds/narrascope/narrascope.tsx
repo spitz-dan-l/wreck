@@ -1,17 +1,20 @@
-import { createElement, story_updater, Updates as S } from '../../story';
-import { gist, gists_equal, GistRenderer, ValidTags, match } from 'gist';
-import { make_puffer_world_spec } from '../../puffer';
-import { is_simulated } from '../../supervenience';
-import { cond, included, update, map } from '../../lib/utils';
-import { get_initial_world, WorldSpec, world_driver } from '../../world';
-import { Action, ActionHandler } from './action';
-import { Puffers, resource_registry, Venience } from './prelude';
-import { find_world_at } from './supervenience_spec';
-import { Topic } from './consider';
-import { make_memory_available } from './remember'
+import { gist, GistRenderer, ValidTags } from 'gist';
 // import { Memories } from './memory';
 // import { add_to_notes } from './notes';
-import { Seal } from '../../lib/static_resources';
+import { Seal, StaticMap } from 'lib/static_resources';
+// import { is_simulated } from '../../supervenience';
+import { map, update } from 'lib/utils';
+import { make_puffer_world_spec } from 'puffer';
+import { createElement, story_updater, Updates as S } from 'story';
+import { get_initial_world, WorldSpec, world_driver } from 'world';
+
+import { resource_registry, Venience, StaticResources } from './prelude';
+import { ActionHandler } from './action';
+import { Topic } from './consider';
+import './contemplate';
+
+import { make_memory_available } from './remember';
+import './notes';
 
 
 interface PuzzleState {
@@ -353,322 +356,326 @@ ActionHandler(['consider', { subject: ['your notebook'] }],
     }
 );
 
-const abtsm = gist('consider', { subject: ['Sam'] });
-// Big old hack but it'll do for now
-function about_sam(world: Venience) {
-    return world.gist !== null && gists_equal(world.gist, abtsm);
-}
 
-Facets({
-    name: "Sam's presence",
-    noun_phrase: "Sam's presence by your side.",
-    slug: 'sam',
-    noun_phrase_cmd: "Sam's_presence",
-    can_recognize: (w2, w1) =>
-        about_sam(w1) && !!w2.has_acquired.get('to attend'),
-    can_apply: (action) => true/*action.name === 'to attend'*/,
-    solved: w => w.has_chill,
-    handle_action: (action, world) => {
-        if (action.name === 'to attend') {
-            return update(world, {
-                has_chill: Symbol(),
-                story_updates: story_updater(
-                    Groups.name('interpretation_effects').stage(-1).push(
-                        Updates.has_gist('Sam').add(<div className="interp-sam affinity">
-                            ...Something is wrong.
-                        </div>)
-                    ),
-                    Updates.consequence(cond(!world.has_chill, () => <div>A chill comes over you.</div>)),
-                    Updates.description(<div>
-                        Something about Sam is <i>incorrect</i>.
-                        <br/>
-                        You can feel the discordance in your bones. It scares you.
-                    </div>)
-                )
-            });
-        } else {
-            // TODO: replace generic wrong msg with hint asking for more specifity
-            if (action.name === 'to scrutinize') {
-                return update(world, { story_updates: story_updater(Updates.consequence(<div>You'll need to be more specific about what to scrutinize.</div>)) })
-            }
-            return update(world, { story_updates: story_updater(Updates.consequence(action.get_wrong_msg('sam'))) });
-        }
-    }
-});
+Topic(<div gist={["your history with Sam"]}>
+    Good buds!
+</div>);
+// const abtsm = gist('consider', { subject: ['Sam'] });
+// // Big old hack but it'll do for now
+// function about_sam(world: Venience) {
+//     return world.gist !== undefined && gists_equal(world.gist, abtsm);
+// }
 
-Action({
-    id: 'to scrutinize',
-    noun: 'scrunity',
-    noun_cmd: 'scrutiny',
-    description: "The ability to unpack details and look beyond your initial assumptions.",
-    slug: 'scrutiny',
-    get_cmd: (facet) => ['scrutinize', facet],
-    get_wrong_msg: (facet) => <div>Despite your thorough scrutiny, {facet} remains unresolved.</div>
-})
+// Facets({
+//     name: "Sam's presence",
+//     noun_phrase: "Sam's presence by your side.",
+//     slug: 'sam',
+//     noun_phrase_cmd: "Sam's_presence",
+//     can_recognize: (w2, w1) =>
+//         about_sam(w1) && !!w2.has_acquired.get('to attend'),
+//     can_apply: (action) => true/*action.name === 'to attend'*/,
+//     solved: w => w.has_chill,
+//     handle_action: (action, world) => {
+//         if (action.name === 'to attend') {
+//             return update(world, {
+//                 has_chill: Symbol(),
+//                 story_updates: story_updater(
+//                     Groups.name('interpretation_effects').stage(-1).push(
+//                         Updates.has_gist('Sam').add(<div className="interp-sam affinity">
+//                             ...Something is wrong.
+//                         </div>)
+//                     ),
+//                     Updates.consequence(cond(!world.has_chill, () => <div>A chill comes over you.</div>)),
+//                     Updates.description(<div>
+//                         Something about Sam is <i>incorrect</i>.
+//                         <br/>
+//                         You can feel the discordance in your bones. It scares you.
+//                     </div>)
+//                 )
+//             });
+//         } else {
+//             // TODO: replace generic wrong msg with hint asking for more specifity
+//             if (action.name === 'to scrutinize') {
+//                 return update(world, { story_updates: story_updater(Updates.consequence(<div>You'll need to be more specific about what to scrutinize.</div>)) })
+//             }
+//             return update(world, { story_updates: story_updater(Updates.consequence(action.get_wrong_msg('sam'))) });
+//         }
+//     }
+// });
 
-Memories({
-    action: 'to scrutinize',
-    could_remember: world => !!world.has_chill,
-    description: () => <div className="memory-2">
-        "Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance."
-        <blockquote className="interp-memory-2">
-            She mentioned this while making a point about the intricacies of the <a target="_blank" href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">Observer Effect</a>.
-        </blockquote>
-    </div>
-});
+// Action({
+//     id: 'to scrutinize',
+//     noun: 'scrunity',
+//     noun_cmd: 'scrutiny',
+//     description: "The ability to unpack details and look beyond your initial assumptions.",
+//     slug: 'scrutiny',
+//     get_cmd: (facet) => ['scrutinize', facet],
+//     get_wrong_msg: (facet) => <div>Despite your thorough scrutiny, {facet} remains unresolved.</div>
+// })
 
-Facets({
-    name: "Sam's demeanor",
-    noun_phrase: "Sam's demeanor",
-    slug: 'sam-demeanor',
-    noun_phrase_cmd: "sam's_demeanor",
-    can_recognize: (w2, w1) =>
-        about_sam(w1) && !!w2.has_acquired.get('to scrutinize'),
-    can_apply: (action) => true/*action.name === 'to scrutinize'*/,
-    solved: w => w.has_recognized_something_wrong,
-    handle_action: (action, world) => {
-        if (action.name === 'to scrutinize') {
-            return update(world, {
-                has_recognized_something_wrong: Symbol(),
-                story_updates: story_updater(Updates.consequence(<div>
-                    You are struck by the alarming incongruence of his demeanor.
-                    <br/>
-                    The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.
-                </div>))
-            });
-        } else if (action.name === 'to attend') {
-            return update(world, {
-                story_updates: story_updater(Updates.consequence(`You notice nothing new about his demeanor.`))
-            });
-        } else {
-            return update(world, {
-                story_updates: story_updater(Updates.consequence(action.get_wrong_msg("sam's demeanor")))
-            });
-        }
-    }
-});
+// Memories({
+//     action: 'to scrutinize',
+//     could_remember: world => !!world.has_chill,
+//     description: () => <div className="memory-2">
+//         "Look beyond your initial impressions, my dear. Scrutinize. Concern yourself with nuance."
+//         <blockquote className="interp-memory-2">
+//             She mentioned this while making a point about the intricacies of the <a target="_blank" href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">Observer Effect</a>.
+//         </blockquote>
+//     </div>
+// });
 
-Action({
-    id: 'to hammer',
-    noun: 'the hammer',
-    noun_cmd: 'the_hammer',
-    description: "The act of dismantling one's own previously-held beliefs.",
-    slug: 'to-hammer',
-    get_cmd: (facet) => ['hammer_against the_foundations_of', facet],
-    get_wrong_msg: (facet) => `You find yourself unable to shake ${facet}, despite your efforts.`
-});
+// Facets({
+//     name: "Sam's demeanor",
+//     noun_phrase: "Sam's demeanor",
+//     slug: 'sam-demeanor',
+//     noun_phrase_cmd: "sam's_demeanor",
+//     can_recognize: (w2, w1) =>
+//         about_sam(w1) && !!w2.has_acquired.get('to scrutinize'),
+//     can_apply: (action) => true/*action.name === 'to scrutinize'*/,
+//     solved: w => w.has_recognized_something_wrong,
+//     handle_action: (action, world) => {
+//         if (action.name === 'to scrutinize') {
+//             return update(world, {
+//                 has_recognized_something_wrong: Symbol(),
+//                 story_updates: story_updater(Updates.consequence(<div>
+//                     You are struck by the alarming incongruence of his demeanor.
+//                     <br/>
+//                     The initial pleasant, mild impression, revealed upon further scrutiny to be a veneer, a mask, a lie.
+//                 </div>))
+//             });
+//         } else if (action.name === 'to attend') {
+//             return update(world, {
+//                 story_updates: story_updater(Updates.consequence(`You notice nothing new about his demeanor.`))
+//             });
+//         } else {
+//             return update(world, {
+//                 story_updates: story_updater(Updates.consequence(action.get_wrong_msg("sam's demeanor")))
+//             });
+//         }
+//     }
+// });
 
-Memories({
-    action: 'to hammer',
-    could_remember: world => !!world.has_recognized_something_wrong,
-    description: () => <div className="memory-3">
-        "Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble."
-        <blockquote className="interp-memory-3">
-            She always pushed you.
-            <br />
-            Katya was always one to revel in the overturning of wrong ideas.
-        </blockquote>
-    </div>
-});
+// Action({
+//     id: 'to hammer',
+//     noun: 'the hammer',
+//     noun_cmd: 'the_hammer',
+//     description: "The act of dismantling one's own previously-held beliefs.",
+//     slug: 'to-hammer',
+//     get_cmd: (facet) => ['hammer_against the_foundations_of', facet],
+//     get_wrong_msg: (facet) => `You find yourself unable to shake ${facet}, despite your efforts.`
+// });
 
-Facets({
-    name: 'your friendship with Sam',
-    slug: 'friendship-sam',
-    noun_phrase_cmd: 'my_friendship_with_sam',
-    noun_phrase: 'Your friendship with Sam.',
+// Memories({
+//     action: 'to hammer',
+//     could_remember: world => !!world.has_recognized_something_wrong,
+//     description: () => <div className="memory-3">
+//         "Take a hammer to your assumptions, my dear. If they are ill-founded, let them crumble."
+//         <blockquote className="interp-memory-3">
+//             She always pushed you.
+//             <br />
+//             Katya was always one to revel in the overturning of wrong ideas.
+//         </blockquote>
+//     </div>
+// });
 
-    can_recognize: (w2, w1) =>
-        about_sam(w1) && !!w2.has_acquired.get('to hammer'),
-    can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
-    solved: w => w.is_curious_about_history,
-    handle_action: (action, world) => {
-        if (action.id === 'to hammer') {
-            return update(world, { 
-                story_updates: story_updater(
-                    Updates.action([`You ask yourself a hard question: `, <i>Is Sam really your friend?</i>]),
-                    Updates.consequence("You realize you don't know anymore."),
-                    Updates.prompt("You'll have to <strong>consider your history</strong>.")
-                ),
-                is_curious_about_history: Symbol()
-            }
-            );
-        }
-        return world;
-    }
+// Facets({
+//     name: 'your friendship with Sam',
+//     slug: 'friendship-sam',
+//     noun_phrase_cmd: 'my_friendship_with_sam',
+//     noun_phrase: 'Your friendship with Sam.',
 
-});
+//     can_recognize: (w2, w1) =>
+//         about_sam(w1) && !!w2.has_acquired.get('to hammer'),
+//     can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
+//     solved: w => w.is_curious_about_history,
+//     handle_action: (action, world) => {
+//         if (action.id === 'to hammer') {
+//             return update(world, { 
+//                 story_updates: story_updater(
+//                     Updates.action([`You ask yourself a hard question: `, <i>Is Sam really your friend?</i>]),
+//                     Updates.consequence("You realize you don't know anymore."),
+//                     Updates.prompt("You'll have to <strong>consider your history</strong>.")
+//                 ),
+//                 is_curious_about_history: Symbol()
+//             }
+//             );
+//         }
+//         return world;
+//     }
 
-Topics({
-    name: 'your history with Sam',
-    cmd: 'my_history_with_Sam',
-    can_consider: (w) => !!w.is_curious_about_history,
-    message: () => Updates.description(<div>
-        You've known Sam since you both arrived in Boston about 10 years ago.
-        <br/>
-        You were studying under Katya, and he was doing agricultural engineering a few buildings over.
-        <div className="falling-out">
-            At some point along the way, you drifted apart.
-            <blockquote className="interp-falling-out culpability">
-                It wasn't mutual. It was <i>you</i>.
-                <blockquote className="interp-culpability">
-                    After Katya left, you turned inward. Closed off.
-                    <br/>
-                    You stopped being curious about people like Sam.
-                </blockquote>
-            </blockquote>
-        </div>
-    </div>),
-    reconsider: (w2, w1) => {
-        if (!w2.has_unpacked_culpability) {
-            return true;
-        }
-        return false;
-    }
-});
+// });
 
-GistRenderer('your history with Sam', {
-    noun_phrase: {
-        order: 'TopDown',
-        impl: () => 'your history with Sam'
-    },
-    command_noun_phrase: {
-        order: 'TopDown',
-        impl: () => 'my_history_with_sam'
-    }
-});
+// Topics({
+//     name: 'your history with Sam',
+//     cmd: 'my_history_with_Sam',
+//     can_consider: (w) => !!w.is_curious_about_history,
+//     message: () => Updates.description(<div>
+//         You've known Sam since you both arrived in Boston about 10 years ago.
+//         <br/>
+//         You were studying under Katya, and he was doing agricultural engineering a few buildings over.
+//         <div className="falling-out">
+//             At some point along the way, you drifted apart.
+//             <blockquote className="interp-falling-out culpability">
+//                 It wasn't mutual. It was <i>you</i>.
+//                 <blockquote className="interp-culpability">
+//                     After Katya left, you turned inward. Closed off.
+//                     <br/>
+//                     You stopped being curious about people like Sam.
+//                 </blockquote>
+//             </blockquote>
+//         </div>
+//     </div>),
+//     reconsider: (w2, w1) => {
+//         if (!w2.has_unpacked_culpability) {
+//             return true;
+//         }
+//         return false;
+//     }
+// });
 
-function is_about_history(w: Venience) {
-    return w.gist !== null && gists_equal(w.gist, gist('impression', { subject: 'your history with Sam'}));
-}
+// GistRenderer('your history with Sam', {
+//     noun_phrase: {
+//         order: 'TopDown',
+//         impl: () => 'your history with Sam'
+//     },
+//     command_noun_phrase: {
+//         order: 'TopDown',
+//         impl: () => 'my_history_with_sam'
+//     }
+// });
 
-Facets({
-    name: 'your drifting apart',
-    slug: 'falling-out',
-    noun_phrase_cmd: 'our_drifting_apart',
-    noun_phrase: 'Your drifting apart.',
+// function is_about_history(w: Venience) {
+//     return w.gist !== null && gists_equal(w.gist, gist('impression', { subject: 'your history with Sam'}));
+// }
 
-    can_recognize: (w2, w1) => is_about_history(w1),
-    can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
-    solved: w => w.has_admitted_negligence,
-    handle_action: (action, world) => {
-        if (action.name === 'to hammer') {
-            return update(world, {
-                has_admitted_negligence: Symbol(),
-                story_updates: story_updater(Updates.consequence(<div>
-                    You force yourself to look the truth in the eye: <i>You</i> bowed out of the friendship.
-                    <br/>
-                    There was nothing mutual about it. You sidelined him without explanation.
-                </div>))
-            });
-        }
-        return world;
-    }
-});
+// Facets({
+//     name: 'your drifting apart',
+//     slug: 'falling-out',
+//     noun_phrase_cmd: 'our_drifting_apart',
+//     noun_phrase: 'Your drifting apart.',
 
-Facets({
-    name: 'your culpability',
-    slug: 'culpability',
-    noun_phrase_cmd: 'my_culpability',
-    noun_phrase: 'Your culpability.',
+//     can_recognize: (w2, w1) => is_about_history(w1),
+//     can_apply: (action) => true/*included(action.name, ['to hammer'])*/,
+//     solved: w => w.has_admitted_negligence,
+//     handle_action: (action, world) => {
+//         if (action.name === 'to hammer') {
+//             return update(world, {
+//                 has_admitted_negligence: Symbol(),
+//                 story_updates: story_updater(Updates.consequence(<div>
+//                     You force yourself to look the truth in the eye: <i>You</i> bowed out of the friendship.
+//                     <br/>
+//                     There was nothing mutual about it. You sidelined him without explanation.
+//                 </div>))
+//             });
+//         }
+//         return world;
+//     }
+// });
 
-    can_recognize: (w2, w1) => is_about_history(w1) && !!w2.has_admitted_negligence,
-    can_apply: (action) => true/*included(action.name, ['to scrutinize'])*/,
-    solved: w => w.has_unpacked_culpability,
-    handle_action: (action, world) => {
-        if (action.id === 'to scrutinize') {
-            return update(world, {
-                has_unpacked_culpability: Symbol(),
-                story_updates: story_updater(Updates.consequence(<div>
-                    There's no doubt you did it out of self-preservation.
-                    <br/>
-                    There's also no doubt he deserved better.
-                    <br/>
-                    You wince at the guilt.
-                </div>))
-            });
-        }
-        return world;
-    }
-});
+// Facets({
+//     name: 'your culpability',
+//     slug: 'culpability',
+//     noun_phrase_cmd: 'my_culpability',
+//     noun_phrase: 'Your culpability.',
 
-Action({
-    id: 'to volunteer',
-    noun: 'the volunteer',
-    noun_cmd: 'the_volunteer',
-    description: "The offering of an active intervention in the world, to change it for the better.",
-    slug: 'volunteer',
-    get_cmd: (facet) => ['volunteer to_foster', facet],
-    get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains concerning.`
-})
+//     can_recognize: (w2, w1) => is_about_history(w1) && !!w2.has_admitted_negligence,
+//     can_apply: (action) => true/*included(action.name, ['to scrutinize'])*/,
+//     solved: w => w.has_unpacked_culpability,
+//     handle_action: (action, world) => {
+//         if (action.id === 'to scrutinize') {
+//             return update(world, {
+//                 has_unpacked_culpability: Symbol(),
+//                 story_updates: story_updater(Updates.consequence(<div>
+//                     There's no doubt you did it out of self-preservation.
+//                     <br/>
+//                     There's also no doubt he deserved better.
+//                     <br/>
+//                     You wince at the guilt.
+//                 </div>))
+//             });
+//         }
+//         return world;
+//     }
+// });
 
-Memories({
-    action: 'to volunteer',
-    could_remember: world => !!world.has_unpacked_culpability,
-    description: () => <div className="memory-4">
-        "Do more than merely receive and respond, my dear. We must participate, as best as we can. We must volunteer ourselves to the world."
-        <blockquote className="interp-memory-4">
-            This is one of the last things she said to you, before she left.
-        </blockquote>
-    </div>
-});
+// Action({
+//     id: 'to volunteer',
+//     noun: 'the volunteer',
+//     noun_cmd: 'the_volunteer',
+//     description: "The offering of an active intervention in the world, to change it for the better.",
+//     slug: 'volunteer',
+//     get_cmd: (facet) => ['volunteer to_foster', facet],
+//     get_wrong_msg: (facet) => `Despite your thorough scrutiny, ${facet} remains concerning.`
+// })
 
-Facets({
-    name: 'the old affinity',
-    slug: 'affinity',
-    noun_phrase_cmd: 'the_old_affinity',
-    noun_phrase: 'The old affinity you once had for each other.',
+// Memories({
+//     action: 'to volunteer',
+//     could_remember: world => !!world.has_unpacked_culpability,
+//     description: () => <div className="memory-4">
+//         "Do more than merely receive and respond, my dear. We must participate, as best as we can. We must volunteer ourselves to the world."
+//         <blockquote className="interp-memory-4">
+//             This is one of the last things she said to you, before she left.
+//         </blockquote>
+//     </div>
+// });
 
-    can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to volunteer'),
-    can_apply: (action) => true/*included(action.name, ['to volunteer'])*/,
-    solved: w => w.has_volunteered,
-    handle_action: (action, world) => {
-        if (action.id === 'to volunteer') {
-            return update(world, {
-                has_volunteered: Symbol(),
-                story_updates: story_updater(Updates.consequence(`
-                    You turn in your seat, and look him in the eyes, and say,`))
-            });
-        }
-        return world;
-    }
-});
+// Facets({
+//     name: 'the old affinity',
+//     slug: 'affinity',
+//     noun_phrase_cmd: 'the_old_affinity',
+//     noun_phrase: 'The old affinity you once had for each other.',
 
-let global_lock = resource_registry.get('global_lock', false);
-let outro_lock = global_lock('Outro');
+//     can_recognize: (w2, w1) => about_sam(w1) && !!w2.has_acquired.get('to volunteer'),
+//     can_apply: (action) => true/*included(action.name, ['to volunteer'])*/,
+//     solved: w => w.has_volunteered,
+//     handle_action: (action, world) => {
+//         if (action.id === 'to volunteer') {
+//             return update(world, {
+//                 has_volunteered: Symbol(),
+//                 story_updates: story_updater(Updates.consequence(`
+//                     You turn in your seat, and look him in the eyes, and say,`))
+//             });
+//         }
+//         return world;
+//     }
+// });
 
-Puffers({
-    role_brand: true,
-    pre: world => {
-        if (world.has_volunteered) {
-            return update(world, w => outro_lock.lock(w));
-        }
-        return world;
-    },
+// let global_lock = resource_registry.get('global_lock', false);
+// let outro_lock = global_lock('Outro');
 
-    handle_command: (world, parser) => {
-            if (!world.has_volunteered || world.end) {
-                return parser.eliminate();
-            }
+// Puffers({
+//     role_brand: true,
+//     pre: world => {
+//         if (world.has_volunteered) {
+//             return update(world, w => outro_lock.lock(w));
+//         }
+//         return world;
+//     },
 
-            return parser.consume('How are you, Sam?',
-                () => parser.submit(
-                    () => update(world, {
-                        end: true,
-                        story_updates: story_updater(Updates.consequence(<div>
-                            <div className="interp">
-                                VENIENCE WORLD
-                            </div>
-                            A work of <span className="blue">interactive fiction</span>
-                            <br/>
-                            by <div className="interp-inline">Daniel Spitz</div>
-                            <br/><br/>
-                            Thank you for playing the demo!
-                        </div>))
-                    })
-                )
-            );
-    }
-});
+//     handle_command: (world, parser) => {
+//             if (!world.has_volunteered || world.end) {
+//                 return parser.eliminate();
+//             }
+
+//             return parser.consume('How are you, Sam?',
+//                 () => parser.submit(
+//                     () => update(world, {
+//                         end: true,
+//                         story_updates: story_updater(Updates.consequence(<div>
+//                             <div className="interp">
+//                                 VENIENCE WORLD
+//                             </div>
+//                             A work of <span className="blue">interactive fiction</span>
+//                             <br/>
+//                             by <div className="interp-inline">Daniel Spitz</div>
+//                             <br/><br/>
+//                             Thank you for playing the demo!
+//                         </div>))
+//                     })
+//                 )
+//             );
+//     }
+// });
 
 
 // Test command to beat the whole demo
@@ -693,6 +700,7 @@ Puffers({
 
 export { Venience } from './prelude';
 
+resource_registry.get_resource('gist_renderer_dispatchers')[Seal]();
 resource_registry.get_resource('initial_world_knowledge')[Seal]();
 
 let initial_venience_world: Venience = {
@@ -701,13 +709,13 @@ let initial_venience_world: Venience = {
     ...resource_registry.get('initial_world_metaphor', false),
     ...resource_registry.get('initial_world_consider', false),
     ...resource_registry.get('initial_world_narrascope', false),
-    ...resource_registry.get('initial_world_memory', false)
+    ...resource_registry.get('initial_world_memories', false)
 };
 
 
 initial_venience_world = update(initial_venience_world, {
     story_updates: story_updater(S.description(
-        init_knowledge.get().get('the present moment')!)
+        init_knowledge.get().get(['the present moment'])!)
     )
 });
 

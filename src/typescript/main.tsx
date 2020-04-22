@@ -2,8 +2,8 @@
 // import { new_bird_world as new_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
-// import { new_venience_world as new_world } from './demo_worlds/narrascope';
-import { new_world } from './demo_worlds/sam';
+import { new_venience_world as new_world } from './demo_worlds/narrascope';
+// import { new_world } from './demo_worlds/sam';
 import { AppState, initialize_app, new_animation_state } from './UI';
 
 console.time('world_build');
@@ -39,7 +39,7 @@ const initial_state: AppState = {
     undo_selected: false,
     command_result: initial_result,
     updater: update,
-    animation_state: new_animation_state(initial_result.world, null)
+    animation_state: new_animation_state(initial_result.world, undefined)
 };
 
 document.getElementById('terminal')!.appendChild(initialize_app(initial_state));

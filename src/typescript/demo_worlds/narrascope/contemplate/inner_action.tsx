@@ -2,9 +2,9 @@ import { Gists, Gist } from "gist";
 import { Updates as S, StoryNode, UpdatesBuilder, StoryUpdaterSpec, story_updater } from "../../../story";
 import { Knowledge } from "../../../knowledge";
 import { Venience, resource_registry } from "../prelude";
-import { update, if_not_null, if_not_null_array, if_array } from "../../../lib";
+import { update, if_not_null, if_not_null_array, if_array } from "lib/utils";
 import { misinterpret_facet_class, interpret_facet_class, would_interpret_facet_class, cite_facet_class, would_cite_facet_class } from "../styles";
-import { StaticNameIndex } from "lib/static_resources";
+import { StaticNameIndex, Seal } from "lib/static_resources";
 
 
 interface StaticInnerActionGistTypes {
@@ -23,6 +23,10 @@ export const INNER_ACTION_IDS: StaticNameIndex<InnerActionID> = {
 
 declare module '../prelude' {
     export interface StaticActionGistTypes extends StaticInnerActionGistTypes {
+    }
+
+    export interface StaticResources {
+        exposition_func: typeof Exposition;
     }
 }
 
@@ -60,6 +64,9 @@ export function Exposition(exposition: Exposition) {
         );
     }
 }
+
+resource_registry.initialize('exposition_func', Exposition);
+resource_registry.get_resource('exposition_func')[Seal]();
 
 declare module '../../../story/update/update_group' {
     interface StoryUpdateGroups {

@@ -1,1 +1,1 @@
-export * from 'knowledge/knowledge2';
+export * from 'knowledge/knowledge';

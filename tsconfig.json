@@ -5,7 +5,7 @@
         "noImplicitAny": true,
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "module": "commonjs",
+        "module": "CommonJS",
         "target": "es2017",
         "lib": ["esnext", "dom"],
         "jsx": "react",
@@ -20,35 +20,13 @@
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
         "noImplicitThis": true,
-        "baseUrl": "src/typescript",
-        // "paths": {
-        //     "gist": [ "gist" ]
-        // }
+        "baseUrl": "src/typescript"
     },
     "include": [
-        // "./src/typescript/main.tsx",
-        // "./src/typescript/demo_worlds/sam.tsx",
-        // "./src/typescript/type_predicate_utils.ts",
         "./src/typescript/main.tsx",
         "./src/typescript/gist",
         "src/typescript/knowledge",
-        // "src/typescript/scratch.ts",
-        // "./src/typescript/pattern_matching2.ts"
-        // "./src/typescript",
-        // "./src/typescript/main.tsx"
-        "./src/tests",
-        // "./src/typescript/demo_worlds/demo_worlds/sam.tsx",
-        // "./src/typescript/lib/adt_utils.ts",
-        // "./src/typescript/*",
-        // "./src/typescript/UI/**/*",
-        // "./src/typescript/story/update/slow_boy.ts",
-        // "./src/typescript/story/**/*",
-        // "./src/typescript/demo_worlds/bird_world.tsx"
-        
+        "./src/typescript/tests"
     ],
-    "exclude": [
-        // "./src/tests",
-        // "./src/tests/*",
-        // "./src/tests/**"
-    ]
+    "exclude": []
 }

@@ -1,5 +1,5 @@
 import { bottom_up, Gist, gist, render_gist, ValidTags, Gists, GistRenderer } from "gist";
-import { append, map, update } from 'lib';
+import { append, map, update } from 'lib/utils';
 import { createElement, story_updater, Updates as S } from 'story';
 import { Action, ActionHandler, action_consume_spec } from "./action";
 import { resource_registry, Venience } from './prelude';

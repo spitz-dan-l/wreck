@@ -5,7 +5,7 @@ import { Effects } from "../../lib/effect_utils";
 
 import { update, append, map_values } from "../../lib/utils";
 import { ParametersFor } from "../../lib/dsl_utils";
-import { Gist, gist_to_string, GistConstructor, gist } from "../../gist";
+import { Gist, gist_to_string, gist } from "../../gist";
 
 export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | Fragment[]
 
@@ -18,7 +18,7 @@ export interface StoryOps {
     replace_children: (replacement: Fragment[]) => StoryOp;
     // TODO: replace_children
     insert_after: (siblings: Fragment | Fragment[], no_animate?: boolean) => StoryOp;
-    set_gist: (gist: GistConstructor) => StoryOp;
+    set_gist: (gist: Gist) => StoryOp;
 }
 
 export type CSSUpdates = {
@@ -184,14 +184,13 @@ export const StoryOps: StoryOps = {
         if (!is_story_node(elt)) {
             throw new Error('Tried to update the gist on a non-story-node element.');
         }
-        const gist_ = gist(gist_param);
         if (effects) {
             effects.push(dom => {
-                (dom as HTMLElement).dataset.gist = gist_to_string(gist_);
+                (dom as HTMLElement).dataset.gist = gist_to_string(gist_param);
             });
         }
         return update(elt, {
-            data: { gist: () => gist_ }
+            data: { gist: () => gist_param }
         })
     }
 }

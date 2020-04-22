@@ -7,6 +7,7 @@ import { UndoButton } from "./undo_button";
 import { InputPrompt } from './input_prompt';
 import { Typeahead } from './typeahead';
 import { History } from './history';
+import { Seal } from 'lib/static_resources';
 
 export const ui = make_ui((state, old?) => App(state, old), app_reducer);
 export const initialize_app = ui.initialize
@@ -15,7 +16,7 @@ ui_resources.initialize('initialize', ui.initialize)
 ui_resources.initialize('dispatch', ui.dispatch);
 ui_resources.initialize('effect', ui.effect);
 ui_resources.initialize('effect_promise', ui.effect_promise);
-ui_resources.seal();
+ui_resources[Seal]();
 
 const dispatch = ui.dispatch;
 

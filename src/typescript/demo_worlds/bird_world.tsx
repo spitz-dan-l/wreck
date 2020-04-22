@@ -1,7 +1,7 @@
 import { failed } from '../parser';
 import { createElement, story_updater, StoryQueryIndex, Groups, Updates } from '../story';
 import { random_choice } from '../lib/text_utils';
-import { update } from '../lib';
+import { update } from '../lib/utils';
 import { CommandHandler, get_initial_world, make_world_spec, Narrator, World, world_driver } from '../world';
 import { indices_where } from '../history';
 

@@ -32,7 +32,7 @@ declare module './prelude' {
 }
 
 resource_registry.initialize('initial_world_consider', {
-    can_consider: new GistAssoc([
+    can_consider: new GistAssoc<boolean, TopicID>([
         { key: gist('the present moment'), value: true },
         { key: gist('Sam'), value: true },
         { key: gist('yourself'), value: true },

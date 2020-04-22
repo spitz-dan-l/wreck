@@ -1,11 +1,13 @@
-import { Gist, GistPattern, Gists, gist_matches, ValidTags, InferPatternTags, gist_to_string, GistConstructor, gist } from './gist';
-import { StaticIndex, StaticNameIndexFor, StaticMap } from '../lib/static_resources';
-import { map_values, keys, values, entries } from '../lib/utils';
-import { ConsumeSpec } from '../parser';
+import { Gist, Gists, gist_to_string, gist, FilledGists } from './gist';
+import { StaticIndex, StaticNameIndexFor, StaticMap } from 'lib/static_resources';
+import { map_values, keys, values, entries } from 'lib/utils';
+import { ConsumeSpec } from 'parser';
 import { GistPatternDispatcher } from './dispatch';
+import { ValidTags } from './static_gist_types';
+import { GistPattern, PositiveMatchResult } from './pattern';
 
 type GistRenderFunction<OutType> =
-    (gist: GistConstructor) => OutType;
+    (gist: Gist) => OutType;
 
 type GistRendererType = {
     noun_phrase: string,
@@ -40,14 +42,14 @@ export type RenderImpls = {
 }
 
 export type RenderImplsForPattern<Pat extends GistPattern> = {
-    [K in keyof GistRendererType]?: (g: Gists[InferPatternTags<Pat>]) => GistRendererType[K]
+    [K in keyof GistRendererType]?: (g: PositiveMatchResult<Pat>) => GistRendererType[K]
 }
 
 export function GistRenderer<Pat extends GistPattern>(pattern: Pat, impls: RenderImplsForPattern<Pat>, stage?: number): void;
 export function GistRenderer(pattern: GistPattern, impls: RenderImpls, stage: number=0): void {
     for (const [k, v] of entries(impls)) {
         if (v !== undefined) {
-            (GIST_RENDERER_DISPATCHERS.get(k, false).add_rule as any)(pattern, v, 0);
+            (GIST_RENDERER_DISPATCHERS.get(k, false).add_rule as any)(pattern, v, stage);
         }
     }
 }
@@ -55,10 +57,9 @@ export function GistRenderer(pattern: GistPattern, impls: RenderImpls, stage: nu
 export const render_gist: GistRenderMethods =
     map_values(STATIC_GIST_RENDERER_NAMES,
         (_, method_name) =>
-            ((g: GistConstructor) => {
-                const gi = gist(g);   
+            ((g: Gist) => {
                 const dispatcher = GIST_RENDERER_DISPATCHERS.get(method_name);
-                return dispatcher.dispatch(gi);
+                return dispatcher.dispatch(g);
             }) as GistRenderMethods[typeof method_name]);
 
 
@@ -79,21 +80,39 @@ export const render_gist: GistRenderMethods =
 //         }
 // }
 
-export function bottom_up<G extends Gist, R>(
-    g: G,
-    f: (
-        tag: G['tag'],
-        children: {[CK in keyof G['children']]: R},
-        parameters: G['parameters']
-    ) => R,
-    render_child: (g: Gist) => R
-): R {
-    return f(
-        g.tag,
-        map_values(g.children, (c) => render_child(c)),
-        g.parameters
-    )
+// export function bottom_up<G extends Gist, R>(
+//     g: Extract<Gist, G>,
+//     f: (
+//         tag: G[0],
+//         children: {[CK in keyof G[1]]: R},
+//         parameters: G[2]
+//     ) => R,
+//     render_child: (g: Gist) => R
+// ): R {
+//     return f(
+//         g[0],
+//         map_values(g[1], (c) => render_child(c)),
+//         g[2]
+//     )
+// }
+
+export function bottom_up<G extends Gist>(g: G): <R>(
+        f: (
+            tag: G[0],
+            children: {[CK in keyof FilledGists[G[0]][1]]: R | (undefined extends FilledGists[G[0]][1][CK] ? undefined : never)},
+            parameters: G[2]
+        ) => R,
+        render_child: (g: Gist) => R
+    ) => R {
+    return function (f, render_child) {
+        return f(
+            g[0],
+            map_values(g[1] ?? {}, (c) => render_child(c)),
+            g[2]
+        )
+    };
 }
+
 
 // export function GistRenderer<PatternTags extends ValidTags>(pattern: GistPattern<PatternTags>, method_impls: GistRenderMethodsImpl<PatternTags>): GistRendererRule<PatternTags>;
 // export function GistRenderer<Pat extends GistPattern, PatternTags extends InferPatternTags<Pat>>(pattern: Pat, method_impls: GistRenderMethodsImpl<PatternTags>): GistRendererRule<PatternTags>;
@@ -144,21 +163,24 @@ export function bottom_up<G extends Gist, R>(
 // the default renderer just prints out the gist tag.
 GistRenderer(undefined, {
     noun_phrase: (g) => {
-        if (Object.keys(g.children).length === 0 && Object.keys(g.parameters).length === 0) {
+        const [tag, children, parameters] = [g[0], g[1], g[2]];
+        if (Object.keys(children ?? {}).length === 0 && Object.keys(parameters ?? {}).length === 0) {
             throw new Error(`No noun_phrase renderer matched a compound gist: ${gist_to_string(g)}`);
         }
-        return g.tag
+        return tag
     },
     command_noun_phrase: (g) => {
-        if (Object.keys(g.children).length === 0 && Object.keys(g.parameters).length === 0) {
+        const [tag, children, parameters] = [g[0], g[1], g[2]];
+        if (Object.keys(children ?? {}).length === 0 && Object.keys(parameters ?? {}).length === 0) {
             throw new Error(`No command_noun_phrase renderer matched a compound gist: ${gist_to_string(g)}`);
         }
-        return g.tag.replace(' ', '_');
+        return tag.replace(' ', '_');
     },
     command_verb_phrase: (g) => {
         throw new Error(`No command_verb_phrase renderer matched a gist. (Verb phrases don't have default behavior even for atomic gists.) Gist: ${gist_to_string(g)}`);
     }
 }, 5);
+
 
 // export const render_gist: GistRenderMethods =
 //     map_values(STATIC_GIST_RENDERER_NAMES,

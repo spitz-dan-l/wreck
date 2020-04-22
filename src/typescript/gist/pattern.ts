@@ -1,8 +1,7 @@
 import { Tail, Tuple } from "Tuple/_api";
 import { ValidTags, Atom } from "./static_gist_types";
 import { Gists, Gist, GistStructure, FilledGists } from "./gist";
-import { values, entries } from "lib";
-import { Pos } from "Iteration/Pos";
+import { values, entries } from "lib/utils";
 
 type GistPatternStructure =
     | undefined
@@ -29,10 +28,10 @@ export type GistPattern<Tags extends ValidTags=ValidTags> =
     ;
 
 type GistPatternSingle = {
-    [Tag in ValidTags]: readonly [
-        Tag,
+    [Tag in ValidTags]: {
+        readonly 0: Tag,
         // children
-        { [CK in keyof FilledGists[Tag][1]]?:
+        readonly 1?: { [CK in keyof FilledGists[Tag][1]]?:
             FilledGists[Tag][1][CK] extends infer CKV ?
                 undefined extends CKV ?
                     GistPatternNullable<
@@ -42,12 +41,12 @@ type GistPatternSingle = {
                         CKV extends {0: ValidTags} ? CKV[0] : never
                     > :
                 never
-        }?,
+        },
         // parameters
-        (FilledGists[Tag][2] extends infer PS ? {
+        readonly 2?: (FilledGists[Tag][2] extends infer PS ? {
             [PK in keyof PS]?: PS[PK] | PS[PK][]
-        } : never)?
-    ]
+        } : never)
+    }
 };
 
 export const FIND_DEEP: unique symbol = Symbol('FIND_DEEP');
@@ -86,21 +85,21 @@ type _InferPatternTags<Pat> = (
 );
 
 export type _MatchResult<Pat> = (
-    Pat extends undefined ? Gist :
+    Pat extends undefined ? Gist | undefined :
     Pat extends {0: ValidTags | FIND_DEEP | EMPTY | UNION} ? (
         // "literal" pattern - just a gist structure with various things left out.
         & {
-            [T in ValidTags]: readonly [
-                T,
+            [T in ValidTags]: {
+                readonly 0: T,
                 // children
-                (Pat extends {1: object} ? {
+                readonly 1: (Pat extends {1: object} ? {
                     [CK in keyof Required<FilledGists[T][1]>]:
                         Pat extends {1: {[ck in CK]: any} } ?
-                            _MatchResult<Pat[1][CK]> ://Extract<FilledGists[T][1][CK], _MatchResult<Pat[1][CK]>> | {___hoit: FilledGists[T][1][CK], ___duggard: _MatchResult<Pat[1][CK]>} :
+                            Extract<_MatchResult<Pat[1][CK]>, FilledGists[T][1][CK]> ://| {___hoit: FilledGists[T][1][CK], ___duggard: _MatchResult<Pat[1][CK]>} :
                             FilledGists[T][1][CK] 
                 } : FilledGists[T][1]),
                 // parameters
-                (FilledGists[T][2] &
+                readonly 2: (FilledGists[T][2] &
                     (Pat extends {2: object} ? {
                         [PK in keyof Pat[2]]:
                             Pat[2][PK] extends unknown[] ?
@@ -108,14 +107,14 @@ export type _MatchResult<Pat> = (
                                 Pat[2][PK]
                     } : unknown)
                 )
-            ]
+            }
         }
         // special query patterns
         & { [K in EMPTY]: undefined }
         & { [K in FIND_DEEP]: Pat extends {1: any} ? _MatchResult<Pat[1]> : never }
         & { [K in UNION]: Pat extends Tuple ? (
             Tail<Pat> extends infer T ? (
-                T extends any[] ? {
+                [T] extends [any[]] ? {
                     [I in keyof T]: _MatchResult<T[I]>
                 }[number] : never
             ) : never 
@@ -125,7 +124,11 @@ export type _MatchResult<Pat> = (
 );
 
 export type MatchResult<Pat extends GistPatternNullable, PossibleTags extends ValidTags> =
+    false | Extract<_MatchResult<Pat>, {0: PossibleTags}>;
+
+export type MatchResultNullable<Pat extends GistPatternNullable, PossibleTags extends ValidTags> =
     false | Extract<_MatchResult<Pat>, undefined | {0: PossibleTags}>;
+
 
 export type PositiveMatchResult<Pat extends GistPattern, PossibleTags extends ValidTags=ValidTags> =
     Extract<_MatchResult<Pat>, {0: PossibleTags}>;
@@ -136,10 +139,33 @@ export function gist_pattern(pattern: GistPatternNullable): GistPatternNullable 
     return pattern;
 }
 
-const my_pat = gist_pattern([UNION, ['consider', {subject: ['Sam']}], [FIND_DEEP, ['Sam'], ['Sam']]]);
+/*
+declare const tag: 'scrutinize' | 'hammer';
+declare const tag2: 'Sam' | 'consider';
+// declare const facet1: Gists1['facet'];
+declare const facet2: Gists['facet'];
 
+const p1 = gist_pattern([tag])
+const p2: GistPattern<typeof tag> = [tag]
+
+const g1: Gists1[typeof tag] = [tag, { facet: facet2 }];
+const g2: Gists[typeof tag] = [tag, { facet: facet2 }]
+const g3: Gists[typeof tag2] = [tag2, { subject: ['Sam']}]
+
+const m1 = match(g2)(p1);
+if (m1 !== false) {
+    m1[1].facet
+}
+
+const m2 = match(facet2)(['facet', { knowledge: ['knowledge', { content: ['Sam']}] }])
+if (m2 !== false) {
+    m2[1].knowledge[1].content
+}
+
+const my_pat = gist_pattern([UNION, ['consider', {subject: ['Sam']}], [FIND_DEEP, ['Sam'], ['Sam']]]);
+*/
 export function match<Tags extends ValidTags>(g: Gist & {0: Tags}): <Pat extends GistPattern<Tags>>(pattern: Pat) => MatchResult<Pat, Tags>;
-export function match<Tags extends ValidTags>(g: (Gist & {0: Tags}) | undefined): <Pat extends GistPatternNullable<Tags>>(pattern: Pat) => MatchResult<Pat, Tags>;
+export function match<Tags extends ValidTags>(g: (Gist & {0: Tags}) | undefined): <Pat extends GistPatternNullable<Tags>>(pattern: Pat) => MatchResultNullable<Pat, Tags>;
 export function match(gist: Gist | undefined) {
     const _match: (gist: GistStructure | undefined) => (pattern: GistPatternStructure) => false | undefined | GistStructure = match as any;
     

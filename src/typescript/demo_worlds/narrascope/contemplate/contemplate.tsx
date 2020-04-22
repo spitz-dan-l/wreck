@@ -1,6 +1,6 @@
 import { gist, Gist, gists_equal, gist_to_string, render_gist, ValidTags, match, Gists, bottom_up } from "gist";
-import { history_array } from "history";
-import { update, keys, included } from "lib";
+import { history_array, find_index } from "history";
+import { update, keys, included } from "lib/utils";
 import { stages } from "lib/stages";
 import { Parser, ParserThread } from "parser";
 import { createElement, Hole, story_updater, Updates as S } from "story";
@@ -55,6 +55,33 @@ function begin_contemplation(world: Venience, parser: Parser) {
     return result
 }
 
+function list_facets(world: Venience) {
+    if (world.current_interpretation === undefined) {
+        throw new Error('Tried to list_facets while current_interpretation was undefined or the interpretted world had no gist.');
+    }
+
+    const interp_world = find_index(world, world.current_interpretation);
+
+    if (interp_world?.gist === undefined) {
+        throw new Error('Interpretted world could not be found or had no gist.');
+    }
+
+    const observable_facets = get_facets(world, interp_world.gist);
+
+    return update(world, {
+        story_updates: story_updater(
+            S.description(render_facet_list(observable_facets))
+        )
+    });
+
+}
+
+function make_list_facets_thread(world: Venience) {
+    return (parser: Parser) =>
+        parser.consume('facets', () =>
+        parser.submit(() =>
+        list_facets(world)))
+}
 
 function make_direct_thread(world: Venience, immediate_world: Venience | undefined): ParserThread<Venience> {
     return (parser) => {
@@ -65,8 +92,6 @@ function make_direct_thread(world: Venience, immediate_world: Venience | undefin
         parser.submit(() => {
 
         const index = immediate_world.index;
-
-        const observable_facets = get_facets(world, immediate_world.gist!);
 
         return update(world,
             w => metaphor_lock.lock(w, index),
@@ -89,10 +114,9 @@ function make_direct_thread(world: Venience, immediate_world: Venience | undefin
                     S.action(<div>
                         You contemplate {render_gist.noun_phrase(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
                     </div>),
-                    S.description(
-                        render_facet_list(observable_facets))
                 )
-            }
+            },
+            list_facets
         );
     }))};
 }
@@ -165,45 +189,33 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | undef
         });
 }
 
-function end_contemplation(world: Venience, parser: Parser) {
-    return parser.consume({
+function make_end_contemplation_thread(world: Venience) {
+    return (parser: Parser) => parser.consume({
         tokens: 'end_contemplation',
-        labels: {interp: true, filler: true}
-    }, () => parser.submit(() =>
-    update(world,
-        metaphor_lock.release,
-        {
-            story_updates: story_updater(
-                S.group_name('init_frame').apply(s => [
-                    s.story_hole().remove(),
-                    s.story_root().add(<Hole />)
-                ]),
-                S.map_worlds(world, (w, frame) =>
-                    frame.css({ [unfocused_class]: false })),
-                S.frame(world.current_interpretation!).apply(s => [
-                    s.css({
-                        [interpreting_class]: false
-                    }),
-                    s.would().css({
-                        [would_stop_interpreting_class]: true
-                    })
-                ]),
-                S.action('Your mind returns to a less focused state.')
-            ),
-            current_interpretation: undefined,
-            has_tried: _ => {
-                let result = _;
-
-                for (const action_gist of _.keys()) {
-                    if (included(action_gist[0], keys(INNER_ACTION_IDS))) {
-                        result = result.set(action_gist, false);
-                    }
+        labels: { interp: true, filler: true }
+    }, () => parser.submit(() => update(world, metaphor_lock.release, {
+        story_updates: story_updater(S.group_name('init_frame').apply(s => [
+            s.story_hole().remove(),
+            s.story_root().add(<Hole />)
+        ]), S.map_worlds(world, (w, frame) => frame.css({ [unfocused_class]: false })), S.frame(world.current_interpretation!).apply(s => [
+            s.css({
+                [interpreting_class]: false
+            }),
+            s.would().css({
+                [would_stop_interpreting_class]: true
+            })
+        ]), S.action('Your mind returns to a less focused state.')),
+        current_interpretation: undefined,
+        has_tried: _ => {
+            let result = _;
+            for (const action_gist of _.keys()) {
+                if (included(action_gist[0], keys(INNER_ACTION_IDS))) {
+                    result = result.set(action_gist, false);
                 }
-
-                return result;
             }
+            return result;
         }
-    )));
+    })))
 }
 
 Action({
@@ -247,7 +259,10 @@ Action({
                 if (world.current_interpretation === undefined) {
                     return begin_contemplation(world, parser);
                 } else {
-                    return end_contemplation(world, parser);
+                    return parser.split([
+                        make_list_facets_thread(world),
+                        make_end_contemplation_thread(world)
+                    ]);
                 }
             }]
         ),

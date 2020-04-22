@@ -1,14 +1,15 @@
-import './setup';
+// import './setup';
 import * as assert from 'assert';
 import 'mocha';
+import { deep_equal, included, array_last, drop_keys } from 'lib/utils';
+
 // import { new_hex_world, Hex } from '../typescript/demo_worlds/hex_port';
 // import { new_bird_world, BirdWorld } from '../typescript/demo_worlds/puffer_bird_world';
-import { gist_matches, GistPattern } from '../typescript/gist';
+import { match, GistPattern, UNION } from 'gist';
 
-import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope';
-import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, CommandFilter } from '../typescript/supervenience';
-import { find_index } from '../typescript/history';
-import { deep_equal, included, array_last, drop_keys } from '../typescript/lib';
+import { Venience, new_venience_world } from 'demo_worlds/narrascope';
+import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, CommandFilter } from 'supervenience';
+import { find_index } from 'history';
 
 const simulator_id = 'playtester';
 
@@ -67,15 +68,12 @@ describe('supervenience narrascope', () => {
     ]
 
 
-    const gist_pat: GistPattern = {
-        tag: 'impression',
-        children: {
-            subject: [
-                { tag: 'Sam'},
-                { tag: 'your history with Sam' }
-            ]
-        }
-    }
+    const gist_pat: GistPattern = ['consider', {
+        subject: [UNION,
+            ['Sam'],
+            ['your history with Sam']
+        ]
+    }];
     let space: NarrativeDimension<Venience>[] = [
         w => {
             if (w.owner !== 'Metaphor') {
@@ -87,12 +85,12 @@ describe('supervenience narrascope', () => {
             if (g === null) {
                 return null;
             }
-            if (gist_matches(g, gist_pat)) {
+            if (match(g)(gist_pat)) {
                 return g;
             }
             return null;
         },
-        w => w.has_considered,
+        w => w.has_tried,
         w => w.has_acquired,
         w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
     ];

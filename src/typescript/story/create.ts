@@ -3,6 +3,7 @@ import { gist, Gist } from 'gist';
 import { HTMLElementTags, MergeWithHTMLProps, remove_custom_props } from '../lib/jsx_utils';
 import { split_tokens } from '../lib/text_utils';
 import { DeepFragment, Fragment, StoryNode } from './story';
+import { flat_deep } from '../lib/utils';
 
 export namespace JSX {
     export type Element = Fragment;
@@ -76,7 +77,6 @@ export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithH
 }
 
 import JSX_ = JSX;
-import { flat_deep } from '../lib';
 export declare namespace createElement {
     export import JSX = JSX_;
 }

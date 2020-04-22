@@ -75,7 +75,8 @@ const static_resource_names: StaticNameIndexFor<StaticResources> = {
     'initial_world_narrascope': null,
     'venience_world_spec': null,
     'initial_world_consider': null,
-    'initial_world_memories': null
+    'initial_world_memories': null,
+    exposition_func: null
 }
 
 export const resource_registry = new StaticMap<StaticResources>(static_resource_names);
@@ -100,7 +101,7 @@ resource_registry.initialize('initial_world_prelude',
 const global_lock = resource_registry.initialize('global_lock',
     lock_builder<Venience, Owner>({
         owner: (w) => w.owner,
-        set_owner: (w, owner) => update(w, { owner} )
+        set_owner: (w, owner) => update(w, { owner } )
     })
 );
 

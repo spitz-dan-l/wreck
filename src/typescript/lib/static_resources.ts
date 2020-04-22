@@ -9,16 +9,21 @@ export type IsSealed = typeof IsSealed;
 export const Seal: unique symbol = Symbol('Seal');
 export type Seal = typeof Seal;
 
+export const OnSealed: unique symbol = Symbol('OnSealed');
+export type OnSealed = typeof OnSealed;
+
 export interface Sealable {
     [IsSealed](): boolean;
     [Seal](): void;
+    [OnSealed](callback: OnSealedCallback<this>): void;
+
 }
 
 function is_sealable(x: any): x is Sealable {
     return (IsSealed in x) && (Seal in x);
 }
 
-type OnSealCallback<T> = (x: T) => void;
+export type OnSealedCallback<T extends Sealable> = (x: T) => void;
 
 export class StaticResource<ValueType> implements Sealable {
     kind: 'StaticResource';
@@ -29,7 +34,7 @@ export class StaticResource<ValueType> implements Sealable {
     
     value: ValueType;
 
-    on_seal_callbacks: ((v: ValueType) => void)[] = [];
+    on_seal_callbacks: OnSealedCallback<this>[] = [];
 
     constructor(resource_name: string) {
         this.resource_name = resource_name;
@@ -38,6 +43,12 @@ export class StaticResource<ValueType> implements Sealable {
     assert_state<S extends StaticResourceState>(expected_state: S) {
         if (this.state !== expected_state) {
             throw new Error(`Assert failed: ${this.resource_name} was expected to have state ${expected_state}. Actual state: ${this.state}`);
+        }
+    }
+
+    assert_state_not<S extends StaticResourceState>(expected_state: S) {
+        if (this.state === expected_state) {
+            throw new Error(`Assert failed: ${this.resource_name} was expected not to have state ${expected_state}. Actual state: ${this.state}`);
         }
     }
 
@@ -63,9 +74,9 @@ export class StaticResource<ValueType> implements Sealable {
             this.value[Seal]();
         }
 
-        this.on_seal_callbacks.forEach(cb => cb(this.value));
-
         this.state = 'Sealed';
+
+        this.on_seal_callbacks.forEach(cb => cb(this));
     }
 
     get(assert_sealed=true): ValueType {
@@ -75,9 +86,13 @@ export class StaticResource<ValueType> implements Sealable {
         return this.value;
     }
 
-    on_seal(f: (v: ValueType) => void) {
+    [OnSealed](f: OnSealedCallback<this>) {
         this.on_seal_callbacks.push(f);
     }
+
+    // on_seal(f: (v: ValueType) => void) {
+    //     this.on_seal_callbacks.push(f);
+    // }
 }
 
 export type StaticNameIndex<Name extends keyof any> = { [K in Name]: unknown };
@@ -95,6 +110,8 @@ export type Mapper<T> = <K extends keyof T>(x: T[K]) => T[K];
 
 export class StaticMap<T extends {}> implements Sealable {
     kind: 'StaticResourceRegistry';
+
+    callbacks: OnSealedCallback<this>[] = [];
 
     sealed = false;
     resources: ResourcesFor<T>;
@@ -120,7 +137,7 @@ export class StaticMap<T extends {}> implements Sealable {
         return resource;
     }
 
-    initialize<K extends keyof T>(name: K, value: T[K], ...on_seal_callbacks: OnSealCallback<T[K]>[]): T[K] {
+    initialize<K extends keyof T>(name: K, value: T[K], ...on_seal_callbacks: OnSealedCallback<StaticResource<T[K]>>[]): T[K] {
         if (this.sealed) {
             throw new Error('Tried to create new resources on a sealed registry.');
         }
@@ -132,7 +149,7 @@ export class StaticMap<T extends {}> implements Sealable {
         let processed = this.mappers.reduce((acc, f) => f(acc), value);
         resource.initialize(processed);
         
-        on_seal_callbacks.forEach(cb => resource.on_seal(cb));
+        on_seal_callbacks.forEach(cb => resource[OnSealed](cb));
         
         return processed;
     }
@@ -145,7 +162,7 @@ export class StaticMap<T extends {}> implements Sealable {
         if (this[IsSealed]()) {
             throw new Error('Tried to reseal resource registry.');
         }
-        this.assert_contents_initialized();
+        this.assert_contents_not_uninitialized();
 
         Object.values(this.resources).forEach((r: StaticResource<any>) => {
             if (!r[IsSealed]()) {
@@ -154,11 +171,17 @@ export class StaticMap<T extends {}> implements Sealable {
         });
 
         this.sealed = true;
+
+        this.callbacks.forEach(cb => cb(this));
     }
 
-    assert_contents_initialized() {
+    [OnSealed](f: OnSealedCallback<this>) {
+        this.callbacks.push(f);
+    }
+
+    assert_contents_not_uninitialized() {
         Object.values(this.resources).forEach((r: StaticResource<any>) => {
-            r.assert_state('Initialized');
+            r.assert_state_not('Uninitialized');
         });
     }
 
@@ -169,7 +192,7 @@ export class StaticMap<T extends {}> implements Sealable {
         if (this.resources[name] === undefined) {
             throw new Error('Tried to get unrecognized resource: '+name);
         }
-        return (this.resources[name] as StaticResource<T[K]>).get()
+        return (this.resources[name] as StaticResource<T[K]>).get(assert_sealed)
     }
 
     get_resource<K extends keyof T>(name: K): StaticResource<T[K]> {
@@ -194,6 +217,7 @@ export class StaticIndex<T> implements Sealable {
     index: T[] = [];
     
     sealed = false;
+    callbacks: OnSealedCallback<this>[] = [];
 
     constructor(readonly mappers: ValueMapper<T>[]=[]) {
     }
@@ -241,6 +265,12 @@ export class StaticIndex<T> implements Sealable {
             throw new Error('Tried to reseal index.');
         }
         this.sealed = true;
+
+        this.callbacks.forEach(cb => cb(this));
+    }
+
+    [OnSealed](f: OnSealedCallback<this>) {
+        this.callbacks.push(f);
     }
 }
 

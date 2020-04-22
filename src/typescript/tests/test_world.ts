@@ -1,13 +1,13 @@
 
-import './setup';
+// import './setup';
 import * as assert from 'assert';
 import 'mocha';
-import { Venience, new_venience_world } from '../typescript/demo_worlds/narrascope';
+import { Venience, new_venience_world } from 'demo_worlds/narrascope';
 // import { new_bird_world, bird_world_spec } from '../typescript/demo_worlds/bird_world';
 // import { new_bird_world as new_puffer_bird_world, bird_world_spec as puffer_bird_world_spec } from '../typescript/demo_worlds/puffer_bird_world';
-import { raw, traverse_thread } from '../typescript/parser';
-import { make_update_thread, World } from '../typescript/world';
-import { structurally_equal, to_basic_text, apply_story_updates_all } from '../typescript/story';
+import { raw, traverse_thread } from 'parser';
+import { make_update_thread, World } from 'world';
+import { structurally_equal, to_basic_text, apply_story_updates_all } from 'story';
 
 describe('world', () => {
     // it('thingy', () => {

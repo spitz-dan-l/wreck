@@ -1,4 +1,6 @@
-import { GistPattern, gist_pattern, gist_matches } from 'gist';
+
+
+import { GistPattern, gist_pattern, match, UNION } from 'gist';
 import { find_index } from '../../history';
 import { CommandFilter, FutureSearchSpec, NarrativeDimension, NarrativeGoal, search_future } from '../../supervenience';
 import { update_thread_maker } from '../../world';
@@ -14,15 +16,12 @@ export const goals: NarrativeGoal<Venience>[] = [
     w => w.end
 ];
 
-const gist_pat: GistPattern = {
-    tag: 'consider',
-    children: {
-        subject: [
-            { tag: 'Sam'},
-            { tag: 'your history with Sam' }
-        ]
-    }
-};
+const gist_pat: GistPattern = ['consider', {
+    subject: [UNION,
+        ['Sam'],
+        ['your history with Sam']
+    ]
+}];
 
 export const space: NarrativeDimension<Venience>[] = [
     w => {
@@ -35,7 +34,7 @@ export const space: NarrativeDimension<Venience>[] = [
         if (g === undefined) {
             return undefined;
         }
-        if (gist_matches(g, gist_pat)) {
+        if (match(g)(gist_pat)) {
             return g;
         }
         return undefined;

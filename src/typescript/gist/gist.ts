@@ -1,401 +1,141 @@
-import { AsProperty, deep_equal, entries, key_union } from '../lib/utils';
-import { StaticGistTypes } from './static_gist_types';
+import { key_union } from "lib/utils";
+import { StaticGistTypes, ValidTags } from "./static_gist_types";
 
 
-/*
-    A gist is a composable structure that can be rendered into a noun phrase as a game command or as output text
-
-    Current design is:
-        Gist
-            tag: statically-registered string
-            children: mapping of attributes to other gists
-            parameters: arbitrary tag-specific name-value pairs
-        
-    New gist tags are registered statically, by declaration merging the
-    StaticGistTypes interface and adding the tag as a new attribute.
-*/
-
-
-export type ValidTags = keyof StaticGistTypes;
-
-export type ChildrenType = {[K in string]?: ValidTags};
-export type MakeStaticGistType<Children extends ChildrenType | undefined=undefined, Parameters extends object | undefined=undefined> =
-    & AsProperty<'children', Children>
-    & AsProperty<'parameters', Parameters>
-    ;
-
-export type FillMissing<Obj, Key extends string> =
-    Key extends keyof Obj ?
-        Obj[Key] :
-        object;
-
-export type Gists = {
-    [Tag in ValidTags]: {
-        tag: Tag,
-        parameters:
-            FillMissing<StaticGistTypes[Tag], 'parameters'>,
-        children: 
-            FillMissing<StaticGistTypes[Tag], 'children'> extends infer Children ?
-            { [K in keyof Children]:
-                Children[K] extends infer T ?
-                    T extends undefined ? undefined :
-                    T extends ValidTags ? Gists[T] :
+export type FilledGists = { [Tag in ValidTags]: {
+    readonly 0: Tag,
+    readonly 1: StaticGistTypes[Tag] extends {0: object} ?
+        StaticGistTypes[Tag][0] extends infer Children ?
+        keyof StaticGistTypes[Tag][0] extends never ?
+            undefined :
+            { readonly [K in keyof Children]: 
+                Children[K] extends infer C ?
+                    C extends undefined ? undefined :
+                    C extends ValidTags ? FilledGists[C] :
                     never :
                 never
             } :
-                never
-    }
-};
+            never :
+        undefined,
+    readonly 2: StaticGistTypes[Tag] extends {1: object} ?
+        keyof StaticGistTypes[Tag][1] extends never ?
+            undefined :
+            { readonly [PK in keyof StaticGistTypes[Tag][1]]: StaticGistTypes[Tag][1][PK] } :
+        undefined
+}};
 
-export type Gist = Gists[ValidTags];
+export type FilledGist = FilledGists[ValidTags];
 
-export function gist_to_string(gist: Gist): string {
-    return JSON.stringify(gist);
-}
-
-export function parse_gist(gist_json: string): Gist {
-    return JSON.parse(gist_json);
-}
-
-export type GistStructure = {
-    tag: string,
-    parameters: { [K in string]?: unknown } //Record<string, unknown | undefined>,
-    children: { [K in string]?: GistStructure } //Record<string, GistStructure | undefined>
-}
-
-type GistDSLStructureObject = {
-    tag: string;
-    parameters?: Record<string, unknown | undefined>;
-    children?: Record<string, GistDSLStructure | undefined>;
-};
-
-type GistDSLStructure = string | GistDSLStructureObject;
-
-type AllowOptional<Obj, Key extends keyof Obj, Value=Obj[Key]> =
-    object extends Obj[Key] ?
-        { [K in Key]?: Value } :
-        { [K in Key]: Value };
-
-type GistDSL = {
-    [Tag in ValidTags]: (
-        | GistDSLObject[Tag]
-        | (
-            object extends Gists[Tag]['parameters'] ?
-                object extends Gists[Tag]['children'] ?
-                    Tag :
-                    never :
-                never
-        )
-    )
-};
-
-type GistDSLObject = {
-    [Tag in ValidTags]:
-        & { tag: Tag }
-        & AllowOptional<Gists[Tag], 'parameters'>
-        & AllowOptional<Gists[Tag], 'children', GistDSLChildren[Tag]>
-};
-
-type GistDSLChildren = {
-    [Tag in ValidTags]:
-        FillMissing<StaticGistTypes[Tag], 'children'> extends infer Children ?
-            {
-                [K in keyof Children]:
-                    Children[K] extends infer CK ?
-                        CK extends undefined ?
-                            undefined :
-                        CK extends ValidTags ?
-                            GistDSL[CK] :
-                        never :
-                    never
-            } :
-            never
-};
-
-export type GistConstructor = GistDSL[ValidTags];
-
-function translate_dsl(x: GistDSL[ValidTags]): Gists[ValidTags];
-function translate_dsl(x: GistDSLStructure) {
-    if (typeof(x) === 'string') {
-        return {
-            tag: x,
-            children: {},
-            parameters: {}
-        } as Gist    
-    }
-    const result = {...x} as GistStructure;
-    if (x.parameters === undefined) {
-        result.parameters = {}
-    }
-    result.children = {};
-    if (x.children !== undefined) {
-        result.children = {};
-        for (const [k, v] of entries(x.children)) {
-            result.children[k] = translate_dsl(v as GistDSL[ValidTags]) as GistStructure;
-        }
-    }
-    return result;
-}
-
-type InferTags<DSLOrGist> =
-    DSLOrGist extends ValidTags ?
-        DSLOrGist :
-    DSLOrGist extends { tag: ValidTags } ?
-        DSLOrGist['tag'] :
-    never;
-
-
-type TagsWithRequiredParameters = {
-    [Tag in ValidTags]: object extends Gists[Tag]['parameters'] ? never : Tag
-}[ValidTags]
+export type FilledGistStructure = [string, Record<string, FilledGistStructure | undefined> | undefined, Record<string, unknown | undefined> | undefined];
 
 type TagsWithOptionalParameters = {
-    [Tag in ValidTags]: object extends Gists[Tag]['parameters'] ? Tag : never 
+    [Tag in ValidTags]:
+        StaticGistTypes[Tag] extends {1: unknown} ?
+            object extends StaticGistTypes[Tag][1] ?
+                Tag :
+                never :
+            Tag
 }[ValidTags];
 
 type TagsWithOptionalChildren = {
-    [Tag in ValidTags]: object extends Gists[Tag]['children'] ? Tag : never 
+    [Tag in ValidTags]:
+        StaticGistTypes[Tag] extends {0: unknown} ?
+            object extends StaticGistTypes[Tag][0] ?
+                Tag :
+                never :
+            Tag
 }[ValidTags];
 
-export function gist<DSL extends GistDSL[ValidTags]>(spec: DSL): Gists[InferTags<DSL>];
-export function gist(spec: GistDSL[ValidTags]): Gist;
-export function gist<Tag extends ValidTags>(tag: Tag, children: GistDSLObject[Tag]['children'], parameters: GistDSLObject[Tag]['parameters']): Gists[Tag];
-export function gist<Tag extends TagsWithOptionalParameters>(tag: Tag, children: GistDSLObject[Tag]['children'], parameters?: GistDSLObject[Tag]['parameters']): Gists[Tag];
-export function gist<Tag extends TagsWithOptionalParameters & TagsWithOptionalChildren>(tag: Tag, children?: GistDSLObject[Tag]['children'], parameters?: GistDSLObject[Tag]['parameters']): Gists[Tag];
-export function gist(spec: GistDSLStructure, children?: GistDSLStructureObject['children'], parameters?: GistDSLStructureObject['parameters']): Gist {
-    const result = translate_dsl(spec as GistDSL[ValidTags]);
-    if (children !== undefined) {
-        result.children = children;
-    }
-    if (parameters !== undefined) {
-        result.parameters = parameters;
-    }
+export type GistStructure = [string, Record<string, GistStructure | undefined>?, Record<string, unknown | undefined>?];
 
-    return result;
-}
-
-export function gists_equal(gist1: Gist, gist2: Gist): boolean;
-export function gists_equal(gist1: GistStructure, gist2: GistStructure): boolean {
-    if (gist1 === gist2) {
-        return true;
-    }
-
-    if (gist1.tag !== gist2.tag) {
-        return false;
-    }
-
-    for (const k of key_union(gist1.parameters, gist2.parameters)) {
-        if (!deep_equal((gist1.parameters)[k], (gist2.parameters)[k])) {
-            return false;
-        }
-    }
-
-    for (const k of key_union(gist1.children, gist2.children)) {
-        const c1 = gist1.children[k];
-        const c2 = gist2.children[k];
-
-        if (c1 === c2) {
-            continue;
-        }
-
-        if ((c1 === undefined) !== (c2 === undefined)) {
-            return false;
-        }
-
-        if (!gists_equal(c1! as Gist, c2! as Gist)) {
-            return false
-        }
-    }
-
-    return true;
-}
-
-export function has_tag<Tag extends ValidTags>(gist: Gist, tag: Tag): gist is Gists[Tag] {
-    return gist.tag === tag;
-}
-
-export function find_tag(tag: ValidTags, gist: Gist): Gist | undefined;
-export function find_tag(tag: ValidTags, gist: GistStructure) {
-    if (gist.tag === tag) {
-        return gist;
-    }
-
-    for (const k in gist.children) {
-        const g = gist.children[k];
-        const found = find_tag(tag, g as Gist);
-        if (found !== undefined) {
-            return found;
-        }
-    }
-
-    return undefined;
-}
-
-type GistPatternObjectStructure = {
-    tag: string;
-    parameters?: { [P in string]?: unknown | unknown[] };// Record<string, unknown | unknown[]>; // (parameters: Record<string, unknown>) => boolean
-    children?: { [C in string]?: GistPatternStructure }; //Record<string, GistPatternStructure>;
+export type Gists = {
+    [Tag in ValidTags]: (
+        Tag extends TagsWithOptionalChildren & TagsWithOptionalParameters ?
+            {readonly 0: Tag, readonly 1?: GistChildren[Tag], readonly 2?: HandleEmpty<FilledGists[Tag][2]>} :
+        Tag extends TagsWithOptionalParameters ?
+            {readonly 0: Tag, readonly 1: GistChildren[Tag], readonly 2?: HandleEmpty<FilledGists[Tag][2]>} :
+        {readonly 0: Tag, readonly 1: GistChildren[Tag], readonly 2: FilledGists[Tag][2]}
+    )
 };
 
-type GistPatternSingleStructure =
-    | string
-    | GistPatternObjectStructure
-
-export type GistPatternStructure =
-    | undefined
-    | GistPatternSingleStructure
-    | GistPatternSingleStructure[];
-
-
-// type GistPatternSingle<Tags extends ValidTags> =
-//     | Tags
-//     | GistPatternObject<Tags>;
-
-// type GistPatternObject<Tags extends ValidTags> = {
-//     tag: Tags | Tags[],
-//     parameters?: {
-//         [T in Tags]?:
-//             Gists[T]['parameters'] extends infer PS ?
-//                 {
-//                     [PK in keyof PS]?: PS[PK] | PS[PK][]
-//                 } : never
-//     }[Tags],
-//     children?: {
-//         [T in Tags]?:
-//             { [CK in keyof Gists[T]['children']]: Gists[T]['children'][CK] extends { tag: ValidTags } ? GistPattern<Gists[T]['children'][CK]['tag']> : never }  
-//     }[Tags]
-// }
-
-// export type GistPattern<Tags extends ValidTags=ValidTags> =
-//     | undefined
-//     | GistPatternSingle<Tags>
-//     | GistPatternSingle<Tags>[]
-
-type GistPatternSingle = {
+type GistChildren = {
     [Tag in ValidTags]:
-        | Tag
-        | GistPatternObject[Tag];
-};
-type GistPatternObject = {
-    [Tag in ValidTags]: {
-        tag: Tag,
-        parameters?: 
-            Gists[Tag]['parameters'] extends infer PS ?
+        keyof FilledGists[Tag][1] extends never ?
+            undefined :
+            FilledGists[Tag][1] extends infer Children ?
                 {
-                    [PK in keyof PS]?: PS[PK] | PS[PK][]
-                } : never,
-        children?:
-            { [CK in keyof Gists[Tag]['children']]?:
-                Gists[Tag]['children'][CK] extends infer CKV ? 
-                    GistPattern<
-                        CKV extends { tag: ValidTags } ?
-                            CKV['tag'] :
-                            never
-                    > :
-                    never
-            }  
-    }
+                    [K in keyof Children]:
+                        Children[K] extends infer CK ?
+                            CK extends undefined ? undefined :
+                            CK extends {0: ValidTags} ? Gists[CK[0]] :
+                            never :
+                        never
+                } :
+                never
 };
-export type GistPattern<Tags extends ValidTags=ValidTags> =
-        | undefined
-        | GistPatternSingle[Tags]
-        | GistPatternSingle[Tags][];
 
-// export type InferPatternTags<Tags extends ValidTags, Pat extends GistPattern<Tags>> =
-//     & Tags
-//     & (
-//         Pat extends undefined ? Tags :
-//         Pat extends Array<infer SubPat> ?
-//             SubPat extends GistPatternSingle[Tags] ?
-//                 InferPatternTagsSingle<Tags, SubPat> :
-//                 never :
-//         Pat extends GistPatternSingle[Tags] ?
-//             InferPatternTagsSingle<Tags, Pat> :
-//         never
-//     );
+type HandleEmpty<Obj extends object | undefined> = (
+    keyof Obj extends never ?
+        undefined :
+        Obj
+);
 
-// type InferPatternTagsSingle<Tags extends ValidTags, PatSingle extends GistPatternSingle[Tags]> =
-//     PatSingle extends Tags ?
-//         PatSingle :
-//     PatSingle extends { 'tag': infer Tag } ?
-//         Tag :
-//     never;
+export type Gist = Gists[ValidTags];
 
-export type InferPatternTags<Pat extends GistPattern> =
-    & (
-        Pat extends undefined ? ValidTags :
-        Pat extends Array<infer SubPat> ?
-            SubPat extends GistPatternSingle[ValidTags] ?
-                InferPatternTagsSingle<SubPat> :
-                never :
-        Pat extends GistPatternSingle[ValidTags] ?
-            InferPatternTagsSingle<Pat> :
-        never
-    );
-
-type InferPatternTagsSingle<PatSingle extends GistPatternSingle[ValidTags]> =
-    PatSingle extends ValidTags ?
-        PatSingle :
-    PatSingle extends { 'tag': infer Tag } ?
-        Tag :
-    never;
-
-export function gist_pattern<Pat extends GistPattern>(pattern: Pat): GistPattern<InferPatternTags<Pat>>;
-export function gist_pattern<PatternTags extends ValidTags>(pattern: GistPattern<PatternTags>) {
-    return pattern;
+export function gist<Tags extends TagsWithOptionalChildren & TagsWithOptionalParameters>(tag: Tags, children?: GistChildren[Tags], parameters?: HandleEmpty<FilledGists[Tags][2]>): Gists[Tags];
+export function gist<Tags extends TagsWithOptionalParameters>(tag: Tags, children: GistChildren[Tags], parameters?: HandleEmpty<FilledGists[Tags][2]>): Gists[Tags];
+export function gist<Tags extends ValidTags>(tag: Tags, children: GistChildren[Tags], parameters: HandleEmpty<FilledGists[Tags][2]>): Gists[Tags];
+export function gist(...ctor: Gist & unknown[]) {
+    return ctor;
 }
 
-export function gist_matches<PatternTags extends ValidTags, GistTags extends ValidTags>(value: Gists[GistTags] | undefined, pattern: GistPattern<PatternTags>): boolean;
-export function gist_matches(value: GistStructure | undefined, pattern: GistPatternStructure): boolean {
-    if (pattern === undefined) {
+export function gists_equal<Tags extends ValidTags>(g1: Gists[Tags], g2: Gists[Tags]): boolean;
+export function gists_equal(g1: GistStructure, g2: GistStructure): boolean {
+    if (g1 === g2) {
         return true;
     }
 
-    if (pattern instanceof Array) {
-        // empty array is a special pattern for undefined
-        if (pattern.length === 0 && value === undefined) {
-            return true;
-        }
-        return pattern.some(p => gist_matches(value as Gist, p as GistPattern));
-    }
+    const [t1, c1, p1] = g1;
+    const [t2, c2, p2] = g2;
 
-    if (value === undefined) {
+    if (t1 !== t2) {
         return false;
     }
 
-    if (typeof(pattern) === 'string') {
-        return pattern === value.tag;
-    }
-
-    if (pattern.tag !== undefined) {
-        if (typeof pattern.tag === 'string' && pattern.tag !== value.tag) {
-            return false;
+    if (p1 !== undefined && p2 !== undefined) {
+        for (const k of key_union(p1, p2)) {
+            if (p1[k] !== p2[k]) {
+                return false;
+            }
         }
+    } else if (p1 !== p2) {
+        return false;
     }
 
-    // TODO: Possibly switch this to deep_equals if params become more complicated.
-    if (pattern.parameters !== undefined) {
-        for (const [p, v] of entries(pattern.parameters)) {
-            const test = pattern.parameters[p];
-            if (test instanceof Array) {
-                if (!test.includes(value.parameters[p])) {
-                    return false;
-                }
-            } else {
-                if (test !== value.parameters[p]) {
+    if (c1 !== undefined && c2 !== undefined) {
+        for (const k of key_union(c1, c2)) {
+            if (c1[k] === undefined || c2[k] === undefined) {
+                if (c1[k] !== c2[k]) {
                     return false;
                 }
             }
+            if (!gists_equal(c1[k] as Gist, c2[k] as Gist)) {
+                return false;
+            }
         }
-    }
-
-    for (const k in pattern?.children) {
-        const vc = value.children[k];
-        const pc = pattern.children[k];
-        if (!gist_matches(vc as Gist, pc as GistPattern)) {
-            return false;
-        }
+    } else if (c1 !== c2) {
+        return false;
     }
 
     return true;
+}
+
+export function gist_to_string(g: Gist): string {
+    return JSON.stringify(g);
+}
+
+export const enum GistAccessors {
+    tag = 0,
+    children = 1,
+    parameters = 2
 }

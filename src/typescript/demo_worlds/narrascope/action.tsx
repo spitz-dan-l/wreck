@@ -1,14 +1,14 @@
-import { gist, GistPattern, GistPatternUpdateDispatcher, GistRenderer, Gists, RenderImplsForPattern, render_gist, Gist, match, MatchResult, ValidTags, _MatchResult, FilledGists } from 'gist';
+import { gist, GistPattern, GistPatternUpdateDispatcher, GistRenderer, Gists, RenderImplsForPattern, render_gist, Gist, match, MatchResult, ValidTags, _MatchResult, FilledGists, GIST_RENDERER_DISPATCHERS } from 'gist';
 import { gate_puffer } from 'puffer';
-import { GistAssoc, Knowledge, make_knowledge_puffer } from '../../knowledge';
-import { StaticMap } from '../../lib/static_resources';
-import { capitalize } from '../../lib/text_utils';
-import { bound_method, map, range, update } from "../../lib/utils";
-import { ConsumeSpec } from "../../parser";
-import { createElement, Fragment, StoryNode, story_updater, Updates as S } from '../../story';
-import { Exposition } from './contemplate';
+import { GistAssoc, Knowledge, make_knowledge_puffer } from 'knowledge';
+import { StaticMap, OnSealed } from 'lib/static_resources';
+import { capitalize } from 'lib/text_utils';
+import { bound_method, map, range, update } from "lib/utils";
+import { ConsumeSpec } from "parser";
+import { createElement, Fragment, StoryNode, story_updater, Updates as S } from 'story';
 import { ActionID, Owner, Puffers, resource_registry, STATIC_ACTION_IDS, Venience, VeniencePuffer } from "./prelude";
 import { insight_text_class } from './styles';
+
 
 export interface Actions {
     gist: Gists[ActionID] | undefined,
@@ -53,7 +53,7 @@ resource_registry.initialize('initial_world_knowledge',
             gist: undefined,
             owner: undefined,
             current_interpretation: undefined,
-            knowledge: k,
+            knowledge: k.get(),
             has_acquired: map(),
             has_tried: new GistAssoc([])// map()
         });
@@ -113,51 +113,57 @@ export function Action(spec: Action) {
 
     const katya_on_gist = gist('Katya on', {action_description: descr_gist});
     // const descr_gist = gist('action description', {}, {action: spec.id});
-    init_knowledge.update(k => (k
-        // main story bit about the action
-        .ingest(<div gist={descr_gist}>
-            <div
-                gist={katya_on_gist}
-                className={insight_text_class}
-            >
-                {spec.katya_quote}
-            </div>
-            <br />
-            {capitalize(render_gist.noun_phrase(descr_gist))} confers:
-            <blockquote>
-                {spec.description}
-            </blockquote>
-        </div>)
-        
-        // the notes about the action, which contains the main body above
-        .ingest((k) => <div gist={['notes', { subject: descr_gist }]}>
-            <strong>{capitalize(render_gist.noun_phrase(descr_gist))}</strong>
-            {k.get(descr_gist)!}
-        </div>)
+    GIST_RENDERER_DISPATCHERS[OnSealed](() => {
+        init_knowledge.update(k => (k
+            // main story bit about the action
+            .ingest(<div gist={descr_gist}>
+                <div
+                    gist={katya_on_gist}
+                    className={insight_text_class}
+                >
+                    {spec.katya_quote}
+                </div>
+                <br />
+                {capitalize(render_gist.noun_phrase(descr_gist))} confers:
+                <blockquote>
+                    {spec.description}
+                </blockquote>
+            </div>)
+            
+            // the notes about the action, which contains the main body above
+            .ingest((k) => <div gist={['notes', { subject: descr_gist }]}>
+                <strong>{capitalize(render_gist.noun_phrase(descr_gist))}</strong>
+                {k.get(descr_gist)!}
+            </div>)
 
-        .ingest((k) => <div gist={['remember', { subject: descr_gist }]}>
-            You close your eyes, and hear Katya's voice:
-            {k.get(descr_gist)!}
-        </div>)
-    ));
+            .ingest((k) => <div gist={['remember', { subject: descr_gist }]}>
+                You close your eyes, and hear Katya's voice:
+                {k.get(descr_gist)!}
+            </div>)
+        ));
+    });
 
     if (spec.memory_prompt_impls !== undefined) {
         GistRenderer(['memory prompt', {memory: ['remember', {subject: descr_gist}]}], spec.memory_prompt_impls);
     }
 
     if (spec.memory !== undefined) {
-        ActionHandler(['scrutinize', {
-            facet: ['facet', { knowledge: ['knowledge', { content: katya_on_gist }]}]
-        }], Exposition({
-            // the expanded memory associated w the action, once you uncover it
-            revealed_child_story:
-                <blockquote
-                    gist={['remember', { subject: katya_on_gist }]}
-                    className={insight_text_class}
-                >
-                    {spec.memory}
-                </blockquote> as StoryNode
-        }));
+        const exposition_func = resource_registry.get_resource('exposition_func');
+        exposition_func[OnSealed]((e) => {
+            const Exposition = e.get();
+            ActionHandler(['scrutinize', {
+                facet: ['facet', { knowledge: ['knowledge', { content: katya_on_gist }]}]
+            }], Exposition({
+                // the expanded memory associated w the action, once you uncover it
+                revealed_child_story:
+                    <blockquote
+                        gist={['remember', { subject: katya_on_gist }]}
+                        className={insight_text_class}
+                    >
+                        {spec.memory}
+                    </blockquote> as StoryNode
+            }));
+        });
     }
 
     if (spec.puffer !== undefined) {

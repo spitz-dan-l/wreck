@@ -22,7 +22,7 @@ export function new_animation_state(world: World, previous_world: World | undefi
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
     const index_threshold = previous_world ? previous_world.index : -1;//world.index - 1;
     const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();
-    const story_updates =  make_consecutive(new_frames.map(w => compile_story_update_group_ops(w.story_updates).effects));
+    const story_updates = make_consecutive(new_frames.map(w => compile_story_update_group_ops(w.story_updates).effects));
     let stages = stage_keys(story_updates);
     let current_stage: number | undefined = stages[0];
     return {
@@ -47,8 +47,8 @@ export function final_story(world: World) {
 }
 
 export function compute_possible_effects(world: World, possible_world: World): StoryUpdateSpec[] {
-    const p_worlds = history_array(possible_world).filter(w => w.index > world.index);
-    return p_worlds.reverse().flatMap(p => p.story_updates.would_effects);
+    const p_worlds = history_array(possible_world).filter(w => w.index >= world.index);
+    return p_worlds.reverse().flatMap(p => compile_story_update_group_ops(p.story_updates).would_effects);
 } 
 
 // export function compute_possible_effects(world: World, possible_world: World): ReversibleUpdateSpec[] {

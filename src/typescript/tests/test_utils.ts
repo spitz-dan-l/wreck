@@ -1,9 +1,9 @@
-import './setup';
+// import './setup';
 import * as assert from 'assert';
 // import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
-import { begin, chain, deep_equal } from '../typescript/lib';
-import { update, Updater } from '../typescript/lib/update';
+import { begin, chain, deep_equal } from 'lib/utils';
+import { update, Updater } from 'lib/update';
 
 
 

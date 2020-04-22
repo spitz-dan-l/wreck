@@ -35,8 +35,8 @@ Action({
     },
 
     memory_prompt_impls: {
-        noun_phrase: g => 'something scholarly',
-        command_noun_phrase: g => 'something_scholaraly'
+        noun_phrase: () => 'something scholarly',
+        command_noun_phrase: () => 'something_scholarly'
     },
 
     description_noun_phrase: 'your notes',

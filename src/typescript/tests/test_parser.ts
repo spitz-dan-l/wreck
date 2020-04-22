@@ -1,8 +1,7 @@
-import './setup';
+// import './setup';
 import * as assert from 'assert';
 import 'mocha';
-import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread, failed } from '../typescript/parser';
-import { array_last } from '../typescript/lib';
+import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread, failed } from 'parser';
 
 describe('parser', () => {
     it('should do a thing', () => {

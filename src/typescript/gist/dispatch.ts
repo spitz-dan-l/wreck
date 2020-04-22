@@ -1,7 +1,9 @@
-import { ValidTags, Gists, GistPattern, InferPatternTags, gist_matches, gist_to_string, Gist } from "./gist";
+import { Gists, gist_to_string } from "./gist";
 
 import { Stages, stages, stage_values } from "lib/stages";
-import { Sealable, IsSealed, Seal } from "lib/static_resources";
+import { Sealable, IsSealed, Seal, OnSealedCallback, OnSealed } from "lib/static_resources";
+import { GistPattern, match, PositiveMatchResult } from "./pattern";
+import { ValidTags } from "./static_gist_types";
 
 /*
 A dispatch system based on gist patterns
@@ -40,6 +42,8 @@ export class GistPatternDispatcher<V, Tags extends ValidTags=ValidTags> implemen
     constructor(public index: Stages<GistPatternDispatchRule<V, Tags>[]> = stages(), public is_sealed = false) {
     }
 
+    callbacks: OnSealedCallback<this>[] = [];
+
     [IsSealed]() {
         return this.is_sealed;
     }
@@ -48,9 +52,16 @@ export class GistPatternDispatcher<V, Tags extends ValidTags=ValidTags> implemen
             throw new Error("Tried to reseal an already-sealed GistPatternDispatcher.");
         }
         this.is_sealed = true;
+
+        this.callbacks.forEach(cb => cb(this));
+    }
+    [OnSealed](f: OnSealedCallback<this>) {
+        this.callbacks.push(f);
     }
 
-    add_rule<Pat extends GistPattern<Tags>>(pattern: Pat, impl: (g: Gists[Tags & InferPatternTags<Pat>]) => V, stage?: number): this;
+
+    // add_rule<Pat extends GistPattern<Tags>>(pattern: Pat, impl: (g: Gists[Tags & InferPatternTags<Pat>]) => V, stage?: number): this;
+    add_rule<Pat extends GistPattern<Tags>>(pattern: Pat, impl: (g: PositiveMatchResult<Pat, Tags>) => V, stage?: number): this;
     add_rule(pattern: GistPattern<Tags>, impl: GistDispatchImpl<V, Tags>, stage=0): this {
         if (this[IsSealed]()) {
             throw new Error('Tried to add a rule to a sealed GistPatternDispatcher.');
@@ -75,7 +86,7 @@ export class GistPatternDispatcher<V, Tags extends ValidTags=ValidTags> implemen
         }
         for (const rules of stage_values(this.index)) {
             for (const rule of rules) {
-                if (gist_matches(g, rule.pattern)) {
+                if (match(g)(rule.pattern)) {
                     return rule.impl;
                 }
             }
@@ -97,7 +108,7 @@ export class GistPatternDispatcher<V, Tags extends ValidTags=ValidTags> implemen
                 break;
             }
             for (const rule of rules) {
-                if (gist_matches(g, rule.pattern)) {
+                if (match(g)(rule.pattern)) {
                     result.push(rule.impl);
                     if (has_hit_fallthrough(stage)) {
                         break outer;

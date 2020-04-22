@@ -1,5 +1,6 @@
 // const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const EvalSourceMapDevToolPlugin = require('webpack').EvalSourceMapDevToolPlugin;
+const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const path = require('path');
 
@@ -13,6 +14,7 @@ module.exports = {
     devtool: 'source-map',//false,
 
     resolve: {
+        plugins: [new TsconfigPathsPlugin({ configFile: "./tsconfig.json" })],
         // Add '.ts' and '.tsx' as resolvable extensions.
         extensions: [".ts", ".tsx", ".js", ".json"],
         // alias: { handlebars: 'handlebars/dist/handlebars.min.js' }
