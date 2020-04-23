@@ -53,25 +53,12 @@ export class Knowledge {
         public knowledge: KnowledgeAssoc = new GistAssoc([]),
     ) {}
 
-    construct_key(g: Gist): Gists['knowledge'] {
-        const k: Gists['knowledge'] = compute_const(() => {
-            if (g[0] === 'knowledge') {
-                return g;
-            }
-            return ['knowledge', { content: g }];
-        });
-
-        return k;
-    }
-
     get_entries(g: Gist): KnowledgeAssoc {
-        const pat: GistPattern<'knowledge'> = compute_const(() => {
-            if (g[0] === 'knowledge') {
-                return g;
-            }
-            return ['knowledge', { content: g }];
-        })
-
+        if (g[0] === 'knowledge') {
+            return this.knowledge.filter(k => gists_equal(k, g));
+        }
+        
+        const pat: GistPattern<'knowledge'> = ['knowledge', { content: g }];
         return this.knowledge.filter((k) =>
             !!match(k)(pat)
         );
@@ -80,17 +67,20 @@ export class Knowledge {
     get_entry(g: Gist): KnowledgeEntry | undefined {
         const matches = this.get_entries(g);
         if (matches.data.length > 1) {
+            debugger;
             throw new Error(`Ambiguous knowledge key: ${JSON.stringify(g)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
         }
-        const k = this.construct_key(g);
-        return matches.get(k);
+        if (matches.data.length === 0) {
+            return undefined;
+        }
+        return matches.data[0].value;
     }
 
     get(g: Gist): StoryNode | undefined {
         return this.get_entry(g)?.story;
     }
 
-    ingest(story_or_func: (Fragment | ((k: this) => Fragment)), parent_context?: Gists['knowledge']): this {
+    ingest(story_or_func: (Fragment | ((k: this) => Fragment)), parent_context?: Gists['knowledge'], allow_replace=false): this {
         let result = this;
             
         // for (const story_or_func of stories) {
@@ -120,7 +110,7 @@ export class Knowledge {
             if (story === old_child_entry.story) {
                 console.log('saving time by skipping a knowledge subtree update')
                 return result;
-            } else {
+            } else if (!allow_replace){
                 throw new Error(`Tried to overwrite the knowledge entry for ${gist_to_string(g)}`)
             }
             
@@ -209,7 +199,8 @@ export class Knowledge {
 
             if (updates.length > 0) {
                 const new_story = apply_story_updates_all(entry.story as Story, updates);
-                result = result.ingest(new_story);
+                result = result.ingest(new_story, entry.key[1].context, true);
+                // TODO Prune any orphaned entries
             }
         }
         return result;

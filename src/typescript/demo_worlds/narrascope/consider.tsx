@@ -39,7 +39,7 @@ resource_registry.initialize('initial_world_consider', {
     ])
 });
 
-const topic_index = resource_registry.initialize('topic_index', new StaticMap(STATIC_TOPIC_IDS));
+const topic_index = resource_registry.initialize('topic_index', new StaticMap(STATIC_TOPIC_IDS)).get_pre_runtime();
 
 // export type Topic = 
 //     & {
@@ -64,7 +64,7 @@ export function assert_is_topic(x: Fragment): asserts x is Topic {
     }
 }
 
-const init_knowledge = resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = resource_registry.get('initial_world_knowledge');
 
 export function Topic(topic: Fragment) {
     assert_is_topic(topic);
@@ -90,7 +90,7 @@ Action({
         ),
         command_verb_phrase: g => bottom_up(g)(
             (tag, {subject}) => ['consider', subject],
-            render_gist.command_verb_phrase
+            render_gist.command_noun_phrase
         )
     },
 

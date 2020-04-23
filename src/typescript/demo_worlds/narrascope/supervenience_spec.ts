@@ -52,7 +52,7 @@ export const command_filter: CommandFilter<Venience> = (w, cmd) => {
 }
 
 export function get_thread_maker() {
-    const venience_world_spec = resource_registry.get('venience_world_spec');
+    const venience_world_spec = resource_registry.get('venience_world_spec').get();
     return update_thread_maker(venience_world_spec);
 }
 

@@ -9,7 +9,7 @@ import { Typeahead } from './typeahead';
 import { History } from './history';
 import { Seal } from 'lib/static_resources';
 
-export const ui = make_ui((state, old?) => App(state, old), app_reducer);
+export const ui = make_ui((state, old?) => App(state, old), app_reducer, true);
 export const initialize_app = ui.initialize
 
 ui_resources.initialize('initialize', ui.initialize)

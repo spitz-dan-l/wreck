@@ -110,7 +110,8 @@ export type UI<State, Action> = {
 
 export function make_ui<State, Action>(
     renderer: Renderer<State>,
-    reducer: (state: State, action: Action) => State
+    reducer: (state: State, action: Action) => State,
+    debug: boolean=false
 ): UI<State, Action> {
     let old_state: State | undefined = undefined;
     let component: Component<State>;
@@ -182,7 +183,9 @@ export function make_ui<State, Action>(
             );
             old_state = new_state;
             // for debugging
-            (globalThis as any).ui_state = old_state;
+            if (debug) {
+                (globalThis as any).ui_state = old_state;
+            }
         }
         
         requestAnimationFrame(() => {

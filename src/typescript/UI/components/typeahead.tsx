@@ -11,7 +11,7 @@ export type TypeaheadProps = {
 
 export type Typeahead = Component<TypeaheadProps>;
 export const Typeahead: Renderer<TypeaheadProps> = ({parsing, typeahead_index, undo_selected}, old?) => {
-    const dispatch = ui_resources.get('dispatch');
+    const dispatch = ui_resources.get('dispatch').get();
 
     function handleMouseOver(i: number) {
         dispatch({

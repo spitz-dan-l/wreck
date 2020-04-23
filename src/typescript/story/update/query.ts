@@ -109,8 +109,8 @@ export const StoryQueries: StoryQueries = {
                 }
                 return true;
             }
-
-            return results.filter(r1 => !results.some(r2 => is_prefix(r2[1], r1[1])))
+            return results.filter(r1 => !results.some(r2 =>
+                r1 !== r2 && is_prefix(r2[1], r1[1])));
         },
     story_root: () => story => [[story, []]],
     story_hole: () =>

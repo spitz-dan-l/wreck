@@ -38,7 +38,7 @@ type Exposition = {
     commentary?: (action_gist: InnerActionGist, current_frame_builder: UpdatesBuilder, w: Venience) => StoryUpdaterSpec[],
 };
 
-const init_knowledge = resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = resource_registry.get('initial_world_knowledge');
 
 export function Exposition(exposition: Exposition) {
     if (exposition.revealed_child_story !== undefined) {
@@ -65,8 +65,8 @@ export function Exposition(exposition: Exposition) {
     }
 }
 
-resource_registry.initialize('exposition_func', Exposition);
-resource_registry.get_resource('exposition_func')[Seal]();
+resource_registry.initialize('exposition_func', Exposition)[Seal]();
+// resource_registry.get('exposition_func')[Seal]();
 
 declare module '../../../story/update/update_group' {
     interface StoryUpdateGroups {

@@ -19,7 +19,7 @@ declare module '../prelude' {
     }
 }
 
-const global_lock = resource_registry.get('global_lock', false);
+const global_lock = resource_registry.get('global_lock').get_pre_runtime();
 let metaphor_lock = global_lock('Metaphor');
 
 

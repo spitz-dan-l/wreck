@@ -16,7 +16,7 @@ type HistoryProps = {
 
 export type History = Component<HistoryProps>;  
 export const History: Renderer<HistoryProps> = (props, old?) => {
-    const dispatch = ui_resources.get('dispatch');
+    const dispatch = ui_resources.get('dispatch').get();
     
     let root: History;
 
@@ -95,7 +95,7 @@ export function set_history_view_from_scratch(story: Story, root?: History): His
 }
 
 function push_animation(story: Story, dom_effects: Effects<History>) {
-    const effect_promise = ui_resources.get('effect_promise');
+    const effect_promise = ui_resources.get('effect_promise').get();
 
     dom_effects.push(async dom => {
         await effect_promise();

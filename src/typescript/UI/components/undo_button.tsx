@@ -9,7 +9,7 @@ export type UndoProps = {
 
 export type UndoButton = Component<UndoProps>;
 export const UndoButton: Renderer<UndoProps> = ({world, undo_selected}, old?) => {
-    const dispatch = ui_resources.get('dispatch');
+    const dispatch = ui_resources.get('dispatch').get();
     
     function get_undo_class() {
         let classes = ['undo-button'];

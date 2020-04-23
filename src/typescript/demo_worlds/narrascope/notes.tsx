@@ -30,7 +30,7 @@ Action({
         ),
         command_verb_phrase: g => bottom_up(g)(
             (tag, {subject}) => ['notes', ...if_not_null_array(subject, (t) => ['about', t])],
-            render_gist.command_verb_phrase
+            render_gist.command_noun_phrase
         )
     },
 
@@ -39,10 +39,10 @@ Action({
         command_noun_phrase: () => 'something_scholarly'
     },
 
-    description_noun_phrase: 'your notes',
-    description_command_noun_phrase: 'my_notes',
+    description_noun_phrase: 'note taking',
+    description_command_noun_phrase: 'note taking',
 
-    description: 'Your notebook contains everything you have seen fit to write down.',
+    description: 'The ability to externalize knowledge for later use. Your notebook contains everything you have seen fit to write down.',
     katya_quote: '"Write that down, my dear."',
     memory: <div>
         Even before you met her, you wrote. Putting your thoughts to the page elevated them for you, made them meaningful.
@@ -60,9 +60,11 @@ Action({
                 action_gists.push(gist('notes'));
     
                 for (const subject of keys(STATIC_ACTION_IDS)) {
-                    const subject_gist = gist('action description', undefined, {action: subject});
-                    const action_gist = gist('notes', {subject: subject_gist});
-                    action_gists.push(action_gist);
+                    if (!!world.has_acquired.get(subject)) {
+                        const subject_gist = gist('action description', undefined, {action: subject});
+                        const action_gist = gist('notes', {subject: subject_gist});
+                        action_gists.push(action_gist);
+                    }
                 }
     
                 const threads: ParserThread<Venience>[] = action_gists.map(ag => () =>
@@ -95,7 +97,7 @@ export function prompt_to_notes(world: Venience, action_descr: Gists['action des
     return update(world, {
         story_updates: story_updater(
             S.prompt(<div>
-                You write about {capitalize(render_gist.noun_phrase(action_descr))} in your <strong>notes</strong>.
+                You write about {render_gist.noun_phrase(action_descr)} in your <strong>notes</strong>.
             </div>)
         )
     });

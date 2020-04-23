@@ -49,7 +49,7 @@ export function GistRenderer<Pat extends GistPattern>(pattern: Pat, impls: Rende
 export function GistRenderer(pattern: GistPattern, impls: RenderImpls, stage: number=0): void {
     for (const [k, v] of entries(impls)) {
         if (v !== undefined) {
-            (GIST_RENDERER_DISPATCHERS.get(k, false).add_rule as any)(pattern, v, stage);
+            (GIST_RENDERER_DISPATCHERS.get(k).get_pre_runtime().add_rule as any)(pattern, v, stage);
         }
     }
 }
@@ -58,7 +58,7 @@ export const render_gist: GistRenderMethods =
     map_values(STATIC_GIST_RENDERER_NAMES,
         (_, method_name) =>
             ((g: Gist) => {
-                const dispatcher = GIST_RENDERER_DISPATCHERS.get(method_name);
+                const dispatcher = GIST_RENDERER_DISPATCHERS.get(method_name).get();
                 return dispatcher.dispatch(g);
             }) as GistRenderMethods[typeof method_name]);
 
@@ -164,17 +164,17 @@ export function bottom_up<G extends Gist>(g: G): <R>(
 GistRenderer(undefined, {
     noun_phrase: (g) => {
         const [tag, children, parameters] = [g[0], g[1], g[2]];
-        if (Object.keys(children ?? {}).length === 0 && Object.keys(parameters ?? {}).length === 0) {
+        if (Object.keys(children ?? {}).length > 0 || Object.keys(parameters ?? {}).length > 0) {
             throw new Error(`No noun_phrase renderer matched a compound gist: ${gist_to_string(g)}`);
         }
         return tag
     },
     command_noun_phrase: (g) => {
         const [tag, children, parameters] = [g[0], g[1], g[2]];
-        if (Object.keys(children ?? {}).length === 0 && Object.keys(parameters ?? {}).length === 0) {
+        if (Object.keys(children ?? {}).length > 0 || Object.keys(parameters ?? {}).length > 0) {
             throw new Error(`No command_noun_phrase renderer matched a compound gist: ${gist_to_string(g)}`);
         }
-        return tag.replace(' ', '_');
+        return tag.replace(/ /g, '_');
     },
     command_verb_phrase: (g) => {
         throw new Error(`No command_verb_phrase renderer matched a gist. (Verb phrases don't have default behavior even for atomic gists.) Gist: ${gist_to_string(g)}`);

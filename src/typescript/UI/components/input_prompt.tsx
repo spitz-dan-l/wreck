@@ -22,7 +22,7 @@ const input_prompt_cursor = input_prompt_child(
     (props, old?) => Cursor(props, old));
 
 export const InputPrompt: Renderer<InputPromptProps> = (props, old?) => {
-    const dispatch = ui_resources.get('dispatch');
+    const dispatch = ui_resources.get('dispatch').get();
 
     if (old === undefined) {
         let result = <div className="input-prompt">

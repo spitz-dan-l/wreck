@@ -86,13 +86,6 @@ ActionHandler(['remember'], (action_gist) => (world) =>
     })
 );
 
-ActionHandler(['remember', {subject: ['action description']}],
-    (action_gist) => (world) =>
-        update(world, {
-            has_acquired: map([ action_gist[1].subject[2].action, true ])
-        })
-);
-
 GistRenderer(['memory prompt'], {
     noun_phrase: (g) => 'something',
     command_noun_phrase: (g) => 'something'

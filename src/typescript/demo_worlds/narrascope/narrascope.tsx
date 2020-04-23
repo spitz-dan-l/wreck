@@ -3,7 +3,7 @@ import { gist, GistRenderer, ValidTags } from 'gist';
 // import { add_to_notes } from './notes';
 import { Seal, StaticMap } from 'lib/static_resources';
 // import { is_simulated } from '../../supervenience';
-import { map, update } from 'lib/utils';
+import { map, update, append } from 'lib/utils';
 import { make_puffer_world_spec } from 'puffer';
 import { createElement, story_updater, Updates as S } from 'story';
 import { get_initial_world, WorldSpec, world_driver } from 'world';
@@ -48,7 +48,7 @@ resource_registry.initialize('initial_world_narrascope', {
     has_scrutinized_memory: map()
 });
 
-const init_knowledge = resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = resource_registry.get('initial_world_knowledge');
 
 // Action({
 //     id: 'to attend',
@@ -310,6 +310,18 @@ GistRenderer(['your friendship with Sam'], {
     command_noun_phrase: () => 'my_friendship_with_Sam'
 });
 
+GistRenderer(['yourself'], {
+    command_noun_phrase: () => 'myself'
+});
+
+GistRenderer(['your notebook'], {
+    command_noun_phrase: () => 'my_notebook'
+});
+
+GistRenderer(['your history with Sam'], {
+    command_noun_phrase: () => 'my_history_with_Sam'
+});
+
 Topic(<div gist={["the present moment"]}>
     You and Sam are sitting together on the bus.
 </div>);
@@ -328,7 +340,7 @@ Topic(<div gist={["yourself"]}>
     <br/>
     <div gist={['description', { subject: ['your notebook']}]}>
         A <strong>thick notebook</strong> sits in your lap.
-    </div>}
+    </div>
 </div>);
 
 Topic(<div gist={["your notebook"]}>
@@ -336,6 +348,15 @@ Topic(<div gist={["your notebook"]}>
     <br/>
     It is filled with the words of someone very wise, who you once knew.
 </div>);
+
+ActionHandler(['consider', {subject: ['yourself']}], g => w => {
+    if (!w.has_tried.get(g)) {
+        return update(w, {
+            can_consider: _ => _.set(['your notebook'], true)
+        })
+    }
+    return w;
+})
 
 ActionHandler(['consider', { subject: ['your notebook'] }],
     g => w => {
@@ -700,16 +721,16 @@ Topic(<div gist={["your history with Sam"]}>
 
 export { Venience } from './prelude';
 
-resource_registry.get_resource('gist_renderer_dispatchers')[Seal]();
-resource_registry.get_resource('initial_world_knowledge')[Seal]();
+resource_registry.get('gist_renderer_dispatchers')[Seal]();
+resource_registry.get('initial_world_knowledge')[Seal]();
 
 let initial_venience_world: Venience = {
     ...get_initial_world<Venience>(),
-    ...resource_registry.get('initial_world_prelude', false),
-    ...resource_registry.get('initial_world_metaphor', false),
-    ...resource_registry.get('initial_world_consider', false),
-    ...resource_registry.get('initial_world_narrascope', false),
-    ...resource_registry.get('initial_world_memories', false)
+    ...resource_registry.get('initial_world_prelude').get_pre_runtime(),
+    ...resource_registry.get('initial_world_metaphor').get_pre_runtime(),
+    ...resource_registry.get('initial_world_consider').get_pre_runtime(),
+    ...resource_registry.get('initial_world_narrascope').get_pre_runtime(),
+    ...resource_registry.get('initial_world_memories').get_pre_runtime()
 };
 
 
@@ -719,7 +740,7 @@ initial_venience_world = update(initial_venience_world, {
     )
 });
 
-const puffer_index = resource_registry.get('puffer_index', false);
+const puffer_index = resource_registry.get('puffer_index').get_pre_runtime();
 export const venience_world_spec = make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
 
 export function new_venience_world() {

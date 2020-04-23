@@ -103,7 +103,7 @@ const global_lock = resource_registry.initialize('global_lock',
         owner: (w) => w.owner,
         set_owner: (w, owner) => update(w, { owner } )
     })
-);
+).get_pre_runtime();
 
 const puffer_index = resource_registry.initialize('puffer_index',
     new StaticIndex([
@@ -114,7 +114,7 @@ const puffer_index = resource_registry.initialize('puffer_index',
             return puffer;
         }
     ])
-);
+).get_pre_runtime();
 
 resource_registry.initialize('gist_renderer_dispatchers', GIST_RENDERER_DISPATCHERS);
 

@@ -21032,7 +21032,7 @@ const input_prompt_1 = __webpack_require__(/*! ./input_prompt */ "./src/typescri
 const typeahead_1 = __webpack_require__(/*! ./typeahead */ "./src/typescript/UI/components/typeahead.tsx");
 const history_1 = __webpack_require__(/*! ./history */ "./src/typescript/UI/components/history.tsx");
 const static_resources_1 = __webpack_require__(/*! lib/static_resources */ "./src/typescript/lib/static_resources.ts");
-exports.ui = framework_1.make_ui((state, old) => exports.App(state, old), app_state_1.app_reducer);
+exports.ui = framework_1.make_ui((state, old) => exports.App(state, old), app_state_1.app_reducer, true);
 exports.initialize_app = exports.ui.initialize;
 prelude_1.ui_resources.initialize('initialize', exports.ui.initialize);
 prelude_1.ui_resources.initialize('dispatch', exports.ui.dispatch);
@@ -21127,7 +21127,7 @@ const story_1 = __webpack_require__(/*! ../../story */ "./src/typescript/story/i
 const animation_1 = __webpack_require__(/*! ../animation */ "./src/typescript/UI/animation.ts");
 const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/UI/prelude.ts");
 exports.History = (props, old) => {
-    const dispatch = prelude_1.ui_resources.get('dispatch');
+    const dispatch = prelude_1.ui_resources.get('dispatch').get();
     let root;
     if (!old) {
         const first_world = utils_1.array_last(history_1.history_array(props.world));
@@ -21189,7 +21189,7 @@ function set_history_view_from_scratch(story, root) {
 }
 exports.set_history_view_from_scratch = set_history_view_from_scratch;
 function push_animation(story, dom_effects) {
-    const effect_promise = prelude_1.ui_resources.get('effect_promise');
+    const effect_promise = prelude_1.ui_resources.get('effect_promise').get();
     dom_effects.push(async (dom) => {
         await effect_promise();
         await animation_1.animate(dom);
@@ -21228,7 +21228,7 @@ const input_prompt_input = input_prompt_child((root) => root.querySelector('inpu
 const input_prompt_text = input_prompt_child((root) => root.querySelector('.parsed-text'), ({ parsing }) => ({ parsing }), parsed_text_1.ParsedText);
 const input_prompt_cursor = input_prompt_child((root) => root.querySelector('.cursor'), ({ locked }) => ({ locked }), (props, old) => Cursor(props, old));
 exports.InputPrompt = (props, old) => {
-    const dispatch = prelude_1.ui_resources.get('dispatch');
+    const dispatch = prelude_1.ui_resources.get('dispatch').get();
     if (old === undefined) {
         let result = framework_1.createElement("div", { className: "input-prompt" },
             framework_1.createElement("input", { value: props.parsing.raw.text }),
@@ -21346,7 +21346,7 @@ const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/UI/pre
 const framework_1 = __webpack_require__(/*! ../framework */ "./src/typescript/UI/framework/index.ts");
 const lodash_1 = __webpack_require__(/*! lodash */ "./node_modules/lodash/lodash.js");
 exports.Typeahead = ({ parsing, typeahead_index, undo_selected }, old) => {
-    const dispatch = prelude_1.ui_resources.get('dispatch');
+    const dispatch = prelude_1.ui_resources.get('dispatch').get();
     function handleMouseOver(i) {
         dispatch({
             kind: 'SelectTypeahead',
@@ -21446,7 +21446,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const framework_1 = __webpack_require__(/*! ../framework */ "./src/typescript/UI/framework/index.ts");
 const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/UI/prelude.ts");
 exports.UndoButton = ({ world, undo_selected }, old) => {
-    const dispatch = prelude_1.ui_resources.get('dispatch');
+    const dispatch = prelude_1.ui_resources.get('dispatch').get();
     function get_undo_class() {
         let classes = ['undo-button'];
         if (undo_selected) {
@@ -21575,7 +21575,7 @@ function child_declarator_for() {
     return child_declarator_for_inner;
 }
 exports.child_declarator_for = child_declarator_for;
-function make_ui(renderer, reducer) {
+function make_ui(renderer, reducer, debug = false) {
     let old_state = undefined;
     let component;
     let rendering = false;
@@ -21630,7 +21630,9 @@ function make_ui(renderer, reducer) {
             });
             old_state = new_state;
             // for debugging
-            globalThis.ui_state = old_state;
+            if (debug) {
+                globalThis.ui_state = old_state;
+            }
         }
         requestAnimationFrame(() => {
             rendering = false;
@@ -21784,11 +21786,11 @@ prelude_1.resource_registry.initialize('initial_world_knowledge', new knowledge_
         owner: undefined,
         current_interpretation: undefined,
         knowledge: k.get(),
-        has_acquired: utils_1.map(),
+        has_acquired: utils_1.map(['consider', true], ['remember', true]),
         has_tried: new knowledge_1.GistAssoc([]) // map()
     });
 });
-const init_knowledge = prelude_1.resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = prelude_1.resource_registry.get('initial_world_knowledge');
 prelude_1.Puffers(knowledge_1.make_knowledge_puffer({
     get_knowledge: w => w.knowledge,
     set_knowledge: (w, k) => utils_1.update(w, { knowledge: () => k }),
@@ -21799,7 +21801,7 @@ prelude_1.Puffers(knowledge_1.make_knowledge_puffer({
         return story_1.Updates.frame(utils_1.range(w.current_interpretation, w.index + 1));
     }
 }));
-let action_index = prelude_1.resource_registry.initialize('action_index', new static_resources_1.StaticMap(prelude_1.STATIC_ACTION_IDS));
+let action_index = prelude_1.resource_registry.initialize('action_index', new static_resources_1.StaticMap(prelude_1.STATIC_ACTION_IDS)).get_pre_runtime();
 function Action(spec) {
     gist_1.GistRenderer([spec.id], spec.render_impls);
     const descr_gist = gist_1.gist('action description', undefined, { action: spec.id });
@@ -21821,17 +21823,16 @@ function Action(spec) {
             // the notes about the action, which contains the main body above
             .ingest((k) => story_1.createElement("div", { gist: ['notes', { subject: descr_gist }] },
             story_1.createElement("strong", null, text_utils_1.capitalize(gist_1.render_gist.noun_phrase(descr_gist))),
-            k.get(descr_gist)))
+            k.get(['knowledge', { content: descr_gist, context: undefined }])))
             .ingest((k) => story_1.createElement("div", { gist: ['remember', { subject: descr_gist }] },
             "You close your eyes, and hear Katya's voice:",
-            k.get(descr_gist)))));
+            k.get(['knowledge', { content: descr_gist, context: undefined }])))));
     });
     if (spec.memory_prompt_impls !== undefined) {
         gist_1.GistRenderer(['memory prompt', { memory: ['remember', { subject: descr_gist }] }], spec.memory_prompt_impls);
     }
     if (spec.memory !== undefined) {
-        const exposition_func = prelude_1.resource_registry.get_resource('exposition_func');
-        exposition_func[static_resources_1.OnSealed]((e) => {
+        prelude_1.resource_registry.get('exposition_func')[static_resources_1.OnSealed](e => {
             const Exposition = e.get();
             exports.ActionHandler(['scrutinize', {
                     facet: ['facet', { knowledge: ['knowledge', { content: katya_on_gist }] }]
@@ -21848,7 +21849,7 @@ function Action(spec) {
     return spec;
 }
 exports.Action = Action;
-const ACTION_HANDLER_DISPATCHER = prelude_1.resource_registry.initialize('action_handler_dispatcher', new gist_1.GistPatternUpdateDispatcher());
+const ACTION_HANDLER_DISPATCHER = prelude_1.resource_registry.initialize('action_handler_dispatcher', new gist_1.GistPatternUpdateDispatcher()).get_pre_runtime();
 exports.ACTION_HANDLER_FALLTHROUGH_STAGE = 5;
 exports.ActionHandler = utils_1.bound_method(ACTION_HANDLER_DISPATCHER, 'add_rule');
 function handle_action(action_gist, w) {
@@ -21883,7 +21884,7 @@ prelude_1.Puffers({
 exports.ActionHandler(['remember', { subject: ['action description'] }], (action_gist) => (world) => {
     const new_action_id = action_gist[1].subject[2].action;
     return utils_1.update(world, {
-        has_acquired: _ => utils_1.map([new_action_id, true])
+        has_acquired: utils_1.map([new_action_id, true])
     });
 });
 // export const Action = (spec: Action) => action_index.initialize(spec.id, spec);
@@ -22154,7 +22155,7 @@ prelude_1.resource_registry.initialize('initial_world_consider', {
         { key: gist_1.gist('yourself'), value: true },
     ])
 });
-const topic_index = prelude_1.resource_registry.initialize('topic_index', new static_resources_1.StaticMap(prelude_1.STATIC_TOPIC_IDS));
+const topic_index = prelude_1.resource_registry.initialize('topic_index', new static_resources_1.StaticMap(prelude_1.STATIC_TOPIC_IDS)).get_pre_runtime();
 function assert_is_topic(x) {
     var _a;
     if (!story_1.is_story_node(x)) {
@@ -22165,7 +22166,7 @@ function assert_is_topic(x) {
     }
 }
 exports.assert_is_topic = assert_is_topic;
-const init_knowledge = prelude_1.resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = prelude_1.resource_registry.get('initial_world_knowledge');
 function Topic(topic) {
     assert_is_topic(topic);
     const topic_id = topic.data.gist[0];
@@ -22179,7 +22180,7 @@ action_1.Action({
     render_impls: {
         noun_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => `your impression of ${subject}`, gist_1.render_gist.noun_phrase),
         command_noun_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['my_impression_of', subject], gist_1.render_gist.command_noun_phrase),
-        command_verb_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['consider', subject], gist_1.render_gist.command_verb_phrase)
+        command_verb_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['consider', subject], gist_1.render_gist.command_noun_phrase)
     },
     description_noun_phrase: 'consideration',
     description_command_noun_phrase: 'consideration',
@@ -22361,7 +22362,7 @@ const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/demo_w
 const styles_1 = __webpack_require__(/*! ../styles */ "./src/typescript/demo_worlds/narrascope/styles.ts");
 const supervenience_spec_1 = __webpack_require__(/*! ../supervenience_spec */ "./src/typescript/demo_worlds/narrascope/supervenience_spec.ts");
 const inner_action_1 = __webpack_require__(/*! ./inner_action */ "./src/typescript/demo_worlds/narrascope/contemplate/inner_action.tsx");
-const global_lock = prelude_1.resource_registry.get('global_lock', false);
+const global_lock = prelude_1.resource_registry.get('global_lock').get_pre_runtime();
 let metaphor_lock = global_lock('Metaphor');
 function begin_contemplation(world, parser) {
     if (world.previous === undefined) {
@@ -22595,7 +22596,7 @@ exports.INNER_ACTION_IDS = {
     hammer: null,
     volunteer: null
 };
-const init_knowledge = prelude_1.resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = prelude_1.resource_registry.get('initial_world_knowledge');
 function Exposition(exposition) {
     if (exposition.revealed_child_story !== undefined) {
         init_knowledge.update(k => k.ingest(exposition.revealed_child_story));
@@ -22614,8 +22615,7 @@ function Exposition(exposition) {
     };
 }
 exports.Exposition = Exposition;
-prelude_1.resource_registry.initialize('exposition_func', Exposition);
-prelude_1.resource_registry.get_resource('exposition_func')[static_resources_1.Seal]();
+prelude_1.resource_registry.initialize('exposition_func', Exposition)[static_resources_1.Seal]();
 function apply_facet_interpretation(world, { parent_gist, child_gist, commentary }) {
     // add a new animation stage where we do interpretation stuff first,
     // then add any present tense stuff second.
@@ -22767,9 +22767,18 @@ prelude_1.resource_registry.initialize('initial_world_narrascope', {
     end: false,
     has_scrutinized_memory: utils_1.map()
 });
-const init_knowledge = prelude_1.resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = prelude_1.resource_registry.get('initial_world_knowledge');
 gist_1.GistRenderer(['your friendship with Sam'], {
     command_noun_phrase: () => 'my_friendship_with_Sam'
+});
+gist_1.GistRenderer(['yourself'], {
+    command_noun_phrase: () => 'myself'
+});
+gist_1.GistRenderer(['your notebook'], {
+    command_noun_phrase: () => 'my_notebook'
+});
+gist_1.GistRenderer(['your history with Sam'], {
+    command_noun_phrase: () => 'my_history_with_Sam'
 });
 consider_1.Topic(story_1.createElement("div", { gist: ["the present moment"] }, "You and Sam are sitting together on the bus."));
 consider_1.Topic(story_1.createElement("div", { gist: ["Sam"] },
@@ -22781,12 +22790,19 @@ consider_1.Topic(story_1.createElement("div", { gist: ["yourself"] },
     story_1.createElement("div", { gist: ['description', { subject: ['your notebook'] }] },
         "A ",
         story_1.createElement("strong", null, "thick notebook"),
-        " sits in your lap."),
-    "}"));
+        " sits in your lap.")));
 consider_1.Topic(story_1.createElement("div", { gist: ["your notebook"] },
     "You keep it with you at all times.",
     story_1.createElement("br", null),
     "It is filled with the words of someone very wise, who you once knew."));
+action_1.ActionHandler(['consider', { subject: ['yourself'] }], g => w => {
+    if (!w.has_tried.get(g)) {
+        return utils_1.update(w, {
+            can_consider: _ => _.set(['your notebook'], true)
+        });
+    }
+    return w;
+});
 action_1.ActionHandler(['consider', { subject: ['your notebook'] }], g => w => {
     if (!w.has_tried.get(g)) {
         const descr_gist = gist_1.gist('description', { subject: ['your notebook'] });
@@ -23113,13 +23129,13 @@ consider_1.Topic(story_1.createElement("div", { gist: ["your history with Sam"] 
 // });
 var prelude_2 = __webpack_require__(/*! ./prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
 exports.Venience = prelude_2.Venience;
-prelude_1.resource_registry.get_resource('gist_renderer_dispatchers')[static_resources_1.Seal]();
-prelude_1.resource_registry.get_resource('initial_world_knowledge')[static_resources_1.Seal]();
-let initial_venience_world = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, world_1.get_initial_world()), prelude_1.resource_registry.get('initial_world_prelude', false)), prelude_1.resource_registry.get('initial_world_metaphor', false)), prelude_1.resource_registry.get('initial_world_consider', false)), prelude_1.resource_registry.get('initial_world_narrascope', false)), prelude_1.resource_registry.get('initial_world_memories', false));
+prelude_1.resource_registry.get('gist_renderer_dispatchers')[static_resources_1.Seal]();
+prelude_1.resource_registry.get('initial_world_knowledge')[static_resources_1.Seal]();
+let initial_venience_world = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, world_1.get_initial_world()), prelude_1.resource_registry.get('initial_world_prelude').get_pre_runtime()), prelude_1.resource_registry.get('initial_world_metaphor').get_pre_runtime()), prelude_1.resource_registry.get('initial_world_consider').get_pre_runtime()), prelude_1.resource_registry.get('initial_world_narrascope').get_pre_runtime()), prelude_1.resource_registry.get('initial_world_memories').get_pre_runtime());
 initial_venience_world = utils_1.update(initial_venience_world, {
     story_updates: story_1.story_updater(story_1.Updates.description(init_knowledge.get().get(['the present moment'])))
 });
-const puffer_index = prelude_1.resource_registry.get('puffer_index', false);
+const puffer_index = prelude_1.resource_registry.get('puffer_index').get_pre_runtime();
 exports.venience_world_spec = puffer_1.make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
 function new_venience_world() {
     return world_1.world_driver(exports.venience_world_spec);
@@ -23155,15 +23171,15 @@ action_1.Action({
     render_impls: {
         noun_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => 'your notes' + subject !== undefined ? ` about ${subject}` : '', gist_1.render_gist.noun_phrase),
         command_noun_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['my_notes', ...utils_1.if_not_null_array(subject, (t) => ['about', t])], gist_1.render_gist.command_noun_phrase),
-        command_verb_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['notes', ...utils_1.if_not_null_array(subject, (t) => ['about', t])], gist_1.render_gist.command_verb_phrase)
+        command_verb_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['notes', ...utils_1.if_not_null_array(subject, (t) => ['about', t])], gist_1.render_gist.command_noun_phrase)
     },
     memory_prompt_impls: {
         noun_phrase: () => 'something scholarly',
         command_noun_phrase: () => 'something_scholarly'
     },
-    description_noun_phrase: 'your notes',
-    description_command_noun_phrase: 'my_notes',
-    description: 'Your notebook contains everything you have seen fit to write down.',
+    description_noun_phrase: 'note taking',
+    description_command_noun_phrase: 'note taking',
+    description: 'The ability to externalize knowledge for later use. Your notebook contains everything you have seen fit to write down.',
     katya_quote: '"Write that down, my dear."',
     memory: story_1.createElement("div", null, "Even before you met her, you wrote. Putting your thoughts to the page elevated them for you, made them meaningful."),
     puffer: {
@@ -23174,9 +23190,11 @@ action_1.Action({
                 const action_gists = [];
                 action_gists.push(gist_1.gist('notes'));
                 for (const subject of utils_1.keys(prelude_1.STATIC_ACTION_IDS)) {
-                    const subject_gist = gist_1.gist('action description', undefined, { action: subject });
-                    const action_gist = gist_1.gist('notes', { subject: subject_gist });
-                    action_gists.push(action_gist);
+                    if (!!world.has_acquired.get(subject)) {
+                        const subject_gist = gist_1.gist('action description', undefined, { action: subject });
+                        const action_gist = gist_1.gist('notes', { subject: subject_gist });
+                        action_gists.push(action_gist);
+                    }
                 }
                 const threads = action_gists.map(ag => () => parser.consume(action_1.action_consume_spec(ag, world), () => parser.submit(() => update_1.update(world, {
                     gist: () => ag
@@ -23198,7 +23216,7 @@ function prompt_to_notes(world, action_descr) {
     return update_1.update(world, {
         story_updates: story_1.story_updater(story_1.Updates.prompt(story_1.createElement("div", null,
             "You write about ",
-            text_utils_1.capitalize(gist_1.render_gist.noun_phrase(action_descr)),
+            gist_1.render_gist.noun_phrase(action_descr),
             " in your ",
             story_1.createElement("strong", null, "notes"),
             ".")))
@@ -23285,7 +23303,7 @@ exports.resource_registry.initialize('initial_world_prelude', { owner: undefined
 const global_lock = exports.resource_registry.initialize('global_lock', lock_1.lock_builder({
     owner: (w) => w.owner,
     set_owner: (w, owner) => utils_1.update(w, { owner })
-}));
+})).get_pre_runtime();
 const puffer_index = exports.resource_registry.initialize('puffer_index', new static_resources_1.StaticIndex([
     function ensure_lock(puffer) {
         if (puffer.role_brand === undefined) {
@@ -23293,7 +23311,7 @@ const puffer_index = exports.resource_registry.initialize('puffer_index', new st
         }
         return puffer;
     }
-]));
+])).get_pre_runtime();
 exports.resource_registry.initialize('gist_renderer_dispatchers', gist_1.GIST_RENDERER_DISPATCHERS);
 exports.Puffers = utils_1.bound_method(puffer_index, 'add');
 function lock_and_brand(owner, puffer) {
@@ -23353,9 +23371,6 @@ action_1.Action({
 });
 action_1.ActionHandler(['remember'], (action_gist) => (world) => utils_1.update(world, {
     story_updates: story_1.story_updater(story_1.Updates.description(world.knowledge.get(action_gist)))
-}));
-action_1.ActionHandler(['remember', { subject: ['action description'] }], (action_gist) => (world) => utils_1.update(world, {
-    has_acquired: utils_1.map([action_gist[1].subject[2].action, true])
 }));
 gist_1.GistRenderer(['memory prompt'], {
     noun_phrase: (g) => 'something',
@@ -23548,7 +23563,7 @@ exports.command_filter = (w, cmd) => {
     return true;
 };
 function get_thread_maker() {
-    const venience_world_spec = prelude_1.resource_registry.get('venience_world_spec');
+    const venience_world_spec = prelude_1.resource_registry.get('venience_world_spec').get();
     return world_1.update_thread_maker(venience_world_spec);
 }
 exports.get_thread_maker = get_thread_maker;
@@ -23916,13 +23931,13 @@ for (const k of utils_1.keys(STATIC_GIST_RENDERER_NAMES)) {
 function GistRenderer(pattern, impls, stage = 0) {
     for (const [k, v] of utils_1.entries(impls)) {
         if (v !== undefined) {
-            exports.GIST_RENDERER_DISPATCHERS.get(k, false).add_rule(pattern, v, stage);
+            exports.GIST_RENDERER_DISPATCHERS.get(k).get_pre_runtime().add_rule(pattern, v, stage);
         }
     }
 }
 exports.GistRenderer = GistRenderer;
 exports.render_gist = utils_1.map_values(STATIC_GIST_RENDERER_NAMES, (_, method_name) => ((g) => {
-    const dispatcher = exports.GIST_RENDERER_DISPATCHERS.get(method_name);
+    const dispatcher = exports.GIST_RENDERER_DISPATCHERS.get(method_name).get();
     return dispatcher.dispatch(g);
 }));
 // export const GIST_RENDERER_INDEX = new StaticIndex<GistRendererRule>();
@@ -24006,17 +24021,17 @@ exports.bottom_up = bottom_up;
 GistRenderer(undefined, {
     noun_phrase: (g) => {
         const [tag, children, parameters] = [g[0], g[1], g[2]];
-        if (Object.keys((children !== null && children !== void 0 ? children : {})).length === 0 && Object.keys((parameters !== null && parameters !== void 0 ? parameters : {})).length === 0) {
+        if (Object.keys((children !== null && children !== void 0 ? children : {})).length > 0 || Object.keys((parameters !== null && parameters !== void 0 ? parameters : {})).length > 0) {
             throw new Error(`No noun_phrase renderer matched a compound gist: ${gist_1.gist_to_string(g)}`);
         }
         return tag;
     },
     command_noun_phrase: (g) => {
         const [tag, children, parameters] = [g[0], g[1], g[2]];
-        if (Object.keys((children !== null && children !== void 0 ? children : {})).length === 0 && Object.keys((parameters !== null && parameters !== void 0 ? parameters : {})).length === 0) {
+        if (Object.keys((children !== null && children !== void 0 ? children : {})).length > 0 || Object.keys((parameters !== null && parameters !== void 0 ? parameters : {})).length > 0) {
             throw new Error(`No command_noun_phrase renderer matched a compound gist: ${gist_1.gist_to_string(g)}`);
         }
-        return tag.replace(' ', '_');
+        return tag.replace(/ /g, '_');
     },
     command_verb_phrase: (g) => {
         throw new Error(`No command_verb_phrase renderer matched a gist. (Verb phrases don't have default behavior even for atomic gists.) Gist: ${gist_1.gist_to_string(g)}`);
@@ -24166,37 +24181,29 @@ class Knowledge {
     constructor(knowledge = new GistAssoc([])) {
         this.knowledge = knowledge;
     }
-    construct_key(g) {
-        const k = utils_1.compute_const(() => {
-            if (g[0] === 'knowledge') {
-                return g;
-            }
-            return ['knowledge', { content: g }];
-        });
-        return k;
-    }
     get_entries(g) {
-        const pat = utils_1.compute_const(() => {
-            if (g[0] === 'knowledge') {
-                return g;
-            }
-            return ['knowledge', { content: g }];
-        });
+        if (g[0] === 'knowledge') {
+            return this.knowledge.filter(k => gist_1.gists_equal(k, g));
+        }
+        const pat = ['knowledge', { content: g }];
         return this.knowledge.filter((k) => !!gist_1.match(k)(pat));
     }
     get_entry(g) {
         const matches = this.get_entries(g);
         if (matches.data.length > 1) {
+            debugger;
             throw new Error(`Ambiguous knowledge key: ${JSON.stringify(g)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
         }
-        const k = this.construct_key(g);
-        return matches.get(k);
+        if (matches.data.length === 0) {
+            return undefined;
+        }
+        return matches.data[0].value;
     }
     get(g) {
         var _a;
         return (_a = this.get_entry(g)) === null || _a === void 0 ? void 0 : _a.story;
     }
-    ingest(story_or_func, parent_context) {
+    ingest(story_or_func, parent_context, allow_replace = false) {
         let result = this;
         // for (const story_or_func of stories) {
         const story = utils_1.compute_const(() => {
@@ -24222,7 +24229,7 @@ class Knowledge {
                 console.log('saving time by skipping a knowledge subtree update');
                 return result;
             }
-            else {
+            else if (!allow_replace) {
                 throw new Error(`Tried to overwrite the knowledge entry for ${gist_1.gist_to_string(g)}`);
             }
         }
@@ -24286,7 +24293,8 @@ class Knowledge {
             updates.push(...entry.story_updates);
             if (updates.length > 0) {
                 const new_story = story_1.apply_story_updates_all(entry.story, updates);
-                result = result.ingest(new_story);
+                result = result.ingest(new_story, entry.key[1].context, true);
+                // TODO Prune any orphaned entries
             }
         }
         return result;
@@ -24985,10 +24993,11 @@ class StaticResource {
         this.state = 'Sealed';
         this.on_seal_callbacks.forEach(cb => cb(this));
     }
-    get(assert_sealed = true) {
-        if (assert_sealed) {
-            this.assert_state('Sealed');
-        }
+    get() {
+        this.assert_state('Sealed');
+        return this.value;
+    }
+    get_pre_runtime() {
         return this.value;
     }
     [exports.OnSealed](f) {
@@ -25025,11 +25034,12 @@ class StaticMap {
         if (!(name in this.resources)) {
             throw new Error('Tried to initialize uncreated resource: ' + name);
         }
-        let resource = this.get_resource(name);
+        let resource = this.get(name);
         let processed = this.mappers.reduce((acc, f) => f(acc), value);
         resource.initialize(processed);
         on_seal_callbacks.forEach(cb => resource[exports.OnSealed](cb));
-        return processed;
+        return resource;
+        // return processed;
     }
     [exports.IsSealed]() {
         return this.sealed;
@@ -25055,26 +25065,29 @@ class StaticMap {
             r.assert_state_not('Uninitialized');
         });
     }
-    get(name, assert_sealed = true) {
-        if (assert_sealed && !this[exports.IsSealed]()) {
-            throw new Error(`Tried to get resource value for ${name} before registry was sealed.`);
-        }
-        if (this.resources[name] === undefined) {
-            throw new Error('Tried to get unrecognized resource: ' + name);
-        }
-        return this.resources[name].get(assert_sealed);
-    }
-    get_resource(name) {
+    // get<K extends keyof T>(name: K, assert_sealed=true): never {// T[K] {
+    //     if (assert_sealed && !this[IsSealed]()) {
+    //         throw new Error(`Tried to get resource value for ${name} before registry was sealed.`);
+    //     }
+    //     if (this.resources[name] === undefined) {
+    //         throw new Error('Tried to get unrecognized resource: '+name);
+    //     }
+    //     return (this.resources[name] as StaticResource<T[K]>).get(assert_sealed)
+    // }
+    get(name) {
         if (this.resources[name] === undefined) {
             throw new Error('Tried to get unrecognized resource: ' + name);
         }
         return this.resources[name];
     }
-    all(assert_sealed = true) {
-        if (assert_sealed && !this[exports.IsSealed]()) {
+    to_value_mapping() {
+        if (!this[exports.IsSealed]()) {
             throw new Error('Tried to get all resources before the registry was sealed.');
         }
-        return utils_1.construct_from_keys(utils_1.keys(this.static_name_index), name => this.get(name, assert_sealed));
+        return utils_1.construct_from_keys(utils_1.keys(this.static_name_index), name => this.get(name).get());
+    }
+    to_value_mapping_pre_runtime() {
+        return utils_1.construct_from_keys(utils_1.keys(this.static_name_index), name => this.get(name).get_pre_runtime());
     }
 }
 exports.StaticMap = StaticMap;
@@ -27856,7 +27869,7 @@ exports.StoryQueries = {
             }
             return true;
         }
-        return results.filter(r1 => !results.some(r2 => is_prefix(r2[1], r1[1])));
+        return results.filter(r1 => !results.some(r2 => r1 !== r2 && is_prefix(r2[1], r1[1])));
     },
     story_root: () => story => [[story, []]],
     story_hole: () => (story) => {

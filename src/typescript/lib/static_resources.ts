@@ -1,5 +1,88 @@
-import { F } from 'ts-toolbelt';
+import { F, A } from 'ts-toolbelt';
 import { construct_from_keys, keys } from './utils';
+
+// type StateTransition<This extends {state: StaticResourceState}, To extends StaticResourceState> =
+//     Omit<This, 'state'> & { state: To }
+// ;
+
+// interface _SealableResource<T> {
+//     value: T | undefined;
+//     state: StaticResourceState;
+//     on_sealed_callbacks: ((sealed: this & {state: 'Sealed'}) => void)[];
+//     transition<S extends StaticResourceState>(s: S): this & {state: S};
+// }
+
+// interface Uninitialized<T> {
+//     state: 'Uninitialized';
+//     value: undefined;
+//     initialize(value: T): StateTransition<this, 'Initialized'>;
+// }
+
+// interface Initialized<T> {
+//     state: 'Initialized';
+//     value: T;
+//     seal(): StateTransition<this, 'Sealed'>;
+//     update(f: (value: T) => T): this;
+//     on_sealed(f: (sealed: this & { state: 'Sealed'}) => void): this;
+//     get_pre_runtime(): T;
+// }
+
+// interface Sealed<T> {
+//     state: 'Sealed';
+//     value: T;
+//     get(): T;
+// }
+
+// type SealableResource<T> = (
+//     & _SealableResource<T>
+//     & (
+//         | Uninitialized<T>
+//         | Initialized<T>
+//         | Sealed<T>
+//     )
+// )
+
+// type SealableResource<This extends _SealableResource<unknown>> = 
+//     This extends _SealableResource<infer T> ? (
+//         & _SealableResource<T>
+//         & (This['state'] extends infer State ?
+//             State extends StaticResourceState ?
+//                 MethodsForStates<This>[State] : {} :
+//             never)
+//     ) : never;
+
+// type MethodsForStates<This extends _SealableResource<unknown>> =
+//     This extends _SealableResource<infer T> ? {
+//         'Uninitialized': {
+//             initialize(value: T): StateTransition<This, 'Initialized'>;
+//         },
+
+//         'Initialized': {
+//             seal(): StateTransition<This, 'Sealed'>;
+//             update(f: (value: T) => T): This;
+//             on_sealed(f: (sealed: This & { state: 'Sealed'}) => void): This;
+//             get_pre_runtime(): T;
+//         },
+
+//         'Sealed': {
+//             get(): T;
+//         }
+//     } : never;
+
+// declare const w: SealableResource<number>;
+
+// if (w.state === 'Uninitialized') {
+//     type WW = A.Compute<typeof w>;
+//     w.initialize(3);
+    
+//     const w2 = w1.initialize(4);
+//     w2.
+// }
+
+
+
+
+
 
 type StaticResourceState = 'Uninitialized' | 'Initialized' | 'Sealed';
 
@@ -79,20 +162,18 @@ export class StaticResource<ValueType> implements Sealable {
         this.on_seal_callbacks.forEach(cb => cb(this));
     }
 
-    get(assert_sealed=true): ValueType {
-        if (assert_sealed) {
-            this.assert_state('Sealed');
-        }
+    get(): ValueType {
+        this.assert_state('Sealed');
+        return this.value;
+    }
+
+    get_pre_runtime(): ValueType {
         return this.value;
     }
 
     [OnSealed](f: OnSealedCallback<this>) {
         this.on_seal_callbacks.push(f);
     }
-
-    // on_seal(f: (v: ValueType) => void) {
-    //     this.on_seal_callbacks.push(f);
-    // }
 }
 
 export type StaticNameIndex<Name extends keyof any> = { [K in Name]: unknown };
@@ -137,7 +218,7 @@ export class StaticMap<T extends {}> implements Sealable {
         return resource;
     }
 
-    initialize<K extends keyof T>(name: K, value: T[K], ...on_seal_callbacks: OnSealedCallback<StaticResource<T[K]>>[]): T[K] {
+    initialize<K extends keyof T>(name: K, value: T[K], ...on_seal_callbacks: OnSealedCallback<StaticResource<T[K]>>[]): StaticResource<T[K]> {
         if (this.sealed) {
             throw new Error('Tried to create new resources on a sealed registry.');
         }
@@ -145,13 +226,14 @@ export class StaticMap<T extends {}> implements Sealable {
         if (!(name in this.resources)) {
             throw new Error('Tried to initialize uncreated resource: '+name);
         }
-        let resource = this.get_resource(name);
+        let resource = this.get(name);
         let processed = this.mappers.reduce((acc, f) => f(acc), value);
         resource.initialize(processed);
         
         on_seal_callbacks.forEach(cb => resource[OnSealed](cb));
         
-        return processed;
+        return resource;
+        // return processed;
     }
 
     [IsSealed]() {
@@ -185,29 +267,32 @@ export class StaticMap<T extends {}> implements Sealable {
         });
     }
 
-    get<K extends keyof T>(name: K, assert_sealed=true): T[K] {
-        if (assert_sealed && !this[IsSealed]()) {
-            throw new Error(`Tried to get resource value for ${name} before registry was sealed.`);
-        }
-        if (this.resources[name] === undefined) {
-            throw new Error('Tried to get unrecognized resource: '+name);
-        }
-        return (this.resources[name] as StaticResource<T[K]>).get(assert_sealed)
-    }
+    // get<K extends keyof T>(name: K, assert_sealed=true): never {// T[K] {
+    //     if (assert_sealed && !this[IsSealed]()) {
+    //         throw new Error(`Tried to get resource value for ${name} before registry was sealed.`);
+    //     }
+    //     if (this.resources[name] === undefined) {
+    //         throw new Error('Tried to get unrecognized resource: '+name);
+    //     }
+    //     return (this.resources[name] as StaticResource<T[K]>).get(assert_sealed)
+    // }
 
-    get_resource<K extends keyof T>(name: K): StaticResource<T[K]> {
+    get<K extends keyof T>(name: K): StaticResource<T[K]> {
         if (this.resources[name] === undefined) {
             throw new Error('Tried to get unrecognized resource: '+name);
         }
         return (this.resources[name] as StaticResource<T[K]>)
     }
 
-    all(assert_sealed=true): T {
-        if (assert_sealed && !this[IsSealed]()) {
+    to_value_mapping(): T {
+        if (!this[IsSealed]()) {
             throw new Error('Tried to get all resources before the registry was sealed.');
         }
+        return construct_from_keys(keys(this.static_name_index), name => this.get(name).get());
+    }
 
-        return construct_from_keys(keys(this.static_name_index), name => this.get(name, assert_sealed));
+    to_value_mapping_pre_runtime(): T {
+        return construct_from_keys(keys(this.static_name_index), name => this.get(name).get_pre_runtime());
     }
 }
 

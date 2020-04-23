@@ -54,12 +54,12 @@ resource_registry.initialize('initial_world_knowledge',
             owner: undefined,
             current_interpretation: undefined,
             knowledge: k.get(),
-            has_acquired: map(),
+            has_acquired: map(['consider', true], ['remember', true]),
             has_tried: new GistAssoc([])// map()
         });
     }
 );
-const init_knowledge = resource_registry.get_resource('initial_world_knowledge');
+const init_knowledge = resource_registry.get('initial_world_knowledge');
 
 Puffers(make_knowledge_puffer({
     get_knowledge: w => w.knowledge,
@@ -99,7 +99,7 @@ export type Action =
 
 let action_index = resource_registry.initialize('action_index',
     new StaticMap(STATIC_ACTION_IDS)
-);
+).get_pre_runtime();
 
 export function Action(spec: Action) {
     GistRenderer([spec.id] as GistPattern<typeof spec.id>, spec.render_impls);
@@ -133,12 +133,12 @@ export function Action(spec: Action) {
             // the notes about the action, which contains the main body above
             .ingest((k) => <div gist={['notes', { subject: descr_gist }]}>
                 <strong>{capitalize(render_gist.noun_phrase(descr_gist))}</strong>
-                {k.get(descr_gist)!}
+                {k.get(['knowledge', {content: descr_gist, context: undefined}])!}
             </div>)
 
             .ingest((k) => <div gist={['remember', { subject: descr_gist }]}>
                 You close your eyes, and hear Katya's voice:
-                {k.get(descr_gist)!}
+                {k.get(['knowledge', {content: descr_gist, context: undefined}])!}
             </div>)
         ));
     });
@@ -148,8 +148,7 @@ export function Action(spec: Action) {
     }
 
     if (spec.memory !== undefined) {
-        const exposition_func = resource_registry.get_resource('exposition_func');
-        exposition_func[OnSealed]((e) => {
+        resource_registry.get('exposition_func')[OnSealed](e => {
             const Exposition = e.get();
             ActionHandler(['scrutinize', {
                 facet: ['facet', { knowledge: ['knowledge', { content: katya_on_gist }]}]
@@ -180,7 +179,7 @@ export function Action(spec: Action) {
     return spec;
 }
 
-const ACTION_HANDLER_DISPATCHER = resource_registry.initialize('action_handler_dispatcher', new GistPatternUpdateDispatcher());
+const ACTION_HANDLER_DISPATCHER = resource_registry.initialize('action_handler_dispatcher', new GistPatternUpdateDispatcher()).get_pre_runtime();
 export const ACTION_HANDLER_FALLTHROUGH_STAGE = 5;
 
 export const ActionHandler = bound_method(ACTION_HANDLER_DISPATCHER, 'add_rule');
@@ -228,7 +227,7 @@ ActionHandler(['remember', { subject: ['action description'] } ],
        const new_action_id = action_gist[1].subject[2].action;
 
         return update(world, {
-            has_acquired: _ => map([new_action_id, true])
+            has_acquired: map([new_action_id, true])
         })
     }
 );
