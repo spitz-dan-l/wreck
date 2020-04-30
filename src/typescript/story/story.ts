@@ -4,7 +4,7 @@ import { update } from '../lib/update';
 import { NodeProps } from './create';
 import  {setAutoFreeze, produce} from 'immer';
 import { Gist } from 'gist';
-import { map, zip, zipLongest } from 'iterative';
+import { zipLongest } from 'iterative';
 import {dangerous_assert, type_or_kind_name} from '../lib/type_predicate_utils';
 import { deep_equal, drop_keys } from '../lib/utils';
 

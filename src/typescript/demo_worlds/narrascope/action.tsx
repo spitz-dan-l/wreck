@@ -133,12 +133,12 @@ export function Action(spec: Action) {
             // the notes about the action, which contains the main body above
             .ingest((k) => <div gist={['notes', { subject: descr_gist }]}>
                 <strong>{capitalize(render_gist.noun_phrase(descr_gist))}</strong>
-                {k.get(['knowledge', {content: descr_gist, context: undefined}])!}
+                {k.get_exact(descr_gist)!}
             </div>)
 
             .ingest((k) => <div gist={['remember', { subject: descr_gist }]}>
                 You close your eyes, and hear Katya's voice:
-                {k.get(['knowledge', {content: descr_gist, context: undefined}])!}
+                {k.get_exact(descr_gist)!}
             </div>)
         ));
     });
@@ -197,7 +197,24 @@ export function action_consume_spec(action_gist: Gists[ActionID], world: Venienc
 
 // trigger action handlers based on the action that just occurred.
 Puffers({
-    pre: world => update(world, { gist: undefined }),
+    pre: world => {
+        let result = world;
+        if (world.previous !== undefined) {
+            const prev_gist = world.previous.gist;
+            if (prev_gist !== undefined) {
+                if (world.knowledge.get_entry({ kind: 'Exact', gist: ['knowledge', {content: prev_gist}]}) === undefined) {
+                    const prev_frame = S.frame(world.previous!.index).query(world.story)[0][0]
+                    result = update(result, {
+                        knowledge: _ => _.ingest(prev_frame)
+                    });
+                }
+                
+            }
+        }
+        return update(result, {
+            gist: undefined
+        });
+    },
     
     post: (w2, w1) => {
         if (w2.gist !== undefined) {
@@ -210,7 +227,7 @@ Puffers({
             w2 = handle_action(w2.gist!, w2);
 
             w2 = update(w2, {
-                has_tried: _ => _.set(w2.gist!, true),
+                has_tried: _ => _.set(w2.gist!, true)
             });
 
             

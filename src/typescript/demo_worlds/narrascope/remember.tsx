@@ -4,6 +4,7 @@ import { createElement, story_updater, Updates as S } from 'story';
 import { Action, ActionHandler, action_consume_spec } from "./action";
 import { resource_registry, Venience } from './prelude';
 import { insight_text_class } from './styles';
+import { GAP, SUBMIT } from "parser";
 
 
 interface Memories {
@@ -44,7 +45,7 @@ Action({
             (tag, {subject}) => ['my_memory of', subject],
             render_gist.command_noun_phrase
         ),
-        command_verb_phrase: (g) => ['remember', render_gist.command_noun_phrase(['memory prompt', {memory: g}])]
+        command_verb_phrase: (g) => ['remember', GAP, render_gist.command_noun_phrase(['memory prompt', {memory: g}])]
     },
 
     description_noun_phrase: 'memory',
@@ -64,16 +65,17 @@ Action({
                 return parser.eliminate();
             }
 
-            const memory = world.could_remember[0];
-            const action_gist = gist('remember', {subject: memory});
-            return (
-                parser.consume(action_consume_spec(action_gist, world), () =>
-                parser.submit(() =>
-                update(world, {
-                    gist: () => action_gist,
-                    could_remember: _ => _.slice(1)
-                })))
-            );
+            return parser.split(world.could_remember.map((memory, i) => () => {
+            // const memory = world.could_remember[0];
+                const action_gist = gist('remember', {subject: memory});
+                return (
+                    parser.consume([action_consume_spec(action_gist, world), SUBMIT], () =>
+                    update(world, {
+                        gist: () => action_gist,
+                        could_remember: _ => { const r = [..._]; r.splice(i, 1); return r }
+                    }))
+                );
+            }));
         }
     }
 });
@@ -81,7 +83,7 @@ Action({
 ActionHandler(['remember'], (action_gist) => (world) =>
     update(world, {
         story_updates: story_updater(
-            S.description(world.knowledge.get(action_gist)!)
+            S.description(world.knowledge.get_exact(action_gist)!)
         )
     })
 );

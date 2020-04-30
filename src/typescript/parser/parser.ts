@@ -21,9 +21,10 @@
 */
 
 import { filter, map } from 'iterative';
-import { starts_with, tokenize, split_tokens } from './lib/text_utils';
-import { array_last, drop_keys } from './lib/utils';
-import { type_or_kind_is } from './lib/type_predicate_utils';
+import { starts_with, tokenize, split_tokens } from 'lib/text_utils';
+import { array_last, drop_keys } from 'lib/utils';
+import { type_or_kind_is } from 'lib/type_predicate_utils';
+import { RawConsumeSpec, Token, TokenAvailability, SUBMIT, AVAILABILITY_ORDER, TokenLabels, ConsumeSpec, process_consume_spec, TaintedRawConsumeSpec, NEVER_TOKEN } from './consume_spec';
 
 // class NoMatch {
 //     kind: 'NoMatch' = 'NoMatch';
@@ -60,35 +61,7 @@ function is_parse_restart<T>(x: T | ParseRestart): x is ParseRestart {
 // };
 export class ParseError extends Error {};
 
-export const SUBMIT_TOKEN = Symbol('SUBMIT');
-export type Token = string | typeof SUBMIT_TOKEN;
 
-export const NEVER_TOKEN = Symbol('NEVER');
-export type TaintedToken = Token | typeof NEVER_TOKEN;
-
-export type TokenAvailability =
-    'Available' | 'Used' | 'Locked';
-
-const availability_order = {
-    'Available': 0,
-    'Used': 1,
-    'Locked': 2
-} as const
-
-export type TokenLabels = {
-    [label: string]: boolean
-};
-
-export type RawConsumeSpec = {
-    kind: 'RawConsumeSpec';
-    token: Token;
-    availability: TokenAvailability;
-    labels: TokenLabels;
-}
-
-export type TaintedRawConsumeSpec = Omit<RawConsumeSpec, 'token'> & {
-    token: TaintedToken;
-}
 
 export type MatchStatus = 'Match' | 'PartialMatch' | 'ErrorMatch';
 
@@ -159,7 +132,12 @@ export type NotParsed = { kind: 'NotParsed', parsing: Parsing };
 export type ParseResult<T> = Parsed<T> | NotParsed;
 
 export function is_parse_result_valid(result: TokenMatch[]) {
-    return result.length === 0 || array_last(result)!.status === 'Match';
+    if (result.length === 0) {
+        return true;
+    }
+    const last = array_last(result)!;
+    return last.status === 'Match' && last.expected.token !== SUBMIT;
+    // return result.length === 0 || array_last(result)!.status === 'Match';
 }
 
 type GroupableRow = (TokenMatch | undefined)[]
@@ -212,7 +190,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
 
     if ((row = parse_results.find(row => array_last(row)!.status === 'Match')!) !== undefined) {
         match_status = 'Match';
-        submission = array_last(row)!.actual === SUBMIT_TOKEN;
+        submission = array_last(row)!.actual === SUBMIT;
 
         if (!submission) {
             throw new ParseError('Matching parse did not end in SUBMIT_TOKEN');
@@ -239,7 +217,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
             for (let i = 0; i < first_group.length; i++) {
                 let opt = first_group[i];
                 let a = array_last(opt)!.expected.availability;
-                if (availability_order[a] < availability_order[current_a]) {
+                if (AVAILABILITY_ORDER[a] < AVAILABILITY_ORDER[current_a]) {
                     current_a = a;
                     current_index = i;
                 }
@@ -266,7 +244,7 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
     }
 
     let typeahead_grid = compute_typeahead(parse_results, input_stream);
-    let submittable = typeahead_grid.some(row => array_last(row.option)!.expected.token === SUBMIT_TOKEN)
+    let submittable = typeahead_grid.some(row => array_last(row.option)!.expected.token === SUBMIT)
 
     return {
         kind: 'ParsingView',
@@ -327,7 +305,7 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
         for (let i = 0; i < options.length; i++) {
             let opt = options[i];
             let a = array_last(opt)!.expected.availability;
-            if (availability_order[a] < availability_order[current_a]) {
+            if (AVAILABILITY_ORDER[a] < AVAILABILITY_ORDER[current_a]) {
                 current_a = a;
                 current_index = i;
             }
@@ -353,22 +331,6 @@ function call_or_return(parser: Parser, result?: any): any {
     }
     return result;
 }
-
-export type ConsumeSpec =
-    string |
-    ConsumeSpecObj |
-    ConsumeSpecArray;
-
-type ConsumeSpecObj = {
-    tokens: ConsumeSpec,
-    labels?: TokenLabels,
-    used?: boolean,
-    locked?: boolean
-    
-};
-export type ConsumeSpecOverrides = Omit<ConsumeSpecObj, 'tokens'>;
-
-interface ConsumeSpecArray extends Array<ConsumeSpec> {};
 
 export type ParseValue<T> = T | NoMatch | ParseRestart;
 
@@ -405,7 +367,7 @@ export class Parser {
     private _current_availability: TokenAvailability = 'Available'
     get current_availability(): TokenAvailability { return this._current_availability; }
     set current_availability(val) {
-        if (availability_order[val] < availability_order[this._current_availability]) {
+        if (AVAILABILITY_ORDER[val] < AVAILABILITY_ORDER[this._current_availability]) {
             return;
         }
         this._current_availability = val;
@@ -416,11 +378,17 @@ export class Parser {
 
         this.label_context = {...this.label_context, ...labels};
 
-        try {
-            return cb();
-        } finally {
-            this.label_context = old_label_context;
-        }
+        // pretty sure we can just do this since we no longer rely on
+        // exceptions for flow control in parser threads
+        const result = cb();
+        this.label_context = old_label_context;
+        return result;
+
+        // try {
+        //     return cb();
+        // } finally {
+        //     this.label_context = old_label_context;
+        // }
     }
 
     consume(spec: ConsumeSpec): ParseValue<void>;
@@ -435,47 +403,17 @@ export class Parser {
         return call_or_return(this, result);
     }
 
-    private _consume_spec(spec: ConsumeSpec, overrides?: ConsumeSpecOverrides): ParseValue<void> {
-        if (spec instanceof Array) {
-            for (let s of spec) {
-                if (failed(this._consume_spec(s, overrides))) {
-                    return this.failure;
-                }
-            }
-            return;
-        } else if (typeof spec === 'string') {
-            return this._consume_string(spec, overrides);
-        } else {
-            return this._consume_object(spec, overrides);
-        }
+    private _consume_spec(spec: ConsumeSpec): ParseValue<void> {
+        const chunks = process_consume_spec(spec);
+
+        return this._consume_chunks(chunks);
     }
 
-    private _consume_string(spec: string, overrides?: ConsumeSpecOverrides): ParseValue<void> {
-        const toks = split_tokens(spec)//tokenize(spec)[0];
-            
-        let labels: TokenLabels = this.label_context; //{ filler: true };
-        let availability: TokenAvailability = 'Available';
-        
-        if (overrides !== undefined) {
-            if (overrides.labels !== undefined) {
-                labels = {...labels, ...overrides.labels};
-            }
-            
-            if (overrides.used) {
-                availability = 'Used';
-            }
-
-            if (overrides.locked) {
-                availability = 'Locked'
-            }
-        }
-        
-        for (let t of toks) {
-            const status = this._consume(t.split('_').map(t => ({
-                kind: 'RawConsumeSpec',
-                token: t,
-                availability,
-                labels
+    private _consume_chunks(token_chunks: TaintedRawConsumeSpec[][]): ParseValue<void> {
+        for (let chunk of token_chunks) {
+            const status = this._consume(chunk.map(rcs => ({
+                ...rcs,
+                labels: {...this.label_context, ...rcs.labels}
             })));
             
             if (failed(status)) {
@@ -484,39 +422,16 @@ export class Parser {
         }
     }
 
-    private _consume_object(spec: ConsumeSpecObj, overrides?: ConsumeSpecOverrides): ParseValue<void> {
-        const spec_: ConsumeSpecObj = {...spec};
-
-        if (overrides) {
-            if (overrides.used !== undefined) {
-                spec_.used = overrides.used;
-            }
-            if (overrides.locked !== undefined) {
-                spec_.locked = overrides.locked
-            }
-
-            if (overrides.labels) {
-                spec_.labels = {...spec.labels, ...overrides.labels};
-            }
-        }
-
-        return this._consume_spec(spec.tokens, drop_keys(spec_, 'tokens'))
-    }
-
     private clamp_availability_MUTATE(spec: TaintedRawConsumeSpec): void {
-        if (availability_order[spec.availability] < availability_order[this.current_availability]) {
+        if (AVAILABILITY_ORDER[spec.availability] < AVAILABILITY_ORDER[this.current_availability]) {
             spec.availability = this.current_availability;
             // return {...spec, availability: this.current_availability};
-        } else if (availability_order[spec.availability] > availability_order[this.current_availability]) {
+        } else if (AVAILABILITY_ORDER[spec.availability] > AVAILABILITY_ORDER[this.current_availability]) {
             this.current_availability = spec.availability;
         }
         // return spec;
     }
-    /*
-        This will throw a parse exception if the desired tokens can't be consumed.
-        It is expected that every ParserThread is wrapped in an exception handler for
-        this case.
-    */
+    
     private _consume(tokens: TaintedRawConsumeSpec[]): ParseValue<void> {
         if (!is_parse_result_valid(this.parse_result)) {
             throw new ParseError('Tried to consume() on a done parser.');
@@ -554,7 +469,7 @@ export class Parser {
                 continue;
             }
 
-            if (spec_value === SUBMIT_TOKEN || input === SUBMIT_TOKEN) {
+            if (spec_value === SUBMIT || input === SUBMIT) {
                 // eliminate case where either token is SUBMIT_TOKEN (can't pass into starts_with())
                 error = true;
                 break;
@@ -636,13 +551,8 @@ export class Parser {
     submit(): ParseValue<void>;
     submit<T>(callback: ParserThread<T>): ParseValue<T>;
     submit<T>(result: T): ParseValue<T>;
-    submit<T>(result?: any) {
-        const status = this._consume([{
-            kind: 'RawConsumeSpec',
-            token: SUBMIT_TOKEN,
-            labels: {},
-            availability: 'Available'
-        } as const]);
+    submit(result?: any) {
+        const status = this.consume(SUBMIT);
 
         if (failed(status)) {
             return status;
@@ -681,7 +591,7 @@ export class Parser {
     static run_thread<T>(raw: RawInput, t: ParserThread<T>): ParseResult<T> {
         const [tokens, whitespace]: [Token[], string[]] = tokenize(raw.text);
         if (raw.submit) {
-            tokens.push(SUBMIT_TOKEN);
+            tokens.push(SUBMIT);
         }
 
         // The core parsing algorithm
@@ -721,7 +631,7 @@ export class Parser {
                     continue;
                 }
 
-                if (!is_no_match(result) && (p.parse_result.length === 0 || array_last(p.parse_result)!.expected.token !== SUBMIT_TOKEN)) {
+                if (!is_no_match(result) && (p.parse_result.length === 0 || array_last(p.parse_result)!.expected.token !== SUBMIT)) {
                     const expected_command: string = p.parse_result.map(r => r.expected.token).join(' ');
 
                     throw new ParseError("Command did not end in SUBMIT: " + expected_command);

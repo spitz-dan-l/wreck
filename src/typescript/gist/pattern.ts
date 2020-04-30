@@ -123,7 +123,7 @@ export type _MatchResult<Pat> = (
     never
 );
 
-export type MatchResult<Pat extends GistPatternNullable, PossibleTags extends ValidTags> =
+export type MatchResult<Pat extends GistPattern, PossibleTags extends ValidTags> =
     false | Extract<_MatchResult<Pat>, {0: PossibleTags}>;
 
 export type MatchResultNullable<Pat extends GistPatternNullable, PossibleTags extends ValidTags> =
@@ -138,6 +138,8 @@ export function gist_pattern<Pat extends GistPatternNullable>(pattern: Pat): Pat
 export function gist_pattern(pattern: GistPatternNullable): GistPatternNullable {
     return pattern;
 }
+
+type MFull = _MatchResult<GistPattern>
 
 /*
 declare const tag: 'scrutinize' | 'hammer';
@@ -164,6 +166,7 @@ if (m2 !== false) {
 
 const my_pat = gist_pattern([UNION, ['consider', {subject: ['Sam']}], [FIND_DEEP, ['Sam'], ['Sam']]]);
 */
+
 export function match<Tags extends ValidTags>(g: Gist & {0: Tags}): <Pat extends GistPattern<Tags>>(pattern: Pat) => MatchResult<Pat, Tags>;
 export function match<Tags extends ValidTags>(g: (Gist & {0: Tags}) | undefined): <Pat extends GistPatternNullable<Tags>>(pattern: Pat) => MatchResultNullable<Pat, Tags>;
 export function match(gist: Gist | undefined) {
@@ -246,4 +249,13 @@ export function match(gist: Gist | undefined) {
             }
         }
     }
+}
+
+export function if_match<M, R>(m: M | false, then: (m: M) => R): R | undefined;
+export function if_match<M, R>(m: M | undefined | false, then: (m: M | undefined) => R): R | undefined;
+export function if_match(m: unknown | undefined | false, then: (m: unknown | undefined) => unknown): unknown | undefined {
+    if (m !== false) {
+        return then(m);
+    }
+    return undefined;
 }

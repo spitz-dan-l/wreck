@@ -13,19 +13,13 @@ declare module 'gist' {
 
 // base renderer will just ignore the parent gist and refer to it as the child gist's rendering
 GistRenderer(['facet'], {
-    noun_phrase: g => bottom_up(g[1].knowledge)(
-        (tag, {content: child}) => child,
-        render_gist.noun_phrase
-    ),
-    command_noun_phrase: g => bottom_up(g[1].knowledge)(
-        (tag, {content: child}) => child,
-        render_gist.command_noun_phrase
-    )
+    noun_phrase: g => render_gist.noun_phrase(g[1].knowledge[1].content),
+    command_noun_phrase: g => render_gist.command_noun_phrase(g[1].knowledge[1].content)
 });
 
 // Given a gist, return the list of its facets.
 export function get_facets(w: Venience, parent: Gist): Gists['facet'][] {
-    const entry = w.knowledge.get_entry(parent);
+    const entry = w.knowledge.get_entry({kind: 'Exact', gist: parent});
     if (entry === undefined) {
         throw new Error('Tried to look up gist '+gist_to_string(parent)+' without an entry in the knowledge base.');
     }

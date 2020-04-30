@@ -3,7 +3,7 @@ import { stages } from '../../lib/stages';
 import { capitalize } from '../../lib/text_utils';
 import { update } from '../../lib/update';
 import { if_not_null_array, keys } from '../../lib/utils';
-import { ParserThread } from '../../parser';
+import { ParserThread, GAP } from '../../parser';
 import { createElement, story_updater, Updates as S } from '../../story';
 import { Action, ActionHandler, action_consume_spec } from './action';
 import { STATIC_ACTION_IDS, Venience } from './prelude';
@@ -25,11 +25,11 @@ Action({
             render_gist.noun_phrase
         ),
         command_noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['my_notes', ...if_not_null_array(subject, (t) => ['about', t])],
+            (tag, {subject}) => ['my_notes', GAP, ...if_not_null_array(subject, (t) => ['about', t] as const)],
             render_gist.command_noun_phrase
         ),
         command_verb_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['notes', ...if_not_null_array(subject, (t) => ['about', t])],
+            (tag, {subject}) => ['notes', GAP, ...if_not_null_array(subject, (t) => ['about', t] as const)],
             render_gist.command_noun_phrase
         )
     },
@@ -40,7 +40,7 @@ Action({
     },
 
     description_noun_phrase: 'note taking',
-    description_command_noun_phrase: 'note taking',
+    description_command_noun_phrase: 'note_taking',
 
     description: 'The ability to externalize knowledge for later use. Your notebook contains everything you have seen fit to write down.',
     katya_quote: '"Write that down, my dear."',
@@ -120,7 +120,7 @@ ActionHandler(['notes', { subject: [EMPTY] }], (action) => (world) =>
 ActionHandler(['notes', { subject: ['action description'] }], (action) => (world) =>
     update(world, {
         story_updates: story_updater(
-            S.description(world.knowledge.get(action)!)
+            S.description(world.knowledge.get_exact(action)!)
         )
     })
 );

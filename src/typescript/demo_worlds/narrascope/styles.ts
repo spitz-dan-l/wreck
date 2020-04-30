@@ -5,15 +5,21 @@ export const insight_text_class = TypeStyle.style(
     rgb_rule(255, 215, 0)
 )
 
-function make_class_for_animation(name: string, animation: string) {
+function make_class_for_animation(name: string, animation: string, extra_rules?: TypeStyle.types.NestedCSSProperties) {
     return TypeStyle.style({
         $debugName: name,
         animationName: animation,
         animationDuration: '2s',
-        animationIterationCount: 'infinite'
+        animationIterationCount: 'infinite',
+        ...extra_rules
     });
 }
 
+const outline_defaults: TypeStyle.types.NestedCSSProperties = {
+    outlineStyle: 'solid',
+    outlineWidth: '1px',
+    outlineOffset: '5px'
+}
 
 const would_start_interpreting_animation = TypeStyle.keyframes({
     $debugName: 'would_start_interpreting',
@@ -29,12 +35,14 @@ const would_start_interpreting_animation = TypeStyle.keyframes({
 });
 
 export const would_start_interpreting_class = make_class_for_animation(
-    'would_start_interpreting',
-    would_start_interpreting_animation
+    'eph-would_start_interpreting',
+    would_start_interpreting_animation,
+    outline_defaults
 );
 
 export const would_stop_interpreting_class = TypeStyle.style({
-    $debugName: 'would_stop_interpreting'
+    $debugName: 'eph-would_stop_interpreting'
+    // TODO
 })
 
 
@@ -53,7 +61,8 @@ const interpreting_animation = TypeStyle.keyframes({
 
 export const interpreting_class = make_class_for_animation(
     'interpreting',
-    interpreting_animation
+    interpreting_animation,
+    outline_defaults
 );
 
 
@@ -71,7 +80,7 @@ const would_interpret_facet_animation = TypeStyle.keyframes({
 });
 
 export const would_interpret_facet_class = make_class_for_animation(
-    'would_interpret_facet',
+    'eph-would_interpret_facet',
     would_interpret_facet_animation
 );
 
@@ -90,21 +99,24 @@ const would_cite_facet_animation = TypeStyle.keyframes({
 });
 
 export const would_cite_facet_class = make_class_for_animation(
-    'would_cite_facet',
+    'eph-would_cite_facet',
     would_cite_facet_animation
 );
 
 
 export const cite_facet_class = TypeStyle.style({
     $debugName: 'eph-cite_facet'
+    // TODO
 });
 
 export const interpret_facet_class = TypeStyle.style({
     $debugName: 'eph-interpret_facet'
+    // TODO
 });
 
 export const misinterpret_facet_class = TypeStyle.style({
     $debugName: 'eph-misinterpret_facet'
+    // TODO
 })
 
 // Have to manually merge interpreting_animation and would_interpret_facet_animation

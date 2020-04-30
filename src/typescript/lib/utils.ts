@@ -241,8 +241,8 @@ export function if_not_null<T, R>(cond: T | undefined | null, r: (t: T) => R): R
 }
 
 export function if_not_null_array(cond: undefined | null, r: (t: unknown) => unknown): [];
-export function if_not_null_array<T, R>(cond: T | undefined | null, r: (t: T) => R[]): R[];
-export function if_not_null_array<T, R>(cond: T | undefined | null, r: (t: T) => R[]): R[] {
+export function if_not_null_array<T, R extends readonly unknown[]>(cond: T | undefined | null, r: (t: T) => R): R;
+export function if_not_null_array<T, R>(cond: T | undefined | null, r: (t: T) => readonly R[]): readonly R[] {
     if (not_null(cond)) {
         return r(cond);
     }
@@ -592,7 +592,7 @@ export type AsProperty<Name extends string, Type> =
     { [N in Name]?: Type };
 
 
-export function is_shallow_equal<T>(arr1: T[], arr2: T[]) {
+export function is_shallow_equal<T>(arr1: readonly T[], arr2: readonly T[]) {
     if (arr1 === arr2) {
         return true;
     }

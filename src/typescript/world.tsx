@@ -19,10 +19,10 @@
 
 
 */
-import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
-import { stages } from './lib/stages';
-import { apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdatePlan, add_input_text, StoryUpdateCompilationOp } from './story';
 import { update } from './lib/utils';
+import { failed, Parser, ParserThread, ParseValue, Parsing, raw, RawInput } from './parser';
+import { add_input_text, apply_story_updates_all, init_story, init_story_updates, Story, StoryUpdateCompilationOp } from './story';
+import { LruCacheObj } from 'lib/cache';
 
 export interface World {
     readonly parsing: Parsing | undefined,
@@ -90,17 +90,16 @@ export function update_thread_maker<W extends World>(spec: WorldSpec<W>) {
     return (world: W) => make_update_thread(spec, world);
 }
 
+const update_thread_cache: LruCacheObj<World, ParserThread<World>> = new LruCacheObj(20);
+
 export function make_update_thread<W extends World>(spec: WorldSpec<W>, world: W): ParserThread<W>;
 export function make_update_thread(spec: WorldSpec<World>, world: World) {
+    if (update_thread_cache.has(world)) {
+        return update_thread_cache.get(world)!;
+    }
+    
     let next_state = world as {-readonly [K in keyof World]: World[K]};
     const new_index = world.index + 1;
-
-    // next_state = Object.create(world);
-    // next_state.previous = world;
-    // next_state.index = new_index;
-    // next_state.story = apply_story_updates_all(world.story, world.story_updates);
-    // next_state.story_updates = init_story_updates(new_index);
-    // next_state.parsing = undefined;
 
     next_state = update(next_state, {
         previous: _ => world,
@@ -114,7 +113,7 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
         next_state = spec.pre(next_state);
     }
 
-    return function update_thread(parser: Parser) {
+    function update_thread(parser: Parser) {
         let next_state2 = spec.handle_command(next_state, parser);
         if (failed(next_state2)) {
             return next_state2;
@@ -126,6 +125,9 @@ export function make_update_thread(spec: WorldSpec<World>, world: World) {
 
         return next_state2;
     }
+
+    update_thread_cache.set(world, update_thread);
+    return update_thread;
 }
 
 export function add_parsing<W extends World>(world: W, parsing: Parsing, index: number): W {

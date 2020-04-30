@@ -1,6 +1,6 @@
 import { Gist, Gists, gist_to_string, gist, FilledGists } from './gist';
 import { StaticIndex, StaticNameIndexFor, StaticMap } from 'lib/static_resources';
-import { map_values, keys, values, entries } from 'lib/utils';
+import { map_values, keys, values, entries, if_not_null } from 'lib/utils';
 import { ConsumeSpec } from 'parser';
 import { GistPatternDispatcher } from './dispatch';
 import { ValidTags } from './static_gist_types';
@@ -107,7 +107,7 @@ export function bottom_up<G extends Gist>(g: G): <R>(
     return function (f, render_child) {
         return f(
             g[0],
-            map_values(g[1] ?? {}, (c) => render_child(c)),
+            map_values(g[1] ?? {}, (c) => if_not_null(c, render_child) as any),
             g[2]
         )
     };

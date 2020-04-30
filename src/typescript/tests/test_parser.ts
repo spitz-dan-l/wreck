@@ -1,7 +1,7 @@
 // import './setup';
 import * as assert from 'assert';
 import 'mocha';
-import { Parsed, Parser, raw, SUBMIT_TOKEN, TokenMatch, ParserThread, traverse_thread, failed } from 'parser';
+import { Parsed, Parser, raw, SUBMIT, TokenMatch, ParserThread, traverse_thread, failed } from 'parser';
 
 describe('parser', () => {
     it('should do a thing', () => {
@@ -111,13 +111,13 @@ describe('parser', () => {
                 "status": "Match"
             },
             {
-                "actual": SUBMIT_TOKEN,
+                "actual": SUBMIT,
                 "expected": {
                     "availability": "Available",
                     "kind": "RawConsumeSpec",
                     "labels": {
                     },
-                    "token": SUBMIT_TOKEN
+                    "token": SUBMIT
                 },
                 "kind": "TokenMatch",
                 "status": "Match"

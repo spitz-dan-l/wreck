@@ -26,6 +26,10 @@ export class AssocList<K, V> {
         ));
     }
 
+    find(predicate: (k: K) => boolean) {
+        return this.data.find(({key, value}) => predicate(key))?.value;
+    }
+
     set(k: K, v: V): this {
         const idx = this.find_index(k);
         const new_data = [...this.data];
@@ -36,6 +40,21 @@ export class AssocList<K, V> {
         }
 
         return new (this.constructor)(new_data);
+    }
+
+    set_many(new_data: Assoc<K, V>[]): this {
+        const updated_data = [...this.data];
+
+        for (const entry of new_data) {
+            const idx = this.find_index(entry.key);
+            if (idx === -1) {
+                updated_data.push(entry);
+            } else {
+                updated_data[idx] = { key: updated_data[idx].key, value: entry.value };
+            }
+        }
+
+        return new (this.constructor)(updated_data);
     }
 
     get(k: K): V | undefined {

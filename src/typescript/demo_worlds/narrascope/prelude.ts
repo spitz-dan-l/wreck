@@ -25,7 +25,7 @@ declare module 'gist' {
 export type ActionID = keyof StaticActionGistTypes; //NameOf<typeof StaticActionIDs>;
 export const STATIC_ACTION_IDS: StaticNameIndexFor<StaticActionGistTypes> = {
     consider: null,
-    contemplate: null,
+    reflect: null,
     notes: null,
     remember: null,
     scrutinize: null,

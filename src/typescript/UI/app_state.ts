@@ -1,6 +1,6 @@
 import { update, array_last } from "../lib/utils";
 import { advance_animation, new_animation_state, empty_animation_state, AnimationState } from "./animation";
-import { Token, SUBMIT_TOKEN, RawInput } from "../parser";
+import { Token, SUBMIT, RawInput } from "../parser";
 import { CommandResult, World } from "../world";
 import { Story } from "../story";
 
@@ -130,13 +130,13 @@ function select_relative_typeahead(state: AppState, direction: 'up' | 'down') {
     let new_index: number;
     if (direction === 'up') {
         new_index = state.typeahead_index - 1;
-        if (new_index < -1) {
+        if (new_index < 0) {
             new_index = n_options - 1;
         }
     } else if (direction === 'down') {
         new_index = state.typeahead_index + 1;
         if (new_index >= n_options) {
-            new_index = -1;
+            new_index = n_options === 0 ? -1 : 0;
         }
     }
 
@@ -159,7 +159,7 @@ function submit_typeahead(state: AppState) {
     let synthesized_text = '';
     for (let i = 0; i < synthesized_tokens.length; i++) {
         let t = synthesized_tokens[i];
-        if (t === SUBMIT_TOKEN) {
+        if (t === SUBMIT) {
             break;
         } else {
             if (i === 0) {
@@ -172,7 +172,7 @@ function submit_typeahead(state: AppState) {
     }
     let synthesized_command = {
         kind: 'RawInput',
-        submit: array_last(synthesized_tokens) === SUBMIT_TOKEN,
+        submit: array_last(synthesized_tokens) === SUBMIT,
         text: synthesized_text
     } as const;
 

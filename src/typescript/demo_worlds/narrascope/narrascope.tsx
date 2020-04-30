@@ -1,4 +1,4 @@
-import { gist, GistRenderer, ValidTags } from 'gist';
+import { gist, GistRenderer, ValidTags, Gists } from 'gist';
 // import { Memories } from './memory';
 // import { add_to_notes } from './notes';
 import { Seal, StaticMap } from 'lib/static_resources';
@@ -11,10 +11,11 @@ import { get_initial_world, WorldSpec, world_driver } from 'world';
 import { resource_registry, Venience, StaticResources } from './prelude';
 import { ActionHandler } from './action';
 import { Topic } from './consider';
-import './contemplate';
+import './reflect';
 
 import { make_memory_available } from './remember';
 import './notes';
+import { knowledge_gist } from 'knowledge';
 
 
 interface PuzzleState {
@@ -326,6 +327,18 @@ Topic(<div gist={["the present moment"]}>
     You and Sam are sitting together on the bus.
 </div>);
 
+ActionHandler(['consider', {subject: ['the present moment']}], g => w => {
+    if (!w.has_tried.get(g)) {
+        return update(w, {
+            can_consider: _ => _.set_many([
+                { key: gist('Sam'), value: true },
+                { key: gist('yourself'), value: true }
+            ])
+        });
+    }
+    return w;
+})
+
 Topic(<div gist={["Sam"]}>
     <div gist={["your friendship with Sam"]}>
         An old friend on his way to work.
@@ -361,16 +374,15 @@ ActionHandler(['consider', {subject: ['yourself']}], g => w => {
 ActionHandler(['consider', { subject: ['your notebook'] }],
     g => w => {
         if (!w.has_tried.get(g)) {
-            const descr_gist = gist('description', { subject: ['your notebook']});
+            const descr_gist = knowledge_gist(
+                ['description', { subject: ['your notebook']}],
+                ['yourself']
+            );
+            
             return update(w, {
-                knowledge: k => k.update(descr_gist, (s) => [
+                knowledge: k => k.update({kind: 'Exact', gist: descr_gist}, (s) => [
                     s.replace_children(['Your notebook sits in your lap.'])
                 ]),
-                story_updates: story_updater(
-                    S.prompt(<div>
-                        Each day you try to <strong>remember something</strong> that she told you, and write it down.
-                    </div>)
-                )
             }, make_memory_available(['action description', undefined, { action: 'notes' }]));
         }
         return w;
@@ -381,6 +393,20 @@ ActionHandler(['consider', { subject: ['your notebook'] }],
 Topic(<div gist={["your history with Sam"]}>
     Good buds!
 </div>);
+
+ActionHandler(['consider', { subject: ['Sam']}], g => w => {
+    if (!w.has_tried.get(g)) {
+        return update(w, make_memory_available(['action description', undefined, { action: 'reflect' }]));
+    }
+    return w;
+});
+
+ActionHandler(['remember', {subject: ['action description', undefined, { action: 'reflect'}]}], g => w => {
+    return update(w, {
+        has_acquired: map(['scrutinize', true])
+    });
+})
+
 // const abtsm = gist('consider', { subject: ['Sam'] });
 // // Big old hack but it'll do for now
 // function about_sam(world: Venience) {
@@ -734,11 +760,11 @@ let initial_venience_world: Venience = {
 };
 
 
-initial_venience_world = update(initial_venience_world, {
-    story_updates: story_updater(S.description(
-        init_knowledge.get().get(['the present moment'])!)
-    )
-});
+// initial_venience_world = update(initial_venience_world, {
+//     story_updates: story_updater(S.description(
+//         init_knowledge.get().get_exact(['the present moment'])!)
+//     )
+// });
 
 const puffer_index = resource_registry.get('puffer_index').get_pre_runtime();
 export const venience_world_spec = make_puffer_world_spec(initial_venience_world, puffer_index.all(false));

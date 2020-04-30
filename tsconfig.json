@@ -26,6 +26,8 @@
         "./src/typescript/main.tsx",
         "./src/typescript/gist",
         "src/typescript/knowledge",
+        "./src/typescript/lib/cache.ts",
+        "./src/typescript/parser",
         "./src/typescript/tests"
     ],
     "exclude": []

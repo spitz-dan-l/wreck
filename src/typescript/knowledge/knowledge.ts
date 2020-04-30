@@ -1,11 +1,12 @@
 import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "story";
 import { AssocList } from "../lib/assoc";
-import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, GistRenderer, GistPattern } from "gist";
+import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, GistRenderer, GistPattern, UNION, FIND_DEEP, EMPTY } from "gist";
 import { update } from "../lib/update";
 import { World } from "../world";
 import { Puffer } from "../puffer";
 import { stages } from "../lib/stages";
-import { compute_const, map_values } from "../lib/utils";
+import { compute_const, map_values, is_shallow_equal } from "../lib/utils";
+import { P } from "Object/_api";
 
 declare module 'gist' {
     export interface StaticGistTypes {
@@ -22,6 +23,7 @@ gist('knowledge', { content: ['Sam']})
 // It always has to be wrapped or unpacked as something "observable" for the player.
 GistRenderer(['knowledge'], {
     noun_phrase: g => {
+        debugger;
         throw new Error('Tried to render a pure knowledge gist as a noun_phrase: '+gist_to_string(g));
     },
     command_noun_phrase: g => {
@@ -47,28 +49,54 @@ export class GistAssoc<T, Tags extends ValidTags=ValidTags> extends AssocList<Gi
 
 type KnowledgeAssoc = GistAssoc<KnowledgeEntry, 'knowledge'>;
 
+type ExactKnowledgeQuery = {
+    kind: 'Exact';
+    gist: Gist;
+};
+
+type PatternKnowledgeQuery = {
+    kind: 'Pattern';
+    pattern: GistPattern;
+};
+
+type KnowledgeQuery = (
+    | ExactKnowledgeQuery
+    | PatternKnowledgeQuery
+);
+
+
 export class Knowledge {
     ['constructor']: new (knowledge: KnowledgeAssoc) => this;
     constructor(
         public knowledge: KnowledgeAssoc = new GistAssoc([]),
     ) {}
 
-    get_entries(g: Gist): KnowledgeAssoc {
-        if (g[0] === 'knowledge') {
-            return this.knowledge.filter(k => gists_equal(k, g));
-        }
-        
-        const pat: GistPattern<'knowledge'> = ['knowledge', { content: g }];
-        return this.knowledge.filter((k) =>
-            !!match(k)(pat)
-        );
+    get_entries_exact(g: Gist): KnowledgeAssoc {
+        const knowledge_gist = convert_to_knowledge_gist(g);
+        return this.knowledge.filter(k => gists_equal(k, knowledge_gist));
     }
 
-    get_entry(g: Gist): KnowledgeEntry | undefined {
-        const matches = this.get_entries(g);
+    get_entries_pattern(pat: GistPattern): KnowledgeAssoc {
+        const knowledge_pat: GistPattern<'knowledge'> = convert_to_knowledge_pattern(pat);
+        return this.knowledge.filter(k => match(k)(knowledge_pat));
+    }
+
+    get_entries(q: KnowledgeQuery): KnowledgeAssoc {
+        switch (q.kind) {
+            case 'Exact': {
+                return this.get_entries_exact(q.gist);
+            }
+            case 'Pattern': {
+                return this.get_entries_pattern(q.pattern);
+            }
+        }
+    }
+
+    get_entry(q: KnowledgeQuery): KnowledgeEntry | undefined {
+        const matches = this.get_entries(q);
         if (matches.data.length > 1) {
             debugger;
-            throw new Error(`Ambiguous knowledge key: ${JSON.stringify(g)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
+            throw new Error(`Ambiguous knowledge query: ${JSON.stringify(q)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
         }
         if (matches.data.length === 0) {
             return undefined;
@@ -76,8 +104,12 @@ export class Knowledge {
         return matches.data[0].value;
     }
 
-    get(g: Gist): StoryNode | undefined {
-        return this.get_entry(g)?.story;
+    get(q: KnowledgeQuery): StoryNode | undefined {
+        return this.get_entry(q)?.story;
+    }
+
+    get_exact(gist: Gist) {
+        return this.get({ kind: 'Exact', gist});
     }
 
     ingest(story_or_func: (Fragment | ((k: this) => Fragment)), parent_context?: Gists['knowledge'], allow_replace=false): this {
@@ -103,31 +135,35 @@ export class Knowledge {
             throw new Error('Gist must not be a pure knowledge gist. "knowledge" is a special tag used internally by the knowledge base only.');
         }
 
-        const k = gist('knowledge', { content: g, context: parent_context});
+        const q: ExactKnowledgeQuery & {gist: Gists['knowledge']} = {
+            kind: 'Exact',
+            gist: ['knowledge', { content: g, context: parent_context}]
+        };
 
-        const old_child_entry = this.get_entry(k); //this.knowledge.get(g);
+        const old_child_entry = this.get_entry(q); //this.knowledge.get(g);
         if (old_child_entry !== undefined) {
             if (story === old_child_entry.story) {
                 console.log('saving time by skipping a knowledge subtree update')
                 return result;
             } else if (!allow_replace){
                 throw new Error(`Tried to overwrite the knowledge entry for ${gist_to_string(g)}`)
+            } else {
+                console.log('replacing knowledge entry for '+JSON.stringify(q.gist));
             }
-            
         }
 
         const child_knowledge = immediate_child_gists().query(story);
         
         for (const [c, path] of child_knowledge) {
-            result = result.ingest(c as StoryNode, k);
+            result = result.ingest(c as StoryNode, q.gist);
         }
         
         const child_gists = sort_targets(child_knowledge).map(([node, path]) =>
-            gist('knowledge', { content: (node as StoryNode).data.gist!, context: k })
+            gist('knowledge', { content: (node as StoryNode).data.gist!, context: q.gist })
         )
         
-        let new_knowledge = result.knowledge.set(k, {
-            key: k,
+        let new_knowledge = result.knowledge.set(q.gist, {
+            key: q.gist,
             story,
             story_updates: [],
             children: child_gists
@@ -136,20 +172,25 @@ export class Knowledge {
         return new (this.constructor)(new_knowledge);
     }
 
-    update(k: Gist, f: (builder: UpdatesBuilder) => StoryUpdaterSpec): this {
-        const old_entry = this.get_entry(k);
+    update(q: KnowledgeQuery, f: (builder: UpdatesBuilder) => StoryUpdaterSpec): this {
+        const old_entries = this.get_entries(q);
 
-        if (old_entry === undefined) {
-            throw new Error('Tried to update a non-existent knowledge entry: ' + JSON.stringify(k));
-        }
-        const g = old_entry.key;
-        const updates = f(S.story_root());
+        // if (old_entries.data.length === 0) {
+        //     throw new Error('Tried to update a non-existent knowledge entry: ' + JSON.stringify(q));
+        // }
 
-        const new_entry = update(old_entry, {
-            story_updates: story_updater(updates)
-        });
+        const new_entries = old_entries.map(old_entry => {
+            const g = old_entry.key;
+            const updates = f(S.story_root());
 
-        return new (this.constructor)(this.knowledge.set(g, new_entry));
+            const new_entry = update(old_entry, {
+                story_updates: story_updater(updates)
+            });
+            return new_entry;
+        })
+        
+
+        return new (this.constructor)(this.knowledge.set_many(new_entries.data));
     }
 
     bottom_up_order(): Gists['knowledge'][] {
@@ -251,6 +292,49 @@ function _knowledge_gist(...content: Gist[]): Gists['knowledge'] | undefined {
     return ['knowledge', { content: content.shift()!, context: _knowledge_gist(...content) }]
 }
 
+export function convert_to_knowledge_gist(gist: Gist): Gists['knowledge'] {
+    if (gist[0] === 'knowledge') {
+        return gist;
+    }
+
+    return ['knowledge', { content: gist }];
+}
+
+export function convert_to_knowledge_pattern(pat: GistPattern): GistPattern<'knowledge'> {
+    if (pat === undefined) {
+        return pat;
+    }
+   
+    switch (typeof pat[0]) {
+        case 'string': {
+            if (pat[0] === 'knowledge') {
+                return pat;
+            }
+            return ['knowledge', { content: pat }];
+        }
+        case 'symbol': {
+            switch (pat[0]) {
+                case UNION: {
+                    const [head, ...tail] = pat;
+                    const converted_tail = tail.map(convert_to_knowledge_pattern);
+                    if (is_shallow_equal(tail, converted_tail)) {
+                        return pat as GistPattern<'knowledge'>;
+                    }
+                    return [UNION, ...tail.map(convert_to_knowledge_pattern)]
+                }
+                case FIND_DEEP: {
+                    const root_pat = convert_to_knowledge_pattern(pat[1]);
+                    
+                    if (root_pat === pat[1]) {
+                        return pat as GistPattern<'knowledge'>
+                    }
+
+                    return ['knowledge', { content: pat }];
+                }
+            }
+        }
+    }
+}
 
 export type KnowledgePufferSpec<W extends World> = {
     get_knowledge: (w: W) => Knowledge,

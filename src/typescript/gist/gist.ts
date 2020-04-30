@@ -89,6 +89,7 @@ export function gist(...ctor: Gist & unknown[]) {
     return ctor;
 }
 
+
 export function gists_equal<Tags extends ValidTags>(g1: Gists[Tags], g2: Gists[Tags]): boolean;
 export function gists_equal(g1: GistStructure, g2: GistStructure): boolean {
     if (g1 === g2) {

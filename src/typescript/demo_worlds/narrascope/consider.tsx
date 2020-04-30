@@ -5,7 +5,7 @@ import { GistAssoc } from "knowledge";
 import { StaticMap } from "lib/static_resources";
 import { Action, action_consume_spec } from "./action";
 import { keys, update, included } from "lib/utils";
-import { ParserThread } from "parser";
+import { ParserThread, GAP } from "parser";
 
 type TopicGists = { [K in TopicID]: [] };
 declare module 'gist' {
@@ -33,9 +33,7 @@ declare module './prelude' {
 
 resource_registry.initialize('initial_world_consider', {
     can_consider: new GistAssoc<boolean, TopicID>([
-        { key: gist('the present moment'), value: true },
-        { key: gist('Sam'), value: true },
-        { key: gist('yourself'), value: true },
+        { key: gist('the present moment'), value: true }
     ])
 });
 
@@ -85,11 +83,11 @@ Action({
             render_gist.noun_phrase
         ),
         command_noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['my_impression_of', subject],
+            (tag, {subject}) => ['my_impression_of', GAP, subject],
             render_gist.command_noun_phrase,
         ),
         command_verb_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['consider', subject],
+            (tag, {subject}) => ['consider', GAP, subject],
             render_gist.command_noun_phrase
         )
     },
@@ -120,7 +118,7 @@ Action({
                             update(world, {
                                 gist: () => action_gist,
                                 story_updates: story_updater(
-                                    S.description(world.knowledge.get(topic_gist)!)
+                                    S.description(world.knowledge.get_exact(topic_gist)!)
                                 )
                             })))
                         );
