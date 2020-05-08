@@ -4,6 +4,7 @@ import { FoundNode, Fragment, is_story_node, Path, replace_in, splice_in, StoryN
 import { compile_story_update_op, StoryOpSpec, story_op } from './op';
 import { compile_story_query, StoryQuerySpec, story_query } from './query';
 import { StoryUpdateCompilationOp, apply_story_update_compilation_op, PushStoryUpdate, GroupName, StoryUpdateGroup } from './update_group';
+import { compute_const } from 'lib/utils';
 
 /**
  * TODO
@@ -153,8 +154,13 @@ export function apply_story_updates_all(story: Story, story_updates: StoryUpdate
     return result;
 }
 
-export function compile_story_update_group_ops(updates: StoryUpdateCompilationOp[]): StoryUpdatePlan {
-    let plan: StoryUpdatePlan = { effects: stages(), would_effects: [] };
+export function compile_story_update_group_ops(updates: StoryUpdateCompilationOp[], prev_plan?: StoryUpdatePlan): StoryUpdatePlan {
+    let plan: StoryUpdatePlan = compute_const(() => {
+        if (prev_plan === undefined) {
+            return { effects: stages(), would_effects: [] };
+        }
+        return prev_plan;
+    });
 
     for (const op of updates) {
         plan = apply_story_update_compilation_op(plan, op);

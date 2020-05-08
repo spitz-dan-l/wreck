@@ -22361,8 +22361,8 @@ action_1.ActionHandler(['consider', { subject: ['the present moment'] }], g => w
     if (!w.has_tried.get(g)) {
         return utils_1.update(w, {
             can_consider: _ => _.set_many([
-                { key: gist_1.gist('Sam'), value: true },
-                { key: gist_1.gist('yourself'), value: true }
+                { key: ['Sam'], value: true },
+                { key: ['yourself'], value: true }
             ])
         });
     }
@@ -23238,11 +23238,11 @@ function make_direct_thread(world, immediate_world) {
         }
         // TODO: allow array form of consume spec to glue tokens together without gaps.
         // debugger;
-        return parser.consume(['begin_reflection', parser_1.GAP, 'on', gist_1.render_gist.command_noun_phrase(immediate_world.gist), parser_1.SUBMIT], () => {
+        return parser.consume(['begin_reflection on', gist_1.render_gist.command_noun_phrase(immediate_world.gist), parser_1.SUBMIT], () => {
             const index = immediate_world.index;
             return utils_1.update(world, w => metaphor_lock.lock(w, index), {
                 current_interpretation: index,
-                gist: () => gist_1.gist('reflect', { subject: immediate_world.gist }),
+                gist: () => ['reflect', { subject: immediate_world.gist }],
                 story_updates: story_1.story_updater(story_1.Updates.map_worlds(world, (w, frame) => frame.css({
                     [styles_1.unfocused_class]: w.index < index
                 })), story_1.Updates.frame(index).apply(s => [
@@ -23879,8 +23879,10 @@ exports.StaticGistTypes = StaticGistTypes.StaticGistTypes;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! ./gist */ "./src/typescript/gist/gist.ts");
 const utils_1 = __webpack_require__(/*! lib/utils */ "./src/typescript/lib/utils.ts");
 exports.FIND_DEEP = Symbol('FIND_DEEP');
+exports.EXACT = Symbol('EXACT');
 exports.EMPTY = Symbol('EMPTY');
 exports.UNION = Symbol('UNION');
 function gist_pattern(pattern) {
@@ -23901,6 +23903,12 @@ function match(gist) {
                     return g;
                 }
                 return false;
+            }
+            case exports.EXACT: {
+                if (g === undefined) {
+                    return false;
+                }
+                return gist_1.gists_equal(g, pattern[1]);
             }
             case exports.UNION: {
                 const sub_pats = pattern.slice(1);
@@ -24230,6 +24238,7 @@ const gist_1 = __webpack_require__(/*! gist */ "./src/typescript/gist/index.ts")
 const update_1 = __webpack_require__(/*! ../lib/update */ "./src/typescript/lib/update.ts");
 const stages_1 = __webpack_require__(/*! ../lib/stages */ "./src/typescript/lib/stages.ts");
 const utils_1 = __webpack_require__(/*! ../lib/utils */ "./src/typescript/lib/utils.ts");
+const iterative_1 = __webpack_require__(/*! iterative */ "./node_modules/iterative/dist/index.js");
 ;
 gist_1.gist('knowledge', { content: ['Sam'] });
 // It's always an error to render a pure knowledge gist.
@@ -24348,7 +24357,8 @@ class Knowledge {
         // }
         const new_entries = old_entries.map(old_entry => {
             const g = old_entry.key;
-            const updates = f(story_1.Updates.story_root());
+            const updates = f(story_1.Updates.has_gist([gist_1.EXACT, g[1].content]));
+            //const updates = f(S.story_root());
             const new_entry = update_1.update(old_entry, {
                 story_updates: story_1.story_updater(updates)
             });
@@ -24373,28 +24383,80 @@ class Knowledge {
         return result;
     }
     consolidate() {
+        var _a, _b, _c, _d;
+        // TODO: Apply updates in stage order.
         const bottom_up_order = this.bottom_up_order();
-        let result = this;
+        const gist_plans = [];
         for (const g of bottom_up_order) {
-            let updates = [];
-            const entry = result.knowledge.get(g);
-            const children = entry.children;
-            for (const c of children) {
-                const prev_entry = this.knowledge.get(c);
-                const child_entry = result.knowledge.get(c);
-                // this child had no updates
-                if (prev_entry === child_entry) {
-                    continue;
+            const entry = this.knowledge.get(g);
+            gist_plans.push(story_1.compile_story_update_group_ops(entry.story_updates));
+        }
+        const stage_levels = stages_1.merge_keys(gist_plans.map(p => p.effects));
+        let result = this;
+        for (const level of stage_levels) {
+            for (let [g, gist_update_plan] of iterative_1.zip(bottom_up_order, gist_plans)) {
+                // let updates = plan.effects.get(level) ?? [];
+                const entry = result.knowledge.get(g);
+                const children = entry.children;
+                const child_replace_ops = [];
+                for (const c of children) {
+                    const prev_entry = this.knowledge.get(c);
+                    const child_entry = result.knowledge.get(c);
+                    // this child had no updates
+                    if (prev_entry === child_entry) {
+                        continue;
+                    }
+                    child_replace_ops.push(immediate_child_gists(c[1].content)
+                        .group_stage(level)
+                        .replace([child_entry.story]));
                 }
-                updates = story_1.story_updater(immediate_child_gists(c[1].content).replace([child_entry.story]))(updates);
-            }
-            updates.push(...entry.story_updates);
-            if (updates.length > 0) {
-                const new_story = story_1.apply_story_updates_all(entry.story, updates);
-                result = result.ingest(new_story, entry.key[1].context, true);
-                // TODO Prune any orphaned entries
+                let plan = utils_1.compute_const(() => {
+                    if (child_replace_ops.length === 0) {
+                        return undefined;
+                    }
+                    return story_1.compile_story_update_group_ops(child_replace_ops);
+                });
+                const gist_updates = gist_update_plan.effects.get(level);
+                if (gist_updates !== undefined) {
+                    if (plan === undefined) {
+                        plan = gist_update_plan;
+                    }
+                    else {
+                        plan = update_1.update(plan, {
+                            effects: stages_1.stages([level, utils_1.append(...gist_updates)])
+                        });
+                    }
+                }
+                const updates = (_d = (_b = (_a = plan) === null || _a === void 0 ? void 0 : _a.effects) === null || _b === void 0 ? void 0 : (_c = _b).get) === null || _d === void 0 ? void 0 : _d.call(_c, level);
+                if (updates !== undefined) {
+                    const new_story = story_1.apply_story_updates_stage(entry.story, updates);
+                    result = result.ingest(new_story, entry.key[1].context, true);
+                    // TODO Prune any orphaned entries
+                }
             }
         }
+        // for (const g of bottom_up_order) {
+        //     let updates: StoryUpdateCompilationOp[] = [];
+        //     const entry = result.knowledge.get(g)!;
+        //     const children = entry.children;
+        //     for (const c of children) {
+        //         const prev_entry = this.knowledge.get(c)!;
+        //         const child_entry = result.knowledge.get(c)!;
+        //         // this child had no updates
+        //         if (prev_entry === child_entry) {
+        //             continue;
+        //         }
+        //         updates = story_updater(
+        //             immediate_child_gists(c[1].content).replace([child_entry.story]),
+        //         )(updates);
+        //     }
+        //     updates.push(...entry.story_updates);
+        //     if (updates.length > 0) {
+        //         const new_story = apply_story_updates_all(entry.story as Story, updates);
+        //         result = result.ingest(new_story, entry.key[1].context, true);
+        //         // TODO Prune any orphaned entries
+        //     }
+        // }
         return result;
     }
     push_updates(builder) {
@@ -24468,6 +24530,12 @@ function convert_to_knowledge_pattern(pat) {
                 case gist_1.FIND_DEEP: {
                     const root_pat = convert_to_knowledge_pattern(pat[1]);
                     if (root_pat === pat[1]) {
+                        return pat;
+                    }
+                    return ['knowledge', { content: pat }];
+                }
+                case gist_1.EXACT: {
+                    if (pat[1][0] === 'knowledge') {
                         return pat;
                     }
                     return ['knowledge', { content: pat }];
@@ -24954,6 +25022,11 @@ function stage_keys(x) {
     return [...x.keys()].sort((a, b) => a - b);
 }
 exports.stage_keys = stage_keys;
+function merge_keys(x) {
+    const ks = new Set(x.flatMap(s => [...s.keys()]));
+    return [...ks].sort((a, b) => a - b);
+}
+exports.merge_keys = merge_keys;
 function stage_values(x) {
     return stage_keys(x).map(s => x.get(s));
 }
@@ -26391,7 +26464,7 @@ exports.AVAILABILITY_ORDER = {
     'Used': 1,
     'Locked': 2
 };
-exports.GAP = Symbol('GAP_TOKEN');
+exports.GAP = Symbol('GAP');
 function process_consume_spec(spec, overrides) {
     if (spec instanceof Array) {
         return process_array(spec, overrides);
@@ -27445,10 +27518,10 @@ __export(__webpack_require__(/*! ./basic_text */ "./src/typescript/story/basic_t
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const update_1 = __webpack_require__(/*! ../lib/update */ "./src/typescript/lib/update.ts");
+const update_1 = __webpack_require__(/*! lib/update */ "./src/typescript/lib/update.ts");
 const iterative_1 = __webpack_require__(/*! iterative */ "./node_modules/iterative/dist/index.js");
-const type_predicate_utils_1 = __webpack_require__(/*! ../lib/type_predicate_utils */ "./src/typescript/lib/type_predicate_utils.ts");
-const utils_1 = __webpack_require__(/*! ../lib/utils */ "./src/typescript/lib/utils.ts");
+const type_predicate_utils_1 = __webpack_require__(/*! lib/type_predicate_utils */ "./src/typescript/lib/type_predicate_utils.ts");
+const utils_1 = __webpack_require__(/*! lib/utils */ "./src/typescript/lib/utils.ts");
 ;
 function is_story_node(x) {
     return x.kind === 'StoryNode';
@@ -28368,6 +28441,7 @@ const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/stor
 const op_1 = __webpack_require__(/*! ./op */ "./src/typescript/story/update/op.ts");
 const query_1 = __webpack_require__(/*! ./query */ "./src/typescript/story/update/query.ts");
 const update_group_1 = __webpack_require__(/*! ./update_group */ "./src/typescript/story/update/update_group.ts");
+const utils_1 = __webpack_require__(/*! lib/utils */ "./src/typescript/lib/utils.ts");
 function story_update(query, op) {
     return { query, op };
 }
@@ -28454,8 +28528,13 @@ function apply_story_updates_all(story, story_updates) {
     return result;
 }
 exports.apply_story_updates_all = apply_story_updates_all;
-function compile_story_update_group_ops(updates) {
-    let plan = { effects: stages_1.stages(), would_effects: [] };
+function compile_story_update_group_ops(updates, prev_plan) {
+    let plan = utils_1.compute_const(() => {
+        if (prev_plan === undefined) {
+            return { effects: stages_1.stages(), would_effects: [] };
+        }
+        return prev_plan;
+    });
     for (const op of updates) {
         plan = update_group_1.apply_story_update_compilation_op(plan, op);
     }

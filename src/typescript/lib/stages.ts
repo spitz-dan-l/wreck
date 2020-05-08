@@ -37,6 +37,11 @@ export function stage_keys(x: Stages<any>): number[] {
     return [...x.keys()].sort((a,b) => a - b);
 }
 
+export function merge_keys(x: Stages<any>[]): number[] {
+    const ks = new Set(x.flatMap(s => [...s.keys()]));
+    return [...ks].sort((a,b) => a - b);
+}
+
 export function stage_values<X>(x: Stages<X>): X[] {
     return stage_keys(x).map(s => x.get(s)!);
 }

@@ -1,0 +1,285 @@
+import { gist, Gist, gists_equal, gist_to_string, render_gist, ValidTags, match, Gists, bottom_up } from "gist";
+import { history_array, find_index } from "history";
+import { update, keys, included } from "lib/utils";
+import { stages } from "lib/stages";
+import { Parser, ParserThread, GAP, SUBMIT } from "parser";
+import { createElement, Hole, story_updater, Updates as S } from "story";
+import { is_simulated, search_future } from "supervenience";
+import { Action } from "../action";
+import { get_facets, render_facet_list } from "../facet";
+import { lock_and_brand, resource_registry, Venience } from "../prelude";
+import { interpreting_class, unfocused_class, would_start_interpreting_class, would_stop_interpreting_class } from "../styles";
+import { get_thread_maker } from "../supervenience_spec";
+import { INNER_ACTION_IDS } from "./inner_action";
+
+
+declare module '../prelude' {
+    export interface StaticActionGistTypes {
+        reflect: [{ subject: ValidTags }];
+    }
+}
+
+const global_lock = resource_registry.get('global_lock').get_pre_runtime();
+let metaphor_lock = global_lock('Metaphor');
+
+
+function begin_contemplation(world: Venience, parser: Parser) {
+    if (world.previous === undefined) {
+        return parser.eliminate();
+    }
+
+    /*
+        TODO:
+        need to update the criteria for whether something is contemplatable.
+
+        Or, if everything is contemplatable, would need to be very thorough about:
+            - making all action gists renderable as noun_phrase/command_noun_phrase
+            - figure out how to expose the right depth of facets for exploration.
+    */
+    let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== undefined && w.gist[0] !== 'reflect');
+    
+    let gists: Gist[] = [];
+    for (let w of contemplatable_worlds) {
+        if (gists.findIndex(g2 => gists_equal(w.gist!, g2)) === -1) {
+            gists.push(w.gist!);
+        }
+    }
+
+    parser.label_context = { interp: true, filler: true };
+
+    const immediate_world: Venience | undefined = (world.previous.gist !== undefined && world.previous.gist[0] !== 'reflect') ?
+        world.previous :
+        undefined;
+
+    const direct_thread = make_direct_thread(world, immediate_world);
+
+    if (gists.length === 1 || is_simulated(indirect_simulator, world)) {
+        return direct_thread(parser);
+    }
+
+    const indirect_thread = make_indirect_thread(world, immediate_world, gists);
+
+    const result = parser.split([direct_thread, indirect_thread]);
+    return result
+}
+
+function list_facets(world: Venience) {
+    if (world.current_interpretation === undefined) {
+        throw new Error('Tried to list_facets while current_interpretation was undefined or the interpretted world had no gist.');
+    }
+
+    const interp_world = find_index(world, world.current_interpretation);
+
+    if (interp_world?.gist === undefined) {
+        throw new Error('Interpretted world could not be found or had no gist.');
+    }
+
+    /*
+        TODO:
+        get_facets should potentially receive a story tree rather than assume
+        the gist of the interpretted world will be in the knowledge base?
+    */
+    const observable_facets = get_facets(world, interp_world.gist);
+
+    return update(world, {
+        story_updates: story_updater(
+            S.description(render_facet_list(observable_facets))
+        )
+    });
+
+}
+
+function make_list_facets_thread(world: Venience) {
+    return (parser: Parser) =>
+        parser.consume('facets', () =>
+        parser.submit(() =>
+        list_facets(world)))
+}
+
+function make_direct_thread(world: Venience, immediate_world: Venience | undefined): ParserThread<Venience> {
+    return (parser) => {
+        if (immediate_world === undefined) {
+            return parser.eliminate();
+        }
+        // TODO: allow array form of consume spec to glue tokens together without gaps.
+        // debugger;
+        return parser.consume(
+            ['begin_reflection on', render_gist.command_noun_phrase(immediate_world.gist!), SUBMIT], () => {
+
+        const index = immediate_world.index;
+
+        return update(world,
+            w => metaphor_lock.lock(w, index),
+            {
+                current_interpretation: index,
+                gist: () => ['reflect', { subject: immediate_world.gist! }],
+                story_updates: story_updater(
+                    S.map_worlds(world, (w, frame) =>
+                        frame.css({
+                            [unfocused_class]: w.index < index
+                        })),
+                    S.frame(index).apply(s => [
+                        s.css({
+                            [interpreting_class]: true
+                        }),
+                        s.would().css({
+                            [would_start_interpreting_class]: true
+                        })
+                    ]),
+                    S.action(<div>
+                        You analyze {render_gist.noun_phrase(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
+                    </div>),
+                )
+            },
+            list_facets
+        );});
+    };
+}
+
+const indirect_simulator = 'indirect_contemplation';
+                
+function make_indirect_thread(world: Venience, immediate_world: Venience | undefined, gists: Gist[]): ParserThread<Venience> {
+    return (parser) =>
+        parser.consume({
+            tokens: 'reflect_on',
+            labels: {interp: true, filler: true}
+        }, () => {
+        const indirect_threads: ParserThread<Venience>[] = gists.map((g: Gist) => () => {
+            const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
+
+            if (immediate_world !== undefined && gists_equal(g, immediate_world.gist!)) {
+                return parser.eliminate();
+            }
+
+            let matched = match(g)(['remember', { subject: ['action description']}]);
+            const target_gist = gist('reflect', {
+                subject: matched ? gist('notes', {subject: matched[1].subject}) : g
+            });
+
+            // move the next story hole inside the current frame
+            world = update(world, {
+                story_updates: story_updater(
+                    S.group_name('init_frame').apply(s => [
+                        s.story_hole().remove(),
+                        s.add(<Hole />)
+                    ])
+                )
+            });
+
+            const result = search_future({
+                thread_maker: get_thread_maker(),
+                goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
+                max_steps: 2,
+                space: [w => w.gist && gist_to_string(w.gist)],
+                search_id: indirect_search_id,
+                simulator_id: indirect_simulator,
+                command_filter: (w, cmd) => {
+                    let would_contemplate = cmd[0] && cmd[0].token === 'analyze';
+
+                    if (w.gist && gists_equal(w.gist, target_gist[1].subject)) {
+                        return would_contemplate;
+                    }
+                    return !would_contemplate;
+                }
+            }, world);
+
+            if (result.result === undefined) {
+                return parser.eliminate();
+            }
+
+            return parser.consume({
+                tokens: render_gist.command_noun_phrase(g),
+                labels: {interp: true, filler: true}
+            }, () =>
+            parser.submit(() =>
+                update(result.result!, {
+                    story_updates: story_updater(
+                        S.frame(world.index).css({ [unfocused_class]: false })
+                    )
+                })
+            ));
+        });
+
+        return parser.split(indirect_threads);
+        });
+}
+
+function make_end_contemplation_thread(world: Venience) {
+    return (parser: Parser) => parser.consume({
+        tokens: 'end_reflection',
+        labels: { interp: true, filler: true }
+    }, () => parser.submit(() => update(world, metaphor_lock.release, {
+        story_updates: story_updater(S.group_name('init_frame').apply(s => [
+            s.story_hole().remove(),
+            s.story_root().add(<Hole />)
+        ]), S.map_worlds(world, (w, frame) => frame.css({ [unfocused_class]: false })), S.frame(world.current_interpretation!).apply(s => [
+            s.css({
+                [interpreting_class]: false
+            }),
+            s.would().css({
+                [would_stop_interpreting_class]: true
+            })
+        ]), S.action('Your mind returns to a less focused state.')),
+        current_interpretation: undefined,
+        has_tried: _ => {
+            let result = _;
+            for (const action_gist of _.keys()) {
+                if (included(action_gist[0], keys(INNER_ACTION_IDS))) {
+                    result = result.set(action_gist, false);
+                }
+            }
+            return result;
+        }
+    })))
+}
+
+Action({
+    id: 'reflect',
+    render_impls: {
+        noun_phrase: (g) => bottom_up(g)(
+            (tag, {subject}) => `your reflection on ${subject}`,
+            render_gist.noun_phrase
+        ),
+        command_noun_phrase: (g) => bottom_up(g)(
+            (tag, {subject}) => ['my_reflection_on', GAP, subject],
+            render_gist.command_noun_phrase
+        )
+    },
+
+    memory_prompt_impls: {
+        noun_phrase: (g) => 'something meditative',
+        command_noun_phrase: (g) => 'something_meditative',
+    },
+
+    description_noun_phrase: 'reflection',
+    description_command_noun_phrase: 'reflection',
+
+    description: "The ability to consciously unpack the contents of one's own experience.",
+    katya_quote: <div>
+        "Wake up, my dear. Attend to the world around you. <strong>Reflect on</strong> its nature."
+    </div>,
+    memory: <div>
+        Katya took you to the <a target="_blank" href="https://en.wikipedia.org/wiki/Mauna_Kea_Observatories">Mauna Kea Observatories</a> in Hawaii once, to study the astronomers at work.
+        <br/>
+        There was to be little time to relax or sleep in; astronomers are busy folk.
+    </div>,
+
+    puffer: lock_and_brand('Metaphor', {
+        handle_command: stages(
+            [2, (world, parser) => {
+                if (!world.has_acquired.get('reflect')) {
+                    return parser.eliminate();
+                }
+                
+                if (world.current_interpretation === undefined) {
+                    return begin_contemplation(world, parser);
+                } else {
+                    return parser.split([
+                        make_list_facets_thread(world),
+                        make_end_contemplation_thread(world)
+                    ]);
+                }
+            }]
+        ),
+    })
+});

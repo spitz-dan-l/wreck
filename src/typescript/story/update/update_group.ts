@@ -39,7 +39,7 @@ export type MoveGroup = {
     dest_stage: number
 };
 
-export function apply_story_update_compilation_op(plan: StoryUpdatePlan, op: StoryUpdateCompilationOp) {
+export function apply_story_update_compilation_op(plan: StoryUpdatePlan, op: StoryUpdateCompilationOp): StoryUpdatePlan {
     if (op.kind === 'MoveGroup') {
         return {
             effects: move_group(plan.effects, op.name, op.source_stage, op.dest_stage),

@@ -1,6 +1,6 @@
 import { Tail, Tuple } from "Tuple/_api";
 import { ValidTags, Atom } from "./static_gist_types";
-import { Gists, Gist, GistStructure, FilledGists } from "./gist";
+import { Gists, Gist, GistStructure, FilledGists, gists_equal } from "./gist";
 import { values, entries } from "lib/utils";
 
 type GistPatternStructure =
@@ -8,11 +8,13 @@ type GistPatternStructure =
     | [string, Record<string, GistPatternStructure>?, Record<string, unknown | Array<unknown>>?]
     | [FIND_DEEP, GistPatternStructure, GistPatternStructure]
     | [EMPTY]
+    | [EXACT, GistStructure]
     | [UNION, ...(GistPatternStructure[])]
     ;
 
 type GistPatternCore<Tags extends ValidTags=ValidTags> =
     | undefined
+    | GistPatternExact<Tags>
     | GistPatternSingle[Tags]
     | GistPatternDeep<Tags>
     ;
@@ -54,6 +56,10 @@ export type FIND_DEEP = typeof FIND_DEEP;
 type GistPatternDeep<RootTags extends ValidTags, ChildTags extends ValidTags=ValidTags> =
     readonly [FIND_DEEP, GistPattern<RootTags>, GistPattern<ChildTags>]
 
+export const EXACT: unique symbol = Symbol('EXACT');
+export type EXACT = typeof EXACT;
+type GistPatternExact<Tags extends ValidTags> = readonly [EXACT, Gists[Tags]];
+
 export const EMPTY: unique symbol = Symbol('EMPTY');
 export type EMPTY = typeof EMPTY
 type GistPatternEmpty = readonly [EMPTY];
@@ -68,9 +74,10 @@ export type InferPatternTags<Pat extends GistPattern> = _InferPatternTags<Pat>;
 
 type _InferPatternTags<Pat> = (
     Pat extends undefined ? ValidTags :
-    Pat extends {0: ValidTags | FIND_DEEP | EMPTY | UNION} ? (
+    Pat extends {0: ValidTags | FIND_DEEP | EMPTY | EXACT | UNION} ? (
         & { [T in ValidTags]: T }
         & { [K in EMPTY]: ValidTags }
+        & { [K in EXACT]: Pat extends {1: {0: ValidTags}} ? Pat[1][0] : never }
         & { [K in FIND_DEEP]: Pat extends {1: any} ? _InferPatternTags<Pat[1]> : never }
         & { [K in UNION]: Pat extends Tuple ? 
             Tail<Pat> extends infer T ?
@@ -86,7 +93,7 @@ type _InferPatternTags<Pat> = (
 
 export type _MatchResult<Pat> = (
     Pat extends undefined ? Gist | undefined :
-    Pat extends {0: ValidTags | FIND_DEEP | EMPTY | UNION} ? (
+    Pat extends {0: ValidTags | FIND_DEEP | EMPTY | EXACT | UNION} ? (
         // "literal" pattern - just a gist structure with various things left out.
         & {
             [T in ValidTags]: {
@@ -111,6 +118,7 @@ export type _MatchResult<Pat> = (
         }
         // special query patterns
         & { [K in EMPTY]: undefined }
+        & { [K in EXACT]: Pat extends {1: any} ? Pat[1] : never }
         & { [K in FIND_DEEP]: Pat extends {1: any} ? _MatchResult<Pat[1]> : never }
         & { [K in UNION]: Pat extends Tuple ? (
             Tail<Pat> extends infer T ? (
@@ -139,7 +147,6 @@ export function gist_pattern(pattern: GistPatternNullable): GistPatternNullable 
     return pattern;
 }
 
-type MFull = _MatchResult<GistPattern>
 
 /*
 declare const tag: 'scrutinize' | 'hammer';
@@ -184,6 +191,12 @@ export function match(gist: Gist | undefined) {
                     return g;
                 }
                 return false;
+            }
+            case EXACT: {
+                if (g === undefined) {
+                    return false;
+                }
+                return gists_equal(g as Gist, pattern[1] as Gist);
             }
             case UNION: {
                 const sub_pats = pattern.slice(1) as GistPatternStructure[];

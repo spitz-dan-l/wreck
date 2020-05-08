@@ -1,12 +1,13 @@
-import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment,  } from "story";
+import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment, StoryUpdatePlan, compile_story_update_group_ops, apply_story_update_compilation_op, StoryUpdateGroup, apply_story_updates_stage,  } from "story";
 import { AssocList } from "../lib/assoc";
-import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, GistRenderer, GistPattern, UNION, FIND_DEEP, EMPTY } from "gist";
+import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, GistRenderer, GistPattern, UNION, FIND_DEEP, EMPTY, EXACT } from "gist";
 import { update } from "../lib/update";
 import { World } from "../world";
 import { Puffer } from "../puffer";
-import { stages } from "../lib/stages";
-import { compute_const, map_values, is_shallow_equal } from "../lib/utils";
+import { stages, stage_values, merge_keys } from "../lib/stages";
+import { compute_const, map_values, is_shallow_equal, append } from "../lib/utils";
 import { P } from "Object/_api";
+import { zip } from "iterative";
 
 declare module 'gist' {
     export interface StaticGistTypes {
@@ -181,7 +182,8 @@ export class Knowledge {
 
         const new_entries = old_entries.map(old_entry => {
             const g = old_entry.key;
-            const updates = f(S.story_root());
+            const updates = f(S.has_gist([EXACT, g[1].content]));
+            //const updates = f(S.story_root());
 
             const new_entry = update(old_entry, {
                 story_updates: story_updater(updates)
@@ -213,37 +215,101 @@ export class Knowledge {
     }
 
     consolidate(): this {
+        // TODO: Apply updates in stage order.
         const bottom_up_order = this.bottom_up_order();
 
-        let result = this;
+        const gist_plans: StoryUpdatePlan[] = [];
+
         for (const g of bottom_up_order) {
-            let updates: StoryUpdateCompilationOp[] = [];
+            const entry = this.knowledge.get(g)!;
+            gist_plans.push(compile_story_update_group_ops(entry.story_updates));
+        }
 
-            const entry = result.knowledge.get(g)!;
-            const children = entry.children;
+        const stage_levels = merge_keys(gist_plans.map(p => p.effects));
 
-            for (const c of children) {
-                const prev_entry = this.knowledge.get(c)!;
-                const child_entry = result.knowledge.get(c)!;
+        let result = this;
+        
+        for (const level of stage_levels) {
+            for (let [g, gist_update_plan] of zip(bottom_up_order, gist_plans)) {
+                
+                
+                // let updates = plan.effects.get(level) ?? [];
+    
+                const entry = result.knowledge.get(g)!;
+                const children = entry.children;
+    
+                const child_replace_ops: StoryUpdateCompilationOp[] = [];
 
-                // this child had no updates
-                if (prev_entry === child_entry) {
-                    continue;
+                for (const c of children) {
+                    const prev_entry = this.knowledge.get(c)!;
+                    const child_entry = result.knowledge.get(c)!;
+    
+                    // this child had no updates
+                    if (prev_entry === child_entry) {
+                        continue;
+                    }
+                    child_replace_ops.push(immediate_child_gists(c[1].content)
+                        .group_stage(level)
+                        .replace([child_entry.story]));
                 }
 
-                updates = story_updater(
-                    immediate_child_gists(c[1].content).replace([child_entry.story]),
-                )(updates);
-            }
+                let plan: StoryUpdatePlan | undefined = compute_const(() => {
+                    if (child_replace_ops.length === 0) {
+                        return undefined;
+                    }
+                    return compile_story_update_group_ops(child_replace_ops);
+                })
 
-            updates.push(...entry.story_updates);
+                const gist_updates = gist_update_plan.effects.get(level);
 
-            if (updates.length > 0) {
-                const new_story = apply_story_updates_all(entry.story as Story, updates);
-                result = result.ingest(new_story, entry.key[1].context, true);
-                // TODO Prune any orphaned entries
+                if (gist_updates !== undefined) {
+                    if (plan === undefined) {
+                        plan = gist_update_plan;
+                    } else {
+                        plan = update(plan, {
+                            effects: stages([level, append(...gist_updates)])
+                        });
+                    }
+                }
+        
+                const updates = plan?.effects?.get?.(level);
+
+                if (updates !== undefined) {
+                    const new_story = apply_story_updates_stage(entry.story as Story, updates);
+                    result = result.ingest(new_story, entry.key[1].context, true);
+                    // TODO Prune any orphaned entries
+                }
             }
         }
+
+        // for (const g of bottom_up_order) {
+        //     let updates: StoryUpdateCompilationOp[] = [];
+
+        //     const entry = result.knowledge.get(g)!;
+        //     const children = entry.children;
+
+        //     for (const c of children) {
+        //         const prev_entry = this.knowledge.get(c)!;
+        //         const child_entry = result.knowledge.get(c)!;
+
+        //         // this child had no updates
+        //         if (prev_entry === child_entry) {
+        //             continue;
+        //         }
+
+        //         updates = story_updater(
+        //             immediate_child_gists(c[1].content).replace([child_entry.story]),
+        //         )(updates);
+        //     }
+
+        //     updates.push(...entry.story_updates);
+
+        //     if (updates.length > 0) {
+        //         const new_story = apply_story_updates_all(entry.story as Story, updates);
+        //         result = result.ingest(new_story, entry.key[1].context, true);
+        //         // TODO Prune any orphaned entries
+        //     }
+        // }
         return result;
     }
     
@@ -329,6 +395,12 @@ export function convert_to_knowledge_pattern(pat: GistPattern): GistPattern<'kno
                         return pat as GistPattern<'knowledge'>
                     }
 
+                    return ['knowledge', { content: pat }];
+                }
+                case EXACT: {
+                    if (pat[1][0] === 'knowledge') {
+                        return pat as GistPattern<'knowledge'>;
+                    }
                     return ['knowledge', { content: pat }];
                 }
             }

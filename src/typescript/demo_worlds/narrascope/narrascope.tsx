@@ -331,8 +331,8 @@ ActionHandler(['consider', {subject: ['the present moment']}], g => w => {
     if (!w.has_tried.get(g)) {
         return update(w, {
             can_consider: _ => _.set_many([
-                { key: gist('Sam'), value: true },
-                { key: gist('yourself'), value: true }
+                { key: ['Sam'], value: true },
+                { key: ['yourself'], value: true }
             ])
         });
     }

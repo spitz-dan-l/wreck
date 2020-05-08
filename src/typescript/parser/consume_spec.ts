@@ -32,7 +32,7 @@ export type TaintedRawConsumeSpec = Omit<RawConsumeSpec, 'token'> & {
     token: TaintedToken;
 }
 
-export const GAP: unique symbol = Symbol('GAP_TOKEN');
+export const GAP: unique symbol = Symbol('GAP');
 export type GAP = typeof GAP;
 
 export type ConsumeSpec =
