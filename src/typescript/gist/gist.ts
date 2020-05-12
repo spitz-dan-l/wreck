@@ -74,6 +74,7 @@ type GistChildren = {
                 never
 };
 
+
 type HandleEmpty<Obj extends object | undefined> = (
     keyof Obj extends never ?
         undefined :
@@ -82,6 +83,36 @@ type HandleEmpty<Obj extends object | undefined> = (
 
 export type Gist = Gists[ValidTags];
 
+// export type Gists<Tag extends ValidTags> = (
+//     Tag extends TagsWithOptionalChildren & TagsWithOptionalParameters ?
+//         {readonly 0: Tag, readonly 1?: GistChildren[Tag], readonly 2?: HandleEmpty<FilledGists[Tag][2]>} :
+//     Tag extends TagsWithOptionalParameters ?
+//         {readonly 0: Tag, readonly 1: GistChildren[Tag], readonly 2?: HandleEmpty<FilledGists[Tag][2]>} :
+//     {readonly 0: Tag, readonly 1: GistChildren[Tag], readonly 2: FilledGists[Tag][2]}
+// );
+
+// type GistChildren = {
+//     [Tag in ValidTags]:
+//         keyof FilledGists[Tag][1] extends never ?
+//             undefined :
+//             FilledGists[Tag][1] extends infer Children ?
+//                 {
+//                     [K in keyof Children]:
+//                         Children[K] extends infer CK ?
+//                             CK extends undefined ? undefined :
+//                             CK extends {0: ValidTags} ? Gists<CK[0]> :
+//                             never :
+//                         never
+//                 } :
+//                 never
+// };
+
+// export type Gist = Gists<ValidTags>;
+
+
+// export function gist<Tags extends TagsWithOptionalChildren & TagsWithOptionalParameters>(tag: Tags, children?: GistChildren[Tags], parameters?: HandleEmpty<FilledGists[Tags][2]>): Gists<Tags>;
+// export function gist<Tags extends TagsWithOptionalParameters>(tag: Tags, children: GistChildren[Tags], parameters?: HandleEmpty<FilledGists[Tags][2]>): Gists<Tags>;
+// export function gist<Tags extends ValidTags>(tag: Tags, children: GistChildren[Tags], parameters: HandleEmpty<FilledGists[Tags][2]>): Gists<Tags>;
 export function gist<Tags extends TagsWithOptionalChildren & TagsWithOptionalParameters>(tag: Tags, children?: GistChildren[Tags], parameters?: HandleEmpty<FilledGists[Tags][2]>): Gists[Tags];
 export function gist<Tags extends TagsWithOptionalParameters>(tag: Tags, children: GistChildren[Tags], parameters?: HandleEmpty<FilledGists[Tags][2]>): Gists[Tags];
 export function gist<Tags extends ValidTags>(tag: Tags, children: GistChildren[Tags], parameters: HandleEmpty<FilledGists[Tags][2]>): Gists[Tags];
@@ -90,6 +121,7 @@ export function gist(...ctor: Gist & unknown[]) {
 }
 
 
+// export function gists_equal<Tags extends ValidTags>(g1: Gists<Tags>, g2: Gists<Tags>): boolean;
 export function gists_equal<Tags extends ValidTags>(g1: Gists[Tags], g2: Gists[Tags]): boolean;
 export function gists_equal(g1: GistStructure, g2: GistStructure): boolean {
     if (g1 === g2) {

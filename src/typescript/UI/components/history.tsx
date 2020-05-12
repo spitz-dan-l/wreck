@@ -6,6 +6,7 @@ import { World } from "../../world";
 import { animate, AnimationState, compute_possible_effects, final_story } from "../animation";
 import { Component, Renderer } from "../framework";
 import { ui_resources } from '../prelude';
+import { stage_keys } from "lib/stages";
 
 type HistoryProps = {
     world: World,
@@ -34,7 +35,8 @@ export const History: Renderer<HistoryProps> = (props, old?) => {
         let story = apply_story_updates_stage(
             anim.current_story!,
             anim.update_plan.get(anim.current_stage)!,
-            dom_effects
+            dom_effects,
+            anim.current_stage
         );
         
         story = push_animation(story, dom_effects);

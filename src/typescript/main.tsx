@@ -2,13 +2,28 @@
 // import { new_bird_world as new_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
+import 'devtools';
+
 import { new_venience_world as new_world } from './demo_worlds/narrascope';
 // import { new_world } from './demo_worlds/sam';
 import { AppState, initialize_app, new_animation_state } from './UI';
+import { raw } from 'parser';
 
 console.time('world_build');
 
 let {initial_result, update, css_rules} = new_world() //new_venience_world()//new_bird_world();//new_hex_world();
+
+const DEBUG_COMMANDS = [
+    'consider the present moment',
+    'consider sam',
+    'remember something meditative',
+    'begin reflection on my memory of reflection',
+    // 'scrutinize reflection'
+];
+
+for (const cmd of DEBUG_COMMANDS) {
+    initial_result = update(initial_result.world, raw(cmd, true));
+}
 
 // Ability to start from a specific point in the demo:
 

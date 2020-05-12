@@ -21,7 +21,7 @@
 */
 
 import { filter, map } from 'iterative';
-import { starts_with, tokenize, split_tokens } from 'lib/text_utils';
+import { starts_with, tokenize, split_tokens, uncapitalize } from 'lib/text_utils';
 import { array_last, drop_keys } from 'lib/utils';
 import { type_or_kind_is } from 'lib/type_predicate_utils';
 import { RawConsumeSpec, Token, TokenAvailability, SUBMIT, AVAILABILITY_ORDER, TokenLabels, ConsumeSpec, process_consume_spec, TaintedRawConsumeSpec, NEVER_TOKEN } from './consume_spec';
@@ -461,7 +461,16 @@ export class Parser {
                 break;
             }
             const input = this.input_stream[this.pos + i];
-            if (spec_value === input) {
+            
+            function is_match(tok1: Token, tok2: Token) {
+                if (typeof(tok1) === 'string' && typeof(tok2) === 'string') {
+                    return tok1.toLocaleLowerCase() === tok2.toLocaleLowerCase();
+                }
+                return tok1 === tok2;
+            }
+
+            if (is_match(spec_value, input)) {
+            // if (spec_value === input) {
                 if (spec.availability === 'Locked') {
                     error = true;
                     break;
@@ -474,7 +483,7 @@ export class Parser {
                 error = true;
                 break;
             }
-            if (starts_with(<string>spec_value, <string>input)) {
+            if (starts_with(spec_value.toLocaleLowerCase(), input.toLocaleLowerCase())) {
                 if (this.pos + i < this.input_stream.length - 1) {
                     error = true;
                 } else {

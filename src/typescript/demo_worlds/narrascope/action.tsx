@@ -1,4 +1,4 @@
-import { gist, GistPattern, GistPatternUpdateDispatcher, GistRenderer, Gists, RenderImplsForPattern, render_gist, Gist, match, MatchResult, ValidTags, _MatchResult, FilledGists, GIST_RENDERER_DISPATCHERS } from 'gist';
+import { gist, GistPattern, GistPatternUpdateDispatcher, GistRenderer, Gists, RenderImplsForPattern, render_gist, Gist, match, MatchResult, ValidTags, _MatchResult, FilledGists, GIST_RENDERER_DISPATCHERS, EXACT } from 'gist';
 import { gate_puffer } from 'puffer';
 import { GistAssoc, Knowledge, make_knowledge_puffer } from 'knowledge';
 import { StaticMap, OnSealed } from 'lib/static_resources';
@@ -6,7 +6,7 @@ import { capitalize } from 'lib/text_utils';
 import { bound_method, map, range, update } from "lib/utils";
 import { ConsumeSpec } from "parser";
 import { createElement, Fragment, StoryNode, story_updater, Updates as S } from 'story';
-import { ActionID, Owner, Puffers, resource_registry, STATIC_ACTION_IDS, Venience, VeniencePuffer } from "./prelude";
+import { ActionID, Owner, Puffers, resource_registry, STATIC_ACTION_IDS, Venience, VeniencePuffer, lock_and_brand } from "./prelude";
 import { insight_text_class } from './styles';
 
 
@@ -61,7 +61,7 @@ resource_registry.initialize('initial_world_knowledge',
 );
 const init_knowledge = resource_registry.get('initial_world_knowledge');
 
-Puffers(make_knowledge_puffer({
+Puffers(lock_and_brand('Metaphor', make_knowledge_puffer({
     get_knowledge: w => w.knowledge,
     set_knowledge: (w, k) => update(w, { knowledge: () => k }),
     get_dynamic_region: w => {
@@ -70,7 +70,7 @@ Puffers(make_knowledge_puffer({
         }
         return S.frame(range(w.current_interpretation!, w.index + 1));
     }
-}));
+})));
 
 export type Action =
 & { 
@@ -197,12 +197,13 @@ export function action_consume_spec(action_gist: Gists[ActionID], world: Venienc
 
 // trigger action handlers based on the action that just occurred.
 Puffers({
+    role_brand: true,
     pre: world => {
         let result = world;
         if (world.previous !== undefined) {
             const prev_gist = world.previous.gist;
             if (prev_gist !== undefined) {
-                if (world.knowledge.get_entry({ kind: 'Exact', gist: ['knowledge', {content: prev_gist}]}) === undefined) {
+                if (world.knowledge.get_entry([EXACT, ['knowledge', {content: prev_gist}]]) === undefined) {
                     const prev_frame = S.frame(world.previous!.index).query(world.story)[0][0]
                     result = update(result, {
                         knowledge: _ => _.ingest(prev_frame)
@@ -229,8 +230,6 @@ Puffers({
             w2 = update(w2, {
                 has_tried: _ => _.set(w2.gist!, true)
             });
-
-            
         }
 
         return w2;

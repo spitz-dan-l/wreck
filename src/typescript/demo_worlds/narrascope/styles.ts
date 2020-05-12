@@ -105,17 +105,20 @@ export const would_cite_facet_class = make_class_for_animation(
 
 
 export const cite_facet_class = TypeStyle.style({
-    $debugName: 'eph-cite_facet'
+    $debugName: 'eph-cite_facet',
+    backgroundColor: 'dimgray'
     // TODO
 });
 
 export const interpret_facet_class = TypeStyle.style({
-    $debugName: 'eph-interpret_facet'
+    $debugName: 'eph-interpret_facet',
+    backgroundColor: 'darkgoldenrod'
     // TODO
 });
 
 export const misinterpret_facet_class = TypeStyle.style({
-    $debugName: 'eph-misinterpret_facet'
+    $debugName: 'eph-misinterpret_facet',
+    backgroundColor: 'firebrick'
     // TODO
 })
 

@@ -2,11 +2,17 @@ import { bottom_up, gist, Gist, render_gist, Gists } from "gist";
 import { find_historical } from 'history';
 import { keys, update } from 'lib/utils';
 import { ParserThread, GAP, SUBMIT } from 'parser';
-import { createElement } from 'story';
+import { createElement, StoryNode } from 'story';
 import { Action, ActionHandler, action_consume_spec, ACTION_HANDLER_FALLTHROUGH_STAGE } from "../action";
 import { get_facets } from '../facet';
 import { lock_and_brand, Puffers, Venience } from '../prelude';
 import { Exposition, INNER_ACTION_IDS, InnerActionID } from "./inner_action";
+
+declare module 'gist' {
+    export interface StaticGistTypes {
+        bloop: []
+    }
+}
 
 // scrutinize
 Action({
@@ -40,8 +46,9 @@ Action({
 ActionHandler(['scrutinize'], 
     Exposition({
         commentary: (action, frame) => [
-            frame.description('There is nothing particular about ' + render_gist.noun_phrase(action[1].facet))
-        ]
+            frame.description(<div>There is nothing particular about {render_gist.noun_phrase(action[1].facet)}</div>)
+        ],
+        revealed_child_story: <div gist={['bloop']}>That's a great job</div> as StoryNode,
     }),
     ACTION_HANDLER_FALLTHROUGH_STAGE
 );
@@ -62,7 +69,7 @@ Action({
     },
 
     description_noun_phrase: 'the Hammer',
-    description_command_noun_phrase: 'the Hammer',
+    description_command_noun_phrase: 'the_Hammer',
 
     description: "The act of dismantling one's own previously-held beliefs.",
 
@@ -86,6 +93,7 @@ ActionHandler(['hammer'],
     ACTION_HANDLER_FALLTHROUGH_STAGE    
 );
 
+
 // volunteer
 Action({
     id: 'volunteer',
@@ -102,7 +110,7 @@ Action({
     },
 
     description_noun_phrase: 'the Volunteer',
-    description_command_noun_phrase: 'the Volunteer',
+    description_command_noun_phrase: 'the_Volunteer',
 
     description: "The offering of an active intervention in the world, to change it for the better.",
 

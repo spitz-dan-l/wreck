@@ -85,7 +85,7 @@ export function sort_targets(targets: FoundNode[]) {
 }
 
 export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate {
-    return (story, effects?): Story => {
+    const result: StoryUpdate = ((story, effects?): Story => {
         const targets = compile_story_query(story_update.query)(story);        
         const op = compile_story_update_op(story_update.op);
 
@@ -114,20 +114,60 @@ export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate
         }
     
         return story;
-    }
+    });
+
+    const func_name = `update_story_${story_update.query.name}_${story_update.op.name}`;
+    Object.defineProperty(result, 'name', {value: func_name, writable: false});
+
+    return result;
 }
 
 export function apply_story_update(story: Story, story_update: StoryUpdateSpec, effects?: Effects<HTMLElement>): Story {
     return compile_story_update(story_update)(story, effects);
 }
 
+function compile_story_updates_stage(story_updates: StoryUpdateStage, stage_number?: number): StoryUpdate[] {
+    const group_fs: StoryUpdate[] = [];
+    for (const group of story_updates) {
+        const compiled_updates = group.update_specs.map(compile_story_update);
+        
+        const group_f: StoryUpdate = (story, effects?) => {
+            let result = story;
+            for (const update_f of compiled_updates) {
+                result = update_f(result, effects)
+            }
+            return result;
+        }
 
-export function apply_story_updates_stage(story: Story, story_updates: StoryUpdateStage, effects?: Effects<HTMLElement>) {
-    return story_updates.reduce((story, update_group) => 
-        update_group.update_specs.reduce((story, update) =>
-            apply_story_update(story, update, effects),
-            story),
-        story);
+        const group_f_name = compute_const(() => {
+            let result = 'group_updater_' + group.name;
+            if (stage_number !== undefined) {
+                result += '_stage_'+stage_number;
+            }
+            return result;
+        });
+
+        Object.defineProperty(group_f, 'name', {value: group_f_name, writable: false});
+        group_fs.push(group_f);
+    }
+    return group_fs;
+}
+
+export function apply_story_updates_stage(story: Story, story_updates: StoryUpdateStage, effects?: Effects<HTMLElement>, stage_number?: number) {
+    const group_fs = compile_story_updates_stage(story_updates, stage_number);
+    
+    let result = story;
+    for (const gf of group_fs) {
+        result = gf(result, effects);
+    }
+
+    return result;
+
+    // return story_updates.reduce((story, update_group) => 
+    //     update_group.update_specs.reduce((story, update) =>
+    //         apply_story_update(story, update, effects),
+    //         story),
+    //     story);
 }
 
 export function remove_eph(story: Story, effects?: Effects<HTMLElement>) {
@@ -145,10 +185,9 @@ export function apply_story_updates_all(story: Story, story_updates: StoryUpdate
     let result = story;
 
     const plan = compile_story_update_group_ops(story_updates);
-    
 
     for (const [stage, updates] of stage_entries(plan.effects)) {
-        result = apply_story_updates_stage(result, updates);
+        result = apply_story_updates_stage(result, updates, undefined, stage);
         result = remove_eph(result);
     }
     return result;

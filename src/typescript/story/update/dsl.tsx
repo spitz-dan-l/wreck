@@ -195,6 +195,11 @@ export interface UpdatesBuilder extends QueryMethods {
 
 // function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<QueryMethods>[K]): UpdatesBuilder {
 function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<Pick<UpdatesBuilder, keyof QueryMethods>>[K]): UpdatesBuilder {   
+    if (k === 'debug' && params[1] === undefined) {
+        const e = new Error('Getting current call stack');
+        (params as any[]).push(e.stack);
+    }
+    
     const converted_params: ParametersFor<QueryMethods>[K] =
         (params as unknown[]).map(
             p => p instanceof UpdatesBuilder ?
@@ -202,6 +207,8 @@ function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, 
                 p
         ) as ParametersFor<QueryMethods>[K];
 
+    
+    
     const q = story_query(k, converted_params);
     const base_query = this.context.query;
     

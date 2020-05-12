@@ -41,9 +41,6 @@ export type StoryQuerySpecs = {
 export type StoryQuerySpec = StoryQuerySpecs[keyof StoryQuerySpecs];
 
 export function compile_story_query(query_spec: StoryQuerySpec): StoryQuery {
-    if (query_spec === undefined) {
-        debugger;
-    }
     const f = StoryQueries[query_spec.name];
     const query = f.apply(null, query_spec.parameters);
     return query;
@@ -68,9 +65,21 @@ export interface StoryQueries {
     chain: (...queries: StoryQuerySpec[]) => StoryQuery;
     children: (subquery?: StoryQuerySpec) => StoryQuery;
     has_gist: (pat: GistPattern) => StoryQuery;
+    debug: (label: string, stack?: string) => StoryQuery;
 }
 
 export const StoryQueries: StoryQueries = {
+    debug: (label, stack?) =>
+        {
+            return root => {
+                console.log('Debugging a story query: ' + label);
+                if (stack !== undefined) {
+                    console.log(stack);
+                }
+                debugger;
+                return [[root, []]];
+            };
+        },
     path: (path) =>
         root => {
             const result: FoundNode[] = []
@@ -151,9 +160,10 @@ export const StoryQueries: StoryQueries = {
                 return [[story, []]];
             }
             const results = compile_story_query(queries[0])(story);
+            const rest = queries.slice(1);
             return results
                 .flatMap(([n1, p1]) =>
-                    StoryQueries['chain'](...queries.slice(1))(n1)
+                    StoryQueries['chain'](...rest)(n1)
                         .map(([n2, p2]) => [n2, [...p1, ...p2]] as FoundNode)
             );
         },

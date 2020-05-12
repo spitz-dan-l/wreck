@@ -51,10 +51,14 @@ export const StoryOps: StoryOps = {
             return children.reduce((p, c) => StoryOps.add(c, no_animate)(p, effects), parent);
         }
         
-        if (!no_animate && is_story_node(children)){
-            children = update(children, {
-                classes: { ['eph-new']: true }
-            });
+        if (!no_animate) {
+            if (!is_story_node(children)) {
+                console.warn('Tried to animate adding a TextNode. Should be wrapped in a div or span.');
+            } else {
+                children = update(children, {
+                    classes: { ['eph-new']: true }
+                });
+            }
         }
         
         if (effects) {
@@ -71,6 +75,7 @@ export const StoryOps: StoryOps = {
         if (!no_animate) {
             const add_animation_class = (node: Fragment) => {
                 if (!is_story_node(node)) {
+                    console.warn('Tried to animate adding a TextNode. Should be wrapped in a div or span.');
                     return node;
                 }
                 return update(node, {

@@ -66,6 +66,18 @@ export class AssocList<K, V> {
         }
     }
 
+    delete(k: K): this {
+        const idx = this.find_index(k);
+
+        if (idx === -1) {
+            return this;
+        }
+
+        const new_data = [...this.data];
+        new_data.splice(idx, 1);
+        return new (this.constructor)(new_data);
+    }
+
     map(f: (v: V, k: K) => V): this {
         const new_data = this.data.map((entry) => ({
             key: entry.key,

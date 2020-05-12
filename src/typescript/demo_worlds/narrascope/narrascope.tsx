@@ -1,4 +1,4 @@
-import { gist, GistRenderer, ValidTags, Gists } from 'gist';
+import { gist, GistRenderer, ValidTags, Gists, EXACT } from 'gist';
 // import { Memories } from './memory';
 // import { add_to_notes } from './notes';
 import { Seal, StaticMap } from 'lib/static_resources';
@@ -380,7 +380,7 @@ ActionHandler(['consider', { subject: ['your notebook'] }],
             );
             
             return update(w, {
-                knowledge: k => k.update({kind: 'Exact', gist: descr_gist}, (s) => [
+                knowledge: k => k.update([EXACT, descr_gist], (s) => [
                     s.replace_children(['Your notebook sits in your lap.'])
                 ]),
             }, make_memory_available(['action description', undefined, { action: 'notes' }]));

@@ -116,6 +116,9 @@ export class GistPatternDispatcher<V, Tags extends ValidTags=ValidTags> implemen
                 }
             }
         }
+        if (result.length === 0) {
+            console.log('WARNING: No handlers found during dispatch.');
+        }
         return result;
     }
 

@@ -158,7 +158,7 @@ export function make_ui<State, Action>(
     }
 
     function render() {
-        console.time('render');
+        // console.time('render');
         if (old_state === undefined) {
             throw new Error('dispatch or effect function was called before initializer.');
         }
@@ -190,14 +190,14 @@ export function make_ui<State, Action>(
         }
         
         requestAnimationFrame(() => {
-            console.time('effects');
+            // console.time('effects');
             rendering = false;
             while (effect_queue.length > 0) {
                 effect_queue.shift()!();
             }
-            console.timeEnd('effects');
+            // console.timeEnd('effects');
         });
-        console.timeEnd('render');
+        // console.timeEnd('render');
 
         return component;
     }

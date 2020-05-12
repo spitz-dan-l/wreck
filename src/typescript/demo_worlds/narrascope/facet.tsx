@@ -1,6 +1,6 @@
 import { Venience } from "./prelude";
 
-import { ValidTags, Gists, GistRenderer, Gist, gist_to_string, gist, render_gist, bottom_up } from "gist";
+import { ValidTags, Gists, GistRenderer, Gist, gist_to_string, gist, render_gist, bottom_up, EXACT } from "gist";
 import { createElement, Fragment } from "story";
 
 // FACETS
@@ -19,7 +19,7 @@ GistRenderer(['facet'], {
 
 // Given a gist, return the list of its facets.
 export function get_facets(w: Venience, parent: Gist): Gists['facet'][] {
-    const entry = w.knowledge.get_entry({kind: 'Exact', gist: parent});
+    const entry = w.knowledge.get_entry([EXACT, parent]);
     if (entry === undefined) {
         throw new Error('Tried to look up gist '+gist_to_string(parent)+' without an entry in the knowledge base.');
     }

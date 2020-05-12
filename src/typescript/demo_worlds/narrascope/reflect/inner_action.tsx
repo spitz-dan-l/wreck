@@ -1,4 +1,4 @@
-import { Gists, Gist } from "gist";
+import { Gists, Gist, EXACT } from "gist";
 import { Updates as S, StoryNode, UpdatesBuilder, StoryUpdaterSpec, story_updater } from "../../../story";
 import { Knowledge } from "../../../knowledge";
 import { Venience, resource_registry } from "../prelude";
@@ -45,7 +45,7 @@ export function Exposition(exposition: Exposition) {
         if (s.data.gist === undefined) {
             throw new Error('Passed in a reavealed_child_story without a gist attribute set. Must be set.');
         }
-        init_knowledge.update(k => k.ingest(exposition.revealed_child_story!));
+        init_knowledge.update(k => k.ingest(s));
         return s.data.gist;
     });
 
@@ -96,7 +96,7 @@ function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, c
             ])
         ),
         knowledge: k =>
-            k.update({ kind: 'Exact', gist: parent_gist }, b => [b
+            k.update([EXACT, parent_gist], b => [b
                 .group_name('interpretation_effects')
                 .group_stage(-1)
                 .apply(b => [
@@ -114,10 +114,20 @@ function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, c
 
                     const has_timbre_already = S.children(S.has_gist(child_gist)).query(parent_story);
                     return has_timbre_already.length === 0;
-                }, () => [
-                    b.add(k.get_exact(child_gist!)!)
-                ])
-            ]).update({ kind: 'Pattern', pattern: ['facet', { knowledge: parent_gist }] }, b => b
+                }, () => {
+                        const child_story = k.get_exact(child_gist!)!
+                        // TODO: This is resulting in a story update that
+                        // adds the child story twice.
+                        // The query returns 2 copies of the parent node, not one.
+                        // Still attempting to figure out why.
+                        return [b
+                            .group_name('interpretation_effects')
+                            .group_stage(-1)
+                            .debug('addboi')
+                            .add(child_story)
+                        ];
+                    })
+            ]).update(['facet', { knowledge: parent_gist }], b => b
                 .group_name('interpretation_effects')
                 .group_stage(-1)
                 .apply(b => [

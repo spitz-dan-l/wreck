@@ -50,20 +50,20 @@ export class GistAssoc<T, Tags extends ValidTags=ValidTags> extends AssocList<Gi
 
 type KnowledgeAssoc = GistAssoc<KnowledgeEntry, 'knowledge'>;
 
-type ExactKnowledgeQuery = {
-    kind: 'Exact';
-    gist: Gist;
-};
+// type ExactKnowledgeQuery = {
+//     kind: 'Exact';
+//     gist: Gist;
+// };
 
-type PatternKnowledgeQuery = {
-    kind: 'Pattern';
-    pattern: GistPattern;
-};
+// type PatternKnowledgeQuery = {
+//     kind: 'Pattern';
+//     pattern: GistPattern;
+// };
 
-type KnowledgeQuery = (
-    | ExactKnowledgeQuery
-    | PatternKnowledgeQuery
-);
+// type KnowledgeQuery = (
+//     | ExactKnowledgeQuery
+//     | PatternKnowledgeQuery
+// );
 
 
 export class Knowledge {
@@ -72,32 +72,26 @@ export class Knowledge {
         public knowledge: KnowledgeAssoc = new GistAssoc([]),
     ) {}
 
-    get_entries_exact(g: Gist): KnowledgeAssoc {
-        const knowledge_gist = convert_to_knowledge_gist(g);
-        return this.knowledge.filter(k => gists_equal(k, knowledge_gist));
+    // get_entries_exact(g: Gist): KnowledgeAssoc {
+    //     const knowledge_gist = convert_to_knowledge_gist(g);
+    //     return this.knowledge.filter(k => gists_equal(k, knowledge_gist));
+    // }
+
+    // get_entries_pattern(pat: GistPattern): KnowledgeAssoc {
+    //     const knowledge_pat: GistPattern<'knowledge'> = convert_to_knowledge_pattern(pat);
+    //     return this.knowledge.filter(k => match(k)(knowledge_pat));
+    // }
+
+    get_entries(p: GistPattern): KnowledgeAssoc {
+        const kp = convert_to_knowledge_pattern(p);
+        return this.knowledge.filter(k => match(k)(kp));
     }
 
-    get_entries_pattern(pat: GistPattern): KnowledgeAssoc {
-        const knowledge_pat: GistPattern<'knowledge'> = convert_to_knowledge_pattern(pat);
-        return this.knowledge.filter(k => match(k)(knowledge_pat));
-    }
-
-    get_entries(q: KnowledgeQuery): KnowledgeAssoc {
-        switch (q.kind) {
-            case 'Exact': {
-                return this.get_entries_exact(q.gist);
-            }
-            case 'Pattern': {
-                return this.get_entries_pattern(q.pattern);
-            }
-        }
-    }
-
-    get_entry(q: KnowledgeQuery): KnowledgeEntry | undefined {
-        const matches = this.get_entries(q);
+    get_entry(p: GistPattern): KnowledgeEntry | undefined {
+        const matches = this.get_entries(p);
         if (matches.data.length > 1) {
             debugger;
-            throw new Error(`Ambiguous knowledge query: ${JSON.stringify(q)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
+            throw new Error(`Ambiguous knowledge query: ${JSON.stringify(p)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
         }
         if (matches.data.length === 0) {
             return undefined;
@@ -105,12 +99,12 @@ export class Knowledge {
         return matches.data[0].value;
     }
 
-    get(q: KnowledgeQuery): StoryNode | undefined {
-        return this.get_entry(q)?.story;
+    get(p: GistPattern): StoryNode | undefined {
+        return this.get_entry(p)?.story;
     }
 
     get_exact(gist: Gist) {
-        return this.get({ kind: 'Exact', gist});
+        return this.get([EXACT, gist]);
     }
 
     ingest(story_or_func: (Fragment | ((k: this) => Fragment)), parent_context?: Gists['knowledge'], allow_replace=false): this {
@@ -136,35 +130,42 @@ export class Knowledge {
             throw new Error('Gist must not be a pure knowledge gist. "knowledge" is a special tag used internally by the knowledge base only.');
         }
 
-        const q: ExactKnowledgeQuery & {gist: Gists['knowledge']} = {
-            kind: 'Exact',
-            gist: ['knowledge', { content: g, context: parent_context}]
-        };
-
-        const old_child_entry = this.get_entry(q); //this.knowledge.get(g);
-        if (old_child_entry !== undefined) {
-            if (story === old_child_entry.story) {
+        const k: Gists['knowledge'] = ['knowledge', { content: g, context: parent_context}];
+        
+        const old_entry = this.get_entry([EXACT, k]);
+        if (old_entry !== undefined) {
+            if (story === old_entry.story) {
                 console.log('saving time by skipping a knowledge subtree update')
                 return result;
             } else if (!allow_replace){
-                throw new Error(`Tried to overwrite the knowledge entry for ${gist_to_string(g)}`)
+                throw new Error(`Tried to overwrite the knowledge entry for ${gist_to_string(k)}`)
             } else {
-                console.log('replacing knowledge entry for '+JSON.stringify(q.gist));
+                console.log('replacing knowledge entry for '+gist_to_string(k));
             }
         }
 
         const child_knowledge = immediate_child_gists().query(story);
-        
+
         for (const [c, path] of child_knowledge) {
-            result = result.ingest(c as StoryNode, q.gist);
+            result = result.ingest(c as StoryNode, k);
         }
         
         const child_gists = sort_targets(child_knowledge).map(([node, path]) =>
-            gist('knowledge', { content: (node as StoryNode).data.gist!, context: q.gist })
-        )
+            gist('knowledge', { content: (node as StoryNode).data.gist!, context: k })
+        );
+
+        if (old_entry !== undefined) {
+            for (const old_child of old_entry.children) {
+                if (child_gists.find(c => gists_equal(c, old_child)) === undefined) {
+                    // prune the parentless child from the knowledge base
+                    console.log('pruning an orphaned child: '+gist_to_string(old_child));
+                    result = result.delete(old_child);
+                }
+            }
+        }
         
-        let new_knowledge = result.knowledge.set(q.gist, {
-            key: q.gist,
+        let new_knowledge = result.knowledge.set(k, {
+            key: k,
             story,
             story_updates: [],
             children: child_gists
@@ -173,8 +174,12 @@ export class Knowledge {
         return new (this.constructor)(new_knowledge);
     }
 
-    update(q: KnowledgeQuery, f: (builder: UpdatesBuilder) => StoryUpdaterSpec): this {
-        const old_entries = this.get_entries(q);
+    private delete(k: Gists['knowledge']): this {
+        return new (this.constructor)(this.knowledge.delete(k));
+    }
+
+    update(p: GistPattern, f: (builder: UpdatesBuilder) => StoryUpdaterSpec): this {
+        const old_entries = this.get_entries(p);
 
         // if (old_entries.data.length === 0) {
         //     throw new Error('Tried to update a non-existent knowledge entry: ' + JSON.stringify(q));
@@ -231,10 +236,6 @@ export class Knowledge {
         
         for (const level of stage_levels) {
             for (let [g, gist_update_plan] of zip(bottom_up_order, gist_plans)) {
-                
-                
-                // let updates = plan.effects.get(level) ?? [];
-    
                 const entry = result.knowledge.get(g)!;
                 const children = entry.children;
     
@@ -275,7 +276,7 @@ export class Knowledge {
                 const updates = plan?.effects?.get?.(level);
 
                 if (updates !== undefined) {
-                    const new_story = apply_story_updates_stage(entry.story as Story, updates);
+                    const new_story = apply_story_updates_stage(entry.story as Story, updates, undefined, level);
                     result = result.ingest(new_story, entry.key[1].context, true);
                     // TODO Prune any orphaned entries
                 }
@@ -314,13 +315,14 @@ export class Knowledge {
     }
     
     push_updates(builder: UpdatesBuilder): StoryUpdateCompilationOp[] {
-        return this.bottom_up_order().flatMap(g => {
+        const result = this.bottom_up_order().flatMap(g => {
             const us = this.knowledge.get(g)!.story_updates;
             const selector = knowledge_selector(g);
             return us.map(u =>
                 builder.chain(selector).prepend_to(u)
             );                    
         });
+        return result;
     }
 }
 
@@ -358,13 +360,13 @@ function _knowledge_gist(...content: Gist[]): Gists['knowledge'] | undefined {
     return ['knowledge', { content: content.shift()!, context: _knowledge_gist(...content) }]
 }
 
-export function convert_to_knowledge_gist(gist: Gist): Gists['knowledge'] {
-    if (gist[0] === 'knowledge') {
-        return gist;
-    }
+// export function convert_to_knowledge_gist(gist: Gist): Gists['knowledge'] {
+//     if (gist[0] === 'knowledge') {
+//         return gist;
+//     }
 
-    return ['knowledge', { content: gist }];
-}
+//     return ['knowledge', { content: gist }];
+// }
 
 export function convert_to_knowledge_pattern(pat: GistPattern): GistPattern<'knowledge'> {
     if (pat === undefined) {
@@ -381,7 +383,7 @@ export function convert_to_knowledge_pattern(pat: GistPattern): GistPattern<'kno
         case 'symbol': {
             switch (pat[0]) {
                 case UNION: {
-                    const [head, ...tail] = pat;
+                    const [, ...tail] = pat;
                     const converted_tail = tail.map(convert_to_knowledge_pattern);
                     if (is_shallow_equal(tail, converted_tail)) {
                         return pat as GistPattern<'knowledge'>;
@@ -401,7 +403,8 @@ export function convert_to_knowledge_pattern(pat: GistPattern): GistPattern<'kno
                     if (pat[1][0] === 'knowledge') {
                         return pat as GistPattern<'knowledge'>;
                     }
-                    return ['knowledge', { content: pat }];
+                    // this is a shortcut for "exactly this gist with no parent context"
+                    return [EXACT, ['knowledge', { content: pat[1] }]];
                 }
             }
         }
@@ -435,7 +438,7 @@ export function make_knowledge_puffer<W extends World>(
                 if (selector === undefined) {
                     return w;
                 }
-
+                
                 return update(w as World, {
                     story_updates: story_updater(get_knowledge(w).push_updates(selector))
                 }) as W;

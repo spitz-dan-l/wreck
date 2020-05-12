@@ -21139,7 +21139,7 @@ exports.History = (props, old) => {
     const anim = props.animation_state;
     if (anim.current_stage !== undefined) {
         const dom_effects = new effect_utils_1.Effects(root);
-        let story = story_1.apply_story_updates_stage(anim.current_story, anim.update_plan.get(anim.current_stage), dom_effects);
+        let story = story_1.apply_story_updates_stage(anim.current_story, anim.update_plan.get(anim.current_stage), dom_effects, anim.current_stage);
         story = push_animation(story, dom_effects);
         dom_effects.push(() => dispatch({ kind: 'AdvanceAnimation', next_story: story }));
         return root;
@@ -21611,7 +21611,7 @@ function make_ui(renderer, reducer, debug = false) {
         return new Promise(resolve => effect(resolve));
     }
     function render() {
-        console.time('render');
+        // console.time('render');
         if (old_state === undefined) {
             throw new Error('dispatch or effect function was called before initializer.');
         }
@@ -21636,14 +21636,14 @@ function make_ui(renderer, reducer, debug = false) {
             }
         }
         requestAnimationFrame(() => {
-            console.time('effects');
+            // console.time('effects');
             rendering = false;
             while (effect_queue.length > 0) {
                 effect_queue.shift()();
             }
-            console.timeEnd('effects');
+            // console.timeEnd('effects');
         });
-        console.timeEnd('render');
+        // console.timeEnd('render');
         return component;
     }
     return {
@@ -21795,7 +21795,7 @@ prelude_1.resource_registry.initialize('initial_world_knowledge', new knowledge_
     });
 });
 const init_knowledge = prelude_1.resource_registry.get('initial_world_knowledge');
-prelude_1.Puffers(knowledge_1.make_knowledge_puffer({
+prelude_1.Puffers(prelude_1.lock_and_brand('Metaphor', knowledge_1.make_knowledge_puffer({
     get_knowledge: w => w.knowledge,
     set_knowledge: (w, k) => utils_1.update(w, { knowledge: () => k }),
     get_dynamic_region: w => {
@@ -21804,7 +21804,7 @@ prelude_1.Puffers(knowledge_1.make_knowledge_puffer({
         }
         return story_1.Updates.frame(utils_1.range(w.current_interpretation, w.index + 1));
     }
-}));
+})));
 let action_index = prelude_1.resource_registry.initialize('action_index', new static_resources_1.StaticMap(prelude_1.STATIC_ACTION_IDS)).get_pre_runtime();
 function Action(spec) {
     gist_1.GistRenderer([spec.id], spec.render_impls);
@@ -21869,12 +21869,13 @@ function action_consume_spec(action_gist, world) {
 exports.action_consume_spec = action_consume_spec;
 // trigger action handlers based on the action that just occurred.
 prelude_1.Puffers({
+    role_brand: true,
     pre: world => {
         let result = world;
         if (world.previous !== undefined) {
             const prev_gist = world.previous.gist;
             if (prev_gist !== undefined) {
-                if (world.knowledge.get_entry({ kind: 'Exact', gist: ['knowledge', { content: prev_gist }] }) === undefined) {
+                if (world.knowledge.get_entry([gist_1.EXACT, ['knowledge', { content: prev_gist }]]) === undefined) {
                     const prev_frame = story_1.Updates.frame(world.previous.index).query(world.story)[0][0];
                     result = utils_1.update(result, {
                         knowledge: _ => _.ingest(prev_frame)
@@ -22251,7 +22252,7 @@ gist_1.GistRenderer(['facet'], {
 });
 // Given a gist, return the list of its facets.
 function get_facets(w, parent) {
-    const entry = w.knowledge.get_entry({ kind: 'Exact', gist: parent });
+    const entry = w.knowledge.get_entry([gist_1.EXACT, parent]);
     if (entry === undefined) {
         throw new Error('Tried to look up gist ' + gist_1.gist_to_string(parent) + ' without an entry in the knowledge base.');
     }
@@ -22394,7 +22395,7 @@ action_1.ActionHandler(['consider', { subject: ['your notebook'] }], g => w => {
     if (!w.has_tried.get(g)) {
         const descr_gist = knowledge_1.knowledge_gist(['description', { subject: ['your notebook'] }], ['yourself']);
         return utils_1.update(w, {
-            knowledge: k => k.update({ kind: 'Exact', gist: descr_gist }, (s) => [
+            knowledge: k => k.update([gist_1.EXACT, descr_gist], (s) => [
                 s.replace_children(['Your notebook sits in your lap.'])
             ]),
         }, remember_1.make_memory_available(['action description', undefined, { action: 'notes' }]));
@@ -22962,8 +22963,11 @@ action_1.Action({
 });
 action_1.ActionHandler(['scrutinize'], inner_action_1.Exposition({
     commentary: (action, frame) => [
-        frame.description('There is nothing particular about ' + gist_1.render_gist.noun_phrase(action[1].facet))
-    ]
+        frame.description(story_1.createElement("div", null,
+            "There is nothing particular about ",
+            gist_1.render_gist.noun_phrase(action[1].facet)))
+    ],
+    revealed_child_story: story_1.createElement("div", { gist: ['bloop'] }, "That's a great job"),
 }), action_1.ACTION_HANDLER_FALLTHROUGH_STAGE);
 // hammer
 action_1.Action({
@@ -22976,7 +22980,7 @@ action_1.Action({
         command_noun_phrase: () => 'something_blasphemous'
     },
     description_noun_phrase: 'the Hammer',
-    description_command_noun_phrase: 'the Hammer',
+    description_command_noun_phrase: 'the_Hammer',
     description: "The act of dismantling one's own previously-held beliefs.",
     katya_quote: story_1.createElement("div", null,
         "\"Take a ",
@@ -23003,7 +23007,7 @@ action_1.Action({
         command_noun_phrase: () => 'something_generous'
     },
     description_noun_phrase: 'the Volunteer',
-    description_command_noun_phrase: 'the Volunteer',
+    description_command_noun_phrase: 'the_Volunteer',
     description: "The offering of an active intervention in the world, to change it for the better.",
     katya_quote: story_1.createElement("div", null,
         "\"Do more than merely receive and respond, my dear. We must participate, as best as we can. We must ",
@@ -23080,6 +23084,7 @@ __export(__webpack_require__(/*! ./reflect */ "./src/typescript/demo_worlds/narr
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+const gist_1 = __webpack_require__(/*! gist */ "./src/typescript/gist/index.ts");
 const story_1 = __webpack_require__(/*! ../../../story */ "./src/typescript/story/index.ts");
 const prelude_1 = __webpack_require__(/*! ../prelude */ "./src/typescript/demo_worlds/narrascope/prelude.ts");
 const utils_1 = __webpack_require__(/*! lib/utils */ "./src/typescript/lib/utils.ts");
@@ -23096,7 +23101,7 @@ function Exposition(exposition) {
         if (s.data.gist === undefined) {
             throw new Error('Passed in a reavealed_child_story without a gist attribute set. Must be set.');
         }
-        init_knowledge.update(k => k.ingest(exposition.revealed_child_story));
+        init_knowledge.update(k => k.ingest(s));
         return s.data.gist;
     });
     return (action_gist) => (world) => {
@@ -23120,7 +23125,7 @@ function apply_facet_interpretation(world, { parent_gist, child_gist, commentary
         story_updates: story_1.story_updater(story_1.Updates.group_name('init_frame').group_stage(0).move_group_to(-1), ...utils_1.if_not_null_array(commentary, (c) => [
             c(story_1.Updates.group_stage(0).frame(), world)
         ])),
-        knowledge: k => k.update({ kind: 'Exact', gist: parent_gist }, b => [b
+        knowledge: k => k.update([gist_1.EXACT, parent_gist], b => [b
                 .group_name('interpretation_effects')
                 .group_stage(-1)
                 .apply(b => [
@@ -23137,10 +23142,20 @@ function apply_facet_interpretation(world, { parent_gist, child_gist, commentary
                 }
                 const has_timbre_already = story_1.Updates.children(story_1.Updates.has_gist(child_gist)).query(parent_story);
                 return has_timbre_already.length === 0;
-            }, () => [
-                b.add(k.get_exact(child_gist))
-            ])
-        ]).update({ kind: 'Pattern', pattern: ['facet', { knowledge: parent_gist }] }, b => b
+            }, () => {
+                const child_story = k.get_exact(child_gist);
+                // TODO: This is resulting in a story update that
+                // adds the child story twice.
+                // The query returns 2 copies of the parent node, not one.
+                // Still attempting to figure out why.
+                return [b
+                        .group_name('interpretation_effects')
+                        .group_stage(-1)
+                        .debug('addboi')
+                        .add(child_story)
+                ];
+            })
+        ]).update(['facet', { knowledge: parent_gist }], b => b
             .group_name('interpretation_effects')
             .group_stage(-1)
             .apply(b => [
@@ -23544,15 +23559,18 @@ const would_cite_facet_animation = TypeStyle.keyframes({
 });
 exports.would_cite_facet_class = make_class_for_animation('eph-would_cite_facet', would_cite_facet_animation);
 exports.cite_facet_class = TypeStyle.style({
-    $debugName: 'eph-cite_facet'
+    $debugName: 'eph-cite_facet',
+    backgroundColor: 'dimgray'
     // TODO
 });
 exports.interpret_facet_class = TypeStyle.style({
-    $debugName: 'eph-interpret_facet'
+    $debugName: 'eph-interpret_facet',
+    backgroundColor: 'darkgoldenrod'
     // TODO
 });
 exports.misinterpret_facet_class = TypeStyle.style({
-    $debugName: 'eph-misinterpret_facet'
+    $debugName: 'eph-misinterpret_facet',
+    backgroundColor: 'firebrick'
     // TODO
 });
 // Have to manually merge interpreting_animation and would_interpret_facet_animation
@@ -23652,6 +23670,47 @@ exports.find_world_at = find_world_at;
 
 /***/ }),
 
+/***/ "./src/typescript/devtools/index.ts":
+/*!******************************************!*\
+  !*** ./src/typescript/devtools/index.ts ***!
+  \******************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var MAX_DEPTH = 20;
+exports.expandedLog = (obj, depth = 0) => {
+    var [[name, item]] = Object.entries(obj);
+    if (depth < MAX_DEPTH && typeof item === 'object' && item) {
+        var typeString = Object.prototype.toString.call(item);
+        var objType = typeString.replace(/\[object (.*)\]/, '$1');
+        console.group(`${name}: ${objType}`);
+        Object.entries(item).forEach(([key, value]) => {
+            console.log({ [key]: value }, depth + 1);
+        });
+        console.groupEnd();
+    }
+    else {
+        var itemString = `${item}`;
+        if (typeof item === 'string') {
+            itemString = `"${itemString}"`;
+        }
+        console.log(`${name}: ${itemString}`);
+        return;
+    }
+};
+exports.print_commands = () => {
+};
+const _devtools = {
+    expandedLog: exports.expandedLog
+};
+globalThis.devtools = _devtools;
+
+
+/***/ }),
+
 /***/ "./src/typescript/gist/dispatch.ts":
 /*!*****************************************!*\
   !*** ./src/typescript/gist/dispatch.ts ***!
@@ -23732,6 +23791,9 @@ class GistPatternDispatcher {
                     }
                 }
             }
+        }
+        if (result.length === 0) {
+            console.log('WARNING: No handlers found during dispatch.');
         }
         return result;
     }
@@ -24261,45 +24323,51 @@ class GistAssoc extends assoc_1.AssocList {
     }
 }
 exports.GistAssoc = GistAssoc;
+// type ExactKnowledgeQuery = {
+//     kind: 'Exact';
+//     gist: Gist;
+// };
+// type PatternKnowledgeQuery = {
+//     kind: 'Pattern';
+//     pattern: GistPattern;
+// };
+// type KnowledgeQuery = (
+//     | ExactKnowledgeQuery
+//     | PatternKnowledgeQuery
+// );
 class Knowledge {
     constructor(knowledge = new GistAssoc([])) {
         this.knowledge = knowledge;
     }
-    get_entries_exact(g) {
-        const knowledge_gist = convert_to_knowledge_gist(g);
-        return this.knowledge.filter(k => gist_1.gists_equal(k, knowledge_gist));
+    // get_entries_exact(g: Gist): KnowledgeAssoc {
+    //     const knowledge_gist = convert_to_knowledge_gist(g);
+    //     return this.knowledge.filter(k => gists_equal(k, knowledge_gist));
+    // }
+    // get_entries_pattern(pat: GistPattern): KnowledgeAssoc {
+    //     const knowledge_pat: GistPattern<'knowledge'> = convert_to_knowledge_pattern(pat);
+    //     return this.knowledge.filter(k => match(k)(knowledge_pat));
+    // }
+    get_entries(p) {
+        const kp = convert_to_knowledge_pattern(p);
+        return this.knowledge.filter(k => gist_1.match(k)(kp));
     }
-    get_entries_pattern(pat) {
-        const knowledge_pat = convert_to_knowledge_pattern(pat);
-        return this.knowledge.filter(k => gist_1.match(k)(knowledge_pat));
-    }
-    get_entries(q) {
-        switch (q.kind) {
-            case 'Exact': {
-                return this.get_entries_exact(q.gist);
-            }
-            case 'Pattern': {
-                return this.get_entries_pattern(q.pattern);
-            }
-        }
-    }
-    get_entry(q) {
-        const matches = this.get_entries(q);
+    get_entry(p) {
+        const matches = this.get_entries(p);
         if (matches.data.length > 1) {
             debugger;
-            throw new Error(`Ambiguous knowledge query: ${JSON.stringify(q)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
+            throw new Error(`Ambiguous knowledge query: ${JSON.stringify(p)}. Found ${matches.data.length} matching entries. Try passing a knowledge key with explicit parent context.`);
         }
         if (matches.data.length === 0) {
             return undefined;
         }
         return matches.data[0].value;
     }
-    get(q) {
+    get(p) {
         var _a;
-        return (_a = this.get_entry(q)) === null || _a === void 0 ? void 0 : _a.story;
+        return (_a = this.get_entry(p)) === null || _a === void 0 ? void 0 : _a.story;
     }
     get_exact(gist) {
-        return this.get({ kind: 'Exact', gist });
+        return this.get([gist_1.EXACT, gist]);
     }
     ingest(story_or_func, parent_context, allow_replace = false) {
         let result = this;
@@ -24320,38 +24388,47 @@ class Knowledge {
         if (g[0] === 'knowledge') {
             throw new Error('Gist must not be a pure knowledge gist. "knowledge" is a special tag used internally by the knowledge base only.');
         }
-        const q = {
-            kind: 'Exact',
-            gist: ['knowledge', { content: g, context: parent_context }]
-        };
-        const old_child_entry = this.get_entry(q); //this.knowledge.get(g);
-        if (old_child_entry !== undefined) {
-            if (story === old_child_entry.story) {
+        const k = ['knowledge', { content: g, context: parent_context }];
+        const old_entry = this.get_entry([gist_1.EXACT, k]);
+        if (old_entry !== undefined) {
+            if (story === old_entry.story) {
                 console.log('saving time by skipping a knowledge subtree update');
                 return result;
             }
             else if (!allow_replace) {
-                throw new Error(`Tried to overwrite the knowledge entry for ${gist_1.gist_to_string(g)}`);
+                throw new Error(`Tried to overwrite the knowledge entry for ${gist_1.gist_to_string(k)}`);
             }
             else {
-                console.log('replacing knowledge entry for ' + JSON.stringify(q.gist));
+                console.log('replacing knowledge entry for ' + gist_1.gist_to_string(k));
             }
         }
         const child_knowledge = immediate_child_gists().query(story);
         for (const [c, path] of child_knowledge) {
-            result = result.ingest(c, q.gist);
+            result = result.ingest(c, k);
         }
-        const child_gists = story_1.sort_targets(child_knowledge).map(([node, path]) => gist_1.gist('knowledge', { content: node.data.gist, context: q.gist }));
-        let new_knowledge = result.knowledge.set(q.gist, {
-            key: q.gist,
+        const child_gists = story_1.sort_targets(child_knowledge).map(([node, path]) => gist_1.gist('knowledge', { content: node.data.gist, context: k }));
+        if (old_entry !== undefined) {
+            for (const old_child of old_entry.children) {
+                if (child_gists.find(c => gist_1.gists_equal(c, old_child)) === undefined) {
+                    // prune the parentless child from the knowledge base
+                    console.log('pruning an orphaned child: ' + gist_1.gist_to_string(old_child));
+                    result = result.delete(old_child);
+                }
+            }
+        }
+        let new_knowledge = result.knowledge.set(k, {
+            key: k,
             story,
             story_updates: [],
             children: child_gists
         });
         return new (this.constructor)(new_knowledge);
     }
-    update(q, f) {
-        const old_entries = this.get_entries(q);
+    delete(k) {
+        return new (this.constructor)(this.knowledge.delete(k));
+    }
+    update(p, f) {
+        const old_entries = this.get_entries(p);
         // if (old_entries.data.length === 0) {
         //     throw new Error('Tried to update a non-existent knowledge entry: ' + JSON.stringify(q));
         // }
@@ -24395,7 +24472,6 @@ class Knowledge {
         let result = this;
         for (const level of stage_levels) {
             for (let [g, gist_update_plan] of iterative_1.zip(bottom_up_order, gist_plans)) {
-                // let updates = plan.effects.get(level) ?? [];
                 const entry = result.knowledge.get(g);
                 const children = entry.children;
                 const child_replace_ops = [];
@@ -24429,7 +24505,7 @@ class Knowledge {
                 }
                 const updates = (_d = (_b = (_a = plan) === null || _a === void 0 ? void 0 : _a.effects) === null || _b === void 0 ? void 0 : (_c = _b).get) === null || _d === void 0 ? void 0 : _d.call(_c, level);
                 if (updates !== undefined) {
-                    const new_story = story_1.apply_story_updates_stage(entry.story, updates);
+                    const new_story = story_1.apply_story_updates_stage(entry.story, updates, undefined, level);
                     result = result.ingest(new_story, entry.key[1].context, true);
                     // TODO Prune any orphaned entries
                 }
@@ -24460,11 +24536,12 @@ class Knowledge {
         return result;
     }
     push_updates(builder) {
-        return this.bottom_up_order().flatMap(g => {
+        const result = this.bottom_up_order().flatMap(g => {
             const us = this.knowledge.get(g).story_updates;
             const selector = knowledge_selector(g);
             return us.map(u => builder.chain(selector).prepend_to(u));
         });
+        return result;
     }
 }
 exports.Knowledge = Knowledge;
@@ -24499,13 +24576,12 @@ function _knowledge_gist(...content) {
     }
     return ['knowledge', { content: content.shift(), context: _knowledge_gist(...content) }];
 }
-function convert_to_knowledge_gist(gist) {
-    if (gist[0] === 'knowledge') {
-        return gist;
-    }
-    return ['knowledge', { content: gist }];
-}
-exports.convert_to_knowledge_gist = convert_to_knowledge_gist;
+// export function convert_to_knowledge_gist(gist: Gist): Gists['knowledge'] {
+//     if (gist[0] === 'knowledge') {
+//         return gist;
+//     }
+//     return ['knowledge', { content: gist }];
+// }
 function convert_to_knowledge_pattern(pat) {
     if (pat === undefined) {
         return pat;
@@ -24520,7 +24596,7 @@ function convert_to_knowledge_pattern(pat) {
         case 'symbol': {
             switch (pat[0]) {
                 case gist_1.UNION: {
-                    const [head, ...tail] = pat;
+                    const [, ...tail] = pat;
                     const converted_tail = tail.map(convert_to_knowledge_pattern);
                     if (utils_1.is_shallow_equal(tail, converted_tail)) {
                         return pat;
@@ -24538,7 +24614,8 @@ function convert_to_knowledge_pattern(pat) {
                     if (pat[1][0] === 'knowledge') {
                         return pat;
                     }
-                    return ['knowledge', { content: pat }];
+                    // this is a shortcut for "exactly this gist with no parent context"
+                    return [gist_1.EXACT, ['knowledge', { content: pat[1] }]];
                 }
             }
         }
@@ -24657,6 +24734,15 @@ class AssocList {
         else {
             return this.data[idx].value;
         }
+    }
+    delete(k) {
+        const idx = this.find_index(k);
+        if (idx === -1) {
+            return this;
+        }
+        const new_data = [...this.data];
+        new_data.splice(idx, 1);
+        return new (this.constructor)(new_data);
     }
     map(f) {
         const new_data = this.data.map((entry) => ({
@@ -26410,11 +26496,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // import { new_bird_world as new_world } from './demo_worlds/puffer_bird_world';
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
+__webpack_require__(/*! devtools */ "./src/typescript/devtools/index.ts");
 const narrascope_1 = __webpack_require__(/*! ./demo_worlds/narrascope */ "./src/typescript/demo_worlds/narrascope/index.ts");
 // import { new_world } from './demo_worlds/sam';
 const UI_1 = __webpack_require__(/*! ./UI */ "./src/typescript/UI/index.ts");
+const parser_1 = __webpack_require__(/*! parser */ "./src/typescript/parser/index.ts");
 console.time('world_build');
 let { initial_result, update, css_rules } = narrascope_1.new_venience_world(); //new_venience_world()//new_bird_world();//new_hex_world();
+const DEBUG_COMMANDS = [
+    'consider the present moment',
+    'consider sam',
+    'remember something meditative',
+    'begin reflection on my memory of reflection',
+];
+for (const cmd of DEBUG_COMMANDS) {
+    initial_result = update(initial_result.world, parser_1.raw(cmd, true));
+}
 // Ability to start from a specific point in the demo:
 // const START_SOLVED = 0;
 // import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
@@ -26919,7 +27016,14 @@ class Parser {
                 break;
             }
             const input = this.input_stream[this.pos + i];
-            if (spec_value === input) {
+            function is_match(tok1, tok2) {
+                if (typeof (tok1) === 'string' && typeof (tok2) === 'string') {
+                    return tok1.toLocaleLowerCase() === tok2.toLocaleLowerCase();
+                }
+                return tok1 === tok2;
+            }
+            if (is_match(spec_value, input)) {
+                // if (spec_value === input) {
                 if (spec.availability === 'Locked') {
                     error = true;
                     break;
@@ -26931,7 +27035,7 @@ class Parser {
                 error = true;
                 break;
             }
-            if (text_utils_1.starts_with(spec_value, input)) {
+            if (text_utils_1.starts_with(spec_value.toLocaleLowerCase(), input.toLocaleLowerCase())) {
                 if (this.pos + i < this.input_stream.length - 1) {
                     error = true;
                 }
@@ -27901,6 +28005,15 @@ for (const prop of TEXT_CATEGORY_NAMES) {
 }
 // function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<QueryMethods>[K]): UpdatesBuilder {
 function query_method(k, ...params) {
+    if (k === 'debug' && params.length === 1) {
+        const e = new Error('Getting current call stack');
+        params.push(e.stack);
+        // try {
+        //     throw new Error('Getting current call stack');
+        // } catch (e) {
+        //     (params as string[]).push(e.stack);
+        // }
+    }
     const converted_params = params.map(p => p instanceof UpdatesBuilder ?
         p.to_query_spec() :
         p);
@@ -28039,10 +28152,15 @@ exports.StoryOps = {
         if (children instanceof Array) {
             return children.reduce((p, c) => exports.StoryOps.add(c, no_animate)(p, effects), parent);
         }
-        if (!no_animate && story_1.is_story_node(children)) {
-            children = utils_1.update(children, {
-                classes: { ['eph-new']: true }
-            });
+        if (!no_animate) {
+            if (!story_1.is_story_node(children)) {
+                console.warn('Tried to animate adding a TextNode. Should be wrapped in a div or span.');
+            }
+            else {
+                children = utils_1.update(children, {
+                    classes: { ['eph-new']: true }
+                });
+            }
         }
         if (effects) {
             effects.push(dom => {
@@ -28058,6 +28176,7 @@ exports.StoryOps = {
         if (!no_animate) {
             const add_animation_class = (node) => {
                 if (!story_1.is_story_node(node)) {
+                    console.warn('Tried to animate adding a TextNode. Should be wrapped in a div or span.');
                     return node;
                 }
                 return utils_1.update(node, {
@@ -28205,9 +28324,6 @@ const utils_1 = __webpack_require__(/*! ../../lib/utils */ "./src/typescript/lib
 const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/story.ts");
 const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist/index.ts");
 function compile_story_query(query_spec) {
-    if (query_spec === undefined) {
-        debugger;
-    }
     const f = exports.StoryQueries[query_spec.name];
     const query = f.apply(null, query_spec.parameters);
     return query;
@@ -28218,6 +28334,16 @@ function story_query(name, parameters = []) {
 }
 exports.story_query = story_query;
 exports.StoryQueries = {
+    debug: (label, stack) => {
+        return root => {
+            console.log('Debugging a story query: ' + label);
+            if (stack !== undefined) {
+                console.log(stack);
+            }
+            debugger;
+            return [[root, []]];
+        };
+    },
     path: (path) => root => {
         const result = [];
         const found = story_1.story_lookup_path(root, path);
@@ -28285,8 +28411,9 @@ exports.StoryQueries = {
             return [[story, []]];
         }
         const results = compile_story_query(queries[0])(story);
+        const rest = queries.slice(1);
         return results
-            .flatMap(([n1, p1]) => exports.StoryQueries['chain'](...queries.slice(1))(n1)
+            .flatMap(([n1, p1]) => exports.StoryQueries['chain'](...rest)(n1)
             .map(([n2, p2]) => [n2, [...p1, ...p2]]));
     },
     children: (subquery) => (story) => {
@@ -28478,7 +28605,7 @@ function sort_targets(targets) {
 }
 exports.sort_targets = sort_targets;
 function compile_story_update(story_update) {
-    return (story, effects) => {
+    const result = ((story, effects) => {
         const targets = query_1.compile_story_query(story_update.query)(story);
         const op = op_1.compile_story_update_op(story_update.op);
         if (targets.length === 0 && story_update.op.name !== 'remove_eph') {
@@ -28503,15 +28630,51 @@ function compile_story_update(story_update) {
             story = result;
         }
         return story;
-    };
+    });
+    const func_name = `update_story_${story_update.query.name}_${story_update.op.name}`;
+    Object.defineProperty(result, 'name', { value: func_name, writable: false });
+    return result;
 }
 exports.compile_story_update = compile_story_update;
 function apply_story_update(story, story_update, effects) {
     return compile_story_update(story_update)(story, effects);
 }
 exports.apply_story_update = apply_story_update;
-function apply_story_updates_stage(story, story_updates, effects) {
-    return story_updates.reduce((story, update_group) => update_group.update_specs.reduce((story, update) => apply_story_update(story, update, effects), story), story);
+function compile_story_updates_stage(story_updates, stage_number) {
+    const group_fs = [];
+    for (const group of story_updates) {
+        const compiled_updates = group.update_specs.map(compile_story_update);
+        const group_f = (story, effects) => {
+            let result = story;
+            for (const update_f of compiled_updates) {
+                result = update_f(result, effects);
+            }
+            return result;
+        };
+        const group_f_name = utils_1.compute_const(() => {
+            let result = 'group_updater_' + group.name;
+            if (stage_number !== undefined) {
+                result += '_stage_' + stage_number;
+            }
+            return result;
+        });
+        Object.defineProperty(group_f, 'name', { value: group_f_name, writable: false });
+        group_fs.push(group_f);
+    }
+    return group_fs;
+}
+function apply_story_updates_stage(story, story_updates, effects, stage_number) {
+    const group_fs = compile_story_updates_stage(story_updates, stage_number);
+    let result = story;
+    for (const gf of group_fs) {
+        result = gf(result, effects);
+    }
+    return result;
+    // return story_updates.reduce((story, update_group) => 
+    //     update_group.update_specs.reduce((story, update) =>
+    //         apply_story_update(story, update, effects),
+    //         story),
+    //     story);
 }
 exports.apply_story_updates_stage = apply_story_updates_stage;
 function remove_eph(story, effects) {
@@ -28522,7 +28685,7 @@ function apply_story_updates_all(story, story_updates) {
     let result = story;
     const plan = compile_story_update_group_ops(story_updates);
     for (const [stage, updates] of stages_1.stage_entries(plan.effects)) {
-        result = apply_story_updates_stage(result, updates);
+        result = apply_story_updates_stage(result, updates, undefined, stage);
         result = remove_eph(result);
     }
     return result;
