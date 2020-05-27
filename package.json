@@ -42,7 +42,6 @@
     "csstype": "^2.6.7",
     "immer": "^5.0.0",
     "iterative": "^1.9.0",
-    "itiriri": "^2.0.1",
     "lodash": "^4.17.15",
     "ts-toolbelt": "^4.10.0",
     "typestyle": "^2.0.4"
