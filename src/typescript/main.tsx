@@ -3,7 +3,7 @@
 // import { new_hex_world } from './demo_worlds/hex_port';
 // import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
 import 'devtools';
-
+import { forceRenderStyles } from 'typestyle'
 import { new_venience_world as new_world } from './demo_worlds/narrascope';
 // import { new_world } from './demo_worlds/sam';
 import { AppState, initialize_app, new_animation_state } from './UI';
@@ -58,5 +58,6 @@ const initial_state: AppState = {
 };
 
 document.getElementById('terminal')!.appendChild(initialize_app(initial_state));
+forceRenderStyles();
 
 console.timeEnd('render');

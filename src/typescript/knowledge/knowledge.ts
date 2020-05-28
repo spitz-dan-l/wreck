@@ -1,4 +1,4 @@
-import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment, StoryUpdatePlan, compile_story_update_group_ops, apply_story_update_compilation_op, StoryUpdateGroup, apply_story_updates_stage,  } from "story";
+import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment, StoryUpdatePlan, compile_story_update_group_ops, apply_story_update_compilation_op, StoryUpdateGroup, apply_story_updates_stage, structurally_equal,  } from "story";
 import { AssocList } from "../lib/assoc";
 import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, GistRenderer, GistPattern, UNION, FIND_DEEP, EMPTY, EXACT } from "gist";
 import { update } from "../lib/update";
@@ -134,7 +134,7 @@ export class Knowledge {
         
         const old_entry = this.get_entry([EXACT, k]);
         if (old_entry !== undefined) {
-            if (story === old_entry.story) {
+            if (structurally_equal(story, old_entry.story)) {
                 console.log('saving time by skipping a knowledge subtree update')
                 return result;
             } else if (!allow_replace){
@@ -282,35 +282,6 @@ export class Knowledge {
                 }
             }
         }
-
-        // for (const g of bottom_up_order) {
-        //     let updates: StoryUpdateCompilationOp[] = [];
-
-        //     const entry = result.knowledge.get(g)!;
-        //     const children = entry.children;
-
-        //     for (const c of children) {
-        //         const prev_entry = this.knowledge.get(c)!;
-        //         const child_entry = result.knowledge.get(c)!;
-
-        //         // this child had no updates
-        //         if (prev_entry === child_entry) {
-        //             continue;
-        //         }
-
-        //         updates = story_updater(
-        //             immediate_child_gists(c[1].content).replace([child_entry.story]),
-        //         )(updates);
-        //     }
-
-        //     updates.push(...entry.story_updates);
-
-        //     if (updates.length > 0) {
-        //         const new_story = apply_story_updates_all(entry.story as Story, updates);
-        //         result = result.ingest(new_story, entry.key[1].context, true);
-        //         // TODO Prune any orphaned entries
-        //     }
-        // }
         return result;
     }
     

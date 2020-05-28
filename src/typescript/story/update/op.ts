@@ -6,6 +6,7 @@ import { Effects } from "../../lib/effect_utils";
 import { update, append, map_values } from "../../lib/utils";
 import { ParametersFor } from "../../lib/dsl_utils";
 import { Gist, gist_to_string, gist } from "../../gist";
+import { eph_new } from 'UI/styles';
 
 export type StoryOp = (story_elt: Fragment, effects?: Effects<HTMLElement | Text>) => Fragment | Fragment[]
 
@@ -56,7 +57,8 @@ export const StoryOps: StoryOps = {
                 console.warn('Tried to animate adding a TextNode. Should be wrapped in a div or span.');
             } else {
                 children = update(children, {
-                    classes: { ['eph-new']: true }
+                    // classes: { ['eph-new']: true }
+                    classes: { [eph_new]: true }
                 });
             }
         }
@@ -79,7 +81,8 @@ export const StoryOps: StoryOps = {
                     return node;
                 }
                 return update(node, {
-                    classes: { ['eph-new']: true }
+                    // classes: { ['eph-new']: true }
+                    classes: { [eph_new]: true }
                 })
             }
             
@@ -109,11 +112,11 @@ export const StoryOps: StoryOps = {
             throw new Error('Tried to update CSS on non-StoryNode '+JSON.stringify(elt));
         }
         updates = {...updates};
-        for (const [cls, on] of Object.entries(updates)) {
-            if (!!on !== !!elt.classes[cls]) {
-                updates[`eph-${on ? 'adding' : 'removing'}-${cls}`] = true;
-            }
-        }
+        // for (const [cls, on] of Object.entries(updates)) {
+        //     if (!!on !== !!elt.classes[cls]) {
+        //         updates[`eph-${on ? 'adding' : 'removing'}-${cls}`] = true;
+        //     }
+        // }
         if (effects) {
             effects.push(dom => {
                 for (const [cls, on] of Object.entries(updates)) {
@@ -132,7 +135,7 @@ export const StoryOps: StoryOps = {
         
         return update(elt, {
             classes: _ => map_values(_, (on, cls) => {
-                if (on && cls.startsWith('eph-')) {
+                if (on && cls.startsWith('eph')) {
                     if (effects) {
                         effects.push(dom => {
                             (dom as HTMLElement).classList.remove(cls);

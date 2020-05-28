@@ -1,5 +1,5 @@
 import * as TypeStyle from 'typestyle';
-import { rgb_rule, alpha_rule } from '../../UI/styles';
+import { rgb_rule, alpha_rule, animation_start, animation_active } from '../../UI/styles';
 
 export const insight_text_class = TypeStyle.style(
     rgb_rule(255, 215, 0)
@@ -112,14 +112,30 @@ export const cite_facet_class = TypeStyle.style({
 
 export const interpret_facet_class = TypeStyle.style({
     $debugName: 'eph-interpret_facet',
-    backgroundColor: 'darkgoldenrod'
-    // TODO
+    
+    $nest: {
+        [`.${animation_start} &`]: {
+            backgroundColor: 'darkgoldenrob'
+        },
+        [`.${animation_start}.${animation_active} &`]: {
+            backgroundColor: 'inherit',
+            transition: 'background-color 700ms linear'
+        }
+    }
 });
 
 export const misinterpret_facet_class = TypeStyle.style({
     $debugName: 'eph-misinterpret_facet',
-    backgroundColor: 'firebrick'
-    // TODO
+    
+    $nest: {
+        [`.${animation_start} &`]: {
+            backgroundColor: 'firebrick'
+        },
+        [`.${animation_start}.${animation_active} &`]: {
+            backgroundColor: 'inherit',
+            transition: 'background-color 700ms linear'
+        }
+    }
 })
 
 // Have to manually merge interpreting_animation and would_interpret_facet_animation

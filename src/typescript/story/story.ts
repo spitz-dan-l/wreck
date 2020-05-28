@@ -283,7 +283,7 @@ export function structurally_equal(story1: Fragment, story2: Fragment): boolean 
     dangerous_assert<StoryNode>(story1);
     dangerous_assert<StoryNode>(story2);
 
-    if (!deep_equal(drop_keys(story1, 'key'), drop_keys(story2, 'key'))) {
+    if (!deep_equal(drop_keys(story1, 'key', 'children'), drop_keys(story2, 'key', 'children'))) {
         return false;
     }
 

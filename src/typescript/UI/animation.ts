@@ -1,8 +1,9 @@
-import { history_array } from "../history";
-import { make_consecutive, stages, stage_keys } from "../lib/stages";
-import { update } from "../lib/utils";
-import { apply_story_updates_all, Story, StoryUpdatePlan, StoryUpdateSpec, compile_story_update_group_ops } from "../story";
-import { World } from "../world";
+import { history_array } from "history";
+import { make_consecutive, stages, stage_keys } from "lib/stages";
+import { update } from "lib/utils";
+import { apply_story_updates_all, Story, StoryUpdatePlan, StoryUpdateSpec, compile_story_update_group_ops } from "story";
+import { World } from "world";
+import { eph_new, animation_pre_compute, animation_start, animation_active } from './styles';
 
 export type AnimationState = {
     update_plan: StoryUpdatePlan['effects'],
@@ -80,15 +81,20 @@ export function animate(comp_elt: HTMLElement) {
         // to accurately measure the target maxHeight
         // and check for the custom --is-collapsing property
         // (This is basically an abomination and I am sorry.)
-        comp_elt.classList.add('animation-pre-compute');
+        
+        // comp_elt.classList.add('animation-pre-compute');
+        comp_elt.classList.add(animation_pre_compute);
 
         walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
 
         comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing')) || 0 as any;
 
-        comp_elt.classList.remove('animation-pre-compute');
+        // comp_elt.classList.remove('animation-pre-compute');
 
-        comp_elt.classList.add('animation-start');
+        // comp_elt.classList.add('animation-start');
+        comp_elt.classList.remove(animation_pre_compute);
+
+        comp_elt.classList.add(animation_start);
 
         // If --is-collapsing was set by the animation-pre-compute class,
         // then apply the maxHeight update at the end of this animation frame
@@ -105,12 +111,16 @@ export function animate(comp_elt: HTMLElement) {
                 walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
             }
 
-            comp_elt.classList.add('animation-active');
+            // comp_elt.classList.add('animation-active');
+            comp_elt.classList.add(animation_active);
 
             setTimeout(() => {
+                // comp_elt.classList.remove(
+                //     'animation-start',
+                //     'animation-active');
                 comp_elt.classList.remove(
-                    'animation-start',
-                    'animation-active');
+                    animation_start,
+                    animation_active);
 
                 walkElt(comp_elt, (e) => {
                     e.style.maxHeight = '';
@@ -120,7 +130,8 @@ export function animate(comp_elt: HTMLElement) {
 
                 let anything_new = false;
                 walkElt(comp_elt, e => {
-                    if (e.classList.contains('eph-new')) {
+                    // if (e.classList.contains('eph-new')) {
+                    if (e.classList.contains(eph_new)) {
                         anything_new = true;
                     }
                 });

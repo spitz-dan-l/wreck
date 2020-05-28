@@ -47,8 +47,7 @@ ActionHandler(['scrutinize'],
     Exposition({
         commentary: (action, frame) => [
             frame.description(<div>There is nothing particular about {render_gist.noun_phrase(action[1].facet)}</div>)
-        ],
-        revealed_child_story: <div gist={['bloop']}>That's a great job</div> as StoryNode,
+        ]
     }),
     ACTION_HANDLER_FALLTHROUGH_STAGE
 );

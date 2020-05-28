@@ -100,7 +100,7 @@ function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, c
                 .group_name('interpretation_effects')
                 .group_stage(-1)
                 .apply(b => [
-                    b.css({ [interp_class]: true }),
+                    b.debug('addboi').css({ [interp_class]: true }),
                     b.would().css({ [would_interpret_facet_class]: true })
                 ]),
                 ...if_array(() => {
@@ -116,14 +116,9 @@ function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, c
                     return has_timbre_already.length === 0;
                 }, () => {
                         const child_story = k.get_exact(child_gist!)!
-                        // TODO: This is resulting in a story update that
-                        // adds the child story twice.
-                        // The query returns 2 copies of the parent node, not one.
-                        // Still attempting to figure out why.
                         return [b
                             .group_name('interpretation_effects')
                             .group_stage(-1)
-                            .debug('addboi')
                             .add(child_story)
                         ];
                     })

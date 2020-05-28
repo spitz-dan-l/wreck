@@ -32,6 +32,10 @@ export const History: Renderer<HistoryProps> = (props, old?) => {
     if (anim.current_stage !== undefined) {
         const dom_effects = new Effects(root);
         
+        // TODO: Bug with interpretation effect where in the
+        // virtual story tree an eph class gets removed properly, but not
+        // in the actual dom.
+
         let story = apply_story_updates_stage(
             anim.current_story!,
             anim.update_plan.get(anim.current_stage)!,

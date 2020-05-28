@@ -1,4 +1,4 @@
-
+import { DebugFlags, DEBUG_FLAGS } from 'devtools';
 import { ParametersFor } from "../../lib/dsl_utils";
 import { Gensym } from "../../lib/gensym";
 import { StaticMap, StaticNameIndexFor } from "../../lib/static_resources";
@@ -65,20 +65,22 @@ export interface StoryQueries {
     chain: (...queries: StoryQuerySpec[]) => StoryQuery;
     children: (subquery?: StoryQuerySpec) => StoryQuery;
     has_gist: (pat: GistPattern) => StoryQuery;
-    debug: (label: string, stack?: string) => StoryQuery;
+    debug: (label: keyof DebugFlags, stack?: string) => StoryQuery;
 }
 
 export const StoryQueries: StoryQueries = {
     debug: (label, stack?) =>
-        {
-            return root => {
-                console.log('Debugging a story query: ' + label);
-                if (stack !== undefined) {
-                    console.log(stack);
-                }
-                debugger;
-                return [[root, []]];
-            };
+        root => {
+            console.log('Debugging a story query: ' + label);
+            DEBUG_FLAGS[label] = true;
+            Promise.resolve().then(() => {
+                DEBUG_FLAGS[label] = false;
+            })
+            if (stack !== undefined) {
+                console.log(stack);
+            }
+            debugger;
+            return [[root, []]];
         },
     path: (path) =>
         root => {
@@ -159,13 +161,21 @@ export const StoryQueries: StoryQueries = {
             if (queries.length === 0) {
                 return [[story, []]];
             }
-            const results = compile_story_query(queries[0])(story);
+            const results0 = compile_story_query(queries[0])(story);
             const rest = queries.slice(1);
-            return results
+            const results = results0
                 .flatMap(([n1, p1]) =>
                     StoryQueries['chain'](...rest)(n1)
                         .map(([n2, p2]) => [n2, [...p1, ...p2]] as FoundNode)
-            );
+                );
+            //dedupe
+            const uniq_matches: FoundNode[] = [];
+            for (const r of results) {
+                if (!uniq_matches.find(([n]) => n === r[0])) {
+                    uniq_matches.push(r);
+                }
+            }
+            return uniq_matches;
         },
     children: (subquery?) =>
         (story) => {
@@ -229,7 +239,7 @@ export const eph_predicate = (n: Fragment) => {
     }
 
     for (const cls in n.classes) {
-        if (n.classes[cls] && cls.startsWith('eph-')) {
+        if (n.classes[cls] && cls.startsWith('eph')) {
             return true;
         }
     }
