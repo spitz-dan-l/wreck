@@ -5,14 +5,13 @@ export const insight_text_class = TypeStyle.style(
     rgb_rule(255, 215, 0)
 )
 
-function make_class_for_animation(name: string, animation: string, extra_rules?: TypeStyle.types.NestedCSSProperties) {
+function make_class_for_animation(name: string, animation: string, ...extra_rules: TypeStyle.types.NestedCSSProperties[]) {
     return TypeStyle.style({
         $debugName: name,
         animationName: animation,
         animationDuration: '2s',
         animationIterationCount: 'infinite',
-        ...extra_rules
-    });
+    }, ...extra_rules);
 }
 
 const outline_defaults: TypeStyle.types.NestedCSSProperties = {
@@ -35,13 +34,13 @@ const would_start_interpreting_animation = TypeStyle.keyframes({
 });
 
 export const would_start_interpreting_class = make_class_for_animation(
-    'eph-would_start_interpreting',
+    'would_start_interpreting',
     would_start_interpreting_animation,
     outline_defaults
 );
 
 export const would_stop_interpreting_class = TypeStyle.style({
-    $debugName: 'eph-would_stop_interpreting'
+    $debugName: 'would_stop_interpreting'
     // TODO
 })
 
@@ -65,6 +64,20 @@ export const interpreting_class = make_class_for_animation(
     outline_defaults
 );
 
+TypeStyle.cssRule(`.${animation_start} .eph_adding_${interpreting_class}`, {
+    outlineColor: '#00000000',
+    animation: 'none'
+});
+TypeStyle.cssRule(`.${animation_start}.${animation_active} .eph_adding_${interpreting_class}`, {
+    outlineColor: 'ivory',
+    transition: 'outline-color 700ms linear'
+});
+TypeStyle.cssRule(`.${animation_start}.${animation_active} .eph_removing_${interpreting_class}`, {
+    outlineColor: 'inherit',
+    transition: 'outline-color 700ms linear'
+});
+
+
 
 const would_interpret_facet_animation = TypeStyle.keyframes({
     $debugName: 'would_interpret_facet',
@@ -80,7 +93,7 @@ const would_interpret_facet_animation = TypeStyle.keyframes({
 });
 
 export const would_interpret_facet_class = make_class_for_animation(
-    'eph-would_interpret_facet',
+    'would_interpret_facet',
     would_interpret_facet_animation
 );
 
@@ -99,7 +112,7 @@ const would_cite_facet_animation = TypeStyle.keyframes({
 });
 
 export const would_cite_facet_class = make_class_for_animation(
-    'eph-would_cite_facet',
+    'would_cite_facet',
     would_cite_facet_animation
 );
 

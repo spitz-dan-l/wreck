@@ -1,7 +1,7 @@
 import { update, array_last } from "../lib/utils";
 import { advance_animation, new_animation_state, empty_animation_state, AnimationState } from "./animation";
 import { Token, SUBMIT, RawInput } from "../parser";
-import { CommandResult, World } from "../world";
+import { CommandResult, World, WorldDriver } from "../world";
 import { Story } from "../story";
 
 export type AppState = {
@@ -10,6 +10,17 @@ export type AppState = {
     undo_selected: boolean,
     animation_state: AnimationState,
     updater: (world: World, command: RawInput) => CommandResult<World>
+}
+
+export function initialize_app_state(initialize_world: () => Pick<WorldDriver<World>, 'initial_result' | 'update'>): AppState {
+    const {initial_result, update} = initialize_world();
+    return {
+        typeahead_index: 0,
+        undo_selected: false,
+        command_result: initial_result,
+        updater: update,
+        animation_state: new_animation_state(initial_result.world, undefined)
+    };
 }
 
 export type AppAction =

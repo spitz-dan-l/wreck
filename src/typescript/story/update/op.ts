@@ -17,7 +17,6 @@ export interface StoryOps {
     remove_eph: () => StoryOp;
     replace: (replacement: Fragment[]) => StoryOp;
     replace_children: (replacement: Fragment[]) => StoryOp;
-    // TODO: replace_children
     insert_after: (siblings: Fragment | Fragment[], no_animate?: boolean) => StoryOp;
     set_gist: (gist: Gist) => StoryOp;
 }
@@ -112,14 +111,17 @@ export const StoryOps: StoryOps = {
             throw new Error('Tried to update CSS on non-StoryNode '+JSON.stringify(elt));
         }
         updates = {...updates};
-        // for (const [cls, on] of Object.entries(updates)) {
-        //     if (!!on !== !!elt.classes[cls]) {
-        //         updates[`eph-${on ? 'adding' : 'removing'}-${cls}`] = true;
-        //     }
-        // }
+        for (const [cls, on] of Object.entries(updates)) {
+            if (!!on !== !!elt.classes[cls]) {
+                updates[`eph_${on ? 'adding' : 'removing'}_${cls}`] = true;
+            }
+        }
         if (effects) {
             effects.push(dom => {
                 for (const [cls, on] of Object.entries(updates)) {
+                    // if (cls.startsWith('interpreting') || cls.startsWith('eph_adding_interpreting')) {
+                    //     debugger;
+                    // }
                     (dom as HTMLElement).classList.toggle(cls, on);
                 }
             });

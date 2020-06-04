@@ -5,7 +5,7 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const path = require('path');
 
 module.exports = {
-    entry: "./src/typescript/main.tsx",
+    entry: "./src/typescript/entry_points/build_dev.tsx",
     output: {
         filename: "venience.js",
         path: path.resolve(__dirname, "dist")

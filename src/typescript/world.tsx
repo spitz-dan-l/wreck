@@ -1,8 +1,7 @@
 /*
 
     This module provides the highest level abstractions about game state and history.
-    TODO: rename from commands to world?
-
+    
     It defines what comprises the game state, including
         user input
         parse results

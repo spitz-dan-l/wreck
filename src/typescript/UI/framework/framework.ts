@@ -108,6 +108,14 @@ export type UI<State, Action> = {
     effect_promise: () => Promise<void>
 }
 
+import {GlobalDevTools, GLOBAL_DEV_TOOLS} from "devtools";
+
+declare module 'devtools' {
+    interface GlobalDevTools {
+        ui_state?: unknown;
+    }
+}
+
 export function make_ui<State, Action>(
     renderer: Renderer<State>,
     reducer: (state: State, action: Action) => State,
@@ -185,7 +193,7 @@ export function make_ui<State, Action>(
             old_state = new_state;
             // for debugging
             if (debug) {
-                (globalThis as any).ui_state = old_state;
+                GLOBAL_DEV_TOOLS.ui_state = old_state;
             }
         }
         

@@ -44,4 +44,4 @@ export const eph_new = TypeStyle.style({
             transitionDelay: '0ms, 400ms'
         }
     }
-})
+});

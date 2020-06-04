@@ -204,6 +204,11 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | undef
         });
 }
 
+// TODO: This command does not animate at all.
+// The fact that it doesn't animate at all means there is a bug somewhere
+// But also, once that bug is fixed, this potentially ought to animate in two stages.
+// Fixed, the problem was that animation only works if a StoryNode gets added,
+//      previously was just a string, which is also allowed.
 function make_end_contemplation_thread(world: Venience) {
     return (parser: Parser) => parser.consume({
         tokens: 'end_reflection',
@@ -219,7 +224,7 @@ function make_end_contemplation_thread(world: Venience) {
             s.would().css({
                 [would_stop_interpreting_class]: true
             })
-        ]), S.action('Your mind returns to a less focused state.')),
+        ]), S.action(<div>Your mind returns to a less focused state.</div>)),
         current_interpretation: undefined,
         has_tried: _ => {
             let result = _;

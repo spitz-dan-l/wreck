@@ -171,10 +171,7 @@ function update1_object(source: any, updater: any) {
     if (source instanceof Array) {
         result = [...source] as any;
     } else if (typeof(source) === 'object') {
-        
         result = {...source};
-        // TODO: Consider using prototypes?
-        // result = Object.create(source as unknown as object)
     } else {
         result = {};
     }

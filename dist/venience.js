@@ -81,10 +81,1053 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = "./src/typescript/main.tsx");
+/******/ 	return __webpack_require__(__webpack_require__.s = "./src/typescript/entry_points/build_dev.tsx");
 /******/ })
 /************************************************************************/
 /******/ ({
+
+/***/ "./node_modules/csx/lib.es2015/background.js":
+/*!***************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/background.js ***!
+  \***************************************************/
+/*! exports provided: background */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "background", function() { return background; });
+/* harmony import */ var ___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! . */ "./node_modules/csx/lib.es2015/index.js");
+
+function background() {
+    var output = '';
+    for (var i = 0; i < arguments.length; i++) {
+        var background_1 = arguments[i];
+        var backgroundSize = background_1.size
+            ? '/' + background_1.size
+            : '';
+        var backgroundParts = [
+            Object(___WEBPACK_IMPORTED_MODULE_0__["coalesce"])(background_1.image),
+            Object(___WEBPACK_IMPORTED_MODULE_0__["coalesce"])(background_1.position) + backgroundSize,
+            Object(___WEBPACK_IMPORTED_MODULE_0__["coalesce"])(background_1.repeat),
+            Object(___WEBPACK_IMPORTED_MODULE_0__["coalesce"])(background_1.origin),
+            Object(___WEBPACK_IMPORTED_MODULE_0__["coalesce"])(background_1.clip),
+            Object(___WEBPACK_IMPORTED_MODULE_0__["coalesce"])(background_1.attachment),
+            Object(___WEBPACK_IMPORTED_MODULE_0__["coalesce"])(background_1.color),
+        ];
+        var backgroundString = backgroundParts.filter(Boolean).join(' ');
+        output += (output.length && backgroundString ? ', ' : '') + backgroundString;
+    }
+    return output;
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/border.js":
+/*!***********************************************!*\
+  !*** ./node_modules/csx/lib.es2015/border.js ***!
+  \***********************************************/
+/*! exports provided: border, borderColor, borderStyle, borderWidth */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "border", function() { return border; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "borderColor", function() { return borderColor; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "borderStyle", function() { return borderStyle; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "borderWidth", function() { return borderWidth; });
+/* harmony import */ var _utils_formatting__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utils/formatting */ "./node_modules/csx/lib.es2015/utils/formatting.js");
+/* harmony import */ var _lists__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./lists */ "./node_modules/csx/lib.es2015/lists.js");
+
+
+/**
+ * Returns the value with '' around it.  Any 's will be escaped \' in the output
+ */
+function border(p) {
+    return Object(_lists__WEBPACK_IMPORTED_MODULE_1__["params"])(p.color, p.style, Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensureLength"])(p.width));
+}
+var borderColor = _lists__WEBPACK_IMPORTED_MODULE_1__["params"];
+var borderStyle = _lists__WEBPACK_IMPORTED_MODULE_1__["params"];
+var borderWidth = _lists__WEBPACK_IMPORTED_MODULE_1__["params"];
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/color.js":
+/*!**********************************************!*\
+  !*** ./node_modules/csx/lib.es2015/color.js ***!
+  \**********************************************/
+/*! exports provided: color, hsl, hsla, rgb, rgba, ColorHelper */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "color", function() { return color; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "hsl", function() { return hsl; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "hsla", function() { return hsla; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rgb", function() { return rgb; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rgba", function() { return rgba; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ColorHelper", function() { return ColorHelper; });
+/* harmony import */ var _utils_formatting__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utils/formatting */ "./node_modules/csx/lib.es2015/utils/formatting.js");
+/* harmony import */ var _utils_math__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./utils/math */ "./node_modules/csx/lib.es2015/utils/math.js");
+var _a;
+
+
+var RGB = 'rgb', HSL = 'hsl';
+var converters = (_a = {},
+    _a[RGB + HSL] = RGBtoHSL,
+    _a[HSL + RGB] = HSLtoRGB,
+    _a);
+/**
+ * Describe the ceiling for each color channel for each format
+ */
+var maxChannelValues = {
+    r: 255,
+    g: 255,
+    b: 255,
+    h: 360,
+    s: 1,
+    l: 1,
+    a: 1
+};
+/**
+ * Creates a color from a hex color code or named color.
+ * e.g. color('red') or color('#FF0000') or color('#F00'))
+ */
+function color(value) {
+    return parseHexCode(value) || parseColorFunction(value) || rgb(255, 0, 0);
+}
+/**
+ * Creates a color from hue, saturation, and lightness.  Alpha is automatically set to 100%
+ * @param hue The hue of the color. This should be a number between 0-360.
+ * @param saturation The saturation of the color. This should be a number between 0-1 or a percentage string between 0%-100%.
+ * @param lightness The lightness of the color. This should be a number between 0-1 or a percentage string between 0%-100%.
+ * @param alpha The alpha of the color. This should be a number between 0-1 or a percentage string between 0%-100%. If not specified, this defaults to 1.
+ */
+function hsl(hue, saturation, lightness, alpha) {
+    return new ColorHelper(HSL, modDegrees(hue), Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(saturation), Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(lightness), (alpha === undefined ? 1 : Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(alpha)), alpha !== undefined /* hasAlpha*/);
+}
+/**
+ * Creates a color from hue, saturation, lightness, and alpha
+ * @param hue The hue of the color. This should be a number between 0-360.
+ * @param saturation The saturation of the color. This should be a number between 0-1 or a percentage string between 0%-100%.
+ * @param lightness The lightness of the color. This should be a number between 0-1 or a percentage string between 0%-100%.
+ * @param alpha The alpha of the color. This should be a number between 0-1 or a percentage string between 0%-100%.
+ */
+function hsla(hue, saturation, lightness, alpha) {
+    return new ColorHelper(HSL, modDegrees(hue), Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(saturation), Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(lightness), Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(alpha), true);
+}
+/**
+ * Creates a color form the red, blue, and green color space.  Alpha is automatically set to 100%
+ * @param red The red channel of the color. This should be a number between 0-255.
+ * @param blue The blue channel of the color. This should be a number between 0-255.
+ * @param green The green channel of the color. This should be a number between 0-255.
+ * @param alpha The alpha of the color. This should be a number between 0-1 or a percentage string between 0%-100%. If not specified, this defaults to 1.
+ */
+function rgb(red, blue, green, alpha) {
+    return new ColorHelper(RGB, red, blue, green, (alpha === undefined ? 1 : Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(alpha)), alpha !== undefined /* hasAlpha*/);
+}
+/**
+ * Creates a color form the red, blue, green, and alpha in the color space
+ * @param red The red channel of the color. This should be a number between 0-255.
+ * @param blue The blue channel of the color. This should be a number between 0-255.
+ * @param green The green channel of the color. This should be a number between 0-255.
+ * @param alpha The alpha of the color. This should be a number between 0-1 or a percentage string between 0%-100%.
+ */
+function rgba(red, blue, green, alpha) {
+    return new ColorHelper(RGB, red, blue, green, Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(alpha), true);
+}
+function convertHelper(toFormat, helper, forceAlpha) {
+    var fromFormat = helper.f, r = helper.r, g = helper.g, b = helper.b, a = helper.a;
+    var newAlpha = forceAlpha === undefined ? helper.o : forceAlpha;
+    if (fromFormat !== toFormat) {
+        return converters[fromFormat + toFormat](r, g, b, a, newAlpha);
+    }
+    return forceAlpha === undefined ? helper : new ColorHelper(fromFormat, r, g, b, a, newAlpha);
+}
+/**
+ * A CSS Color.  Includes utilities for converting between color types
+ */
+var ColorHelper = /** @class */ (function () {
+    function ColorHelper(format, r, g, b, a, hasAlpha) {
+        var self = this;
+        self.f = format;
+        self.o = hasAlpha;
+        var isHSL = format === HSL;
+        self.r = clampColor(isHSL ? 'h' : 'r', r);
+        self.g = clampColor(isHSL ? 's' : 'g', g);
+        self.b = clampColor(isHSL ? 'l' : 'b', b);
+        self.a = clampColor('a', a);
+    }
+    /**
+     * Converts the stored color into string form (which is used by Free Style)
+     */
+    ColorHelper.prototype.toString = function () {
+        var _a = this, hasAlpha = _a.o, format = _a.f, r = _a.r, g = _a.g, b = _a.b, a = _a.a;
+        var fnName;
+        var params;
+        // find function name and resolve first three channels
+        if (format === RGB) {
+            fnName = hasAlpha ? 'rgba' : RGB;
+            params = [Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(r), Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(g), Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(b)];
+        }
+        else if (format === HSL) {
+            fnName = hasAlpha ? 'hsla' : HSL;
+            params = [Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(r), Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatPercent"])(Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["roundFloat"])(g, 100)), Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatPercent"])(Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["roundFloat"])(b, 100))];
+        }
+        else {
+            throw new Error('Invalid color format');
+        }
+        // add alpha channel if needed
+        if (hasAlpha) {
+            params.push(Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatFloat"])(Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["roundFloat"])(a, 100000)));
+        }
+        // return as a string
+        return Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["cssFunction"])(fnName, params);
+    };
+    /**
+     * Converts to hex rgb(255, 255, 255) to #FFFFFF
+     */
+    ColorHelper.prototype.toHexString = function () {
+        var color = convertHelper(RGB, this);
+        return '#' + (toHex(color.r) + toHex(color.g) + toHex(color.b)).toUpperCase();
+    };
+    /**
+     * Converts to the Hue, Saturation, Lightness color space
+     */
+    ColorHelper.prototype.toHSL = function () {
+        return convertHelper(HSL, this, false);
+    };
+    /**
+     * Converts to the Hue, Saturation, Lightness color space and adds an alpha channel
+     */
+    ColorHelper.prototype.toHSLA = function () {
+        return convertHelper(HSL, this, true);
+    };
+    /**
+     * Converts to the Red, Green, Blue color space
+     */
+    ColorHelper.prototype.toRGB = function () {
+        return convertHelper(RGB, this, false);
+    };
+    /**
+     * Converts to the Red, Green, Blue color space and adds an alpha channel
+     */
+    ColorHelper.prototype.toRGBA = function () {
+        return convertHelper(RGB, this, true);
+    };
+    ColorHelper.prototype.red = function () {
+        var _ = this;
+        return (_.f === RGB ? _ : _.toRGB()).r;
+    };
+    ColorHelper.prototype.green = function () {
+        var _ = this;
+        return (_.f === RGB ? _ : _.toRGB()).g;
+    };
+    ColorHelper.prototype.blue = function () {
+        var _ = this;
+        return (_.f === RGB ? _ : _.toRGB()).b;
+    };
+    ColorHelper.prototype.hue = function () {
+        var _ = this;
+        return (_.f === HSL ? _ : _.toHSL()).r;
+    };
+    ColorHelper.prototype.saturation = function () {
+        var _ = this;
+        return (_.f === HSL ? _ : _.toHSL()).g;
+    };
+    ColorHelper.prototype.lightness = function () {
+        var _ = this;
+        return (_.f === HSL ? _ : _.toHSL()).b;
+    };
+    ColorHelper.prototype.alpha = function () {
+        return this.a;
+    };
+    ColorHelper.prototype.opacity = function () {
+        return this.a;
+    };
+    ColorHelper.prototype.invert = function () {
+        var _ = this;
+        var color2 = convertHelper(RGB, _);
+        return convertHelper(_.f, new ColorHelper(RGB, 255 - color2.r, 255 - color2.g, 255 - color2.b, _.a, _.o));
+    };
+    ColorHelper.prototype.lighten = function (percent, relative) {
+        var _ = this;
+        var color2 = convertHelper(HSL, _);
+        var max = maxChannelValues.l;
+        var l = color2.b + (relative ? max - color2.b : max) * Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(percent);
+        return convertHelper(_.f, new ColorHelper(HSL, color2.r, color2.g, l, _.a, _.o));
+    };
+    ColorHelper.prototype.darken = function (percent, relative) {
+        var _ = this;
+        var color2 = convertHelper(HSL, _);
+        var l = color2.b - (relative ? color2.b : maxChannelValues.l) * Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(percent);
+        return convertHelper(_.f, new ColorHelper(HSL, color2.r, color2.g, l, _.a, _.o));
+    };
+    ColorHelper.prototype.saturate = function (percent, relative) {
+        var _ = this;
+        var color2 = convertHelper(HSL, _);
+        var max = maxChannelValues.s;
+        var s = color2.g + (relative ? max - color2.g : max) * Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(percent);
+        return convertHelper(_.f, new ColorHelper(HSL, color2.r, s, color2.b, _.a, _.o));
+    };
+    ColorHelper.prototype.desaturate = function (percent, relative) {
+        var _ = this;
+        var color2 = convertHelper(HSL, _);
+        var max = maxChannelValues.s;
+        var s = color2.g - (relative ? color2.g : max) * Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(percent);
+        return convertHelper(_.f, new ColorHelper(HSL, color2.r, s, color2.b, _.a, _.o));
+    };
+    ColorHelper.prototype.grayscale = function () {
+        return this.desaturate(1);
+    };
+    ColorHelper.prototype.fade = function (percent) {
+        var _ = this;
+        var a = clampColor('a', Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(percent));
+        return convertHelper(_.f, new ColorHelper(_.f, _.r, _.g, _.b, a, true));
+    };
+    ColorHelper.prototype.fadeOut = function (percent, relative) {
+        var _ = this;
+        var max = 1;
+        var a = clampColor('a', _.a - (relative ? _.a : max) * Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(percent));
+        return convertHelper(_.f, new ColorHelper(_.f, _.r, _.g, _.b, a, true));
+    };
+    ColorHelper.prototype.fadeIn = function (percent, relative) {
+        var _ = this;
+        var max = 1;
+        var a = clampColor('a', _.a + (relative ? _.a : max) * Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(percent));
+        return convertHelper(_.f, new ColorHelper(_.f, _.r, _.g, _.b, a, true));
+    };
+    ColorHelper.prototype.mix = function (mixin, weight) {
+        var _ = this;
+        var color2 = ensureColor(mixin);
+        var g = convertHelper(RGB, _);
+        var b = convertHelper(RGB, color2);
+        var p = weight === undefined ? 0.5 : weight;
+        var w = 2 * p - 1;
+        var a = Math.abs(g.a - b.a);
+        var w1 = ((w * a === -1 ? w : (w + a) / (1 + w * a)) + 1) / 2.0;
+        var w2 = 1 - w1;
+        var helper = new ColorHelper(RGB, Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(g.r * w1 + b.r * w2), Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(g.g * w1 + b.g * w2), Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(g.b * w1 + b.b * w2), g.a * p + b.a * (1 - p), _.o || color2.o);
+        return convertHelper(this.f, helper);
+    };
+    ColorHelper.prototype.tint = function (weight) {
+        return rgb(255, 255, 255).mix(this, weight);
+    };
+    ColorHelper.prototype.shade = function (weight) {
+        return rgb(0, 0, 0).mix(this, weight);
+    };
+    ColorHelper.prototype.spin = function (degrees) {
+        var _ = this;
+        var color2 = convertHelper(HSL, _);
+        return convertHelper(_.f, new ColorHelper(HSL, modDegrees(color2.r + degrees), color2.g, color2.b, _.a, _.o));
+    };
+    return ColorHelper;
+}());
+
+function toHex(n) {
+    var i = Object(_utils_math__WEBPACK_IMPORTED_MODULE_1__["round"])(n);
+    return (i < 16 ? '0' : '') + i.toString(16);
+}
+function modDegrees(n) {
+    // note: maybe there is a way to simplify this
+    return ((n < 0 ? 360 : 0) + n % 360) % 360;
+}
+function RGBtoHSL(r, g, b, a, hasAlpha) {
+    var newR = r / 255;
+    var newG = g / 255;
+    var newB = b / 255;
+    var min = Math.min(newR, newG, newB);
+    var max = Math.max(newR, newG, newB);
+    var l = (min + max) / 2;
+    var delta = max - min;
+    var h;
+    if (max === min) {
+        h = 0;
+    }
+    else if (newR === max) {
+        h = (newG - newB) / delta;
+    }
+    else if (newG === max) {
+        h = 2 + (newB - newR) / delta;
+    }
+    else if (newB === max) {
+        h = 4 + (newR - newG) / delta;
+    }
+    else {
+        h = 0;
+    }
+    h = Math.min(h * 60, 360);
+    if (h < 0) {
+        h += 360;
+    }
+    var s;
+    if (max === min) {
+        s = 0;
+    }
+    else if (l <= 0.5) {
+        s = delta / (max + min);
+    }
+    else {
+        s = delta / (2 - max - min);
+    }
+    return new ColorHelper(HSL, h, s, l, a, hasAlpha);
+}
+function HSLtoRGB(r, g, b, a, hasAlpha) {
+    var newH = r / 360;
+    var newS = g;
+    var newL = b;
+    if (newS === 0) {
+        var val = newL * 255;
+        return new ColorHelper(RGB, val, val, val, a, hasAlpha);
+    }
+    var t2 = newL < 0.5 ? newL * (1 + newS) : newL + newS - newL * newS;
+    var t1 = 2 * newL - t2;
+    var newR = 0, newG = 0, newB = 0;
+    for (var i = 0; i < 3; i++) {
+        var t3 = newH + 1 / 3 * -(i - 1);
+        if (t3 < 0) {
+            t3++;
+        }
+        if (t3 > 1) {
+            t3--;
+        }
+        var val = void 0;
+        if (6 * t3 < 1) {
+            val = t1 + (t2 - t1) * 6 * t3;
+        }
+        else if (2 * t3 < 1) {
+            val = t2;
+        }
+        else if (3 * t3 < 2) {
+            val = t1 + (t2 - t1) * (2 / 3 - t3) * 6;
+        }
+        else {
+            val = t1;
+        }
+        val *= 255;
+        // manually set variables instead of using an array
+        if (i === 0) {
+            newR = val;
+        }
+        else if (i === 1) {
+            newG = val;
+        }
+        else {
+            newB = val;
+        }
+    }
+    return new ColorHelper(RGB, newR, newG, newB, a, hasAlpha);
+}
+function clampColor(channel, value) {
+    var min = 0;
+    var max = maxChannelValues[channel];
+    return value < min ? min : value > max ? max : value;
+}
+function ensureColor(c) {
+    return c instanceof ColorHelper ? c : color(c);
+}
+function parseHexCode(stringValue) {
+    var match = stringValue.match(/#(([a-f0-9]{6})|([a-f0-9]{3}))$/i);
+    if (!match) {
+        return undefined;
+    }
+    var hex = match[1];
+    var hexColor = parseInt(hex.length === 3 ? hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2] : hex, 16);
+    var r = (hexColor >> 16) & 0xff;
+    var b = (hexColor >> 8) & 0xff;
+    var g = hexColor & 0xff;
+    return new ColorHelper(RGB, r, b, g, 1, false);
+}
+function parseColorFunction(colorString) {
+    var cssParts = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["parseCSSFunction"])(colorString);
+    if (!cssParts || !(cssParts.length === 4 || cssParts.length === 5)) {
+        return undefined;
+    }
+    var fn = cssParts[0];
+    var isRGBA = fn === 'rgba';
+    var isHSLA = fn === 'hsla';
+    var isRGB = fn === RGB;
+    var isHSL = fn === HSL;
+    var hasAlpha = isHSLA || isRGBA;
+    var type;
+    if (isRGB || isRGBA) {
+        type = RGB;
+    }
+    else if (isHSL || isHSLA) {
+        type = HSL;
+    }
+    else {
+        throw new Error('unsupported color string');
+    }
+    var r = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["toFloat"])(cssParts[1]);
+    var g = isRGB || isRGBA ? Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["toFloat"])(cssParts[2]) : Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(cssParts[2]);
+    var b = isRGB || isRGBA ? Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["toFloat"])(cssParts[3]) : Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["ensurePercent"])(cssParts[3]);
+    var a = hasAlpha ? Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["toFloat"])(cssParts[4]) : 1;
+    return new ColorHelper(type, r, g, b, a, hasAlpha);
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/gradient.js":
+/*!*************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/gradient.js ***!
+  \*************************************************/
+/*! exports provided: linearGradient, repeatingLinearGradient */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "linearGradient", function() { return linearGradient; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "repeatingLinearGradient", function() { return repeatingLinearGradient; });
+/* harmony import */ var _utils_formatting__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utils/formatting */ "./node_modules/csx/lib.es2015/utils/formatting.js");
+
+/**
+ * Helper for the linear-gradient function in CSS
+ * https://drafts.csswg.org/css-images-3/#funcdef-linear-gradient
+ */
+function linearGradient(position) {
+    var colors = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        colors[_i - 1] = arguments[_i];
+    }
+    return Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["cssFunction"])('linear-gradient', [position].concat(colors.map(flattenColorStops)));
+}
+/**
+ * Helper for the repeating-linear-gradient function in CSS
+ * https://drafts.csswg.org/css-images-3/#funcdef-repeating-linear-gradient
+ */
+function repeatingLinearGradient(position) {
+    var colors = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        colors[_i - 1] = arguments[_i];
+    }
+    return Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["cssFunction"])('repeating-linear-gradient', [position].concat(colors.map(flattenColorStops)));
+}
+/**
+ * Single CSSColorStop => string conversion is like:
+ * 'x'=>'x'
+ * ['x', '50%'] => 'x 50%'
+ **/
+function flattenColorStops(c) {
+    return Array.isArray(c) ? c.map(function (s) { return s.toString(); }).join(' ') : c.toString();
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/index.js":
+/*!**********************************************!*\
+  !*** ./node_modules/csx/lib.es2015/index.js ***!
+  \**********************************************/
+/*! exports provided: background, border, borderColor, borderStyle, borderWidth, color, hsl, hsla, rgb, rgba, ColorHelper, linearGradient, repeatingLinearGradient, params, list, margin, padding, calc, quote, important, url, coalesce, transform, matrix, matrix3d, perspective, rotate, rotate3d, rotateX, rotateY, rotateZ, scale, scale3d, scaleX, scaleY, scaleZ, skew, skewX, skewY, translate, translate3d, translateX, translateY, translateZ, percent, deg, em, ex, px, rad, rem, viewHeight, viewWidth, turn */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _background__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./background */ "./node_modules/csx/lib.es2015/background.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "background", function() { return _background__WEBPACK_IMPORTED_MODULE_0__["background"]; });
+
+/* harmony import */ var _border__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./border */ "./node_modules/csx/lib.es2015/border.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "border", function() { return _border__WEBPACK_IMPORTED_MODULE_1__["border"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "borderColor", function() { return _border__WEBPACK_IMPORTED_MODULE_1__["borderColor"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "borderStyle", function() { return _border__WEBPACK_IMPORTED_MODULE_1__["borderStyle"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "borderWidth", function() { return _border__WEBPACK_IMPORTED_MODULE_1__["borderWidth"]; });
+
+/* harmony import */ var _color__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./color */ "./node_modules/csx/lib.es2015/color.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "color", function() { return _color__WEBPACK_IMPORTED_MODULE_2__["color"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "hsl", function() { return _color__WEBPACK_IMPORTED_MODULE_2__["hsl"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "hsla", function() { return _color__WEBPACK_IMPORTED_MODULE_2__["hsla"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rgb", function() { return _color__WEBPACK_IMPORTED_MODULE_2__["rgb"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rgba", function() { return _color__WEBPACK_IMPORTED_MODULE_2__["rgba"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ColorHelper", function() { return _color__WEBPACK_IMPORTED_MODULE_2__["ColorHelper"]; });
+
+/* harmony import */ var _gradient__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./gradient */ "./node_modules/csx/lib.es2015/gradient.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "linearGradient", function() { return _gradient__WEBPACK_IMPORTED_MODULE_3__["linearGradient"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "repeatingLinearGradient", function() { return _gradient__WEBPACK_IMPORTED_MODULE_3__["repeatingLinearGradient"]; });
+
+/* harmony import */ var _lists__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./lists */ "./node_modules/csx/lib.es2015/lists.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "params", function() { return _lists__WEBPACK_IMPORTED_MODULE_4__["params"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "list", function() { return _lists__WEBPACK_IMPORTED_MODULE_4__["list"]; });
+
+/* harmony import */ var _margin__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./margin */ "./node_modules/csx/lib.es2015/margin.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "margin", function() { return _margin__WEBPACK_IMPORTED_MODULE_5__["margin"]; });
+
+/* harmony import */ var _padding__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./padding */ "./node_modules/csx/lib.es2015/padding.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "padding", function() { return _padding__WEBPACK_IMPORTED_MODULE_6__["padding"]; });
+
+/* harmony import */ var _strings__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./strings */ "./node_modules/csx/lib.es2015/strings.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "calc", function() { return _strings__WEBPACK_IMPORTED_MODULE_7__["calc"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "quote", function() { return _strings__WEBPACK_IMPORTED_MODULE_7__["quote"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "important", function() { return _strings__WEBPACK_IMPORTED_MODULE_7__["important"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "url", function() { return _strings__WEBPACK_IMPORTED_MODULE_7__["url"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "coalesce", function() { return _strings__WEBPACK_IMPORTED_MODULE_7__["coalesce"]; });
+
+/* harmony import */ var _transforms__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./transforms */ "./node_modules/csx/lib.es2015/transforms.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "transform", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["transform"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "matrix", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["matrix"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "matrix3d", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["matrix3d"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "perspective", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["perspective"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rotate", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["rotate"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rotate3d", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["rotate3d"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rotateX", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["rotateX"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rotateY", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["rotateY"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rotateZ", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["rotateZ"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "scale", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["scale"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "scale3d", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["scale3d"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "scaleX", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["scaleX"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "scaleY", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["scaleY"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "scaleZ", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["scaleZ"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "skew", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["skew"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "skewX", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["skewX"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "skewY", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["skewY"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "translate", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["translate"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "translate3d", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["translate3d"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "translateX", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["translateX"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "translateY", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["translateY"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "translateZ", function() { return _transforms__WEBPACK_IMPORTED_MODULE_8__["translateZ"]; });
+
+/* harmony import */ var _units__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./units */ "./node_modules/csx/lib.es2015/units.js");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "percent", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["percent"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "deg", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["deg"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "em", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["em"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "ex", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["ex"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "px", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["px"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rad", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["rad"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "rem", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["rem"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "viewHeight", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["viewHeight"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "viewWidth", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["viewWidth"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "turn", function() { return _units__WEBPACK_IMPORTED_MODULE_9__["turn"]; });
+
+/**
+ * @module Provides useful CSS primitives
+ */
+// export all helper functions
+
+
+
+
+
+
+
+
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/lists.js":
+/*!**********************************************!*\
+  !*** ./node_modules/csx/lib.es2015/lists.js ***!
+  \**********************************************/
+/*! exports provided: params, list */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "params", function() { return params; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "list", function() { return list; });
+/* harmony import */ var _utils_arrays__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utils/arrays */ "./node_modules/csx/lib.es2015/utils/arrays.js");
+/* harmony import */ var _units__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./units */ "./node_modules/csx/lib.es2015/units.js");
+
+
+var delimited = function (delimiter) {
+    return function () {
+        return Object(_utils_arrays__WEBPACK_IMPORTED_MODULE_0__["filter"])(arguments, function (s) { return s || s === 0; })
+            .map(function (s) { return typeof s === 'number' ? Object(_units__WEBPACK_IMPORTED_MODULE_1__["px"])(s) : s.toString(); })
+            .join(delimiter);
+    };
+};
+var params = delimited(' ');
+var list = delimited(',');
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/margin.js":
+/*!***********************************************!*\
+  !*** ./node_modules/csx/lib.es2015/margin.js ***!
+  \***********************************************/
+/*! exports provided: margin */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "margin", function() { return margin; });
+/* harmony import */ var _lists__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./lists */ "./node_modules/csx/lib.es2015/lists.js");
+
+var margin = _lists__WEBPACK_IMPORTED_MODULE_0__["params"];
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/padding.js":
+/*!************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/padding.js ***!
+  \************************************************/
+/*! exports provided: padding */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "padding", function() { return padding; });
+/* harmony import */ var _lists__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./lists */ "./node_modules/csx/lib.es2015/lists.js");
+
+var padding = _lists__WEBPACK_IMPORTED_MODULE_0__["params"];
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/strings.js":
+/*!************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/strings.js ***!
+  \************************************************/
+/*! exports provided: calc, quote, important, url, coalesce */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "calc", function() { return calc; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "quote", function() { return quote; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "important", function() { return important; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "url", function() { return url; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "coalesce", function() { return coalesce; });
+/**
+ * Returns the value with '' around it.  Any 's will be escaped \' in the output
+ */
+function calc(exp) {
+    return "calc(" + exp + ")";
+}
+/**
+ * Returns the value with '' around it.  Any 's will be escaped \' in the output
+ */
+function quote(val) {
+    var val2 = (val || val === 0 ? val.toString() : '').replace(/\'/g, "\\'");
+    return "'" + val2 + "'";
+}
+/**
+ * Returns the value with !important on the end.  If the value provided is a CSSHelper, it will
+ * be converted to a string by necessity, but will look like it is the original type to TypeScript.
+ */
+function important(val) {
+    if (!val && val !== 0) {
+        return '';
+    }
+    return val.toString() + " !important";
+}
+/**
+ * Returns the string in a url()
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/url
+ */
+function url(val) {
+    return "url(" + (val || '') + ")";
+}
+/**
+ * Returns the value as a string or an empty string if null or undefined.
+ * @param value
+ * @param fallbackValue
+ */
+function coalesce(value) {
+    return !value && value !== 0 ? '' : value.toString();
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/transforms.js":
+/*!***************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/transforms.js ***!
+  \***************************************************/
+/*! exports provided: transform, matrix, matrix3d, perspective, rotate, rotate3d, rotateX, rotateY, rotateZ, scale, scale3d, scaleX, scaleY, scaleZ, skew, skewX, skewY, translate, translate3d, translateX, translateY, translateZ */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "transform", function() { return transform; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "matrix", function() { return matrix; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "matrix3d", function() { return matrix3d; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "perspective", function() { return perspective; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rotate", function() { return rotate; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rotate3d", function() { return rotate3d; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rotateX", function() { return rotateX; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rotateY", function() { return rotateY; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rotateZ", function() { return rotateZ; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "scale", function() { return scale; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "scale3d", function() { return scale3d; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "scaleX", function() { return scaleX; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "scaleY", function() { return scaleY; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "scaleZ", function() { return scaleZ; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "skew", function() { return skew; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "skewX", function() { return skewX; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "skewY", function() { return skewY; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "translate", function() { return translate; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "translate3d", function() { return translate3d; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "translateX", function() { return translateX; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "translateY", function() { return translateY; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "translateZ", function() { return translateZ; });
+/* harmony import */ var _utils_formatting__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utils/formatting */ "./node_modules/csx/lib.es2015/utils/formatting.js");
+
+/**
+ * The CSS transform property lets you modify the coordinate space of the CSS visual formatting model. Using it, elements can be translated, rotated, scaled, and skewed.
+ * Returns the transforms as a delimited string by space or returns 'none' if no arguments are provided
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/transform
+ */
+function transform() {
+    var transforms = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        transforms[_i] = arguments[_i];
+    }
+    return transforms.length ? transforms.join(' ') : 'none';
+}
+var matrix = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('matrix');
+var matrix3d = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('matrix3d');
+var perspective = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('perspective');
+var rotate = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('rotate');
+var rotate3d = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('rotate3d');
+var rotateX = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('rotateX');
+var rotateY = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('rotateY');
+var rotateZ = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('rotateZ');
+var scale = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('scale');
+var scale3d = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('scale3d');
+var scaleX = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('scaleX');
+var scaleY = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('scaleY');
+var scaleZ = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('scaleZ');
+var skew = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('skew');
+var skewX = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('skewX');
+var skewY = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('skewY');
+var translate = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('translate');
+var translate3d = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('translate3d');
+var translateX = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('translateX');
+var translateY = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('translateY');
+var translateZ = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["createFunction"])('translateZ');
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/units.js":
+/*!**********************************************!*\
+  !*** ./node_modules/csx/lib.es2015/units.js ***!
+  \**********************************************/
+/*! exports provided: percent, deg, em, ex, px, rad, rem, viewHeight, viewWidth, turn */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "percent", function() { return percent; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "deg", function() { return deg; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "em", function() { return em; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ex", function() { return ex; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "px", function() { return px; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rad", function() { return rad; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "rem", function() { return rem; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "viewHeight", function() { return viewHeight; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "viewWidth", function() { return viewWidth; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "turn", function() { return turn; });
+/* harmony import */ var _utils_formatting__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utils/formatting */ "./node_modules/csx/lib.es2015/utils/formatting.js");
+
+/**
+ * Returns the number with a suffix of %
+ */
+var percent = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('%');
+/**
+ * Returns the number with a suffix of deg
+ */
+var deg = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('deg');
+/**
+ * Returns the number with a suffix of em
+ */
+var em = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('em');
+/**
+ * Returns the number with a suffix of ex
+ */
+var ex = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('ex');
+/**
+ * Returns the number with a suffix of px
+ */
+var px = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('px');
+/**
+ * Returns the number with a suffix of rad
+ */
+var rad = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('rad');
+/**
+ * Returns the number with a suffix of rem
+ */
+var rem = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('rem');
+/**
+ * Returns the number with a suffix of vh
+ */
+var viewHeight = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('vh');
+/**
+ * Returns the number with a suffix of vw
+ */
+var viewWidth = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('vw');
+/**
+ * Returns the number with a suffix of turn
+ */
+var turn = Object(_utils_formatting__WEBPACK_IMPORTED_MODULE_0__["formatUnit"])('turn');
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/utils/arrays.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/utils/arrays.js ***!
+  \*****************************************************/
+/*! exports provided: filter, map */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "filter", function() { return filter; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "map", function() { return map; });
+var filter = function (args, condition) {
+    return Array.prototype.filter.call(args, condition);
+};
+var map = function (args, mapper) {
+    return Array.prototype.map.call(args, mapper);
+};
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/utils/formatting.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/utils/formatting.js ***!
+  \*********************************************************/
+/*! exports provided: formatUnit, toFloat, ensurePercent, formatPercent, formatFloat, ensureLength, parseCSSFunction, cssFunction, createFunction */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "formatUnit", function() { return formatUnit; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "toFloat", function() { return toFloat; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ensurePercent", function() { return ensurePercent; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "formatPercent", function() { return formatPercent; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "formatFloat", function() { return formatFloat; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ensureLength", function() { return ensureLength; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "parseCSSFunction", function() { return parseCSSFunction; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "cssFunction", function() { return cssFunction; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "createFunction", function() { return createFunction; });
+var functionExpression = /[\s]*([a-z-]+)[\s]*\([\s]*([^\)]+)[\s]*\)[\s]*/i;
+var floatExpression = /^(\-?\d+\.?\d{0,5})/;
+var formatUnit = function (unit) { return function (val) { return (val + unit); }; };
+var toFloat = parseFloat;
+function ensurePercent(value) {
+    return typeof value === 'number'
+        ? value
+        : toFloat(value) * .01;
+}
+function formatPercent(value) {
+    return (formatFloat(value * 100)) + '%';
+}
+/**
+ * Returns a number formatted to a max number of 5 decimal places
+ */
+function formatFloat(n) {
+    return floatExpression.exec(n.toString())[1];
+}
+function ensureLength(value) {
+    if (value === null || value === undefined) {
+        return undefined;
+    }
+    // convert to number
+    var number = +value;
+    // validate conversion worked (NaN will not equal NaN)
+    if (number === number) {
+        return value + 'px';
+    }
+    return value;
+}
+function parseCSSFunction(stringValue) {
+    var matches = functionExpression.exec(stringValue);
+    if (!matches || !matches.length) {
+        return undefined;
+    }
+    return [matches[1]].concat(matches[2].split(','));
+}
+function cssFunction(functionName, params) {
+    var parts = Array.prototype.join.call(params, ', ');
+    return functionName + "(" + parts + ")";
+}
+function createFunction(name) {
+    return (function () {
+        return cssFunction(name, arguments);
+    });
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/csx/lib.es2015/utils/math.js":
+/*!***************************************************!*\
+  !*** ./node_modules/csx/lib.es2015/utils/math.js ***!
+  \***************************************************/
+/*! exports provided: round, roundFloat */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "round", function() { return round; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "roundFloat", function() { return roundFloat; });
+var math = Math;
+var round = math.round;
+/**
+ * Rounds a decimal by multiplying it by a factor, rounding it, and then dividing it by that same factor
+ * @param n number to round
+ * @param factor to use 100 = scale of 2, 100000 = scale of 5
+ */
+function roundFloat(n, factor) {
+    return round(n * factor) / factor;
+}
+
+
+/***/ }),
 
 /***/ "./node_modules/free-style/dist/free-style.js":
 /*!****************************************************!*\
@@ -20720,10 +21763,11 @@ module.exports = function(module) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const history_1 = __webpack_require__(/*! ../history */ "./src/typescript/history.ts");
-const stages_1 = __webpack_require__(/*! ../lib/stages */ "./src/typescript/lib/stages.ts");
-const utils_1 = __webpack_require__(/*! ../lib/utils */ "./src/typescript/lib/utils.ts");
-const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/index.ts");
+const history_1 = __webpack_require__(/*! history */ "./src/typescript/history.ts");
+const stages_1 = __webpack_require__(/*! lib/stages */ "./src/typescript/lib/stages.ts");
+const utils_1 = __webpack_require__(/*! lib/utils */ "./src/typescript/lib/utils.ts");
+const story_1 = __webpack_require__(/*! story */ "./src/typescript/story/index.ts");
+const styles_1 = __webpack_require__(/*! ./styles */ "./src/typescript/UI/styles.ts");
 exports.empty_animation_state = {
     update_plan: stages_1.stages(),
     current_stage: undefined,
@@ -20791,11 +21835,14 @@ function animate(comp_elt) {
         // to accurately measure the target maxHeight
         // and check for the custom --is-collapsing property
         // (This is basically an abomination and I am sorry.)
-        comp_elt.classList.add('animation-pre-compute');
+        // comp_elt.classList.add('animation-pre-compute');
+        comp_elt.classList.add(styles_1.animation_pre_compute);
         walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
         comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing')) || 0;
-        comp_elt.classList.remove('animation-pre-compute');
-        comp_elt.classList.add('animation-start');
+        // comp_elt.classList.remove('animation-pre-compute');
+        // comp_elt.classList.add('animation-start');
+        comp_elt.classList.remove(styles_1.animation_pre_compute);
+        comp_elt.classList.add(styles_1.animation_start);
         // If --is-collapsing was set by the animation-pre-compute class,
         // then apply the maxHeight update at the end of this animation frame
         // rather than the beginning of the next one.
@@ -20810,9 +21857,13 @@ function animate(comp_elt) {
             if (comp_elt.dataset.isCollapsing != 1) {
                 walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight);
             }
-            comp_elt.classList.add('animation-active');
+            // comp_elt.classList.add('animation-active');
+            comp_elt.classList.add(styles_1.animation_active);
             setTimeout(() => {
-                comp_elt.classList.remove('animation-start', 'animation-active');
+                // comp_elt.classList.remove(
+                //     'animation-start',
+                //     'animation-active');
+                comp_elt.classList.remove(styles_1.animation_start, styles_1.animation_active);
                 walkElt(comp_elt, (e) => {
                     e.style.maxHeight = '';
                     delete e.dataset.maxHeight;
@@ -20820,7 +21871,8 @@ function animate(comp_elt) {
                 });
                 let anything_new = false;
                 walkElt(comp_elt, e => {
-                    if (e.classList.contains('eph-new')) {
+                    // if (e.classList.contains('eph-new')) {
+                    if (e.classList.contains(styles_1.eph_new)) {
                         anything_new = true;
                     }
                 });
@@ -20863,6 +21915,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = __webpack_require__(/*! ../lib/utils */ "./src/typescript/lib/utils.ts");
 const animation_1 = __webpack_require__(/*! ./animation */ "./src/typescript/UI/animation.ts");
 const parser_1 = __webpack_require__(/*! ../parser */ "./src/typescript/parser/index.ts");
+function initialize_app_state(initialize_world) {
+    const { initial_result, update } = initialize_world();
+    return {
+        typeahead_index: 0,
+        undo_selected: false,
+        command_result: initial_result,
+        updater: update,
+        animation_state: animation_1.new_animation_state(initial_result.world, undefined)
+    };
+}
+exports.initialize_app_state = initialize_app_state;
 function app_reducer(state, action) {
     const result = app_reducer_(state, action);
     return result;
@@ -21139,6 +22202,9 @@ exports.History = (props, old) => {
     const anim = props.animation_state;
     if (anim.current_stage !== undefined) {
         const dom_effects = new effect_utils_1.Effects(root);
+        // TODO: Bug with interpretation effect where in the
+        // virtual story tree an eph class gets removed properly, but not
+        // in the actual dom.
         let story = story_1.apply_story_updates_stage(anim.current_story, anim.update_plan.get(anim.current_stage), dom_effects, anim.current_stage);
         story = push_animation(story, dom_effects);
         dom_effects.push(() => dispatch({ kind: 'AdvanceAnimation', next_story: story }));
@@ -21192,6 +22258,8 @@ function push_animation(story, dom_effects) {
     const effect_promise = prelude_1.ui_resources.get('effect_promise').get();
     dom_effects.push(async (dom) => {
         await effect_promise();
+        // TODO: set all the eph-adding and eph-removing classes here?
+        // would have to change how remove_eph works on the dom then...
         await animation_1.animate(dom);
         return dom;
     });
@@ -21575,6 +22643,7 @@ function child_declarator_for() {
     return child_declarator_for_inner;
 }
 exports.child_declarator_for = child_declarator_for;
+const devtools_1 = __webpack_require__(/*! devtools */ "./src/typescript/devtools/index.ts");
 function make_ui(renderer, reducer, debug = false) {
     let old_state = undefined;
     let component;
@@ -21632,7 +22701,7 @@ function make_ui(renderer, reducer, debug = false) {
             old_state = new_state;
             // for debugging
             if (debug) {
-                globalThis.ui_state = old_state;
+                devtools_1.GLOBAL_DEV_TOOLS.ui_state = old_state;
             }
         }
         requestAnimationFrame(() => {
@@ -21742,7 +22811,16 @@ exports.ui_resources = new static_resources_1.StaticMap({
 
 "use strict";
 
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const TypeStyle = __importStar(__webpack_require__(/*! typestyle */ "./node_modules/typestyle/lib.es2015/index.js"));
+const csx_1 = __webpack_require__(/*! csx */ "./node_modules/csx/lib.es2015/index.js");
 function rgb_rule(r, g, b) {
     return {
         '--rgb-color': `${r}, ${g}, ${b}`
@@ -21761,6 +22839,23 @@ function compute_color_rule() {
     };
 }
 exports.compute_color_rule = compute_color_rule;
+exports.animation_pre_compute = TypeStyle.style({ $debugName: 'animation_pre_compute' });
+exports.animation_start = TypeStyle.style({ $debugName: 'animation_start' });
+exports.animation_active = TypeStyle.style({ $debugName: 'animation_active' });
+exports.eph_new = TypeStyle.style({
+    $debugName: 'eph_new',
+    $nest: {
+        [`.story.${exports.animation_start} &`]: {
+            opacity: 0.01,
+            maxHeight: csx_1.px(0)
+        },
+        [`.story.${exports.animation_start}.${exports.animation_active} &`]: {
+            opacity: 1.0,
+            transition: 'max-height 400ms linear, opacity 300ms ease-in',
+            transitionDelay: '0ms, 400ms'
+        }
+    }
+});
 
 
 /***/ }),
@@ -22768,8 +23863,8 @@ action_1.Action({
     id: 'notes',
     render_impls: {
         noun_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => 'your notes' + subject !== undefined ? ` about ${subject}` : '', gist_1.render_gist.noun_phrase),
-        command_noun_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['my_notes', parser_1.GAP, ...utils_1.if_not_null_array(subject, (t) => ['about', t])], gist_1.render_gist.command_noun_phrase),
-        command_verb_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['notes', parser_1.GAP, ...utils_1.if_not_null_array(subject, (t) => ['about', t])], gist_1.render_gist.command_noun_phrase)
+        command_noun_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['my_notes', ...utils_1.if_not_null_array(subject, (t) => [parser_1.GAP, 'about', t])], gist_1.render_gist.command_noun_phrase),
+        command_verb_phrase: g => gist_1.bottom_up(g)((tag, { subject }) => ['notes', ...utils_1.if_not_null_array(subject, (t) => [parser_1.GAP, 'about', t])], gist_1.render_gist.command_noun_phrase)
     },
     memory_prompt_impls: {
         noun_phrase: () => 'something scholarly',
@@ -22966,8 +24061,7 @@ action_1.ActionHandler(['scrutinize'], inner_action_1.Exposition({
         frame.description(story_1.createElement("div", null,
             "There is nothing particular about ",
             gist_1.render_gist.noun_phrase(action[1].facet)))
-    ],
-    revealed_child_story: story_1.createElement("div", { gist: ['bloop'] }, "That's a great job"),
+    ]
 }), action_1.ACTION_HANDLER_FALLTHROUGH_STAGE);
 // hammer
 action_1.Action({
@@ -23129,7 +24223,7 @@ function apply_facet_interpretation(world, { parent_gist, child_gist, commentary
                 .group_name('interpretation_effects')
                 .group_stage(-1)
                 .apply(b => [
-                b.css({ [interp_class]: true }),
+                b.debug('addboi').css({ [interp_class]: true }),
                 b.would().css({ [styles_1.would_interpret_facet_class]: true })
             ]),
             ...utils_1.if_array(() => {
@@ -23144,14 +24238,9 @@ function apply_facet_interpretation(world, { parent_gist, child_gist, commentary
                 return has_timbre_already.length === 0;
             }, () => {
                 const child_story = k.get_exact(child_gist);
-                // TODO: This is resulting in a story update that
-                // adds the child story twice.
-                // The query returns 2 copies of the parent node, not one.
-                // Still attempting to figure out why.
                 return [b
                         .group_name('interpretation_effects')
                         .group_stage(-1)
-                        .debug('addboi')
                         .add(child_story)
                 ];
             })
@@ -23325,6 +24414,11 @@ function make_indirect_thread(world, immediate_world, gists) {
         return parser.split(indirect_threads);
     });
 }
+// TODO: This command does not animate at all.
+// The fact that it doesn't animate at all means there is a bug somewhere
+// But also, once that bug is fixed, this potentially ought to animate in two stages.
+// Fixed, the problem was that animation only works if a StoryNode gets added,
+//      previously was just a string, which is also allowed.
 function make_end_contemplation_thread(world) {
     return (parser) => parser.consume({
         tokens: 'end_reflection',
@@ -23340,7 +24434,7 @@ function make_end_contemplation_thread(world) {
             s.would().css({
                 [styles_1.would_stop_interpreting_class]: true
             })
-        ]), story_1.Updates.action('Your mind returns to a less focused state.')),
+        ]), story_1.Updates.action(story_1.createElement("div", null, "Your mind returns to a less focused state."))),
         current_interpretation: undefined,
         has_tried: _ => {
             let result = _;
@@ -23494,8 +24588,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const TypeStyle = __importStar(__webpack_require__(/*! typestyle */ "./node_modules/typestyle/lib.es2015/index.js"));
 const styles_1 = __webpack_require__(/*! ../../UI/styles */ "./src/typescript/UI/styles.ts");
 exports.insight_text_class = TypeStyle.style(styles_1.rgb_rule(255, 215, 0));
-function make_class_for_animation(name, animation, extra_rules) {
-    return TypeStyle.style(Object.assign({ $debugName: name, animationName: animation, animationDuration: '2s', animationIterationCount: 'infinite' }, extra_rules));
+function make_class_for_animation(name, animation, ...extra_rules) {
+    return TypeStyle.style({
+        $debugName: name,
+        animationName: animation,
+        animationDuration: '2s',
+        animationIterationCount: 'infinite',
+    }, ...extra_rules);
 }
 const outline_defaults = {
     outlineStyle: 'solid',
@@ -23514,9 +24613,9 @@ const would_start_interpreting_animation = TypeStyle.keyframes({
         outlineColor: '#00000000'
     }
 });
-exports.would_start_interpreting_class = make_class_for_animation('eph-would_start_interpreting', would_start_interpreting_animation, outline_defaults);
+exports.would_start_interpreting_class = make_class_for_animation('would_start_interpreting', would_start_interpreting_animation, outline_defaults);
 exports.would_stop_interpreting_class = TypeStyle.style({
-    $debugName: 'eph-would_stop_interpreting'
+    $debugName: 'would_stop_interpreting'
     // TODO
 });
 const interpreting_animation = TypeStyle.keyframes({
@@ -23532,6 +24631,18 @@ const interpreting_animation = TypeStyle.keyframes({
     }
 });
 exports.interpreting_class = make_class_for_animation('interpreting', interpreting_animation, outline_defaults);
+TypeStyle.cssRule(`.${styles_1.animation_start} .eph_adding_${exports.interpreting_class}`, {
+    outlineColor: '#00000000',
+    animation: 'none'
+});
+TypeStyle.cssRule(`.${styles_1.animation_start}.${styles_1.animation_active} .eph_adding_${exports.interpreting_class}`, {
+    outlineColor: 'ivory',
+    transition: 'outline-color 700ms linear'
+});
+TypeStyle.cssRule(`.${styles_1.animation_start}.${styles_1.animation_active} .eph_removing_${exports.interpreting_class}`, {
+    outlineColor: 'inherit',
+    transition: 'outline-color 700ms linear'
+});
 const would_interpret_facet_animation = TypeStyle.keyframes({
     $debugName: 'would_interpret_facet',
     '0%': {
@@ -23544,7 +24655,7 @@ const would_interpret_facet_animation = TypeStyle.keyframes({
         backgroundColor: 'black'
     }
 });
-exports.would_interpret_facet_class = make_class_for_animation('eph-would_interpret_facet', would_interpret_facet_animation);
+exports.would_interpret_facet_class = make_class_for_animation('would_interpret_facet', would_interpret_facet_animation);
 const would_cite_facet_animation = TypeStyle.keyframes({
     $debugName: 'would_cite_facet',
     '0%': {
@@ -23557,7 +24668,7 @@ const would_cite_facet_animation = TypeStyle.keyframes({
         backgroundColor: 'black'
     }
 });
-exports.would_cite_facet_class = make_class_for_animation('eph-would_cite_facet', would_cite_facet_animation);
+exports.would_cite_facet_class = make_class_for_animation('would_cite_facet', would_cite_facet_animation);
 exports.cite_facet_class = TypeStyle.style({
     $debugName: 'eph-cite_facet',
     backgroundColor: 'dimgray'
@@ -23565,13 +24676,27 @@ exports.cite_facet_class = TypeStyle.style({
 });
 exports.interpret_facet_class = TypeStyle.style({
     $debugName: 'eph-interpret_facet',
-    backgroundColor: 'darkgoldenrod'
-    // TODO
+    $nest: {
+        [`.${styles_1.animation_start} &`]: {
+            backgroundColor: 'darkgoldenrob'
+        },
+        [`.${styles_1.animation_start}.${styles_1.animation_active} &`]: {
+            backgroundColor: 'inherit',
+            transition: 'background-color 700ms linear'
+        }
+    }
 });
 exports.misinterpret_facet_class = TypeStyle.style({
     $debugName: 'eph-misinterpret_facet',
-    backgroundColor: 'firebrick'
-    // TODO
+    $nest: {
+        [`.${styles_1.animation_start} &`]: {
+            backgroundColor: 'firebrick'
+        },
+        [`.${styles_1.animation_start}.${styles_1.animation_active} &`]: {
+            backgroundColor: 'inherit',
+            transition: 'background-color 700ms linear'
+        }
+    }
 });
 // Have to manually merge interpreting_animation and would_interpret_facet_animation
 // into a new class, because css will not do the right thing for an element
@@ -23680,33 +24805,76 @@ exports.find_world_at = find_world_at;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var MAX_DEPTH = 20;
-exports.expandedLog = (obj, depth = 0) => {
-    var [[name, item]] = Object.entries(obj);
-    if (depth < MAX_DEPTH && typeof item === 'object' && item) {
-        var typeString = Object.prototype.toString.call(item);
-        var objType = typeString.replace(/\[object (.*)\]/, '$1');
-        console.group(`${name}: ${objType}`);
-        Object.entries(item).forEach(([key, value]) => {
-            console.log({ [key]: value }, depth + 1);
-        });
-        console.groupEnd();
+function maybe_get_css_rules(s) {
+    try {
+        return s.cssRules;
     }
-    else {
-        var itemString = `${item}`;
-        if (typeof item === 'string') {
-            itemString = `"${itemString}"`;
-        }
-        console.log(`${name}: ${itemString}`);
-        return;
+    catch (e) {
+        return undefined;
     }
+}
+exports.get_matched_css_rules = (el, css = el.ownerDocument.styleSheets) => Array.from(css).flatMap((s) => maybe_get_css_rules(s) ? Array.from(s.cssRules) : []) /* 1 */
+    .filter((r) => el.matches(r.selectorText)); /* 2 */
+exports.GLOBAL_DEV_TOOLS = {
+    get_matched_css_rules: exports.get_matched_css_rules
 };
-exports.print_commands = () => {
-};
-const _devtools = {
-    expandedLog: exports.expandedLog
-};
-globalThis.devtools = _devtools;
+globalThis.devtools = exports.GLOBAL_DEV_TOOLS;
+
+
+/***/ }),
+
+/***/ "./src/typescript/entry_points/build_dev.tsx":
+/*!***************************************************!*\
+  !*** ./src/typescript/entry_points/build_dev.tsx ***!
+  \***************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const narrascope_1 = __webpack_require__(/*! demo_worlds/narrascope */ "./src/typescript/demo_worlds/narrascope/index.ts");
+const devtools_1 = __webpack_require__(/*! devtools */ "./src/typescript/devtools/index.ts");
+const parser_1 = __webpack_require__(/*! parser */ "./src/typescript/parser/index.ts");
+const typestyle_1 = __webpack_require__(/*! typestyle */ "./node_modules/typestyle/lib.es2015/index.js");
+const UI_1 = __webpack_require__(/*! UI */ "./src/typescript/UI/index.ts");
+const app_state_1 = __webpack_require__(/*! UI/app_state */ "./src/typescript/UI/app_state.ts");
+devtools_1.GLOBAL_DEV_TOOLS.DEBUG = true;
+function prepare_world() {
+    console.time('world_build');
+    let { initial_result, update, css_rules } = narrascope_1.new_venience_world();
+    const DEBUG_COMMANDS = [
+        'consider the present moment',
+        'consider sam',
+        'remember something meditative',
+        'begin reflection on my memory of reflection',
+    ];
+    for (const cmd of DEBUG_COMMANDS) {
+        initial_result = update(initial_result.world, parser_1.raw(cmd, true));
+    }
+    // Ability to start from a specific point in the demo:
+    // const START_SOLVED = 0;
+    // import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
+    // import { raw } from './parser';
+    // if (START_SOLVED > 0) {
+    //     const starting_world = find_world_at(initial_result.world, START_SOLVED);
+    //     initial_result = update(starting_world.result!, raw('', false));
+    // }
+    console.timeEnd('world_build');
+    return { initial_result, update, css_rules };
+}
+console.time('render');
+// if (css_rules !== undefined) {
+//     let elt = document.querySelector('#custom-css-rules')! as HTMLStyleElement;
+//     let sheet = elt.sheet! as CSSStyleSheet;
+//     for (let rule of css_rules) {
+//         sheet.insertRule(rule);
+//     }
+// }
+const initial_state = app_state_1.initialize_app_state(prepare_world);
+document.getElementById('terminal').appendChild(UI_1.initialize_app(initial_state));
+typestyle_1.forceRenderStyles();
+console.timeEnd('render');
 
 
 /***/ }),
@@ -24391,7 +25559,7 @@ class Knowledge {
         const k = ['knowledge', { content: g, context: parent_context }];
         const old_entry = this.get_entry([gist_1.EXACT, k]);
         if (old_entry !== undefined) {
-            if (story === old_entry.story) {
+            if (story_1.structurally_equal(story, old_entry.story)) {
                 console.log('saving time by skipping a knowledge subtree update');
                 return result;
             }
@@ -24511,28 +25679,6 @@ class Knowledge {
                 }
             }
         }
-        // for (const g of bottom_up_order) {
-        //     let updates: StoryUpdateCompilationOp[] = [];
-        //     const entry = result.knowledge.get(g)!;
-        //     const children = entry.children;
-        //     for (const c of children) {
-        //         const prev_entry = this.knowledge.get(c)!;
-        //         const child_entry = result.knowledge.get(c)!;
-        //         // this child had no updates
-        //         if (prev_entry === child_entry) {
-        //             continue;
-        //         }
-        //         updates = story_updater(
-        //             immediate_child_gists(c[1].content).replace([child_entry.story]),
-        //         )(updates);
-        //     }
-        //     updates.push(...entry.story_updates);
-        //     if (updates.length > 0) {
-        //         const new_story = apply_story_updates_all(entry.story as Story, updates);
-        //         result = result.ingest(new_story, entry.key[1].context, true);
-        //         // TODO Prune any orphaned entries
-        //     }
-        // }
         return result;
     }
     push_updates(builder) {
@@ -25880,8 +27026,6 @@ function update1_object(source, updater) {
     }
     else if (typeof (source) === 'object') {
         result = Object.assign({}, source);
-        // TODO: Consider using prototypes?
-        // result = Object.create(source as unknown as object)
     }
     else {
         result = {};
@@ -26478,66 +27622,6 @@ function lock_builder(spec) {
     };
 }
 exports.lock_builder = lock_builder;
-
-
-/***/ }),
-
-/***/ "./src/typescript/main.tsx":
-/*!*********************************!*\
-  !*** ./src/typescript/main.tsx ***!
-  \*********************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-// import { new_bird_world } from './demo_worlds/bird_world';
-// import { new_bird_world as new_world } from './demo_worlds/puffer_bird_world';
-// import { new_hex_world } from './demo_worlds/hex_port';
-// import { new_venience_world } from './demo_worlds/spring_thing_port/00_prologue';
-__webpack_require__(/*! devtools */ "./src/typescript/devtools/index.ts");
-const narrascope_1 = __webpack_require__(/*! ./demo_worlds/narrascope */ "./src/typescript/demo_worlds/narrascope/index.ts");
-// import { new_world } from './demo_worlds/sam';
-const UI_1 = __webpack_require__(/*! ./UI */ "./src/typescript/UI/index.ts");
-const parser_1 = __webpack_require__(/*! parser */ "./src/typescript/parser/index.ts");
-console.time('world_build');
-let { initial_result, update, css_rules } = narrascope_1.new_venience_world(); //new_venience_world()//new_bird_world();//new_hex_world();
-const DEBUG_COMMANDS = [
-    'consider the present moment',
-    'consider sam',
-    'remember something meditative',
-    'begin reflection on my memory of reflection',
-];
-for (const cmd of DEBUG_COMMANDS) {
-    initial_result = update(initial_result.world, parser_1.raw(cmd, true));
-}
-// Ability to start from a specific point in the demo:
-// const START_SOLVED = 0;
-// import { find_world_at } from './demo_worlds/narrascope/supervenience_spec';
-// import { raw } from './parser';
-// if (START_SOLVED > 0) {
-//     const starting_world = find_world_at(initial_result.world, START_SOLVED);
-//     initial_result = update(starting_world.result!, raw('', false));
-// }
-console.timeEnd('world_build');
-console.time('render');
-if (css_rules !== undefined) {
-    let elt = document.querySelector('#custom-css-rules');
-    let sheet = elt.sheet;
-    for (let rule of css_rules) {
-        sheet.insertRule(rule);
-    }
-}
-const initial_state = {
-    typeahead_index: 0,
-    undo_selected: false,
-    command_result: initial_result,
-    updater: update,
-    animation_state: UI_1.new_animation_state(initial_result.world, undefined)
-};
-document.getElementById('terminal').appendChild(UI_1.initialize_app(initial_state));
-console.timeEnd('render');
 
 
 /***/ }),
@@ -27841,7 +28925,7 @@ function structurally_equal(story1, story2) {
     }
     type_predicate_utils_1.dangerous_assert(story1);
     type_predicate_utils_1.dangerous_assert(story2);
-    if (!utils_1.deep_equal(utils_1.drop_keys(story1, 'key'), utils_1.drop_keys(story2, 'key'))) {
+    if (!utils_1.deep_equal(utils_1.drop_keys(story1, 'key', 'children'), utils_1.drop_keys(story2, 'key', 'children'))) {
         return false;
     }
     for (const [c1, c2] of iterative_1.zipLongest(story1.children, story2.children)) {
@@ -28005,14 +29089,9 @@ for (const prop of TEXT_CATEGORY_NAMES) {
 }
 // function query_method<K extends keyof QueryMethods>(this: UpdatesBuilder, k: K, ...params: ParametersFor<QueryMethods>[K]): UpdatesBuilder {
 function query_method(k, ...params) {
-    if (k === 'debug' && params.length === 1) {
+    if (k === 'debug' && params[1] === undefined) {
         const e = new Error('Getting current call stack');
         params.push(e.stack);
-        // try {
-        //     throw new Error('Getting current call stack');
-        // } catch (e) {
-        //     (params as string[]).push(e.stack);
-        // }
     }
     const converted_params = params.map(p => p instanceof UpdatesBuilder ?
         p.to_query_spec() :
@@ -28139,6 +29218,7 @@ const story_1 = __webpack_require__(/*! ../story */ "./src/typescript/story/stor
 const dom_1 = __webpack_require__(/*! ../dom */ "./src/typescript/story/dom.ts");
 const utils_1 = __webpack_require__(/*! ../../lib/utils */ "./src/typescript/lib/utils.ts");
 const gist_1 = __webpack_require__(/*! ../../gist */ "./src/typescript/gist/index.ts");
+const styles_1 = __webpack_require__(/*! UI/styles */ "./src/typescript/UI/styles.ts");
 function story_op(name, ...parameters) {
     return { name, parameters };
 }
@@ -28158,7 +29238,8 @@ exports.StoryOps = {
             }
             else {
                 children = utils_1.update(children, {
-                    classes: { ['eph-new']: true }
+                    // classes: { ['eph-new']: true }
+                    classes: { [styles_1.eph_new]: true }
                 });
             }
         }
@@ -28180,7 +29261,8 @@ exports.StoryOps = {
                     return node;
                 }
                 return utils_1.update(node, {
-                    classes: { ['eph-new']: true }
+                    // classes: { ['eph-new']: true }
+                    classes: { [styles_1.eph_new]: true }
                 });
             };
             if (nodes instanceof Array) {
@@ -28214,12 +29296,15 @@ exports.StoryOps = {
         updates = Object.assign({}, updates);
         for (const [cls, on] of Object.entries(updates)) {
             if (!!on !== !!elt.classes[cls]) {
-                updates[`eph-${on ? 'adding' : 'removing'}-${cls}`] = true;
+                updates[`eph_${on ? 'adding' : 'removing'}_${cls}`] = true;
             }
         }
         if (effects) {
             effects.push(dom => {
                 for (const [cls, on] of Object.entries(updates)) {
+                    // if (cls.startsWith('interpreting') || cls.startsWith('eph_adding_interpreting')) {
+                    //     debugger;
+                    // }
                     dom.classList.toggle(cls, on);
                 }
             });
@@ -28234,7 +29319,7 @@ exports.StoryOps = {
         }
         return utils_1.update(elt, {
             classes: _ => utils_1.map_values(_, (on, cls) => {
-                if (on && cls.startsWith('eph-')) {
+                if (on && cls.startsWith('eph')) {
                     if (effects) {
                         effects.push(dom => {
                             dom.classList.remove(cls);
@@ -28334,15 +29419,13 @@ function story_query(name, parameters = []) {
 }
 exports.story_query = story_query;
 exports.StoryQueries = {
-    debug: (label, stack) => {
-        return root => {
-            console.log('Debugging a story query: ' + label);
-            if (stack !== undefined) {
-                console.log(stack);
-            }
-            debugger;
-            return [[root, []]];
-        };
+    debug: (label, stack) => root => {
+        console.log('Debugging a story query: ' + label);
+        if (stack !== undefined) {
+            console.log(stack);
+        }
+        debugger;
+        return [[root, []]];
     },
     path: (path) => root => {
         const result = [];
@@ -28410,11 +29493,19 @@ exports.StoryQueries = {
         if (queries.length === 0) {
             return [[story, []]];
         }
-        const results = compile_story_query(queries[0])(story);
+        const results0 = compile_story_query(queries[0])(story);
         const rest = queries.slice(1);
-        return results
+        const results = results0
             .flatMap(([n1, p1]) => exports.StoryQueries['chain'](...rest)(n1)
             .map(([n2, p2]) => [n2, [...p1, ...p2]]));
+        //dedupe
+        const uniq_matches = [];
+        for (const r of results) {
+            if (!uniq_matches.find(([n]) => n === r[0])) {
+                uniq_matches.push(r);
+            }
+        }
+        return uniq_matches;
     },
     children: (subquery) => (story) => {
         if (!story_1.is_story_node(story)) {
@@ -28466,7 +29557,7 @@ exports.eph_predicate = (n) => {
         return false;
     }
     for (const cls in n.classes) {
-        if (n.classes[cls] && cls.startsWith('eph-')) {
+        if (n.classes[cls] && cls.startsWith('eph')) {
             return true;
         }
     }
@@ -29042,8 +30133,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /*
 
     This module provides the highest level abstractions about game state and history.
-    TODO: rename from commands to world?
-
+    
     It defines what comprises the game state, including
         user input
         parse results

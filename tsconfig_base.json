@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "outDir": "./build/",
+        "sourceMap": true,
+        "noImplicitAny": true,
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "module": "CommonJS",
+        "target": "es2017",
+        "lib": ["esnext", "dom"],
+        "jsx": "react",
+        "jsxFactory": "createElement",
+        "incremental": true,
+        "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true,
+        "extendedDiagnostics": true,
+        "skipDefaultLibCheck": true,
+        "strictNullChecks": true,
+        "strictBindCallApply": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        "baseUrl": "src/typescript"
+    }
+}

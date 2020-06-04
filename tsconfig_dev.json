@@ -1,0 +1,6 @@
+{
+    "extends": "./tsconfig_base.json",
+    "include": [
+        "src/typescript/entry_points/build_dev.tsx"
+    ]
+}

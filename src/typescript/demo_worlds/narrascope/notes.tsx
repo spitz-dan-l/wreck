@@ -25,11 +25,11 @@ Action({
             render_gist.noun_phrase
         ),
         command_noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['my_notes', GAP, ...if_not_null_array(subject, (t) => ['about', t] as const)],
+            (tag, {subject}) => ['my_notes', ...if_not_null_array(subject, (t) => [GAP, 'about', t] as const)],
             render_gist.command_noun_phrase
         ),
         command_verb_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['notes', GAP, ...if_not_null_array(subject, (t) => ['about', t] as const)],
+            (tag, {subject}) => ['notes', ...if_not_null_array(subject, (t) => [GAP, 'about', t] as const)],
             render_gist.command_noun_phrase
         )
     },

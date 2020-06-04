@@ -105,6 +105,8 @@ function push_animation(story: Story, dom_effects: Effects<History>) {
 
     dom_effects.push(async dom => {
         await effect_promise();
+        // TODO: set all the eph-adding and eph-removing classes here?
+        // would have to change how remove_eph works on the dom then...
         await animate(dom);
         return dom;
     });

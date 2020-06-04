@@ -1,4 +1,3 @@
-import { DebugFlags, DEBUG_FLAGS } from 'devtools';
 import { ParametersFor } from "../../lib/dsl_utils";
 import { Gensym } from "../../lib/gensym";
 import { StaticMap, StaticNameIndexFor } from "../../lib/static_resources";
@@ -65,17 +64,13 @@ export interface StoryQueries {
     chain: (...queries: StoryQuerySpec[]) => StoryQuery;
     children: (subquery?: StoryQuerySpec) => StoryQuery;
     has_gist: (pat: GistPattern) => StoryQuery;
-    debug: (label: keyof DebugFlags, stack?: string) => StoryQuery;
+    debug: (label: string, stack?: string) => StoryQuery;
 }
 
 export const StoryQueries: StoryQueries = {
     debug: (label, stack?) =>
         root => {
             console.log('Debugging a story query: ' + label);
-            DEBUG_FLAGS[label] = true;
-            Promise.resolve().then(() => {
-                DEBUG_FLAGS[label] = false;
-            })
             if (stack !== undefined) {
                 console.log(stack);
             }
