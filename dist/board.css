@@ -346,3 +346,38 @@
     .step .spoken { display: none; }
     .columns .right { font-size: 0.9em; }
 }
+
+/* NARROW SCREENS (phones): the two columns stack, the steps pinned above the
+   story while it scrolls, so the mapping stays in view as it is built. */
+@media (max-width: 700px) {
+    #terminal > div { margin: 1em 0.8em 1em 0.8em; }
+    .columns { flex-direction: column; gap: 0.5em; }
+    .columns .rule { flex: 0 0 1px; width: 100%; }
+    .columns .right,
+    .columns .right.second {
+        flex: none;
+        width: 100%;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        max-height: 45vh;
+        overflow-y: auto;
+        background: black;
+        border-bottom: 1px solid rgba(255, 255, 240, 0.35);
+        padding-bottom: 0.4em;
+        font-size: 0.85em;
+    }
+    .board.lesson .columns .right { flex: none; position: static; max-height: none; border-bottom: none; font-size: 1em; }
+    .columns .left { width: 100%; }
+    .board .left .frame,
+    .board .ledger .frame { margin-inline-start: 0.6em; }
+    .board .left #story-hole,
+    .board .ledger #story-hole { margin-inline-start: 0.6em; }
+    .step .chalk { line-height: 1.4em; }
+}
+
+/* TOUCH: room for a finger on every tappable thing. */
+@media (pointer: coarse) {
+    .typeahead li.option { min-height: 2.6em; line-height: 2.6em; margin-top: 0; }
+    .undo-button { padding: 0.6em 0.8em; }
+}

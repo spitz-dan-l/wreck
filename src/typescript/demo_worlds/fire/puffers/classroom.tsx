@@ -129,7 +129,8 @@ const put_down = (story: StorySpec, beat: number, says: QuotedKey[]): Line =>
 export const SCRIPT: Line[] = [
     { command: 'look at the board', name: 'the looking at the board', beat: BEAT.classroom, through: BEAT.campfire_ready, optional: true, says: [], also: AUTHORED.shelf },
     { command: 'listen', name: 'the listening', beat: BEAT.classroom, says: ['l162', 'l164'], board: () => show_lesson_board_ops(LESSON_VOICE), advances: true },
-    { command: 'listen', name: 'the listening', beat: BEAT.chalk, says: ['l182'], board: w => reveal_notation_ops(w.collapsed.includes('steps')), advances: true },
+    { command: 'listen', name: 'the listening', beat: BEAT.chalk, says: ['l182'], board: () => reveal_notation_ops(false), advances: true,
+      then: w => ({ ...w, collapsed: w.collapsed.filter(c => c !== 'steps') }) },   // she rewrites it, and you see it; `collapse the steps` folds it
     { command: 'listen', name: 'the listening', beat: BEAT.notation, says: ['l218'], shows: () => [prose_told(CAMPFIRE)], advances: true },
     { command: 'say that the Voice of Fire is contained in this one', name: 'the saying that the Voice of Fire is contained in this one', beat: BEAT.campfire_told, says: ['l244', 'l246'], advances: true },
     pick_up(CAMPFIRE, BEAT.campfire_ready, ['l248']),

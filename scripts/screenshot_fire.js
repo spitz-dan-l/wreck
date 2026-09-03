@@ -13,7 +13,10 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const playwright = require(process.env.PLAYWRIGHT_MODULE || '/opt/node22/lib/node_modules/playwright');
 
-const OUT = path.join(ROOT, 'docs', 'lofty_demo', 'screenshots');
+// `node scripts/screenshot_fire.js --phone` plays the same script at an iPhone-sized
+// viewport (touch, narrow) and writes the screenshots under screenshots/phone/.
+const PHONE = process.argv.includes('--phone');
+const OUT = path.join(ROOT, 'docs', 'lofty_demo', 'screenshots', ...(PHONE ? ['phone'] : []));
 const SCRIPT = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'lofty_demo', 'round2', 'acceptance_script.json'), 'utf8'));
 
 // The states to screenshot: after this command (its nth occurrence), scrolled to this element.
@@ -46,7 +49,11 @@ async function main() {
     const server = await serve(path.join(ROOT, 'dist'));
     const port = server.address().port;
     const browser = await playwright.chromium.launch();
-    const page = await browser.newPage({ viewport: { width: 1400, height: 1500 } });
+    const context = await browser.newContext(PHONE
+        ? { ...(playwright.devices['iPhone 15 Pro'] || { viewport: { width: 393, height: 659 }, isMobile: true, hasTouch: true }), deviceScaleFactor: 2 }
+        : { viewport: { width: 1400, height: 1500 } });
+    const page = await context.newPage();
+    fs.mkdirSync(OUT, { recursive: true });
     const errors = [];
     page.on('pageerror', e => errors.push('pageerror: ' + e.message));
     page.on('console', m => { if (m.type() === 'error') { errors.push('console: ' + m.text()); } });
@@ -90,12 +97,12 @@ async function main() {
                 }, shot);
                 await page.waitForTimeout(200);
                 // A tall shot (the house board with both pattern columns and the ledger): a taller viewport for this one.
-                if (shot.height !== undefined) {
+                if (shot.height !== undefined && !PHONE) {
                     await page.setViewportSize({ width: 1400, height: shot.height });
                     await page.waitForTimeout(200);
                 }
                 await page.screenshot({ path: path.join(OUT, shot.file) });
-                if (shot.height !== undefined) {
+                if (shot.height !== undefined && !PHONE) {
                     await page.setViewportSize({ width: 1400, height: 1500 });
                 }
                 console.log(`screenshot ${++shot_index}: ${shot.file} (after "${cmd}")`);

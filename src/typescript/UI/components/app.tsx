@@ -7,6 +7,7 @@ import { UndoButton } from "./undo_button";
 import { InputPrompt } from './input_prompt';
 import { Typeahead } from './typeahead';
 import { History } from './history';
+import { PromptControls } from './prompt_controls';
 
 export const ui = make_ui((state, old?) => App(state, old), app_reducer, true);
 export const initialize_app = ui.initialize;
@@ -49,6 +50,16 @@ const app_typeahead = app_child.child<Typeahead>(
     }),
     Typeahead
 )
+
+const app_prompt_controls = app_child.child<PromptControls>(
+    (root) => root.querySelector('#story-hole .prompt-controls')! as PromptControls,
+    (props) => ({
+        text: props.command_result.parsing.raw.text,
+        submittable: props.command_result.parsing.view.submittable,
+        locked: props.animation_state.lock_input
+    }),
+    PromptControls
+);
 
 const app_undo_button = app_child.child<UndoButton>(
     (root) => root.querySelector('#story-hole .undo-button')! as UndoButton,
@@ -107,6 +118,7 @@ export const App: Renderer<AppState> = (state, old?) => {
         hole.appendChild(app_prompt.render(state));
         hole.appendChild(app_typeahead.render(state));
         hole.appendChild(app_undo_button.render(state));
+        hole.appendChild(app_prompt_controls.render(state));
         return root;
     } 
     
@@ -114,6 +126,7 @@ export const App: Renderer<AppState> = (state, old?) => {
     app_prompt.render(state, old);
     app_typeahead.render(state, old);
     app_undo_button.render(state, old);
-    
+    app_prompt_controls.render(state, old);
+
     return old.old_root;
 }

@@ -573,7 +573,7 @@ describe('the Voice of Fire, played through', function () {
         const expanded = world_at('campfire chip expanded');
         assert.equal(expanded_chip(expanded), CAMPFIRE);
         assert.ok(!accepts(expanded, 'listen') && !accepts(expanded, 'pick up the chalk') && !accepts(expanded, 'look at the board'));
-        assert.ok(accepts(expanded, 'collapse the campfire story') && accepts(expanded, 'remember the campfire story') && accepts(expanded, 'expand the steps'));
+        assert.ok(accepts(expanded, 'collapse the campfire story') && accepts(expanded, 'remember the campfire story') && accepts(expanded, 'collapse the steps'));
         const folded = play(expanded, ['collapse the campfire story']);
         assert.equal(expanded_chip(folded), undefined);
         assert.ok(accepts(folded, 'listen'));

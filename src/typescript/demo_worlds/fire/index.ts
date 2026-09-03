@@ -56,7 +56,7 @@ const initial_world: FireWorld = {
     cursor: undefined,
     finished: [],
     mappings: [],
-    collapsed: ['steps'],       // the steps' notation is folded until `expand the steps`
+    collapsed: ['steps'],       // the steps' notation is folded until Katya rewrites it (the second `listen`)
     taught: [],
     knowledge: initial_knowledge()
 };

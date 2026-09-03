@@ -128,14 +128,24 @@ export function animate(comp_elt: HTMLElement) {
                     delete e.dataset.isCollapsing;
                 });
 
+                // Retroactive changes (a class added or removed on a node that is not
+                // the newest frame, or a node added somewhere earlier in the story)
+                // happen above the prompt. Scroll so that the topmost of them is
+                // in view when it would otherwise be off-screen; otherwise, as
+                // always, scroll to the prompt.
                 let anything_new = false;
+                let topmost_change: HTMLElement | undefined = undefined;
                 walkElt(comp_elt, e => {
-                    // if (e.classList.contains('eph-new')) {
                     if (e.classList.contains(eph_new)) {
                         anything_new = true;
                     }
+                    if (is_retroactive_change(e) && (topmost_change === undefined || e.offsetTop < topmost_change.offsetTop)) {
+                        topmost_change = e;
+                    }
                 });
-                if (anything_new) {
+                if (topmost_change !== undefined) {
+                    scroll_to_change(topmost_change);
+                } else if (anything_new) {
                     scroll_down();
                 }
                 resolve();
@@ -156,4 +166,40 @@ function walkElt(elt: HTMLElement, f: (e: HTMLElement) => void){
 export function scroll_down() {
     let bottom = document.querySelector('.typeahead .footer')!;
     bottom.scrollIntoView({behavior: "smooth", block: "end", inline: "end"});
+}
+
+// A node changed by a css op (eph_adding_*/eph_removing_* markers) or added
+// (eph_new) outside the frame that holds the prompt.
+function is_retroactive_change(e: HTMLElement): boolean {
+    let changed = false;
+    e.classList.forEach(c => {
+        if (c.startsWith('eph_adding_') || c.startsWith('eph_removing_') || c === eph_new) {
+            changed = true;
+        }
+    });
+    if (!changed) {
+        return false;
+    }
+    const hole = document.getElementById('story-hole');
+    const latest = hole !== null ? hole.previousElementSibling : null;
+    return latest === null || (e !== latest && !latest.contains(e));
+}
+
+// Show the change and the prompt together when they fit; otherwise the change,
+// at the top of the view.
+export function scroll_to_change(change: HTMLElement) {
+    const terminal = document.getElementById('terminal');
+    const footer = document.querySelector('.typeahead .footer');
+    if (terminal === null || footer === null) {
+        scroll_down();
+        return;
+    }
+    const top = change.getBoundingClientRect().top;
+    const bottom = footer.getBoundingClientRect().bottom;
+    const view = terminal.getBoundingClientRect();
+    if (bottom - top <= view.height) {
+        scroll_down();
+    } else {
+        terminal.scrollTo({ top: terminal.scrollTop + (top - view.top) - 8, behavior: 'smooth' });
+    }
 }

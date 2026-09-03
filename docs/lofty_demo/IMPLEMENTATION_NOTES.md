@@ -717,3 +717,60 @@ taken in a taller viewport).
   wise man's sequence being finished by its last solution is derived
   (`sequence_finished`), so the open board at the end is never offered as
   a chip.
+
+## Phase B8 (the author's phone: iPhone 16 Pro, Safari)
+
+Reported: "nothing seems to happen when I expand the steps"; the second
+`listen` "narrates Katya rewriting the steps but doesn't show them again";
+"maybe a second column isn't rendering"; and no way to backspace a
+partially entered token without a keyboard (Safari does not pop one for
+this page).
+
+**Root causes**, reproduced in headless Chromium with iPhone emulation
+(`node scripts/screenshot_phone.js`, which also probes the layout):
+
+1. `dist/fire.html` (copied from `venience.html`) had **no viewport meta
+   tag**, so Safari laid the page out at 980 px and zoomed out: the board
+   was a few pixels tall, the prompt and typeahead tiny, and any change on
+   the board invisible. Fixed in both pages
+   (`<meta name="viewport" content="width=device-width, initial-scale=1">`).
+2. At phone width the story board's two columns were a flex **row**: the
+   steps column (34em) took nearly the whole width and the story column
+   wrapped one word per line under a sticky overlay, which is what "the
+   second column isn't rendering" looked like. `board.css` now stacks the
+   columns under 700 px: the steps column full width, pinned (`sticky`) at
+   the top of the board with `max-height: 45vh`, so the eight steps and
+   their `→ event` references stay in view while the story scrolls under
+   them; the lesson board's column is static and unclipped (it needed
+   `flex: none`, since in a column flex the old `flex: 1 1 0` made its
+   height zero).
+3. The second `listen` ("She rewrites this in the standard notation")
+   revealed the notation **folded**, so nothing visible changed, and
+   `expand the steps` changed a board above the prompt while the app
+   scrolled to the prompt. Two fixes: the second `listen` now shows the
+   notation unfolded (Katya rewrites it and you see it; `collapse the
+   steps` folds it; `index.ts` starts with `collapsed: ['steps']` only so
+   that `expand` is never offered before there is notation), and the
+   engine's `animate()` now ends by scrolling to the **topmost retroactive
+   change** (a node with an `eph_adding_*`/`eph_removing_*` marker or
+   `eph_new` outside the newest frame) when the change and the prompt do
+   not both fit in the view; otherwise to the prompt as before
+   (`UI/animation.ts: scroll_to_change`). This is an engine change and is
+   general: the wise man's `collapse the unmapped`, a badge on a row far
+   above, or `expand the campfire story` behave the same on desktop.
+4. **Tap controls** (`UI/components/prompt_controls.tsx`, wired in
+   `app.tsx` beside the Undo button): three 2.8em buttons after the
+   typeahead, backspace (drops the last token of the prompt:
+   `without_last_token`, tested), clear, and enter (submits when the
+   command is complete); each dispatches the same actions the keyboard
+   does (`ChangeText`, `Submit`). Shown only on coarse pointers or under
+   700 px (`prompt.css`), so desktop is unchanged. Typeahead rows get a
+   2.6em minimum height on touch screens.
+5. `scripts/screenshot_fire.js --phone` plays the whole acceptance script
+   with iPhone emulation and writes `screenshots/phone/`; the narrascope
+   page gets the viewport tag and the controls for free.
+
+Tests: `test_prompt_controls.ts`; the board test for the notation now
+expects it shown after the second `listen`, folded by `collapse the steps`;
+the walkthrough's end-state check uses `collapse the steps`. Transcript
+unchanged.

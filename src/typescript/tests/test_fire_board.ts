@@ -75,31 +75,30 @@ describe('the board', function () {
         assert.ok(pieces.every(p => !has(p, 'remainder')));
     });
 
-    it('starts with the notation folded, offers expand first, shows it on later boards, and leaves reprints alone', () => {
+    it('shows the notation once Katya rewrites it, folds and unfolds it, shows it on later boards, and leaves reprints alone', () => {
         const w = world_at('notation remembered');
-        assert.ok(accepts(w, 'expand the steps'));
-        const folded = S.has_gist({ tag: 'right' }).has_class('notation').query(tree(w)).map(([n]) => n as StoryNode);
-        assert.equal(folded.length, 8);
-        assert.ok(folded.every(n => has(n, 'collapsed') && !has(n, 'absent')));
+        // After the second `listen` the notation is on the board, unfolded.
+        assert.ok(accepts(w, 'collapse the steps') && !accepts(w, 'expand the steps'));
+        const shown = S.has_gist({ tag: 'right' }).has_class('notation').query(tree(w)).map(([n]) => n as StoryNode);
+        assert.equal(shown.length, 8);
+        assert.ok(shown.every(n => !has(n, 'collapsed') && !has(n, 'absent')));
         // A reprint is a replay: never folded, and never touched by expand/collapse.
         const notation = (story: Story) => S.has_class('steps-memory').has_class('notation').query(story).map(([n]) => n as StoryNode);
         assert.ok(notation(tree(w)).length >= 8 && notation(tree(w)).every(n => !has(n, 'collapsed')));
-        const expanded = play(w, ['expand the steps']);
-        const story = tree(expanded);
-        assert.ok(frame_text(expanded).endsWith('The steps unfold.'));
-        const on_board = S.has_gist({ tag: 'right' }).has_class('notation').query(story).map(([n]) => n as StoryNode);
+        const folded = play(w, ['collapse the steps']);
+        assert.ok(frame_text(folded).endsWith('The steps fold.'));
+        const on_board = S.has_gist({ tag: 'right' }).has_class('notation').query(tree(folded)).map(([n]) => n as StoryNode);
         assert.equal(on_board.length, 8);
-        assert.ok(on_board.every(n => !has(n, 'collapsed')));
-        assert.ok(notation(story).every(n => !has(n, 'collapsed')));
-        assert.ok(accepts(expanded, 'collapse the steps'));
-        // A board opened afterwards shows its notation too.
-        const opened = tree(play(expanded, ['listen', 'say that the Voice of Fire is contained in this one', 'pick up the chalk']));
+        assert.ok(on_board.every(n => has(n, 'collapsed')));
+        assert.ok(notation(tree(folded)).every(n => !has(n, 'collapsed')));
+        assert.ok(accepts(folded, 'expand the steps'));
+        // A board opened while folded is folded too; unfolded again, the reprint stays as it was.
+        const opened = tree(play(folded, ['listen', 'say that the Voice of Fire is contained in this one', 'pick up the chalk']));
         const campfire = S.has_gist(exact(right_gist('campfire', FIRE))).has_class('notation').query(opened).map(([n]) => n as StoryNode);
-        assert.ok(campfire.length === 8 && campfire.every(n => !has(n, 'collapsed')));
-        // Folded again, the reprint stays as it was.
-        const refolded = tree(play(expanded, ['collapse the steps']));
-        assert.ok(S.has_gist({ tag: 'right' }).has_class('notation').query(refolded).every(([n]) => has(n as StoryNode, 'collapsed')));
-        assert.ok(notation(refolded).every(n => !has(n, 'collapsed')));
+        assert.ok(campfire.length === 8 && campfire.every(n => has(n, 'collapsed')));
+        const expanded = tree(play(folded, ['expand the steps']));
+        assert.ok(S.has_gist({ tag: 'right' }).has_class('notation').query(expanded).every(([n]) => !has(n as StoryNode, 'collapsed')));
+        assert.ok(notation(expanded).every(n => !has(n, 'collapsed')));
     });
 
     it('badges the rows on map, bands them from the mapping, and folds to a chip on say all set', () => {
