@@ -80,7 +80,7 @@ Action({
 ActionHandler(['hammer'],
     Exposition({
         commentary: (action, frame, world) => [
-            frame.description(`Despite your attempts to dismantle ${render_gist.noun_phrase(action[1].facet)}, its foundation appears strong.`)
+            frame.description(<div>Despite your attempts to dismantle {render_gist.noun_phrase(action[1].facet)}, its foundation appears strong.</div>)
         ]
     }),
     ACTION_HANDLER_FALLTHROUGH_STAGE    
@@ -119,7 +119,7 @@ Action({
 ActionHandler(['volunteer'],
     Exposition({
         commentary: (action, frame, world) => [
-            frame.description(`You don't feel as if a mere act of will could improve ${render_gist.noun_phrase(action[1].facet)}.`)
+            frame.description(<div>You don't feel as if a mere act of will could improve {render_gist.noun_phrase(action[1].facet)}.</div>)
         ]
     }),
     ACTION_HANDLER_FALLTHROUGH_STAGE    

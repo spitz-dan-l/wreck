@@ -168,7 +168,7 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | undef
                 story_updates: story_updater(
                     S.group_name('init_frame').apply(s => [
                         s.story_hole().remove(),
-                        s.add(<Hole />)
+                        s.add(<Hole />, true)
                     ])
                 )
             });
@@ -222,7 +222,7 @@ function make_end_contemplation_thread(world: Venience) {
     }, () => parser.submit(() => update(world, metaphor_lock.release, {
         story_updates: story_updater(S.group_name('init_frame').apply(s => [
             s.story_hole().remove(),
-            s.story_root().add(<Hole />)
+            s.story_root().add(<Hole />, true)
         ]), S.map_worlds(world, (w, frame) => frame.css({ [unfocused_class]: false })), S.frame(world.current_interpretation!).apply(s => [
             s.css({
                 [interpreting_class]: false
