@@ -14,7 +14,7 @@
         scrutinize your culpability ──▶ remember the Volunteer ──▶
         volunteer to foster the old affinity ──▶ "How are you, Sam?"
 */
-import { bottom_up, EXACT, GistRenderer, render_gist, ValidTags } from 'gist';
+import { bottom_up, EXACT, gist, GistRenderer, render_gist, ValidTags } from 'gist';
 import { knowledge_gist } from 'knowledge';
 import { Seal } from 'lib/static_resources';
 import { update } from 'lib/utils';
@@ -251,6 +251,9 @@ ActionHandler(['consider', { subject: ['your notebook'] }],
                 knowledge: k => k.update([EXACT, descr_gist], (s) => [
                     s.replace_children(['Your notebook sits in your lap.'])
                 ]),
+                story_updates: story_updater(S.prompt(<div>
+                    Each day you try to <strong>remember something</strong> that she told you, and write it down.
+                </div>))
             }, make_memory_available(['action description', undefined, { action: 'notes' }]));
         }
         return w;
@@ -275,9 +278,13 @@ ActionHandler(['reflect', { subject: ['consider', { subject: ['Sam'] }] }], g =>
     if (w.has_chill) {
         return w;
     }
+    const sam_gist = knowledge_gist(['Sam'], g[1].subject);
+    // The facet list has already been printed for this frame, so announce the
+    // facet that has just been revealed.
+    const new_facet = gist('facet', { knowledge: knowledge_gist(something_is_wrong.data.gist!, sam_gist) });
     return update(w,
         w => apply_facet_interpretation(w, {
-            parent_gist: knowledge_gist(['Sam'], g[1].subject),
+            parent_gist: sam_gist,
             child_gist: something_is_wrong.data.gist!,
             commentary: (frame) => [
                 frame.consequence(<div>A chill comes over you.</div>),
@@ -285,6 +292,12 @@ ActionHandler(['reflect', { subject: ['consider', { subject: ['Sam'] }] }], g =>
                     Something about Sam is <i>incorrect</i>.
                     <br/>
                     You can feel the discordance in your bones. It scares you.
+                </div>),
+                frame.description(<div>
+                    You notice a new facet:
+                    <blockquote gist={new_facet}>
+                        {render_gist.noun_phrase(new_facet)}
+                    </blockquote>
                 </div>)
             ]
         }),
@@ -458,6 +471,11 @@ Puffers({
 
 export { Venience } from './prelude';
 
+// Sealing the Exposition function runs the handlers each Action() queued for
+// scrutinizing Katya's words (which reveal the memory behind each action).
+// Those handlers ingest story into the knowledge base and add action handler
+// rules, so this has to happen before either of those is sealed.
+resource_registry.get('exposition_func')[Seal]();
 resource_registry.get('gist_renderer_dispatchers')[Seal]();
 resource_registry.get('initial_world_knowledge')[Seal]();
 

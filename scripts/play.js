@@ -1,4 +1,4 @@
-// Usage: node scripts/play.js "cmd1" "cmd2" ...   (after `npm run compile`)
+// Usage: [PLAY_FULL=1] node scripts/play.js "cmd1" "cmd2" ...   (after `npm run compile`)
 // Applies commands to a fresh narrascope world, printing each frame's text and the commands available afterwards.
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
@@ -41,6 +41,10 @@ for (const cmd of cmds) {
     if (r.world === result.world) { console.log('!!! command not accepted'); }
     result = r;
     show();
+}
+if (process.env.PLAY_FULL) {
+    console.log('\n### full story:');
+    console.log(to_basic_text(apply_story_updates_all(result.world.story, result.world.story_updates)).replace(/\n +/g, ' '));
 }
 console.log('\n### available commands:');
 for (const c of available(result.world)) console.log('  ' + c);

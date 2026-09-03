@@ -74,8 +74,9 @@ export function Exposition(exposition: Exposition) {
     }
 }
 
-resource_registry.initialize('exposition_func', Exposition)[Seal]();
-// resource_registry.get('exposition_func')[Seal]();
+// Sealed by the world module once every Action() has queued its handlers
+// (see narrascope.tsx); sealing here would run those callbacks too early.
+resource_registry.initialize('exposition_func', Exposition);
 
 declare module '../../../story/update/update_group' {
     interface StoryUpdateGroups {

@@ -160,7 +160,10 @@ export function Action(spec: Action) {
                         className={insight_text_class}
                     >
                         {spec.memory}
-                    </blockquote> as StoryNode
+                    </blockquote> as StoryNode,
+                commentary: (action, frame) => [
+                    frame.consequence(<div>The memory comes back to you more fully.</div>)
+                ]
             }));
         });
     }
