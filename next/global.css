@@ -3,7 +3,7 @@
       width: 100%;
       overflow-y: scroll;
       white-space: pre-wrap;
-      font-family: 'Roboto Mono';
+      font-family: 'Roboto Mono', 'DejaVu Sans Mono', Menlo, Consolas, monospace;
       font-size: 0.75em;
       font-weight: 300;
       
