@@ -19,10 +19,11 @@ import { graft, remove_gists, story_updater, StoryUpdaterSpec, Updates as S } fr
 import { update } from 'lib/utils';
 import { EVENT_NAMES, Mapping, Pass, passes, StepIndex, StorySpec, SUB_SEQUENCES } from '../data';
 import { annotation_node, apply_ops, applied_gist, erase_ops, event_gist, paragraphs, place_ops, reference_text, rendition_text, rows_ops, unapply_ops } from '../board';
+import { capitalised } from '../names';
 import { apply as judge_apply, erase, participants, place, placed, violations } from '../judge';
 import {
     applied_mapping, board_story, ended, event_frame, FireWorld, has_said, has_said_applied, mappings_on, open_mapping, phase, phrase,
-    replace_mapping, set_aside_mappings, voice_for, voice_of_mapping
+    replace_mapping, set_aside_mappings, voice_for, voice_of_mapping, voice_runs
 } from '../world';
 import { nudge_frame } from './transcription';
 import { exact } from 'gist';
@@ -33,7 +34,9 @@ function label(story: StorySpec, m: Mapping): string {
 }
 
 function rows(w: FireWorld, story: StorySpec, mappings: Mapping[]): StoryUpdaterSpec[] {
-    return rows_ops(story, mappings.filter(m => m.sequence === story.id), e => event_frame(w, story.id, e), w.collapsed.includes(`${story.id}:unmapped`));
+    return rows_ops(
+        story, mappings.filter(m => m.sequence === story.id), e => event_frame(w, story.id, e), w.collapsed.includes(`${story.id}:unmapped`), voice_runs(w, story)
+    );
 }
 
 function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepIndex, event: number): FireWorld {
@@ -58,6 +61,7 @@ function do_erase(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepIn
     return update(w, {
         mappings: () => mappings,
         story_updates: story_updater(
+            S.consequence(paragraphs([`${capitalised(voice_of_mapping(mapping).steps[step - 1].name)} is erased.`])),
             erase_ops(story, mapping, step, placed(mapping, step)!),
             rows(w, story, mappings)
         )
@@ -84,17 +88,23 @@ function consequences(w: FireWorld, story: StorySpec, m: Mapping, undo: boolean)
     });
 }
 
-// Applying a mapping (or resuming one): its consequences, and what the pass brings with it.
-function light(w: FireWorld, story: StorySpec, m: Mapping, with_text: boolean): FireWorld {
+// Applying a mapping (or resuming one): its consequences, and what the pass
+// brings with it. The apply text and `apply_after` print on the first apply
+// of the pass (SPEC §7.1); a resume says so in one line; a later apply
+// prints the rendition alone.
+function light(w: FireWorld, story: StorySpec, m: Mapping, how: 'first' | 'again' | 'resume'): FireWorld {
     const lit: Mapping = { ...m, status: 'applied' };
-    const after = story.apply_after?.[m.pass] ?? [];
+    const after = how === 'first' ? story.apply_after?.[m.pass] ?? [] : [];
+    const consequence = how === 'first' ? story.apply_text[m.pass] ?? []
+        : how === 'resume' ? [`${capitalised(label(story, m))} is resumed; the badges solid.`]
+        : [];
     let next = update(w, {
         gist: () => applied_gist(story.id, m.pass),
         mappings: _ => replace_mapping(_, m, lit),
         story_updates: story_updater(
-            with_text ? S.consequence(paragraphs(story.apply_text[m.pass] ?? [])) : [],
+            consequence.length > 0 ? S.consequence(paragraphs(consequence)) : [],
             // l. 465 comes after the Fire's rendition (SPEC §5.4): the prompt category prints last.
-            with_text && after.length > 0 ? S.prompt(paragraphs(after)) : []
+            after.length > 0 ? S.prompt(paragraphs(after)) : []
         )
     });
     next = consequences(next, story, lit, false);
@@ -115,13 +125,12 @@ function light(w: FireWorld, story: StorySpec, m: Mapping, with_text: boolean): 
     return next;
 }
 
-// The apply text is printed on the first apply of a pass only (SPEC §7.1); later applies print the rendition alone.
 function do_apply(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     const result = judge_apply(story, voice_of_mapping(mapping), mapping, set_aside_mappings(w, story));
     if (!result.ok) {
         return nudge_frame(w, result.nudge);
     }
-    return light(w, story, mapping, !has_said_applied(w, story, mapping.pass));
+    return light(w, story, mapping, has_said_applied(w, story, mapping.pass) ? 'again' : 'first');
 }
 
 // `set aside`: the mapping's consequences are undone and its badges hollow.
@@ -129,7 +138,10 @@ function do_apply(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
 // earlier pass is set aside and the next pass opens, its placements kept if
 // it has been held before.
 function do_set_aside(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
-    let next = consequences(w, story, mapping, true);
+    let next = update(w, {
+        story_updates: story_updater(S.consequence(paragraphs([`${capitalised(label(story, mapping))} is set aside; the badges hollow.`])))
+    });
+    next = consequences(next, story, mapping, true);
     const all_passes = passes(story, mapping.voice);
     const next_pass: Pass | undefined = all_passes[all_passes.indexOf(mapping.pass) + 1];
     if (next_pass === undefined) {
@@ -151,7 +163,7 @@ function do_resume(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld 
     if (open !== undefined) {
         next = update(next, { mappings: _ => replace_mapping(_, open, { ...open, status: 'set aside' }) });
     }
-    return light(next, story, mapping, false);
+    return light(next, story, mapping, 'resume');
 }
 
 // Whether `set aside` is offered for this applied mapping (SPEC §6, §9): for a
@@ -212,7 +224,7 @@ export const mapping_puffer: Puffer<FireWorld> = {
             if (open !== undefined && violations(story, voice, open, set_aside_mappings(world, story)).length === 0) {
                 threads.push(p =>
                     p.consume(['resume', GAP, phrase(label(story, open))], () =>
-                    p.submit(() => light(world, story, open, !has_said_applied(world, story, open.pass)))));
+                    p.submit(() => light(world, story, open, has_said_applied(world, story, open.pass) ? 'resume' : 'first'))));
             }
         }
         return parser.split(threads);

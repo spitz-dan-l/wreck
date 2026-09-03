@@ -46,7 +46,7 @@
 }
 
 .columns .right {
-    flex: 2 1 0;
+    flex: 0 1 34em;
     min-width: 0;
     position: sticky;
     top: 0;
@@ -69,6 +69,9 @@
 
 .barcode { margin-left: 1em; }
 .barcode .badge { margin-right: 0.15em; }
+/* The chip's barcode is the mapping in the order the events fall in the story. */
+.board.chip .barcode::before { content: '\2192  '; --alpha-color: 0.5; }
+.board.lesson:not(.chip) .barcode { display: none; }
 
 /* THE LEFT COLUMN */
 
@@ -110,7 +113,9 @@
     margin-top: 0.6em;
 }
 /* Inside a board the prompt has rows beneath it (the ¶s still to convert),
-   so the typeahead takes its own space instead of overlaying them. */
+   so the typeahead takes its own space instead of overlaying them, and that
+   space is reserved so the rows do not move as the options change. */
+.board #story-hole { min-height: 9em; }
 .board #story-hole ul.typeahead {
     position: static;
 }
@@ -122,6 +127,17 @@
 .board.story-collapsed .prose { display: none; }
 .board.unmapped-collapsed .left .frame.event:not(.mapped) { display: none; }
 .board.unmapped-collapsed .left .prose:not(.mapped) { display: none; }
+/* Folding the unmapped rows folds the voice runs that hold none of the mapping, the followed lines and the wrong attempts with them. */
+.board.unmapped-collapsed .left .voice-bar.empty,
+.board.unmapped-collapsed .left .frame.speak-as.empty,
+.board.unmapped-collapsed .left .frame.follows,
+.board.unmapped-collapsed .left .frame.nudge { display: none; }
+/* A followed line is the ¶ row; the frame is only the log of the act. */
+.board .left .frame.follows .output-text { display: none; }
+/* A nudge in the column or the ledger is Katya's, not a success. */
+.board .frame.nudge .output-text { --rgb-color: 255, 215, 0; --alpha-color: 0.85; font-style: italic; }
+/* The apply frame's rendition is the right column's; the ledger keeps the .md's sentences. */
+.board .ledger .spoken-text { display: none; }
 .unmapped-bar {
     margin-top: 1em;
     --alpha-color: 0.7;
@@ -160,8 +176,8 @@
 }
 .badge.hollow {
     background: transparent;
-    --alpha-color: 0.3;
-    border-color: rgba(var(--step-rgb), 0.3);
+    --alpha-color: 0.55;
+    border: 1px dashed rgba(var(--step-rgb), 0.45);
 }
 
 .coda {
@@ -204,7 +220,29 @@
     --alpha-color: 1;
     white-space: normal;
 }
-.step .reference.hollow { --alpha-color: 0.3; }
+.step .reference.hollow { --alpha-color: 0.5; }
+/* Under a step with two references (the wise man), each is labelled with its pass. */
+.step .targets:has(.reference + .reference) .reference::before {
+    display: inline-block;
+    width: 4.5em;
+    letter-spacing: 0.1em;
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+.step .targets:has(.reference + .reference) .reference.pass-first::before { content: 'FIRST'; }
+.step .targets:has(.reference + .reference) .reference.pass-second::before { content: 'SECOND'; }
+/* Hovering a badge lights its reference, and a reference its badges: the line of l. 311, followed by eye. */
+.board:has(.badge.step-1:hover) .step-1 .reference, .board:has(.step-1 .reference:hover) .badge.step-1,
+.board:has(.badge.step-2:hover) .step-2 .reference, .board:has(.step-2 .reference:hover) .badge.step-2,
+.board:has(.badge.step-3:hover) .step-3 .reference, .board:has(.step-3 .reference:hover) .badge.step-3,
+.board:has(.badge.step-4:hover) .step-4 .reference, .board:has(.step-4 .reference:hover) .badge.step-4,
+.board:has(.badge.step-5:hover) .step-5 .reference, .board:has(.step-5 .reference:hover) .badge.step-5,
+.board:has(.badge.step-6:hover) .step-6 .reference, .board:has(.step-6 .reference:hover) .badge.step-6,
+.board:has(.badge.step-7:hover) .step-7 .reference, .board:has(.step-7 .reference:hover) .badge.step-7,
+.board:has(.badge.step-8:hover) .step-8 .reference, .board:has(.step-8 .reference:hover) .badge.step-8 {
+    background: rgba(var(--step-rgb), 0.2);
+    box-shadow: 0 0 0 2px rgba(var(--step-rgb), 0.35);
+}
 .step .spoken { margin-left: 1em; }
 .step .rendition {
     --rgb-color: 255, 140, 0;
@@ -227,6 +265,9 @@
 .voice-bar { display: none; }
 .story.voices-taught .voice-bar {
     display: block;
+    width: max-content;
+    min-width: 14em;
+    padding-right: 3em;
     margin: 1em 0 0.3em 0;
     padding-top: 0.2em;
     letter-spacing: 0.15em;
@@ -236,27 +277,34 @@
 }
 .story.voices-taught .voice-bar.kind-disembodied { border-top-style: dashed; }
 .story.voices-taught .voice-bar.kind-abstract { border-top: 4px double rgba(255, 255, 240, 0.8); }
+/* Once the bar says who speaks, the `speak as` frame's "— the x —" line is furniture. */
+.story.voices-taught .voice-mark { display: none; }
 
-/* The player's own frames: the You mark, once the notation is taught. */
-.story.voices-taught .frame.you > .input-text::before {
+/* The player's own voice: one YOU bar at the head of the transcript (the
+   afternoon is one run in the player's voice, interrupted by the boards'
+   runs), and a YOU mark on the `speak as` frames and the wrong attempts
+   inside a board's column, where a voice run is interrupted. Nothing on
+   the ledger, on followed lines or on the root dialogue. */
+.story.voices-taught .you-bar { --alpha-color: 0.7; margin-top: 0.5em; }
+.story.voices-taught .board .left > .frame.you.speak-as > .input-text::before,
+.story.voices-taught .board .left > .frame.you.nudge > .input-text::before {
     content: 'YOU';
     display: block;
     letter-spacing: 0.15em;
     font-size: 0.8em;
     --alpha-color: 0.6;
     border-top: 2px solid rgba(255, 255, 240, 0.5);
-    margin: 0.8em 0 0.2em 0;
+    margin: 0.3em 0 0.2em 0;
     padding-top: 0.1em;
     width: 6em;
 }
-.story.voices-taught .board .frame.you > .input-text::before { margin-top: 0.3em; }
 
 /* The carat shows the current voice, once the notation is taught. */
 .story.voices-taught .left.spoken #story-hole .parsed-text > span:first-child::before {
     letter-spacing: 0.15em;
     text-transform: uppercase;
     font-size: 0.8em;
-    --alpha-color: 0.7;
+    --alpha-color: 0.5;
     margin-right: 0.6em;
 }
 .story.voices-taught .left.voice-the-friends #story-hole .parsed-text > span:first-child::before { content: 'the friends'; }
@@ -274,3 +322,21 @@
 .story.voices-taught .left.voice-the-books #story-hole .parsed-text > span:first-child::before { content: 'the books'; }
 .story.voices-taught .left.voice-the-season #story-hole .parsed-text > span:first-child::before { content: 'the season'; }
 .story.voices-taught .left.voice-time #story-hole .parsed-text > span:first-child::before { content: 'time'; }
+
+/* THE PROMPT */
+
+/* A Locked option: the engine's glyph is a combining character on a space
+   and does not render; U+2298 is a spacing glyph the fonts have. */
+.typeahead .option.locked .token.lock { font-size: 0; }
+.typeahead .option.locked .token.lock::after {
+    content: ' \2298';
+    font-size: 0.75rem;
+    --alpha-color: 0.6;
+}
+
+/* NARROW */
+
+@media (max-width: 900px) {
+    .step .spoken { display: none; }
+    .columns .right { font-size: 0.9em; }
+}

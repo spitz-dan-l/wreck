@@ -14,7 +14,8 @@ import { StoryEventSpec, StorySpec, voice as voice_of, VoiceId } from '../data';
 import { AUTHORED, LINE_TEXT, QUOTED } from '../data/katya';
 import { new_mapping } from '../judge';
 import {
-    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, slug, speak_as_ops, voice_bar_text
+    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, slug, speak_as_gist, speak_as_ops,
+    voice_mark_node
 } from '../board';
 import { board_story, command_spec, converted, FireWorld, phase, phrase, voice_for } from '../world';
 
@@ -57,6 +58,7 @@ function follow(w: FireWorld, story: StorySpec): FireWorld {
     return update(w, {
         cursor: cursor + 1,
         story_updates: story_updater(
+            S.frame().css({ follows: true }),
             S.consequence(<div className="follows">{'↳ ' + story.prose[cursor - 1]}</div>),
             reached(story, cursor, cursor + 1),
             follow_ops(story, cursor),
@@ -68,7 +70,7 @@ function follow(w: FireWorld, story: StorySpec): FireWorld {
 // A trap: the nudge is the frame's consequence; nothing else changes.
 export function nudge_frame(w: FireWorld, nudge: string): FireWorld {
     return update(w, {
-        story_updates: story_updater(S.consequence(paragraphs([nudge])))
+        story_updates: story_updater(S.frame().css({ nudge: true }), S.consequence(paragraphs([nudge])))
     });
 }
 
@@ -96,10 +98,11 @@ function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
     const speech = kind === 'disembodied' ? AUTHORED.disembodied : kind === 'abstract' ? [...AUTHORED.abstract, ...QUOTED.l419b] : undefined;
     const teach = speech !== undefined && !w.taught.includes(kind);
     return update(w, {
+        gist: () => speak_as_gist(story.id, v),
         voice: v,
         taught: _ => teach ? [..._, kind] : _,
         story_updates: story_updater(
-            w.taught.includes('voice') ? S.consequence(paragraphs([voice_bar_text(v)])) : [],
+            w.taught.includes('voice') ? S.consequence(voice_mark_node(v)) : [],
             teach ? S.consequence(paragraphs(speech!)) : [],
             speak_as_ops(story, w.index, v, w.voice)
         )

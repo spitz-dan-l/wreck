@@ -49,6 +49,8 @@ export const annotation_gist = (seq: string, n: number, id: number, role: string
     gist('annotation', undefined, { seq, n, id, role });
 export const unmapped_gist = (seq: string): Gist => gist('unmapped', undefined, { seq });
 export const classroom_gist = (command: string, beat: number): Gist => gist('classroom', undefined, { command, beat });
+export const speak_as_gist = (seq: string, voice: VoiceId): Gist => gist('speak_as', undefined, { seq, voice });
+export const you_bar_gist = (): Gist => gist('you_bar');
 export const applied_gist = (seq: string, pass: string): Gist => gist('applied', undefined, { seq, pass });
 
 // "the closest followers" -> "the-closest-followers", for class names.
@@ -62,13 +64,21 @@ export function paragraphs(ps: string[]): StoryNode[] {
     return ps.map(p => <div>{p}</div> as StoryNode);
 }
 
-// One step in both forms: the chalk statement, its notation (folded, or
-// absent until Katya writes it), and the places where its targets and the
-// Fire's rendition will go.
-export function step_node(seq: string, step: Step, notation: 'folded' | 'absent' | 'none'): StoryNode {
+// How a step's notation is shown: not at all (the chalk form alone), absent
+// until Katya writes it (l. 182), folded (`collapse the steps`), or shown.
+export interface Notation {
+    none?: true;
+    absent?: true;
+    folded?: boolean;
+}
+
+// One step in both forms: the chalk statement, its notation, and the places
+// where its targets and the Fire's rendition will go.
+export function step_node(seq: string, step: Step, notation: Notation): StoryNode {
+    const classes = 'notation' + (notation.absent ? ' absent' : '') + (notation.folded ? ' collapsed' : '');
     return <div gist={step_gist(seq, step.index)} className={`step step-${step.index}`}>
         <div className="chalk">{step.chalk}</div>
-        {notation === 'none' ? [] : <div className={'notation collapsed' + (notation === 'absent' ? ' absent' : '')}>
+        {notation.none ? [] : <div className={classes}>
             <div className="command">{'> ' + step.command}</div>
             <div>{step.consequence}</div>
         </div>}
@@ -77,25 +87,32 @@ export function step_node(seq: string, step: Step, notation: 'folded' | 'absent'
     </div> as StoryNode;
 }
 
-export function steps_column(seq: string, voice: AbstractSequence, hidden: boolean, notation: 'folded' | 'absent'): StoryNode {
+export function steps_column(seq: string, voice: AbstractSequence, hidden: boolean, notation: Notation): StoryNode {
     return <div gist={right_gist(seq)} className={'right' + (hidden ? ' hidden' : '')}>
         {voice.steps.map(s => step_node(seq, s, notation))}
     </div> as StoryNode;
 }
 
-// The passage for an abstract sequence, as `remember` prints it: its steps in both forms, or in the chalk form alone.
+// The passage for an abstract sequence, as `remember` prints it: its steps in both forms (never folded: it is a replay), or in the chalk form alone.
 export function sequence_passage(voice: AbstractSequence, with_notation = true): StoryNode {
     return <div gist={sequence_gist(voice.voice.id)} className="steps-memory">
-        {voice.steps.map(s => step_node(voice.voice.id, s, with_notation ? 'folded' : 'none'))}
+        {voice.steps.map(s => step_node(voice.voice.id, s, with_notation ? {} : { none: true }))}
     </div> as StoryNode;
 }
 
+// The lesson board's strip once it is a chip: the Voice, rolled up on the shelf.
+function lesson_strip_node(voice: AbstractSequence): StoryNode {
+    return <span className="barcode">
+        {voice.steps.map(s => <span className={`badge step-${s.index} hollow`}>{String(s.index)}</span>)}
+    </span> as StoryNode;
+}
+
 // Beat 0's board: only a right column, the chalk statements first, the notation after the second `listen`.
-export function lesson_board_node(voice: AbstractSequence): StoryNode {
+export function lesson_board_node(voice: AbstractSequence, folded: boolean): StoryNode {
     return <div gist={lesson_board_gist()} className="board lesson">
-        <div className="board-title">{voice.voice.name}</div>
+        <div className="board-title">{voice.voice.name}{lesson_strip_node(voice)}</div>
         <div className="columns">
-            {steps_column('lesson', voice, false, 'absent')}
+            {steps_column('lesson', voice, false, { absent: true, folded })}
         </div>
     </div> as StoryNode;
 }
@@ -124,7 +141,7 @@ function prose_node(story: StorySpec, n: number): StoryNode {
 }
 
 // A story's board at open: the ¶s in the left column, the rule and the right column hidden.
-export function board_node(story: StorySpec, voice: AbstractSequence): StoryNode {
+export function board_node(story: StorySpec, voice: AbstractSequence, folded: boolean): StoryNode {
     return <div gist={board_gist(story.id)} className="board">
         <div className="board-title">{story.title}</div>
         <div className="columns">
@@ -132,7 +149,7 @@ export function board_node(story: StorySpec, voice: AbstractSequence): StoryNode
                 {story.prose.map((_, i) => prose_node(story, i + 1))}
             </div>
             <div gist={rule_gist(story.id)} className="rule hidden"></div>
-            {steps_column(story.id, voice, true, 'folded')}
+            {steps_column(story.id, voice, true, { folded })}
         </div>
         <div gist={ledger_gist(story.id)} className="ledger"></div>
     </div> as StoryNode;
@@ -150,9 +167,14 @@ export function voice_bar_node(seq: string, n: number, voice: VoiceId): StoryNod
     return <div gist={voice_bar_gist(seq, n)} className={`voice-bar kind-${v.kind} voice-${slug(voice)}`}>{v.name}</div> as StoryNode;
 }
 
-// The voice bar as text, for the `speak as` frame.
-export function voice_bar_text(voice: VoiceId): string {
-    return `— ${voice_of(voice).name} —`;
+// The voice bar as text, for the `speak as` frame (hidden on the board once the notation is taught: the bar says it).
+export function voice_mark_node(voice: VoiceId): StoryNode {
+    return <div className="voice-mark">{`— ${voice_of(voice).name} —`}</div> as StoryNode;
+}
+
+// The player's own bar, at the head of the transcript (SPEC §7): the afternoon is one run in the player's voice.
+function you_bar_node(): StoryNode {
+    return <div gist={you_bar_gist()} className="voice-bar kind-embodied voice-you you-bar">YOU</div> as StoryNode;
 }
 
 // The knowledge passage for a story event: its command and its whole consequence.
@@ -168,8 +190,8 @@ function badge_node(seq: string, event: number, step: number, id: number): Story
     return <span gist={badge_gist(seq, event, step, id)} className={`badge step-${step} held`}>{String(step)}</span> as StoryNode;
 }
 
-function reference_node(seq: string, step: number, id: number, event_name: string): StoryNode {
-    return <div gist={reference_gist(seq, step, id)} className={`reference step-${step} held`}>{reference_text(event_name)}</div> as StoryNode;
+function reference_node(seq: string, step: number, id: number, event_name: string, pass: string): StoryNode {
+    return <div gist={reference_gist(seq, step, id)} className={`reference step-${step} held pass-${pass}`}>{reference_text(event_name)}</div> as StoryNode;
 }
 
 export function reference_text(event_name: string): string {
@@ -252,8 +274,8 @@ const at = (g: Gist) => S.has_gist(exact(g));
 const in_right_columns = () => S.has_gist({ tag: 'right' });
 
 // Beat 0: the lesson board appears after the current frame (only its chalk statements).
-export function show_lesson_board_ops(voice: AbstractSequence): StoryUpdaterSpec[] {
-    return [S.frame().insert_after(lesson_board_node(voice))];
+export function show_lesson_board_ops(voice: AbstractSequence, folded: boolean): StoryUpdaterSpec[] {
+    return [S.frame().insert_after(lesson_board_node(voice, folded))];
 }
 
 // Beat 0: each statement gains its notation (folded).
@@ -262,10 +284,10 @@ export function reveal_notation_ops(): StoryUpdaterSpec[] {
 }
 
 // `pick up the chalk`: the lesson board folds to a chip; the story's board opens after the current frame; the hole goes in after ¶1.
-export function open_board_ops(story: StorySpec, voice: AbstractSequence): StoryUpdaterSpec[] {
+export function open_board_ops(story: StorySpec, voice: AbstractSequence, folded: boolean): StoryUpdaterSpec[] {
     return [
         at(lesson_board_gist()).css({ chip: true }),
-        S.frame().insert_after(board_node(story, voice)),
+        S.frame().insert_after(board_node(story, voice, folded)),
         ...move_hole_after(at(prose_gist(story.id, 1)))
     ];
 }
@@ -300,15 +322,20 @@ export function speak_as_ops(story: StorySpec, frame_index: number, voice: Voice
         classes[`voice-${slug(previous)}`] = false;
     }
     return [
+        S.frame().css({ 'speak-as': true }),
         S.frame().insert_after(voice_bar_node(story.id, frame_index, voice)),
         ...move_hole_after(at(voice_bar_gist(story.id, frame_index))),
         at(left_gist(story.id)).css(classes)
     ];
 }
 
-// l. 350: the voice notation is taught; the bars drawn so far and the You marks appear.
+// l. 350: the voice notation is taught; the bars drawn so far appear, and
+// one YOU bar at the head of the transcript, after the opening (frame 0).
 export function teach_voices_ops(): StoryUpdaterSpec[] {
-    return [S.story_root().css({ 'voices-taught': true })];
+    return [
+        S.story_root().css({ 'voices-taught': true }),
+        S.frame(0).insert_after(you_bar_node())
+    ];
 }
 
 // `draw a vertical line`: the rule and the right column appear; the hole moves to the ledger.
@@ -327,7 +354,7 @@ export function place_ops(
     return [
         ...(previous_event === undefined ? [] : erase_ops(story, m, step, previous_event)),
         S.frame(frame).first(S.has_class('input-text')).add(badge_node(story.id, event, step, m.id)),
-        at(targets_gist(story.id, step)).add(reference_node(story.id, step, m.id, event_name))
+        at(targets_gist(story.id, step)).add(reference_node(story.id, step, m.id, event_name, m.pass))
     ];
 }
 
@@ -338,14 +365,22 @@ export function erase_ops(story: StorySpec, m: Mapping, step: number, event: num
     ];
 }
 
-// The rows' bands and `mapped` classes, and the unmapped bar's count, all
-// derived from the board's mappings; called after every map, erase, set
-// aside and resume.
+// The rows' bands and `mapped` classes, the voice runs that hold no mapped
+// event (`empty`: hidden with the unmapped rows), and the unmapped bar's
+// count, all derived from the board's mappings; called after every map,
+// erase, set aside and resume. `runs` are the frames of the `speak as`
+// commands, in order: each bar covers the events up to the next.
 export function rows_ops(
-    story: StorySpec, mappings: Mapping[], frame_of: (event: number) => number | undefined, unmapped_folded: boolean
+    story: StorySpec, mappings: Mapping[], frame_of: (event: number) => number | undefined, unmapped_folded: boolean, runs: number[]
 ): StoryUpdaterSpec[] {
     const steps_on = (event: number) => mappings.flatMap(m => m.placements.filter(p => p.event === event).map(p => p.step));
     const mapped = story.events.filter(e => steps_on(e.index).length > 0).map(e => e.index);
+    const mapped_frames = mapped.map(frame_of).filter((f): f is number => f !== undefined);
+    const run_ops = runs.flatMap((from, i) => {
+        const to = runs[i + 1] ?? Infinity;
+        const empty = !mapped_frames.some(f => f > from && f < to);
+        return [at(voice_bar_gist(story.id, from)).css({ empty }), S.frame(from).css({ empty })];
+    });
     const ops = story.events.flatMap(e => {
         const frame = frame_of(e.index);
         const steps = steps_on(e.index);
@@ -359,7 +394,7 @@ export function rows_ops(
         ];
     });
     const transcribed = story.events.filter(e => frame_of(e.index) !== undefined).length;
-    return [...ops, ...unmapped_ops(story, unmapped_folded, transcribed - mapped.length)];
+    return [...ops, ...run_ops, ...unmapped_ops(story, unmapped_folded, transcribed - mapped.length)];
 }
 
 // `apply`: the Fire speaks under each step; each mapped row is annotated (once per role); the badges are solid.
@@ -407,8 +442,13 @@ export function finish_board_ops(story: StorySpec, mappings: Mapping[]): StoryUp
 
 // DISPLAY ONLY (SPEC §6 expand/collapse)
 
-export function chip_ops(story: StorySpec, on: boolean): StoryUpdaterSpec[] {
-    return [at(board_gist(story.id)).css({ chip: on })];
+// `expand <sequence>` reopens the chip and, when no board is open, moves the
+// hole into its ledger so the reopened board is in view; `collapse` moves it back.
+export function chip_ops(story: StorySpec, on: boolean, move_hole: boolean): StoryUpdaterSpec[] {
+    return [
+        at(board_gist(story.id)).css({ chip: on }),
+        ...(move_hole ? (on ? move_hole_into(S.story_root()) : move_hole_into(at(ledger_gist(story.id)))) : [])
+    ];
 }
 
 export function steps_ops(collapsed: boolean): StoryUpdaterSpec[] {

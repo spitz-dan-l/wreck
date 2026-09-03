@@ -80,3 +80,8 @@ export function name_collisions(stories: StorySpec[], sequences: AbstractSequenc
     }
     return problems;
 }
+
+// "the laying of the tinder" -> "The laying of the tinder", for the head of a sentence.
+export function capitalised(text: string): string {
+    return text.length === 0 ? text : text[0].toUpperCase() + text.slice(1);
+}

@@ -480,3 +480,71 @@ screenshots re-taken.
 **Engine.** No change. `classroom_commands` and `readings` walk the history
 from the world itself (the frames puffer clears the gist before each
 command, so the current frame is never double-counted).
+
+## Phase B5b (the round-3 browser critique, SPEC v1.3)
+
+`docs/lofty_demo/round3/critique_5_ui.md` §2–§4 implemented (improvements
+1, 2, 5–10, 13–16; 11 and 12 skipped as instructed). World 3299 → 3379
+lines, tests 1175 → 1217, `board.css` 276 → 342; `npm test` 59 passing in
+~1 m 07 s. Headless transcript: `round2/transcript_b5b_headless.txt`;
+screenshots re-taken with the production build's CSS.
+
+**Defects.**
+- **D1.** `step_node` takes a `Notation` (`none` / `absent` / `folded`) and
+  emits `collapsed` only when folded; the boards are built from the world's
+  `collapsed` (so a board opened after `expand the steps` shows its
+  notation), and `sequence_passage` (the `remember` reprint) is never
+  folded and never touched by `expand`/`collapse`. Test: folded at start,
+  `expand the steps` unfolds the lesson board and a board opened later,
+  `collapse` refolds them, the reprints stay as they are.
+- **D2.** `speak as` frames carry a gist `speak_as(seq, voice)`;
+  `voice_runs(w, story)` reads their frames from the history, and
+  `rows_ops` marks each bar and its `speak as` frame `empty` when no mapped
+  event (of any mapping on the board, the set-aside solution included)
+  falls in its run. `collapse the unmapped` hides the empty runs, the
+  followed-line frames and the wrong attempts with the unmapped rows.
+  Test: 11 runs on the wise man, five empty.
+- **D3.** `expand <sequence>` while no board is open moves the hole into
+  the reopened board's ledger (`chip_ops`), so `scroll_down` brings it into
+  view and the prompt sits under it; `collapse` moves the hole back to the
+  root. While a board is open, a chip expands where it is and the hole
+  stays with the board. Test: the hole's path after both.
+- **D4.** The YOU rule is gone from the transcript. Once taught: one YOU
+  bar at the head of the transcript (a `you_bar` node inserted after
+  frame 0, the opening), and a YOU mark on the `speak as` frames
+  (`speak-as` class) and the traps (`nudge` class) inside a board's left
+  column only — nothing on the ledger, on `let it follow` frames
+  (`follows` class) or on the root dialogue. The "— the x —" line of a
+  `speak as` frame is a `voice-mark` node hidden once taught (the bar says
+  it); it stays in the text form. Test: the bar is at path [1] after
+  l. 350 and absent before; the classes are on the frames.
+- **D5.** The Locked glyph: `.token.lock` at font-size 0 with `::after`
+  U+2298; checked in the screenshots' font.
+- **D6.** Hollow badges α 0.55 with a dashed border at 0.45; hollow
+  references α 0.5.
+- **D7.** One-line consequences: "The steps fold." / "The steps unfold.",
+  "The story folds.", "The unmapped rows fold.", "<Event name> folds.",
+  "<Title> unfolds.", "<Step name> is erased.", "The mapping is set aside;
+  the badges hollow." (wise man: "The first solution …"), "The mapping is
+  resumed; the badges solid." — board chrome licensed by SPEC §8 [C5 D7];
+  the register of §10, no Katya.
+- **D8.** `.board #story-hole { min-height: 9em }` reserves the typeahead's height.
+- **D9.** `dist/global.css` (the engine's stylesheet, where the font is
+  set — not `prompt.css`): `font-family: 'Roboto Mono', 'DejaVu Sans
+  Mono', Menlo, Consolas, monospace;` — the one-token change, logged here.
+
+**Improvements.** 1 short bars (`width: max-content; min-width: 14em`);
+2 the right column `flex: 0 1 34em`; 5 the `let it follow` frame's text
+hidden on the board (the ¶ row is the line); 6 references labelled FIRST /
+SECOND under a step that has two (`pass-*` classes, `:has()`); 7 nudge
+frames italic and gold (`nudge` class, column and ledger); 8 the ledger's
+copy of the rendition hidden by CSS (the right column's `.spoken` is the
+rendition; the text form keeps it for headless play and the tests);
+9 was done in B4 (one annotation per role per row); 10 a faint "→" before
+a chip's barcode (the mapping in story order); 13 the lesson chip carries a
+strip of eight hollow badges (shown only as a chip); 14 the carat's voice
+label at α 0.5; 15 below 900px the Fire's rendition is hidden and the
+right column set smaller; 16 hovering a badge lights its reference and a
+reference its badges (`:has()`, no JS, no state).
+
+**Engine.** No code change; one stylesheet token in `dist/global.css` (D9).

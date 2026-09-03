@@ -61,7 +61,7 @@ function open_board(story: StorySpec) {
         voice: () => undefined,
         sequences: { [story.id]: () => ({ events: [], finished: false }) },
         knowledge: k => story.events.reduce((acc, e) => ingest(acc, event_passage(story, e)), k),
-        story_updates: story_updater(open_board_ops(story, voice_for(story)))
+        story_updates: story_updater(open_board_ops(story, voice_for(story), w.collapsed.includes('steps')))
     });
 }
 
@@ -84,7 +84,7 @@ const pick_up = (story: StorySpec, beat: number, says: QuotedKey[] = []): Line =
 
 export const SCRIPT: Line[] = [
     { command: 'look at the board', beat: [BEAT.classroom, BEAT.chalk, BEAT.notation, BEAT.campfire_told, BEAT.campfire_ready], optional: true, says: [], also: AUTHORED.shelf },
-    { command: 'listen', beat: BEAT.classroom, says: ['l162', 'l164'], board: () => show_lesson_board_ops(LESSON_VOICE), advances: true },
+    { command: 'listen', beat: BEAT.classroom, says: ['l162', 'l164'], board: w => show_lesson_board_ops(LESSON_VOICE, w.collapsed.includes('steps')), advances: true },
     { command: 'listen', beat: BEAT.chalk, says: ['l182'], board: () => reveal_notation_ops(), advances: true },
     { command: 'listen', beat: BEAT.notation, says: ['l218'], shows: () => [prose_told(CAMPFIRE)], advances: true },
     { command: 'say that the Voice of Fire is contained in this one', beat: BEAT.campfire_told, says: ['l244', 'l246'], advances: true },

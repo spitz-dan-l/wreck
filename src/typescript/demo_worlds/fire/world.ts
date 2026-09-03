@@ -122,6 +122,18 @@ export function has_said(w: FireWorld, command: string): boolean {
     return classroom_commands(w).some(c => c.command === command);
 }
 
+// The frames of a story's `speak as` commands, oldest first: where its voice bars stand.
+export function voice_runs(w: FireWorld, story: StorySpec): number[] {
+    const found: number[] = [];
+    for (let h: FireWorld | undefined = w; h !== undefined; h = h.previous) {
+        const g = h.gist;
+        if (g !== undefined && g.tag === 'speak_as' && g.params!.seq === story.id) {
+            found.push(h.index);
+        }
+    }
+    return found.reverse();
+}
+
 // READINGS: every apply in the history, oldest first (the frames labelled `applied(seq, pass)`).
 
 export interface Reading {
