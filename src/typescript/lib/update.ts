@@ -28,7 +28,6 @@ Issues:
 - It should be possible to specify a new typing of this, with the same underlying impl,
     which can transform from the source type to a new target type
 
-I strongly encourage you to stake your professional reputation on the behavior of this code.
 */
 
 // export type Updater<T, Del extends boolean=false> =
@@ -82,11 +81,9 @@ export type ObjectUpdater<T> = {
     [K in keyof T]?: Updater<T[K], true>
 };
 
-import {F} from 'ts-toolbelt';
-
-// The second generic type parameter is a hack to prevent typescript from using the contents of updater
-// to figure out the source and return types when doing type inference on calls to this function.
-export function update1<S>(source: S, updater: F.NoInfer<Updater<S>>): S {
+// NoInfer stops typescript from using the contents of the updater to infer the
+// source type; the source alone determines it.
+export function update1<S>(source: S, updater: NoInfer<Updater<S>>): S {
     // if updater is a function, call it and return the result
     if (updater instanceof Function) {
         return <S>(<Function> updater)(source);
@@ -202,24 +199,7 @@ export function remove_empty_slots(arr: any[]) {
     return arr.filter((_,i) => i in arr);
 }
 
-// The second generic type parameter is a hack to prevent typescript from using the contents of updater
-// to figure out the source and return types when doing type inference on calls to this function.
-export function update<S>(source: S, updater: F.NoInfer<Updater<S>>): S;
-export function update<S>(source: S, ...updaters: F.NoInfer<Updater<S>>[]): S;
-export function update<S>(source: S, ...updaters: F.NoInfer<Updater<S>>[]): S {
+export function update<S>(source: S, ...updaters: NoInfer<Updater<S>>[]): S {
     return updaters.reduce(update1, source);
 }
-
-export function update_any<S>(source: S, updater: any): S {
-    return update(source, updater);
-}
-
-// Add an overload to immer's IProduce that makes it usable as an update function
-import {setAutoFreeze} from 'immer';
-setAutoFreeze(false);
-declare module 'immer' {
-    export interface IProduce {
-        <T1>(recipe: (draft: NonNullable<T1>) => void): (t: NonNullable<T1>) => NonNullable<T1>;
-    }
-}    
 

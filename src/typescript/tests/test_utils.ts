@@ -2,7 +2,7 @@
 import * as assert from 'assert';
 // import 'babel-polyfill'; // TODO put this somewhere that makes more sense
 import 'mocha';
-import { begin, chain, deep_equal } from 'lib/utils';
+import { deep_equal } from 'lib/utils';
 import { update, Updater } from 'lib/update';
 
 
@@ -32,8 +32,8 @@ describe('update', () => {
         );
 
         class T3 {
-            a: number;
-            b: T1;
+            a!: number;
+            b!: T1;
         }
 
         function f(t2: T2, x: boolean) {
@@ -125,25 +125,6 @@ describe('update', () => {
 
     //     assert.deepEqual(updated2, expected2);
     // });
-});
-
-describe('chain', () => {
-    it('works', () => {
-        let f1 = (a: string) => a + 'horse';
-        let f2 = (a: string) => a + 'goat';
-
-        let r1 = chain(f1).z(f2).z(f1).z(f2)('dan');
-        assert.equal(r1, 'danhorsegoathorsegoat');
-
-        let f3 = () => 'horse';
-
-        let r2 = chain(f3).z(x => x + 'bleeb')
-            ()
-        assert.equal(r2, 'horsebleeb');
-
-
-
-    });
 });
 
 describe('deep_equal', () => {

@@ -3,26 +3,26 @@
         "outDir": "./build/",
         "rootDir": "./src/typescript",
         "sourceMap": true,
-        "noImplicitAny": true,
         "module": "node16",
         "moduleResolution": "node16",
         "esModuleInterop": true,
         "target": "es2020",
-        "lib": ["esnext", "dom"],
+        "lib": [
+            "esnext",
+            "dom"
+        ],
         "jsx": "react",
         "jsxFactory": "createElement",
         "incremental": true,
         "tsBuildInfoFile": "./build/tsconfig.tsbuildinfo",
-        "allowSyntheticDefaultImports": true,
-        "experimentalDecorators": true,
         "skipDefaultLibCheck": true,
-        "strictNullChecks": true,
-        "strictBindCallApply": true,
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
-        "noImplicitThis": true,
         "paths": {
-            "*": ["./src/typescript/*"]
-        }
+            "*": [
+                "./src/typescript/*"
+            ]
+        },
+        "strict": true
     }
 }

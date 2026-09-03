@@ -1,4 +1,4 @@
-import { ui_resources } from "../prelude";
+import { ui } from "../prelude";
 import { Renderer, createElement, Component } from "../framework";
 import { TypeaheadOption, Parsing, Token, TokenAvailability, TokenMatch } from "../../parser";
 import { isEqual } from "lodash";
@@ -11,7 +11,7 @@ export type TypeaheadProps = {
 
 export type Typeahead = Component<TypeaheadProps>;
 export const Typeahead: Renderer<TypeaheadProps> = ({parsing, typeahead_index, undo_selected}, old?) => {
-    const dispatch = ui_resources.get('dispatch').get();
+    const dispatch = ui().dispatch;
 
     function handleMouseOver(i: number) {
         dispatch({

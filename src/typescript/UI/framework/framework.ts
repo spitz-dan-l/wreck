@@ -1,104 +1,84 @@
-/**
- * TODO: Add Links to components, so that
- *  - Don't need to keep getter logic in sync with structure changes
- *  - When a component gets re-rendered, any links will auto update to the new version?
- */
+/*
+    A minimal UI framework. Components are plain DOM elements. A renderer
+    creates a component from its props, or, when given the previous props
+    and the previous element, updates that element in place (or replaces it).
 
+    Child components are declared with a getter (how to find the child in
+    the parent's DOM), a prop mapper (the child's props from the parent's),
+    and the child's renderer.
+
+    make_ui() runs a reducer loop: actions are dispatched, the state is
+    reduced, and the root component is re-rendered on the next tick.
+*/
 
 export type Props = {};
 
 export type BaseProps = { children?: (HTMLElement | Text)[] };
 
-export type Renderer<P extends Props> = (props: P & BaseProps, old?: {old_props: P & BaseProps, old_root: Component<P>}) => Component<P>;
-export type RendererFor<Comp> = Comp extends Component<infer P> ? Renderer<P> : never;
+export type Renderer<P extends Props> = (props: P & BaseProps, old?: { old_props: P & BaseProps, old_root: Component<P> }) => Component<P>;
 
 export interface Component<P extends Props> extends HTMLElement {
     __component_brand: P
 }
 
-export type ComponentFor<Rend> = Rend extends Renderer<infer P> ? Component<P> : never;
-export type Getter<Root extends Component<Props>, E extends HTMLElement> = (root: Root) => E;
 export type PropsFor<Comp> = Comp extends Component<infer P> ? P & BaseProps : never;
+export type RendererFor<Comp> = Comp extends Component<infer P> ? Renderer<P> : never;
 
-export type PropMapper<
-    Comp1 extends Component<Props>,
-    Comp2 extends Component<Props>
-> = (props: PropsFor<Comp1>) => PropsFor<Comp2>;
+export type Getter<Root extends Component<Props>, E extends HTMLElement> = (root: Root) => E;
 
-export function update_component<P extends Props>(renderer: Renderer<P>, props: P & BaseProps, old: { old_props: P & BaseProps, old_root: Component<P>}) {
-    const result = renderer(props, old);
+export type PropMapper<C1 extends Component<Props>, C2 extends Component<Props>> = (props: PropsFor<C1>) => PropsFor<C2>;
 
-    if (result !== old.old_root) {
-        old.old_root.replaceWith(result);
-    }
+export type Updater<C1 extends Component<Props>, C2 extends Component<Props>> =
+    (props: PropsFor<C1>, old?: { old_props: PropsFor<C1>, old_root: C1 }) => C2;
 
-    return result;
-}
+export type ElementHelpers<C1 extends Component<Props>, C2 extends HTMLElement> = { get: Getter<C1, C2> };
 
-export type Updater<
-    C1 extends Component<Props>,
-    C2 extends Component<Props>
-> = (props: PropsFor<C1>, old?: {old_props: PropsFor<C1>, old_root: C1}) => C2;
-
-export function make_updater<
-    P1 extends Props,
-    P2 extends Props
->(
-    getter: Getter<Component<P1>, Component<P2>>,
-    prop_mapper: PropMapper<Component<P1>, Component<P2>>,
-    renderer: RendererFor<Component<P2>>
-): Updater<Component<P1>, Component<P2>> {
-    return (props: P1 & BaseProps, old?: { old_props: P1 & BaseProps, old_root: Component<P1>}) => {
-        if (!old) {
-            return renderer(prop_mapper(props));
-        }
-
-        const old_child_root = getter(old.old_root);
-        if (!old_child_root){
-            console.warn('old child root may have disappeared. Check your getter logic.');
-        }
-        return update_component(
-            renderer,
-            prop_mapper(props),
-            {
-                old_props: prop_mapper(old.old_props),
-                old_root: getter(old.old_root)
-            }
-        );
-    }
-}
-
-import {A} from 'ts-toolbelt';
-
-export type ElementHelpers<C1 extends Component<Props>, C2 extends HTMLElement> = A.Compute<{ get: Getter<C1, C2> }>
-export type ChildHelpers<C1 extends Component<Props>, C2 extends Component<Props>> = A.Compute<{
+export type ChildHelpers<C1 extends Component<Props>, C2 extends Component<Props>> = {
     get: Getter<C1, C2>,
     map: PropMapper<C1, C2>,
     render: Updater<C1, C2>
-}>
+};
 
-export function declare_child<C1 extends Component<Props>, C2 extends HTMLElement>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
-export function declare_child<C1 extends Component<Props>, C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper: PropMapper<C1, C2>, renderer: RendererFor<C2>): ChildHelpers<C1, C2>;
-export function declare_child<C1 extends Component<Props>, C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper?: PropMapper<C1, C2>, renderer?: RendererFor<C2>) {
-    let result: any = {get: getter};
-    if (mapper !== undefined) {
-        result.map = mapper;
-    }
+export function make_updater<C1 extends Component<Props>, C2 extends Component<Props>>(
+    getter: Getter<C1, C2>,
+    prop_mapper: PropMapper<C1, C2>,
+    renderer: RendererFor<C2>
+): Updater<C1, C2> {
+    const render = renderer as unknown as (props: PropsFor<C2>, old?: { old_props: PropsFor<C2>, old_root: C2 }) => C2;
 
-    if (renderer !== undefined) {
-        result.render = make_updater(getter, mapper!, renderer);
-    }
+    return (props, old?) => {
+        if (!old) {
+            return render(prop_mapper(props));
+        }
 
-    return result;
+        const old_child_root = getter(old.old_root);
+        if (!old_child_root) {
+            console.warn('old child root may have disappeared. Check your getter logic.');
+        }
+        const result = render(prop_mapper(props), {
+            old_props: prop_mapper(old.old_props),
+            old_root: old_child_root
+        });
+        if (result !== old_child_root) {
+            old_child_root.replaceWith(result);
+        }
+        return result;
+    };
 }
 
+// Helpers for declaring the children of a component of type C1.
 export function child_declarator_for<C1 extends Component<Props>>() {
-    function child_declarator_for_inner<C2 extends HTMLElement>(getter: Getter<C1, C2>): ElementHelpers<C1, C2>;
-    function child_declarator_for_inner<C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper: PropMapper<C1, C2>, renderer: RendererFor<C2>): ChildHelpers<C1, C2>;
-    function child_declarator_for_inner<C2 extends Component<{}>>(getter: Getter<C1, C2>, mapper?: PropMapper<C1, C2>, renderer?: RendererFor<C2>) {
-        return declare_child(getter, mapper!, renderer as RendererFor<C2>);
-    }
-    return child_declarator_for_inner;
+    return {
+        // A plain element within the component.
+        element: <C2 extends HTMLElement>(getter: Getter<C1, C2>): ElementHelpers<C1, C2> => ({ get: getter }),
+
+        // A child component, rendered from a mapping of the parent's props.
+        child: <C2 extends Component<Props>>(getter: Getter<C1, C2>, mapper: PropMapper<C1, C2>, renderer: RendererFor<C2>): ChildHelpers<C1, C2> => ({
+            get: getter,
+            map: mapper,
+            render: make_updater(getter, mapper, renderer)
+        })
+    };
 }
 
 export type UI<State extends Props, Action> = {
@@ -108,7 +88,7 @@ export type UI<State extends Props, Action> = {
     effect_promise: () => Promise<void>
 }
 
-import {GlobalDevTools, GLOBAL_DEV_TOOLS} from "devtools";
+import { GLOBAL_DEV_TOOLS } from "devtools";
 
 declare module 'devtools' {
     interface GlobalDevTools {
@@ -119,10 +99,10 @@ declare module 'devtools' {
 export function make_ui<State extends Props, Action>(
     renderer: Renderer<State>,
     reducer: (state: State, action: Action) => State,
-    debug: boolean=false
+    debug: boolean = false
 ): UI<State, Action> {
     let old_state: State | undefined = undefined;
-    let component: Component<State>;
+    let component: Component<State> | undefined = undefined;
 
     let rendering = false;
 
@@ -135,10 +115,10 @@ export function make_ui<State extends Props, Action>(
     }
 
     let render_task: ReturnType<typeof setTimeout> | undefined = undefined;
-    
+
     const action_queue: Action[] = [];
     const effect_queue: (() => void)[] = [];
-    
+
     function dispatch(action: Action) {
         if (old_state === undefined) {
             throw new Error('dispatch function was called before initializer.');
@@ -165,8 +145,7 @@ export function make_ui<State extends Props, Action>(
         return new Promise<void>(resolve => effect(resolve));
     }
 
-    function render() {
-        // console.time('render');
+    function render(): Component<State> {
         if (old_state === undefined) {
             throw new Error('dispatch or effect function was called before initializer.');
         }
@@ -182,30 +161,24 @@ export function make_ui<State extends Props, Action>(
             component = renderer(old_state);
         }
         if (new_state !== old_state) {
-            component = update_component(
-                renderer,
-                new_state,
-                {
-                    old_props: old_state,
-                    old_root: component
-                }
-            );
+            const result = renderer(new_state, { old_props: old_state, old_root: component });
+            if (result !== component) {
+                component.replaceWith(result);
+            }
+            component = result;
             old_state = new_state;
             // for debugging
             if (debug) {
                 GLOBAL_DEV_TOOLS.ui_state = old_state;
             }
         }
-        
+
         requestAnimationFrame(() => {
-            // console.time('effects');
             rendering = false;
             while (effect_queue.length > 0) {
                 effect_queue.shift()!();
             }
-            // console.timeEnd('effects');
         });
-        // console.timeEnd('render');
 
         return component;
     }
@@ -216,20 +189,4 @@ export function make_ui<State extends Props, Action>(
         effect,
         effect_promise
     };
-}
-
-export function update_class<E extends HTMLElement>(elt: E, options: { add?: string[], remove?: string[] }) {
-    if (options.add) {
-        options.add.forEach(c => {
-            elt.classList.add(c);
-        })
-    }
-
-    if (options.remove) {
-        options.remove.forEach(c => {
-            elt.classList.remove(c);
-        });
-    }
-
-    return elt;
 }

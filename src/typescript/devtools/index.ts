@@ -6,9 +6,9 @@ function maybe_get_css_rules(s: CSSStyleSheet) {
     }
 }
 
-export const get_matched_css_rules = (el: Element, css: StyleSheetList = el.ownerDocument!.styleSheets) => 
-    Array.from(css).flatMap((s: CSSStyleSheet) => maybe_get_css_rules(s) ? Array.from(s.cssRules) : []) /* 1 */
-    .filter((r: CSSStyleRule) => el.matches(r.selectorText));            /* 2 */
+export const get_matched_css_rules = (el: Element, css: StyleSheetList = el.ownerDocument!.styleSheets) =>
+    Array.from(css).flatMap((s: CSSStyleSheet) => maybe_get_css_rules(s) ? Array.from(s.cssRules) : [])
+    .filter((r): r is CSSStyleRule => r instanceof CSSStyleRule && el.matches(r.selectorText));
 
 
 export interface GlobalDevTools {

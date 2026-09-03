@@ -1,5 +1,4 @@
 import * as TypeStyle from 'typestyle';
-import {px} from 'csx';
 
 declare module 'typestyle/lib/types' {
     interface CSSProperties {
@@ -35,7 +34,7 @@ export const eph_new = TypeStyle.style({
     $nest: {
         [`.story.${animation_start} &`]: {
             opacity: 0.01,
-            maxHeight: px(0)
+            maxHeight: '0px'
         },
 
         [`.story.${animation_start}.${animation_active} &`]: {

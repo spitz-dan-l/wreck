@@ -3,30 +3,9 @@ import { Stages, stage_entries, stages } from '../../lib/stages';
 import { FoundNode, Fragment, is_story_node, Path, replace_in, splice_in, StoryNode } from '../story';
 import { compile_story_update_op, StoryOpSpec, story_op } from './op';
 import { compile_story_query, StoryQuerySpec, story_query } from './query';
-import { StoryUpdateCompilationOp, apply_story_update_compilation_op, PushStoryUpdate, GroupName, StoryUpdateGroup } from './update_group';
+import { StoryUpdateCompilationOp, apply_story_update_compilation_op, StoryUpdateGroup } from './update_group';
 import { compute_const } from 'lib/utils';
-
-/**
- * TODO
- * Merge effects and would_effects at a lower level
- *  - I think this means, add "would_op?" to StoryUpdateSpec.
- *  
- *  - Let the StoryUpdateSpec optionally specify its group info,
- *      rather than requiring all to be pushed into Groups manually
- * 
- * Because we are always updating the story by pushing UpdateGroups,
- * let the raw world.story_updates be that list, rather than constantly
- * merging it into stages along the way.
- * 
- * This means that move_group would have to become a special op
- * which gets interpretted during "compilation" of all update groups
- * into their final stages.
- * 
- * Doing this would have the benefit of making it easier to
- * represent structure and updates of "player knowledge" by
- * topic, and have that knowledge flow directly into
- * the story that gets printed out. 
- */
+import { GLOBAL_DEV_TOOLS } from 'devtools';
 
 export type Story = StoryNode & { __brand: 'Story' };
 
@@ -89,9 +68,8 @@ export function compile_story_update(story_update: StoryUpdateSpec): StoryUpdate
         const targets = compile_story_query(story_update.query)(story);        
         const op = compile_story_update_op(story_update.op);
 
-        if (targets.length === 0 && story_update.op.name !== 'remove_eph') {
-            console.log('Got to an op with no found targets:');
-            console.log(JSON.stringify(story_update, undefined, 2));
+        if (GLOBAL_DEV_TOOLS.DEBUG && targets.length === 0 && story_update.op.name !== 'remove_eph') {
+            console.log('A story update found no targets: ' + JSON.stringify(story_update));
         }
 
         for (const [target, path] of sort_targets(targets)) {
@@ -174,8 +152,8 @@ export function remove_eph(story: Story, effects?: Effects<HTMLElement>) {
     return apply_story_update(
         story,
         story_update(
-            story_query('eph'),
-            story_op('remove_eph')
+            story_query('eph', []),
+            story_op('remove_eph', [])
         ),
         effects
     );

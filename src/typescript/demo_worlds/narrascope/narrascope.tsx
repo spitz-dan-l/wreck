@@ -14,258 +14,170 @@
         scrutinize your culpability ──▶ remember the Volunteer ──▶
         volunteer to foster the old affinity ──▶ "How are you, Sam?"
 */
-import { bottom_up, EXACT, gist, GistRenderer, render_gist, ValidTags } from 'gist';
-import { knowledge_gist } from 'knowledge';
-import { Seal } from 'lib/static_resources';
-import { update } from 'lib/utils';
+import { child, exact, gist, GistMap, GistRenderer, render_gist } from 'gist';
+import { map, update } from 'lib/utils';
 import { GAP } from 'parser';
 import { make_puffer_world_spec } from 'puffer';
-import { createElement, story_updater, StoryNode, Updates as S } from 'story';
-import { get_initial_world, WorldSpec, world_driver } from 'world';
+import { createElement, lookup_or_throw, StoryNode, story_updater, Updates as S } from 'story';
+import { get_initial_world, world_driver } from 'world';
 
-import { ActionHandler } from './action';
+import { action_description } from './action';
 import { Topic } from './consider';
-import { Puffers, resource_registry, Venience } from './prelude';
-import { apply_facet_interpretation, Exposition } from './reflect';
+import { ActionHandler, add_initial_knowledge, all_puffers, get_initial_knowledge, global_lock, Puffers, unlocked_puffer, Venience } from './prelude';
+import { apply_facet_interpretation, Exposition, facet } from './reflect';
 import { make_memory_available } from './remember';
 import { insight_text_class } from './styles';
+import { set_world_spec } from './supervenience_spec';
 import './notes';
-
-
-interface PuzzleState {
-    has_chill: boolean;
-    has_recognized_something_wrong: boolean;
-    is_curious_about_history: boolean;
-    has_admitted_negligence: boolean;
-    has_unpacked_culpability: boolean;
-    has_volunteered: boolean;
-    end: boolean;
-}
-
-declare module './prelude' {
-    export interface Venience extends PuzzleState {}
-
-    export interface StaticResources {
-        initial_world_narrascope: PuzzleState
-    }
-}
-
-resource_registry.initialize('initial_world_narrascope', {
-    has_chill: false,
-    has_recognized_something_wrong: false,
-    is_curious_about_history: false,
-    has_admitted_negligence: false,
-    has_unpacked_culpability: false,
-    has_volunteered: false,
-    end: false
-});
-
-const init_knowledge = resource_registry.get('initial_world_knowledge');
 
 /*
     GISTS
 
-    Topic gists ('Sam', 'yourself', ...) are declared in prelude/consider.
-    The gists below name the facets nested inside the topics, and the kinds of
-    text that get revealed when facets are interpreted.
+    Topics ('Sam', 'yourself', ...) and the facets nested inside them are
+    plain gists. Two more tags are used for revealed text:
+        description - a passage describing some part of a topic (e.g. the notebook, within "yourself")
+        insight     - text revealed by successfully interpreting a facet; never itself a facet
 */
-declare module 'gist' {
-    export interface StaticGistTypes {
-        'your friendship with Sam': [];
-        "Sam's demeanor": [];
-        'the old affinity': [];
-        'your drifting apart': [];
-        'your culpability': [];
-        // A passage describing some part of a topic (e.g. the notebook, within "yourself").
-        description: [{ subject: ValidTags }];
-        // Text revealed by successfully interpreting a facet. Never itself a facet.
-        insight: [{ subject: ValidTags }];
-    }
-}
 
-GistRenderer(['the present moment'], {
+GistRenderer({ tag: 'the present moment' }, {
     noun_phrase: () => 'the present moment',
     command_noun_phrase: () => 'the_present_moment'
 });
 
-GistRenderer(['Sam'], {
+GistRenderer({ tag: 'Sam' }, {
     noun_phrase: () => 'Sam',
     command_noun_phrase: () => 'sam'
 });
 
-GistRenderer(['yourself'], {
+GistRenderer({ tag: 'yourself' }, {
     noun_phrase: () => 'yourself',
     command_noun_phrase: () => 'myself'
 });
 
-GistRenderer(['your notebook'], {
+GistRenderer({ tag: 'your notebook' }, {
     noun_phrase: () => 'your notebook',
     command_noun_phrase: () => 'my_notebook'
 });
 
-GistRenderer(['your history with Sam'], {
+GistRenderer({ tag: 'your history with Sam' }, {
     noun_phrase: () => 'your history with Sam',
     command_noun_phrase: () => 'my_history_with_Sam'
 });
 
-GistRenderer(['your friendship with Sam'], {
+GistRenderer({ tag: 'your friendship with Sam' }, {
     noun_phrase: () => 'your friendship with Sam',
     command_noun_phrase: () => 'my_friendship_with_Sam'
 });
 
-GistRenderer(["Sam's demeanor"], {
+GistRenderer({ tag: "Sam's demeanor" }, {
     noun_phrase: () => "Sam's demeanor",
     command_noun_phrase: () => "Sam's_demeanor"
 });
 
-GistRenderer(['the old affinity'], {
+GistRenderer({ tag: 'the old affinity' }, {
     noun_phrase: () => 'the old affinity you once had for each other',
     command_noun_phrase: () => 'the_old_affinity'
 });
 
-GistRenderer(['your drifting apart'], {
+GistRenderer({ tag: 'your drifting apart' }, {
     noun_phrase: () => 'your drifting apart',
     command_noun_phrase: () => 'our_drifting_apart'
 });
 
-GistRenderer(['your culpability'], {
+GistRenderer({ tag: 'your culpability' }, {
     noun_phrase: () => 'your culpability',
     command_noun_phrase: () => 'my_culpability'
 });
 
-GistRenderer(['description'], {
-    noun_phrase: g => bottom_up(g)(
-        (tag, {subject}) => subject,
-        render_gist.noun_phrase
-    ),
-    command_noun_phrase: g => bottom_up(g)(
-        (tag, {subject}) => subject,
-        render_gist.command_noun_phrase
-    )
+GistRenderer({ tag: 'description' }, {
+    noun_phrase: g => render_gist.noun_phrase(child(g, 'subject')),
+    command_noun_phrase: g => render_gist.command_noun_phrase(child(g, 'subject'))
 });
 
-GistRenderer(['insight'], {
-    noun_phrase: g => bottom_up(g)(
-        (tag, {subject}) => `your insight about ${subject}`,
-        render_gist.noun_phrase
-    ),
-    command_noun_phrase: g => bottom_up(g)(
-        (tag, {subject}) => ['my_insight_about', GAP, subject],
-        render_gist.command_noun_phrase
-    )
-});
-
-GistRenderer(['Katya on'], {
-    noun_phrase: g => bottom_up(g)(
-        (tag, {action_description}) => `Katya's words on ${action_description}`,
-        render_gist.noun_phrase
-    ),
-    command_noun_phrase: g => bottom_up(g)(
-        (tag, {action_description}) => ["Katya's_words_on", GAP, action_description],
-        render_gist.command_noun_phrase
-    )
+GistRenderer({ tag: 'insight' }, {
+    noun_phrase: g => `your insight about ${render_gist.noun_phrase(child(g, 'subject'))}`,
+    command_noun_phrase: g => ['my_insight_about', GAP, render_gist.command_noun_phrase(child(g, 'subject'))]
 });
 
 /*
     TOPICS
 */
 
-Topic(<div gist={["the present moment"]}>
+Topic(<div gist={gist('the present moment')}>
     You and Sam are sitting together on the bus.
-</div>);
+</div> as StoryNode);
 
-Topic(<div gist={["Sam"]}>
-    <div gist={["your friendship with Sam"]}>
+Topic(<div gist={gist('Sam')}>
+    <div gist={gist('your friendship with Sam')}>
         An old friend on his way to work.
     </div>
-    <div gist={["Sam's demeanor"]}>
+    <div gist={gist("Sam's demeanor")}>
         He glances at you, smiling vaguely.
     </div>
-</div>);
+</div> as StoryNode);
 
-Topic(<div gist={["yourself"]}>
+Topic(<div gist={gist('yourself')}>
     You haven't entirely woken up.
     <br/>
-    <div gist={['description', { subject: ['your notebook']}]}>
+    <div gist={gist('description', { subject: gist('your notebook') })}>
         A <strong>thick notebook</strong> sits in your lap.
     </div>
-</div>);
+</div> as StoryNode);
 
-Topic(<div gist={["your notebook"]}>
+Topic(<div gist={gist('your notebook')}>
     You keep it with you at all times.
     <br/>
     It is filled with the words of someone very wise, who you once knew.
-</div>);
+</div> as StoryNode);
 
-Topic(<div gist={["your history with Sam"]}>
+Topic(<div gist={gist('your history with Sam')}>
     You've known Sam since you both arrived in Boston about 10 years ago.
     <br/>
     You were studying under Katya, and he was doing agricultural engineering a few buildings over.
-    <div gist={['your drifting apart']}>
+    <div gist={gist('your drifting apart')}>
         At some point along the way, you drifted apart.
     </div>
-</div>);
-
-/*
-    REVEALED TEXT
-
-    Ingested into the knowledge base up front, so that it can be grafted beneath
-    the relevant facet when the player interprets it.
-*/
-function Revealed(story: StoryNode): StoryNode {
-    init_knowledge.update(k => k.ingest(story));
-    return story;
-}
-
-const something_is_wrong = Revealed(
-    <div gist={['the old affinity']} className={insight_text_class}>
-        ...Something is wrong.
-    </div> as StoryNode
-);
+</div> as StoryNode);
 
 /*
     CONSIDERING
 */
 
 // Considering yourself for the first time makes your notebook a topic.
-ActionHandler(['consider', {subject: ['yourself']}], g => w => {
-    if (!w.has_tried.get(g)) {
-        return update(w, {
-            can_consider: _ => _.set(['your notebook'], true)
-        })
+ActionHandler({ tag: 'consider', children: { subject: { tag: 'yourself' } } }, action => w => {
+    if (w.has_tried.get(action)) {
+        return w;
     }
-    return w;
+    return update(w, {
+        can_consider: _ => _.set(gist('your notebook'), true)
+    });
 });
 
 // Considering your notebook makes your memory of note-taking available,
 // and changes how the notebook is described from then on.
-ActionHandler(['consider', { subject: ['your notebook'] }],
-    g => w => {
-        if (!w.has_tried.get(g)) {
-            const descr_gist = knowledge_gist(
-                ['description', { subject: ['your notebook']}],
-                ['yourself']
-            );
-            
-            return update(w, {
-                knowledge: k => k.update([EXACT, descr_gist], (s) => [
-                    s.replace_children(['Your notebook sits in your lap.'])
-                ]),
-                story_updates: story_updater(S.prompt(<div>
-                    Each day you try to <strong>remember something</strong> that she told you, and write it down.
-                </div>))
-            }, make_memory_available(['action description', undefined, { action: 'notes' }]));
-        }
+ActionHandler({ tag: 'consider', children: { subject: { tag: 'your notebook' } } }, action => w => {
+    if (w.has_tried.get(action)) {
         return w;
     }
-);
+    return update(w, {
+        knowledge: k => {
+            const yourself = lookup_or_throw(k, gist('yourself'));
+            const described = S.has_gist({ tag: 'description', children: { subject: { tag: 'your notebook' } } })
+                .replace_children(['Your notebook sits in your lap.']);
+            return { ...k, children: k.children.map(c => c === yourself ? apply_to(yourself, described) : c) };
+        },
+        story_updates: story_updater(S.prompt(<div>
+            Each day you try to <strong>remember something</strong> that she told you, and write it down.
+        </div>))
+    }, make_memory_available(action_description('notes')));
+});
 
 // Considering Sam for the first time makes your memory of reflection available.
-ActionHandler(['consider', { subject: ['Sam']}], g => w => {
-    if (!w.has_tried.get(g)) {
-        return update(w, make_memory_available(['action description', undefined, { action: 'reflect' }]));
+ActionHandler({ tag: 'consider', children: { subject: { tag: 'Sam' } } }, action => w => {
+    if (w.has_tried.get(action)) {
+        return w;
     }
-    return w;
+    return update(w, make_memory_available(action_description('reflect')));
 });
 
 /*
@@ -274,18 +186,23 @@ ActionHandler(['consider', { subject: ['Sam']}], g => w => {
     Merely reflecting on your impression of Sam for the first time reveals that
     something is wrong, and makes the memory of scrutiny available.
 */
-ActionHandler(['reflect', { subject: ['consider', { subject: ['Sam'] }] }], g => w => {
+
+const something_is_wrong = add_initial_knowledge(
+    <div gist={gist('the old affinity')} className={insight_text_class}>
+        ...Something is wrong.
+    </div> as StoryNode
+);
+
+ActionHandler({ tag: 'reflect', children: { subject: { tag: 'consider', children: { subject: { tag: 'Sam' } } } } }, () => w => {
     if (w.has_chill) {
         return w;
     }
-    const sam_gist = knowledge_gist(['Sam'], g[1].subject);
-    // The facet list has already been printed for this frame, so announce the
-    // facet that has just been revealed.
-    const new_facet = gist('facet', { knowledge: knowledge_gist(something_is_wrong.data.gist!, sam_gist) });
+    // The facet list has already been printed for this frame, so announce the facet that has just been revealed.
+    const new_facet = facet(gist('the old affinity'));
     return update(w,
         w => apply_facet_interpretation(w, {
-            parent_gist: sam_gist,
-            child_gist: something_is_wrong.data.gist!,
+            facet: gist('Sam'),
+            revealed: something_is_wrong,
             commentary: (frame) => [
                 frame.consequence(<div>A chill comes over you.</div>),
                 frame.consequence(<div>
@@ -302,7 +219,7 @@ ActionHandler(['reflect', { subject: ['consider', { subject: ['Sam'] }] }], g =>
             ]
         }),
         { has_chill: true },
-        make_memory_available(['action description', undefined, { action: 'scrutinize' }])
+        make_memory_available(action_description('scrutinize'))
     );
 });
 
@@ -310,10 +227,9 @@ ActionHandler(['reflect', { subject: ['consider', { subject: ['Sam'] }] }], g =>
     INTERPRETING SAM
 */
 
-// Scrutinizing Sam's demeanor
-ActionHandler(['scrutinize', { facet: ['facet', { knowledge: ['knowledge', { content: ["Sam's demeanor"] }] }] }],
+ActionHandler({ tag: 'scrutinize', children: { facet: { tag: "Sam's demeanor" } } },
     Exposition({
-        revealed_child_story: <blockquote gist={['insight', { subject: ["Sam's demeanor"] }]} className={insight_text_class}>
+        revealed: <blockquote gist={gist('insight', { subject: gist("Sam's demeanor") })} className={insight_text_class}>
             Something about his smile feels... false. A lie.
             <br/>
             And his eyes. Flicking here and there. Noncommital. Nervous.
@@ -331,16 +247,15 @@ ActionHandler(['scrutinize', { facet: ['facet', { knowledge: ['knowledge', { con
             }
             return update(w,
                 { has_recognized_something_wrong: true },
-                make_memory_available(['action description', undefined, { action: 'hammer' }])
+                make_memory_available(action_description('hammer'))
             );
         }
     })
 );
 
-// Hammering against your friendship with Sam
-ActionHandler(['hammer', { facet: ['facet', { knowledge: ['knowledge', { content: ['your friendship with Sam'] }] }] }],
+ActionHandler({ tag: 'hammer', children: { facet: { tag: 'your friendship with Sam' } } },
     Exposition({
-        revealed_child_story: <blockquote gist={['insight', { subject: ['your friendship with Sam'] }]} className={insight_text_class}>
+        revealed: <blockquote gist={gist('insight', { subject: gist('your friendship with Sam') })} className={insight_text_class}>
             You realize how long it's been since you've seen him anywhere other than the bus.
         </blockquote> as StoryNode,
         commentary: (action, frame) => [
@@ -354,7 +269,7 @@ ActionHandler(['hammer', { facet: ['facet', { knowledge: ['knowledge', { content
             }
             return update(w, {
                 is_curious_about_history: true,
-                can_consider: _ => _.set(['your history with Sam'], true)
+                can_consider: _ => _.set(gist('your history with Sam'), true)
             });
         }
     })
@@ -364,10 +279,9 @@ ActionHandler(['hammer', { facet: ['facet', { knowledge: ['knowledge', { content
     INTERPRETING YOUR HISTORY WITH SAM
 */
 
-// Hammering against your drifting apart
-ActionHandler(['hammer', { facet: ['facet', { knowledge: ['knowledge', { content: ['your drifting apart'] }] }] }],
+ActionHandler({ tag: 'hammer', children: { facet: { tag: 'your drifting apart' } } },
     Exposition({
-        revealed_child_story: <blockquote gist={['your culpability']} className={insight_text_class}>
+        revealed: <blockquote gist={gist('your culpability')} className={insight_text_class}>
             It wasn't mutual. It was <i>you</i>.
         </blockquote> as StoryNode,
         commentary: (action, frame) => [
@@ -381,10 +295,9 @@ ActionHandler(['hammer', { facet: ['facet', { knowledge: ['knowledge', { content
     })
 );
 
-// Scrutinizing your culpability
-ActionHandler(['scrutinize', { facet: ['facet', { knowledge: ['knowledge', { content: ['your culpability'] }] }] }],
+ActionHandler({ tag: 'scrutinize', children: { facet: { tag: 'your culpability' } } },
     Exposition({
-        revealed_child_story: <blockquote gist={['insight', { subject: ['your culpability'] }]} className={insight_text_class}>
+        revealed: <blockquote gist={gist('insight', { subject: gist('your culpability') })} className={insight_text_class}>
             After Katya left, you turned inward. Closed off.
             <br/>
             You stopped being curious about people like Sam.
@@ -404,7 +317,7 @@ ActionHandler(['scrutinize', { facet: ['facet', { knowledge: ['knowledge', { con
             }
             return update(w,
                 { has_unpacked_culpability: true },
-                make_memory_available(['action description', undefined, { action: 'volunteer' }])
+                make_memory_available(action_description('volunteer'))
             );
         }
     })
@@ -414,9 +327,9 @@ ActionHandler(['scrutinize', { facet: ['facet', { knowledge: ['knowledge', { con
     VOLUNTEERING
 */
 
-ActionHandler(['volunteer', { facet: ['facet', { knowledge: ['knowledge', { content: ['the old affinity'] }] }] }],
+ActionHandler({ tag: 'volunteer', children: { facet: { tag: 'the old affinity' } } },
     Exposition({
-        revealed_child_story: <blockquote gist={['insight', { subject: ['the old affinity'] }]} className={insight_text_class}>
+        revealed: <blockquote gist={gist('insight', { subject: gist('the old affinity') })} className={insight_text_class}>
             Indeed. It's time to try to do something about it.
         </blockquote> as StoryNode,
         commentary: (action, frame) => [
@@ -430,16 +343,14 @@ ActionHandler(['volunteer', { facet: ['facet', { knowledge: ['knowledge', { cont
     OUTRO
 */
 
-const outro_lock = resource_registry.get('global_lock').get_pre_runtime()('Outro');
+const outro_lock = global_lock('Outro');
 
 // Not locked to an owner itself (it has to be able to take the lock away from
 // the reflection puffers), so it checks the puzzle state by hand.
-Puffers({
-    role_brand: true,
-
+Puffers(unlocked_puffer({
     pre: world => {
         if (world.has_volunteered) {
-            return update(world, w => outro_lock.lock(w));
+            return outro_lock.lock(world);
         }
         return world;
     },
@@ -467,46 +378,53 @@ Puffers({
             )
         );
     }
-});
+}));
+
+/*
+    THE WORLD
+*/
 
 export { Venience } from './prelude';
 
-// Sealing the Exposition function runs the handlers each Action() queued for
-// scrutinizing Katya's words (which reveal the memory behind each action).
-// Those handlers ingest story into the knowledge base and add action handler
-// rules, so this has to happen before either of those is sealed.
-resource_registry.get('exposition_func')[Seal]();
-resource_registry.get('gist_renderer_dispatchers')[Seal]();
-resource_registry.get('initial_world_knowledge')[Seal]();
-
-let initial_venience_world: Venience = {
+const initial_world: Venience = {
     ...get_initial_world<Venience>(),
-    ...resource_registry.get('initial_world_prelude').get_pre_runtime(),
-    ...resource_registry.get('initial_world_metaphor').get_pre_runtime(),
-    ...resource_registry.get('initial_world_consider').get_pre_runtime(),
-    ...resource_registry.get('initial_world_narrascope').get_pre_runtime(),
-    ...resource_registry.get('initial_world_memories').get_pre_runtime()
+    owner: undefined,
+    gist: undefined,
+    current_interpretation: undefined,
+    knowledge: get_initial_knowledge(),
+    has_acquired: map(['consider', true], ['remember', true]),
+    has_tried: GistMap.empty(),
+    could_remember: [],
+    can_consider: GistMap.of(
+        [gist('the present moment'), true],
+        [gist('Sam'), true],
+        [gist('yourself'), true]
+    ),
+    has_chill: false,
+    has_recognized_something_wrong: false,
+    is_curious_about_history: false,
+    has_admitted_negligence: false,
+    has_unpacked_culpability: false,
+    has_volunteered: false,
+    end: false
 };
 
 // The opening text is the story for "the present moment", printed into frame 0.
-initial_venience_world = update(initial_venience_world, {
+const initial_world_with_opening = update(initial_world, {
     story_updates: story_updater(S.description(
-        init_knowledge.get().get_exact(['the present moment'])!)
-    )
+        lookup_or_throw(initial_world.knowledge, gist('the present moment'))
+    ))
 });
 
-const puffer_index = resource_registry.get('puffer_index').get_pre_runtime();
-export const venience_world_spec = make_puffer_world_spec(initial_venience_world, puffer_index.all(false));
+export const venience_world_spec = make_puffer_world_spec(initial_world_with_opening, all_puffers());
+set_world_spec(venience_world_spec);
 
 export function new_venience_world() {
     return world_driver(venience_world_spec);
 }
 
-declare module './prelude' {
-    export interface StaticResources {
-        venience_world_spec: WorldSpec<Venience>;
-    }
+// Apply a story update to a single node.
+import { apply_story_updates_all, Story, StoryUpdateCompilationOp } from 'story';
+function apply_to(node: StoryNode, ...updates: StoryUpdateCompilationOp[]): StoryNode {
+    return apply_story_updates_all(node as Story, updates);
 }
-
-resource_registry.initialize('venience_world_spec', venience_world_spec);
-resource_registry[Seal]();

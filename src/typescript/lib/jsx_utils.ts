@@ -1,5 +1,4 @@
 import * as CSS from 'csstype';
-import { entries, keys, set_prop, Entry } from './utils';
 
 
 export type EventHandler<E extends Event> = (this: HTMLElement, ev: E) => any;
@@ -382,28 +381,31 @@ export type HTMLAttributesWithout<T> = Omit<AllHTMLAttributes, keyof T>;
 export type MergeWithHTMLProps<Props extends object> = Props & HTMLAttributesWithout<Props>
 
 export function set_attributes(element: HTMLElement, attributes: AllHTMLAttributes): void {
-    for (const [attr, value] of entries(attributes)) {
+    for (const [attr, value] of Object.entries(attributes)) {
+        if (value === undefined) {
+            continue;
+        }
         if (attr === 'className') {
-            element.setAttribute('class', value);
+            element.setAttribute('class', String(value));
         } else if (attr === 'style') {
-            const style = element.style as CSSProperties;
-            for (const style_pair of entries(value as CSSProperties)) {
-                set_prop(style, ...style_pair);
+            const style = element.style as unknown as Record<string, string>;
+            for (const [prop, v] of Object.entries(value as CSSProperties)) {
+                style[prop] = String(v);
             }
         } else if (attr === 'on') {
-            for (const [ev_name, handler] of entries(value as EventHandlers)) {
-                element.addEventListener(ev_name, handler);
+            for (const [ev_name, handler] of Object.entries(value as EventHandlers)) {
+                element.addEventListener(ev_name, handler as EventListener);
             }
         } else {
-            element.setAttribute(attr, value);
-        }   
+            element.setAttribute(attr, String(value));
+        }
     }
 }
 
 export function remove_custom_props<Props extends object>(props: MergeWithHTMLProps<Props>, custom_keys: Record<keyof Props, null>): HTMLAttributesWithout<Props> {
-    const result = {...props};
-    for (const k of keys(custom_keys)) {
+    const result: Record<string, unknown> = {...props};
+    for (const k of Object.keys(custom_keys)) {
         delete result[k];
     }
-    return result;
+    return result as HTMLAttributesWithout<Props>;
 }

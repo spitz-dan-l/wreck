@@ -2,22 +2,6 @@ import { HTMLElementTags, MergeWithHTMLProps, set_attributes, remove_custom_prop
 import { Renderer, Props, BaseProps } from "./framework";
 
 
-export declare namespace JSX {
-    export type Element = HTMLElement;
-
-    export interface ElementChildrenAttribute {
-		children: any;
-    }
-
-	type IntrinsicProps = {
-		children?: CreateElementChildDeep
-	}
-
-	export type IntrinsicElements = {
-		[K in HTMLElementTags]: MergeWithHTMLProps<IntrinsicProps>
-	}
-}
-
 export type CreateElementChild = HTMLElement | string;
 
 type CreateElementChildDeep = CreateElementChild | CreateElementChildArrayDeep;
@@ -30,7 +14,7 @@ interface CreateElementChildArrayDeep extends Array<CreateElementChildDeep> {}
 export function createElement<P extends Props>(type: Renderer<P>, props: P, ...children: CreateElementChildDeep[]): HTMLElement;
 export function createElement(type: string, props: MergeWithHTMLProps<Props>, ...children: CreateElementChildDeep[]): HTMLElement;
 export function createElement<P extends Props>(type: Renderer<P> | string, props: MergeWithHTMLProps<P>, ...children_deep: CreateElementChildDeep[]): HTMLElement {
-	const children: CreateElementChild[] = flat_deep(children_deep); //.flat(Infinity);
+	const children = flat_deep(children_deep) as CreateElementChild[];
 	const all_props = {...props, children} as unknown as P & BaseProps;
 	
 	if (typeof type === 'string') {
@@ -40,10 +24,25 @@ export function createElement<P extends Props>(type: Renderer<P> | string, props
 	}
 }
 
-export import JSX_ = JSX;
 import { flat_deep } from "../../lib/utils";
+
+// The JSX types for files that use this createElement as their jsxFactory.
 export declare namespace createElement {
-	export import JSX = JSX_;
+	export namespace JSX {
+		export type Element = HTMLElement;
+
+		export interface ElementChildrenAttribute {
+			children: unknown;
+		}
+
+		type IntrinsicProps = {
+			children?: CreateElementChildDeep
+		}
+
+		export type IntrinsicElements = {
+			[K in HTMLElementTags]: MergeWithHTMLProps<IntrinsicProps>
+		}
+	}
 }
 
 export const intrinsic_element_renderer = (tag: string, props: MergeWithHTMLProps<Props & BaseProps>) => {

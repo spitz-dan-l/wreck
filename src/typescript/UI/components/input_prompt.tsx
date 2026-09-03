@@ -1,6 +1,6 @@
 import { Parsing } from '../../parser';
 import { child_declarator_for, Component, createElement, Renderer } from '../framework';
-import { ui_resources } from '../prelude';
+import { ui } from '../prelude';
 import { ParsedText } from './parsed_text';
 
 
@@ -9,20 +9,20 @@ export type InputPrompt = Component<InputPromptProps>;
 
 const input_prompt_child = child_declarator_for<InputPrompt>();
 
-const input_prompt_input = input_prompt_child((root) => root.querySelector('input')!)
+const input_prompt_input = input_prompt_child.element((root) => root.querySelector('input')!);
 
-const input_prompt_text = input_prompt_child<ParsedText>(
+const input_prompt_text = input_prompt_child.child<ParsedText>(
     (root) => root.querySelector('.parsed-text')! as ParsedText,
     ({parsing}) => ({parsing}),
     ParsedText);
 
-const input_prompt_cursor = input_prompt_child(
+const input_prompt_cursor = input_prompt_child.child<Cursor>(
     (root) => root.querySelector('.cursor')! as Cursor,
     ({locked}) => ({locked}),
     (props, old?) => Cursor(props, old));
 
 export const InputPrompt: Renderer<InputPromptProps> = (props, old?) => {
-    const dispatch = ui_resources.get('dispatch').get();
+    const dispatch = ui().dispatch;
 
     if (old === undefined) {
         let result = <div className="input-prompt">

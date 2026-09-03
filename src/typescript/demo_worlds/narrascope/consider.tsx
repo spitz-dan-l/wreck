@@ -1,105 +1,35 @@
-import { createElement, story_updater, Updates as S, Fragment, is_story_node, StoryNode } from "story";
-import { TopicID, resource_registry, STATIC_TOPIC_IDS, Venience } from "./prelude";
-import { bottom_up, RenderImplsForPattern, GistRenderer, gist, render_gist, Gists, EXACT } from "gist";
-import { GistAssoc, knowledge_gist } from "knowledge";
-import { StaticMap } from "lib/static_resources";
-import { Action, action_consume_spec } from "./action";
-import { keys, update, included } from "lib/utils";
-import { ParserThread, GAP } from "parser";
+/*
+    Considering a topic prints the player's impression of it: the topic's
+    passage from the knowledge base, including anything reflection has
+    revealed about it so far.
+*/
+import { child, gist, Gist, render_gist } from 'gist';
+import { included, update } from 'lib/utils';
+import { GAP, ParserThread } from 'parser';
+import { createElement, is_story_node, lookup_or_throw, StoryNode, story_updater, Updates as S } from 'story';
+import { Action, action_consume_spec } from './action';
+import { add_initial_knowledge, TOPIC_IDS, TopicID, Venience } from './prelude';
 
-type TopicGists = { [K in TopicID]: [] };
-declare module 'gist' {
-    export interface StaticGistTypes extends TopicGists {
-    }
+export type Topic = StoryNode & { data: { gist: Gist & { tag: TopicID } } };
+
+export function is_topic(x: StoryNode): x is Topic {
+    return included(x.data.gist?.tag, TOPIC_IDS);
 }
 
-interface Consider {
-    can_consider: GistAssoc<boolean, TopicID>;
-}
-
-declare module './prelude' {
-    export interface Venience extends Consider {
+// Declare a topic: a passage whose gist is one of the topic ids.
+export function Topic(story: StoryNode): Topic {
+    if (!is_story_node(story) || !is_topic(story)) {
+        throw new Error('A Topic must be a story node whose gist tag is a topic id.');
     }
-    
-    export interface StaticResources {
-        initial_world_consider: Consider;
-        topic_index: StaticMap<{ [T in TopicID]: Topic }>;
-    }
-
-    export interface StaticActionGistTypes {
-        consider: [{ subject: TopicID }];
-    }
-}
-
-resource_registry.initialize('initial_world_consider', {
-    can_consider: new GistAssoc<boolean, TopicID>([
-        { key: gist('the present moment'), value: true },
-        { key: gist('Sam'), value: true },
-        { key: gist('yourself'), value: true }
-    ])
-});
-
-const topic_index = resource_registry.initialize('topic_index', new StaticMap(STATIC_TOPIC_IDS)).get_pre_runtime();
-
-// export type Topic = 
-//     & {
-//         [ID in TopicID]: {
-//             id: ID,
-//             render_impls?: RenderImplsForPattern<ID>
-//         }
-//     }[TopicID]
-//     & {
-//         story: Fragment
-//     };
-
-export type Topic = StoryNode & { data: { gist: Gists[TopicID] }}
-
-export function assert_is_topic(x: Fragment): asserts x is Topic {
-    if (!is_story_node(x)) {
-        throw new Error('Topic must actually be a StoryNode even though the type says any Fragment. (JSX limitation.)');
-    }
-
-    if (!included(x.data.gist?.[0], keys(STATIC_TOPIC_IDS))) {
-        throw new Error('StoryNode must have a gist and its tag must be a topic id.');
-    }
-}
-
-const init_knowledge = resource_registry.get('initial_world_knowledge');
-
-// The story to print when considering a topic. Text revealed through reflection
-// is grafted onto the topic *as it appeared in a considered frame*, so prefer that
-// version when it exists, falling back to the pristine topic.
-export function topic_story(world: Venience, topic_gist: Gists[TopicID], action_gist: Gists['consider']): StoryNode {
-    return world.knowledge.get([EXACT, knowledge_gist(topic_gist, action_gist)])
-        ?? world.knowledge.get_exact(topic_gist)!;
-}
-
-export function Topic(topic: Fragment) {
-    assert_is_topic(topic);
-
-    const topic_id: TopicID = topic.data.gist![0];
-    init_knowledge.update(k => k.ingest(topic));
-
-    topic_index.initialize(topic_id, topic);
-
-    return topic;
+    return add_initial_knowledge(story);
 }
 
 Action({
     id: 'consider',
-    render_impls: {
-        noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => `your impression of ${subject}`,
-            render_gist.noun_phrase
-        ),
-        command_noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['my_impression_of', GAP, subject],
-            render_gist.command_noun_phrase,
-        ),
-        command_verb_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['consider', GAP, subject],
-            render_gist.command_noun_phrase
-        )
+    render: {
+        noun_phrase: g => `your impression of ${render_gist.noun_phrase(child(g, 'subject'))}`,
+        command_noun_phrase: g => ['my_impression_of', GAP, render_gist.command_noun_phrase(child(g, 'subject'))],
+        command_verb_phrase: g => ['consider', GAP, render_gist.command_noun_phrase(child(g, 'subject'))]
     },
 
     description_noun_phrase: 'consideration',
@@ -117,25 +47,26 @@ Action({
     puffer: {
         handle_command: (world, parser) => {
             const threads: ParserThread<Venience>[] = [];
-            for (const topic of keys(STATIC_TOPIC_IDS)) {
-                const topic_gist = [topic] as Gists[TopicID];
-                if (world.can_consider.get(topic_gist)) {
-                    threads.push(() => {
-                        const action_gist = gist('consider', {subject: topic_gist});
-                        return (
-                            parser.consume(action_consume_spec(action_gist, world), () =>
-                            parser.submit(() =>
-                            update(world, {
-                                gist: () => action_gist,
-                                story_updates: story_updater(
-                                    S.description(topic_story(world, topic_gist, action_gist))
-                                )
-                            })))
-                        );
-                    })
+            for (const topic of TOPIC_IDS) {
+                const topic_gist = gist(topic);
+                if (!world.can_consider.get(topic_gist)) {
+                    continue;
                 }
+                threads.push(() => {
+                    const action = gist('consider', { subject: topic_gist });
+                    return (
+                        parser.consume(action_consume_spec(action, world), () =>
+                        parser.submit(() =>
+                        update(world, {
+                            gist: () => action,
+                            story_updates: story_updater(
+                                S.description(lookup_or_throw(world.knowledge, topic_gist))
+                            )
+                        })))
+                    );
+                });
             }
             return parser.split(threads);
         }
     }
-})
+});

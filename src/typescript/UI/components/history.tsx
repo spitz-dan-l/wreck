@@ -5,7 +5,7 @@ import { apply_story_updates_stage, remove_eph, Story, story_to_dom } from "../.
 import { World } from "../../world";
 import { animate, AnimationState, compute_possible_effects, final_story } from "../animation";
 import { Component, Renderer } from "../framework";
-import { ui_resources } from '../prelude';
+import { ui } from '../prelude';
 import { stage_keys } from "lib/stages";
 
 type HistoryProps = {
@@ -17,7 +17,7 @@ type HistoryProps = {
 
 export type History = Component<HistoryProps>;  
 export const History: Renderer<HistoryProps> = (props, old?) => {
-    const dispatch = ui_resources.get('dispatch').get();
+    const dispatch = ui().dispatch;
     
     let root: History;
 
@@ -101,7 +101,7 @@ export function set_history_view_from_scratch(story: Story, root?: History): His
 }
 
 function push_animation(story: Story, dom_effects: Effects<History>) {
-    const effect_promise = ui_resources.get('effect_promise').get();
+    const effect_promise = ui().effect_promise;
 
     dom_effects.push(async dom => {
         await effect_promise();

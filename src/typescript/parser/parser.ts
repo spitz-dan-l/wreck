@@ -20,10 +20,8 @@
 
 */
 
-import { filter, map } from 'iterative';
 import { starts_with, tokenize, split_tokens, uncapitalize } from 'lib/text_utils';
 import { array_last, drop_keys } from 'lib/utils';
-import { type_or_kind_is } from 'lib/type_predicate_utils';
 import { RawConsumeSpec, Token, TokenAvailability, SUBMIT, AVAILABILITY_ORDER, TokenLabels, ConsumeSpec, process_consume_spec, TaintedRawConsumeSpec, NEVER_TOKEN } from './consume_spec';
 
 // class NoMatch {
@@ -201,10 +199,8 @@ export function compute_view(parse_results: TokenMatch[][], input_stream: Token[
             row = [];
         } else {
             
-            let all_partial_rows = filter(parse_results, row => array_last(row)!.status === 'PartialMatch');
-            let truncated = map(all_partial_rows, row => row.slice(0, input_stream.length));
-            // let all_partial_rows = parse_results.filter(row => array_last(row)!.status === 'PartialMatch');
-            // let truncated = all_partial_rows.map(row => row.slice(0, input_stream.length));
+            let all_partial_rows = parse_results.filter(row => array_last(row)!.status === 'PartialMatch');
+            let truncated = all_partial_rows.map(row => row.slice(0, input_stream.length));
 
             let grouped = <{[k:string]: TokenMatch[][]}> group_rows(truncated);
 
@@ -269,18 +265,14 @@ export function compute_typeahead(parse_results: TokenMatch[][], input_stream: T
         return tm.status === 'PartialMatch';
     }
 
-    let rows_with_typeahead = filter(parse_results, pr => 
+    let rows_with_typeahead = parse_results.filter(pr =>
         !(array_last(pr)!.status === 'ErrorMatch')
         && pr.slice(input_stream.length - 1).some(is_partial)
     );
-    // let rows_with_typeahead = parse_results.filter(pr => 
-    //     !(array_last(pr)!.status === 'ErrorMatch')
-    //     && pr.slice(input_stream.length - 1).some(is_partial)
-    // );
 
     type groups_of_partials = { [k: string]: (PartialMatch | undefined)[][] };
     let grouped_options: groups_of_partials = <groups_of_partials> group_rows(
-        map(rows_with_typeahead, pr => {
+        rows_with_typeahead.map(pr => {
             let start_idx = pr.findIndex(is_partial);
             let option: (PartialMatch | undefined)[] = Array(start_idx).fill(undefined);
             let elts = <PartialMatch[]>pr.slice(start_idx);
@@ -338,7 +330,7 @@ export function failed<T>(result: ParseValue<T>): result is NoMatch | ParseResta
     if (result === undefined) {
         return false;
     }
-    return result === NO_MATCH || type_or_kind_is(result, 'ParseRestart');
+    return result === NO_MATCH || is_parse_restart(result);
 }
 
 type Path = (number | Iterator<number>)[];
@@ -348,11 +340,9 @@ export class Parser {
         this.input_stream = input_stream;
         
         this.split_iter = splits_to_take[Symbol.iterator]();
-        // this.splits_to_take = splits_to_take;
     }
 
     private split_iter: Iterator<number, void>;
-    private splits_to_take: number[];
     private current_split: number = 0;
 
     input_stream: Token[];
@@ -740,8 +730,7 @@ export function traverse_thread<T>(thread: ParserThread<T>, command_filter?: (co
             n_partials++;
         }
 
-        const partial_parses = filter(res.parsing.parses, ms => array_last(ms)!.status === 'PartialMatch')
-        // let partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch')
+        const partial_parses = res.parsing.parses.filter(ms => array_last(ms)!.status === 'PartialMatch');
         const grps = group_rows(partial_parses, false);
 
         for (let k of Object.keys(grps)) {

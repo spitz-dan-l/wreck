@@ -1,55 +1,50 @@
-import { gist, Gist, gists_equal, gist_to_string, render_gist, ValidTags, match, Gists, bottom_up } from "gist";
-import { history_array, find_index } from "history";
-import { update, keys, included } from "lib/utils";
-import { stages } from "lib/stages";
-import { Parser, ParserThread, GAP, SUBMIT, RawConsumeSpec } from "parser";
-import { createElement, Hole, story_updater, Updates as S } from "story";
-import { is_in_any_simulation, search_future } from "supervenience";
-import { Action } from "../action";
-import { get_facets, render_facet_list } from "../facet";
-import { ActionID, lock_and_brand, resource_registry, Venience } from "../prelude";
-import { interpreting_class, unfocused_class, would_start_interpreting_class, would_stop_interpreting_class } from "../styles";
-import { get_thread_maker } from "../supervenience_spec";
-import { INNER_ACTION_IDS } from "./inner_action";
+/*
+    Reflection: focusing on one earlier frame, whose facets can then be
+    interpreted with the inner actions until the player ends the reflection.
 
+    The direct form, "begin reflection on X", is available when X is the
+    frame immediately before. The indirect form, "reflect on X", uses a
+    future search to first bring X into recent history.
+*/
+import { child, exact, gist, Gist, gists_equal, gist_to_string, match, render_gist } from 'gist';
+import { find_index, history_array } from 'history';
+import { stages } from 'lib/stages';
+import { included, update } from 'lib/utils';
+import { GAP, Parser, ParserThread, RawConsumeSpec, SUBMIT } from 'parser';
+import { createElement, Hole, story_updater, Updates as S } from 'story';
+import { is_in_any_simulation, search_future } from 'supervenience';
+import { Action } from '../action';
+import { ActionID, global_lock, INNER_ACTION_IDS, lock_puffer, Venience } from '../prelude';
+import { interpreting_class, unfocused_class, would_start_interpreting_class, would_stop_interpreting_class } from '../styles';
+import { get_thread_maker } from '../supervenience_spec';
+import { get_facets, render_facet_list } from './facet';
 
-declare module '../prelude' {
-    export interface StaticActionGistTypes {
-        reflect: [{ subject: ValidTags }];
-    }
-}
+const metaphor_lock = global_lock('Metaphor');
 
-const global_lock = resource_registry.get('global_lock').get_pre_runtime();
-let metaphor_lock = global_lock('Metaphor');
-
-
-// Only frames produced by these actions can be reflected on. Their gists have
-// noun phrase renderings, and their contents are in the knowledge base.
+// Only frames produced by these actions can be reflected on.
 const REFLECTABLE_ACTION_IDS: ActionID[] = ['consider', 'remember', 'notes'];
 
 function is_reflectable(w: Venience): boolean {
-    return w.gist !== undefined && included(w.gist[0], REFLECTABLE_ACTION_IDS);
+    return w.gist !== undefined && included(w.gist.tag, REFLECTABLE_ACTION_IDS);
 }
 
-function begin_contemplation(world: Venience, parser: Parser) {
+function begin_reflection(world: Venience, parser: Parser) {
     if (world.previous === undefined) {
         return parser.eliminate();
     }
 
-    let contemplatable_worlds: Venience[] = history_array(world).filter(is_reflectable);
-    
-    let gists: Gist[] = [];
-    for (let w of contemplatable_worlds) {
-        if (gists.findIndex(g2 => gists_equal(w.gist!, g2)) === -1) {
+    const reflectable_worlds = history_array(world).filter(is_reflectable);
+
+    const gists: Gist[] = [];
+    for (const w of reflectable_worlds) {
+        if (!gists.some(g => gists_equal(w.gist, g))) {
             gists.push(w.gist!);
         }
     }
 
     parser.label_context = { interp: true, filler: true };
 
-    const immediate_world: Venience | undefined = is_reflectable(world.previous) ?
-        world.previous :
-        undefined;
+    const immediate_world = is_reflectable(world.previous) ? world.previous : undefined;
 
     const direct_thread = make_direct_thread(world, immediate_world);
 
@@ -59,43 +54,30 @@ function begin_contemplation(world: Venience, parser: Parser) {
         return direct_thread(parser);
     }
 
-    const indirect_thread = make_indirect_thread(world, immediate_world, gists);
-
-    const result = parser.split([direct_thread, indirect_thread]);
-    return result
+    return parser.split([direct_thread, make_indirect_thread(world, immediate_world, gists)]);
 }
 
-function list_facets(world: Venience) {
+function list_facets(world: Venience): Venience {
     if (world.current_interpretation === undefined) {
-        throw new Error('Tried to list_facets while current_interpretation was undefined or the interpretted world had no gist.');
+        throw new Error('Tried to list facets outside of a reflection.');
     }
-
     const interp_world = find_index(world, world.current_interpretation);
-
-    if (interp_world?.gist === undefined) {
-        throw new Error('Interpretted world could not be found or had no gist.');
+    if (interp_world === undefined) {
+        throw new Error('The frame under reflection could not be found.');
     }
-
-    /*
-        TODO:
-        get_facets should potentially receive a story tree rather than assume
-        the gist of the interpretted world will be in the knowledge base?
-    */
-    const observable_facets = get_facets(world, interp_world.gist);
 
     return update(world, {
         story_updates: story_updater(
-            S.description(render_facet_list(observable_facets))
+            S.description(render_facet_list(get_facets(world, interp_world)))
         )
     });
-
 }
 
-function make_list_facets_thread(world: Venience) {
-    return (parser: Parser) =>
+function make_list_facets_thread(world: Venience): ParserThread<Venience> {
+    return (parser) =>
         parser.consume('facets', () =>
         parser.submit(() =>
-        list_facets(world)))
+        list_facets(world)));
 }
 
 function make_direct_thread(world: Venience, immediate_world: Venience | undefined): ParserThread<Venience> {
@@ -103,163 +85,132 @@ function make_direct_thread(world: Venience, immediate_world: Venience | undefin
         if (immediate_world === undefined) {
             return parser.eliminate();
         }
-        // TODO: allow array form of consume spec to glue tokens together without gaps.
-        // debugger;
-        return parser.consume(
-            ['begin_reflection on', render_gist.command_noun_phrase(immediate_world.gist!), SUBMIT], () => {
-
+        const subject = immediate_world.gist!;
         const index = immediate_world.index;
 
-        return update(world,
-            w => metaphor_lock.lock(w, index),
-            {
-                current_interpretation: index,
-                gist: () => ['reflect', { subject: immediate_world.gist! }],
-                story_updates: story_updater(
-                    S.map_worlds(world, (w, frame) =>
-                        frame.css({
-                            [unfocused_class]: w.index < index
-                        })),
-                    S.frame(index).apply(s => [
-                        s.css({
-                            [interpreting_class]: true
-                        }),
-                        s.would().css({
-                            [would_start_interpreting_class]: true
-                        })
-                    ]),
-                    S.action(<div>
-                        You analyze {render_gist.noun_phrase(immediate_world.gist!)}. A sense of focus begins to permeate your mind.
-                    </div>),
-                )
-            },
-            list_facets
-        );});
+        return parser.consume(['begin_reflection on', render_gist.command_noun_phrase(subject), SUBMIT], () =>
+            update(world,
+                w => metaphor_lock.lock(w, index),
+                {
+                    current_interpretation: index,
+                    gist: () => gist('reflect', { subject }),
+                    story_updates: story_updater(
+                        S.map_worlds(world, (w, frame) =>
+                            frame.css({ [unfocused_class]: w.index < index })),
+                        S.frame(index).css({ [interpreting_class]: true }),
+                        S.frame(index).would().css({ [would_start_interpreting_class]: true }),
+                        S.action(<div>
+                            You analyze {render_gist.noun_phrase(subject)}. A sense of focus begins to permeate your mind.
+                        </div>)
+                    )
+                },
+                list_facets
+            ));
     };
 }
 
-const indirect_simulator = 'indirect_contemplation';
+const indirect_simulator = 'indirect_reflection';
 
 // The consume spec 'begin_reflection on' is tokenized as 'begin', 'reflection', 'on'.
 function is_begin_reflection_command(cmd: RawConsumeSpec[]): boolean {
     return cmd[0]?.token === 'begin' && cmd[1]?.token === 'reflection';
 }
-                
+
 function make_indirect_thread(world: Venience, immediate_world: Venience | undefined, gists: Gist[]): ParserThread<Venience> {
     return (parser) =>
         parser.consume({
             tokens: 'reflect_on',
-            labels: {interp: true, filler: true}
+            labels: { interp: true, filler: true }
         }, () => {
-        const indirect_threads: ParserThread<Venience>[] = gists.map((g: Gist) => () => {
-            const indirect_search_id = `contemplate-indirect-${world.index}-${gist_to_string(g)}`;
+            const indirect_threads: ParserThread<Venience>[] = gists.map((g) => () => {
+                const search_id = `reflect-indirect-${world.index}-${gist_to_string(g)}`;
 
-            if (immediate_world !== undefined && gists_equal(g, immediate_world.gist!)) {
-                return parser.eliminate();
-            }
-
-            let matched = match(g)(['remember', { subject: ['action description']}]);
-            const target_gist = gist('reflect', {
-                subject: matched ? gist('notes', {subject: matched[1].subject}) : g
-            });
-
-            // move the next story hole inside the current frame
-            const world_with_hole = update(world, {
-                story_updates: story_updater(
-                    S.group_name('init_frame').apply(s => [
-                        s.story_hole().remove(),
-                        s.add(<Hole />, true)
-                    ])
-                )
-            });
-
-            const result = search_future({
-                thread_maker: get_thread_maker(),
-                goals: [w => !!w.gist && gists_equal(w.gist, target_gist)],
-                max_steps: 2,
-                space: [w => w.gist && gist_to_string(w.gist)],
-                search_id: indirect_search_id,
-                simulator_id: indirect_simulator,
-                command_filter: (w, cmd) => {
-                    // Only reflect once we've reached the target; never reflect on anything else along the way.
-                    if (w.gist && gists_equal(w.gist, target_gist[1].subject)) {
-                        return is_begin_reflection_command(cmd);
-                    }
-                    return !is_begin_reflection_command(cmd);
+                if (immediate_world !== undefined && gists_equal(g, immediate_world.gist)) {
+                    return parser.eliminate();
                 }
-            }, world_with_hole);
 
-            if (result.result === undefined) {
-                return parser.eliminate();
-            }
+                // A memory can only be remembered once, so reflect on the notes about it instead.
+                const subject = match(g, { tag: 'remember', children: { subject: { tag: 'action description' } } })
+                    ? gist('notes', { subject: child(g, 'subject') })
+                    : g;
+                const target = gist('reflect', { subject });
 
-            return parser.consume({
-                tokens: render_gist.command_noun_phrase(g),
-                labels: {interp: true, filler: true}
-            }, () =>
-            parser.submit(() =>
-                update(result.result!, {
+                // move the next story hole inside the current frame
+                const world_with_hole = update(world, {
                     story_updates: story_updater(
-                        S.frame(world.index).css({ [unfocused_class]: false })
+                        S.group_name('init_frame').story_hole().remove(),
+                        S.group_name('init_frame').add(<Hole />, true)
                     )
-                })
-            ));
-        });
+                });
 
-        return parser.split(indirect_threads);
+                const result = search_future({
+                    thread_maker: get_thread_maker(),
+                    goals: [w => gists_equal(w.gist, target)],
+                    max_steps: 2,
+                    space: [w => w.gist && gist_to_string(w.gist)],
+                    search_id,
+                    simulator_id: indirect_simulator,
+                    command_filter: (w, cmd) => {
+                        // Only reflect once we've reached the target; never reflect on anything else along the way.
+                        if (gists_equal(w.gist, subject)) {
+                            return is_begin_reflection_command(cmd);
+                        }
+                        return !is_begin_reflection_command(cmd);
+                    }
+                }, world_with_hole);
+
+                if (result.result === undefined) {
+                    return parser.eliminate();
+                }
+
+                return parser.consume({
+                    tokens: render_gist.command_noun_phrase(g),
+                    labels: { interp: true, filler: true }
+                }, () =>
+                parser.submit(() =>
+                    update(result.result!, {
+                        story_updates: story_updater(
+                            S.frame(world.index).css({ [unfocused_class]: false })
+                        )
+                    })
+                ));
+            });
+
+            return parser.split(indirect_threads);
         });
 }
 
-// TODO: This command does not animate at all.
-// The fact that it doesn't animate at all means there is a bug somewhere
-// But also, once that bug is fixed, this potentially ought to animate in two stages.
-// Fixed, the problem was that animation only works if a StoryNode gets added,
-//      previously was just a string, which is also allowed.
-function make_end_contemplation_thread(world: Venience) {
-    return (parser: Parser) => parser.consume({
+function make_end_reflection_thread(world: Venience): ParserThread<Venience> {
+    return (parser) => parser.consume({
         tokens: 'end_reflection',
         labels: { interp: true, filler: true }
     }, () => parser.submit(() => update(world, metaphor_lock.release, {
-        story_updates: story_updater(S.group_name('init_frame').apply(s => [
-            s.story_hole().remove(),
-            s.story_root().add(<Hole />, true)
-        ]), S.map_worlds(world, (w, frame) => frame.css({ [unfocused_class]: false })), S.frame(world.current_interpretation!).apply(s => [
-            s.css({
-                [interpreting_class]: false
-            }),
-            s.would().css({
-                [would_stop_interpreting_class]: true
-            })
-        ]), S.action(<div>Your mind returns to a less focused state.</div>)),
+        story_updates: story_updater(
+            S.group_name('init_frame').story_hole().remove(),
+            S.group_name('init_frame').story_root().add(<Hole />, true),
+            S.map_worlds(world, (w, frame) => frame.css({ [unfocused_class]: false })),
+            S.frame(world.current_interpretation!).css({ [interpreting_class]: false }),
+            S.frame(world.current_interpretation!).would().css({ [would_stop_interpreting_class]: true }),
+            S.action(<div>Your mind returns to a less focused state.</div>)
+        ),
         current_interpretation: undefined,
-        has_tried: _ => {
-            let result = _;
-            for (const action_gist of _.keys()) {
-                if (included(action_gist[0], keys(INNER_ACTION_IDS))) {
-                    result = result.set(action_gist, false);
-                }
-            }
-            return result;
-        }
-    })))
+        // The inner actions can be tried afresh in the next reflection.
+        has_tried: _ => _.set_many(_.keys()
+            .filter(action => included(action.tag, INNER_ACTION_IDS))
+            .map(action => [action, false]))
+    })));
 }
 
 Action({
     id: 'reflect',
-    render_impls: {
-        noun_phrase: (g) => bottom_up(g)(
-            (tag, {subject}) => `your reflection on ${subject}`,
-            render_gist.noun_phrase
-        ),
-        command_noun_phrase: (g) => bottom_up(g)(
-            (tag, {subject}) => ['my_reflection_on', GAP, subject],
-            render_gist.command_noun_phrase
-        )
+    render: {
+        noun_phrase: g => `your reflection on ${render_gist.noun_phrase(child(g, 'subject'))}`,
+        command_noun_phrase: g => ['my_reflection_on', GAP, render_gist.command_noun_phrase(child(g, 'subject'))]
     },
 
-    memory_prompt_impls: {
-        noun_phrase: (g) => 'something meditative',
-        command_noun_phrase: (g) => 'something_meditative',
+    memory_prompt: {
+        noun_phrase: 'something meditative',
+        command_noun_phrase: 'something_meditative'
     },
 
     description_noun_phrase: 'reflection',
@@ -275,21 +226,20 @@ Action({
         There was to be little time to relax or sleep in; astronomers are busy folk.
     </div>,
 
-    puffer: lock_and_brand('Metaphor', {
+    puffer: lock_puffer('Metaphor', {
         handle_command: stages(
             [2, (world, parser) => {
                 if (!world.has_acquired.get('reflect')) {
                     return parser.eliminate();
                 }
-                
+
                 if (world.current_interpretation === undefined) {
-                    return begin_contemplation(world, parser);
-                } else {
-                    return parser.split([
-                        make_list_facets_thread(world),
-                        make_end_contemplation_thread(world)
-                    ]);
+                    return begin_reflection(world, parser);
                 }
+                return parser.split([
+                    make_list_facets_thread(world),
+                    make_end_reflection_thread(world)
+                ]);
             }]
         ),
     })

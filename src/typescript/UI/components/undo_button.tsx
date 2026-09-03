@@ -1,6 +1,6 @@
 import { World } from "../../world";
 import { createElement, Component, Renderer } from "../framework";
-import { ui_resources } from '../prelude';
+import { ui } from '../prelude';
 
 export type UndoProps = {
     world: World,
@@ -9,7 +9,7 @@ export type UndoProps = {
 
 export type UndoButton = Component<UndoProps>;
 export const UndoButton: Renderer<UndoProps> = ({world, undo_selected}, old?) => {
-    const dispatch = ui_resources.get('dispatch').get();
+    const dispatch = ui().dispatch;
     
     function get_undo_class() {
         let classes = ['undo-button'];

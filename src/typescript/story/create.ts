@@ -5,18 +5,6 @@ import { split_tokens } from '../lib/text_utils';
 import { DeepFragment, Fragment, StoryNode } from './story';
 import { flat_deep } from '../lib/utils';
 
-export namespace JSX {
-    export type Element = Fragment;
-
-    export interface ElementChildrenAttribute {
-		children: any;
-    }
-
-	export type IntrinsicElements = {
-		[K in HTMLElementTags]: MergeWithHTMLProps<NodeProps>
-	}
-}
-
 // creating story trees
 export type NodeProps = (
 	& {
@@ -40,8 +28,7 @@ export function createElement<P extends {}>(tag: StoryRenderer<P>, props: P, ...
 export function createElement<P extends NodeProps>(tag: string, props: MergeWithHTMLProps<P>, ...deep_children: DeepFragment[]): StoryNode;
 export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithHTMLProps<NodeProps>, ...deep_children: DeepFragment[]): StoryNode {
     props = props || {};
-    const children = flat_deep(deep_children);
-    // const children = deep_children.flat(Infinity);
+    const children = flat_deep(deep_children) as Fragment[];
     if (typeof(tag) === 'function') {
         return tag({...props, children})
     }
@@ -76,7 +63,17 @@ export function createElement(tag: string | StoryRenderer<{}>, props: MergeWithH
     }
 }
 
-import JSX_ = JSX;
+// The JSX types for files that use this createElement as their jsxFactory.
 export declare namespace createElement {
-    export import JSX = JSX_;
+    export namespace JSX {
+        export type Element = Fragment;
+
+        export interface ElementChildrenAttribute {
+            children: unknown;
+        }
+
+        export type IntrinsicElements = {
+            [K in HTMLElementTags]: MergeWithHTMLProps<NodeProps>
+        }
+    }
 }

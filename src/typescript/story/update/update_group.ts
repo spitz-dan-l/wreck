@@ -1,6 +1,6 @@
 import { StoryUpdateSpec, StoryUpdateStage, StoryUpdatePlan } from "./update";
 import { Stages, stage_entries, stages } from "../../lib/stages";
-import { append, update, Updater, map } from "../../lib/utils";
+import { append, update } from "../../lib/utils";
 
 export interface StoryUpdateGroups {
     init_frame: 'Updates that initialize the new frame and move the storyhole forward';
@@ -113,10 +113,8 @@ export function move_group(plan: StoryUpdatePlan['effects'], name: keyof StoryUp
 
     const found_grp = plan.get(source_stage)![found_grp_i];
 
-    return update(plan, stages(
-        [source_stage, {
-            [found_grp_i]: undefined
-        }],
-        [dest_stage, append(found_grp)]
-    ));
+    const result = new Stages(plan);
+    result.set(source_stage, plan.get(source_stage)!.filter((_, i) => i !== found_grp_i));
+    result.set(dest_stage, [...(plan.get(dest_stage) ?? []), found_grp]);
+    return result;
 }

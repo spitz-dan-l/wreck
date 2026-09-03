@@ -38,95 +38,45 @@ Type-checks only, without emitting anything.
 Same as `npm test`, but runs the unit tests in debug mode, so you can insert breakpoints and step through interactively.
 
 #### `npm run build-dev`
-Bundles the game (with source maps) and saves it in `dist/venience.js`. It will Just Work if you open `dist/venience.html` in your browser. NOTE: DOES NOT DO TYPE CHECKING. The entry point is `src/typescript/entry_points/build_dev.tsx`, which has a list of commands to replay on startup so you can skip ahead while developing.
+Bundles the game with esbuild (with source maps) and saves it in `dist/venience.js`. It will Just Work if you open `dist/venience.html` in your browser. NOTE: DOES NOT DO TYPE CHECKING. The entry point is `src/typescript/entry_points/build_dev.tsx`, which has a list of commands to replay on startup so you can skip ahead while developing.
 
 #### `npm run build`
-Builds the game in production mode- no source maps, smaller bundle, faster renders. Also saves to `dist/venience.js` so `build` and `build-dev` overwrite each other. The entry point is `src/typescript/entry_points/build_prod.tsx`.
+Builds the game in production mode- minified, no source maps. Also saves to `dist/venience.js` so `build` and `build-dev` overwrite each other. The entry point is `src/typescript/entry_points/build_prod.tsx`.
 
 #### Playing from the command line
 After `npm run compile`, `node scripts/play.js "consider sam" "remember something meditative" ...` applies a sequence of commands to a fresh game, printing each frame's text and the commands available at the end. This is the quickest way to check game logic without a browser. `node scripts/search_stats.js` times the future searches the tests run.
 
 ## Architecture
 
-The game is mostly original code. The only "framework-like" dependency is [TypeStyle](https://github.com/typestyle/typestyle), for programattically managing CSS. Earlier in its development I used React for UI, but that has been replaced by a hand-rolled library, which is similar in some ways to React but more minimal and targetted. Everything else is a collection of original, focused modules which together make the game.
+The game is mostly original code, with no framework dependency beyond [TypeStyle](https://github.com/typestyle/typestyle) for CSS. It is built with TypeScript 7 (strict) and bundled with esbuild.
 
+#### World and puffers (`world.tsx`, `puffer.ts`, `lock.ts`, `history.ts`)
 
-The code organization quality, broken down by topic:
+The game state is an immutable `World`: the current story, pending story updates, and a link to the previous world, so the whole history is always available. Each command produces a new world. Behavior is composed from *puffers*: bundles of `pre` / `handle_command` / `post` handlers, optionally split into numbered stages, that are knitted together into one world spec. A lock lets one part of the game (say, a reflection) own the whole command space for a while.
 
-#### Story Structure
+#### Parser (`parser/`)
 
-This is a text-based, narrative-focused game, and as such an important structure within the code is the story itself. The game has its own Story tree structure, which is designed with three purposes in mind:
+The parser runs many *threads* over the input at once; a thread can split into alternatives and consume tokens with a small spec language. From the union of all threads it derives whether the input is valid, how to color each word, and the typeahead options. See `parser/parser.ts`.
 
- - **Easy translation to HTML.**
+#### Story (`story/`)
 
-    The Story structure is a particular flavor of a Virtual Dom, and is used by the UI side to render what the player sees. Because the Story structure is a near-direct layer over an HTML DOM, it supports arbitrary formatting, styling and layout. It uses TSX to mimic HTML syntax almost exactly.
- 
-    Currently it does not seem worthwhile at all to design an alternative tree structure for Stories over "plain HTML + CSS", though that day may come, if a truly clean abstraction barrier can be found. For now, I don't know well enough what sorts of style rules and html structures I'll be using across the whole game, so it seems least cumbersome to just express what I want directly as (virtual) HTML+CSS.
+Text is a story tree, a small virtual DOM built with JSX (`story/create.ts`). Updates to it are plain data: a query selecting nodes plus an op to apply, grouped and staged so that they can be animated in order (`story/update/`). The same op both transforms the tree and, when animating, mutates the page.
 
- - **Easy to specify animated changes, and ordered sequences of changes.**
+#### Gists (`gist/`)
 
-    This is a text game, and the text changes smoothly and dynamically as the player types and enters commands. The text can be changed, colored, highlighted, outlined, and otherwise styled to emphasize things or convey meanings.
- 
-    It is important that when these styling effects are applied, it happens in an orderly fashion, so that the player is not overwhelmed or confused by the changes on screen. If a passage of text would be editted, this change must be *visually telegraphed* for the player, so that their attention is drawn to the text before the edit happens, and it happens smoothly. Specifying these updates, and sequencing and timing them, needs to be easy to do for the game author.
+A gist is a plain `{tag, children, params}` value describing what a passage is *about*, e.g. `consider(subject: Sam)`. Story nodes can carry a gist, which is how the game refers to text by meaning: to reflect on it, to reveal more beneath it, or to render it as a phrase or a command. Gist *patterns* (partial gists) select gists; renderers and action handlers dispatch on them.
 
-    To address this, the game has a data structure and set of composition operators for specifying, combining and sequencing updates to the story tree.
+#### Knowledge (`story/knowledge.ts`)
 
- - **Easy to index, query and transform according to *narrative-level* properties.**
- 
-    Nodes in the Story tree can have a special kind of attribute, a `gist`. The `gist` is its own data structure which represents, in brief, what that node of story is "about", with respect to the game's narrative. Gists are themselves composable data structures, so they can represent arbitrarily specific and complex ideas. For instance, if a node of story contains a text passage describing *the player character's doubt about their previously-held beliefs about another character's motivations*, this can be represented with a `gist`. Roughly, it might look like:
+Knowledge is just a story tree in the world state: the canonical passage for every gist the player can consider. When an interpretation reveals text, it is grafted beneath the passage both in the frame where it was printed (retroactively, animated) and in the knowledge tree, so that considering the topic again shows it.
 
-   ```typescript
-    ['my doubts', {subject:
-        ['my beliefs', {subject:
-            ['motivations', {subject:
-                ['Sam']
-            }]
-        }]
-    }]
-    ```
+#### UI (`UI/`)
 
-   The above gist structure, set to the relevant story node, allows for a variety of affordances to the game author:
-    - Easy translation from gists to plain-english summaries of the story.
-    - Indexing the story structure by narrative-level concepts, and querying and updating of pieces of story that match a given set of constraints.
+A minimal renderer: components are DOM elements, re-rendered by diffing props rather than a virtual DOM, so that they can mutate the page directly for animations. A reducer loop dispatches actions and re-renders on the next tick.
 
-    This creates possibilities for the game to refer to very specific aspects of its own narrative. In traditional written fiction, this happens ubiquitously, often without the reader even noticing. In an interactive story, it is difficult to really open up the story in this way to interrogation without the right data structures to represent the story with an eye towards its *meaning*.
+#### The demo (`demo_worlds/narrascope/`)
 
-    **Limitations**
- 
-    Right now each Story node can only have one Gist assigned to it. In reality, we may look back on the same passage of text and consider it from a variety of different contexts, not just one. It may be useful to add the capacity for story nodes to carry multiple gists, and potentially have some additional representation of the particular context/perspective from which a given gist applies to the story node. However, I haven't reached a point in the game's development where this wasn't solved by "wrapping" the same story node in two or more different "perspective-shifting" nodes, with different gists on the wrappers to represent the different perspectives.
-
-    I *think* the most-general form of this construct would involve multiple "parsers" of whole story trees, one parser for each "context/perspective". A given "perspective" would parse a whole story tree, and restructure or reassign gists to its nodes. The perspectives would be isomorphic, providing the ability to translate between perspectives losslessly. Some "hidden variables" would likely have to be included in order to recover all the information.
-
-
-#### UI
-
-A minimal UI engine is supplied for translating Story trees into DOM nodes. It is inspired by React and other reactive-type UI frameworks, with some important differences.
-
-1. Components mutate their part of the DOM directly according to updates in the props they are passed. They are not required to use a virtual DOM representation at all, although many *do*, by receiving Story trees in their props and calling the provided library function to convert them to DOM trees when they run.
-
-2. 
-
-Quite disorganized/spaghetti-like. I'm not a very experienced (or enthusiastic) UI developer, and there's been a fair amount of "tweak til it works".
-
-See `src/components/` for the react component code. See `src/typescript/main.tsx` for the entrypoint. See `dist/index.html` for the stub html file.
-
-#### Parser
-
-Quite disorganized but powerful. The parser itself is arguably the cornerstone of Venience World, and the style of parsing implemented is quite powerful; it supports arbitrary look ahead with multiple possible independent "consumer threads". The act of instructing the parser how to consume things also automatically produces the typeahead/autocomplete that is used in the UI.
-
-See `src/typescript/parser.ts`.
-
-#### Command resolution
-
-Decent. The update model for the game is simple, and as such it fits in your head easily.
-
-See `src/typescript/commands.ts`.
-
-#### World content/logic management
-
-Decent but underdeveloped. Given the novelty of the mechanics in Venience World, it has been necessary to invent new ways of organizing and abstracting over game logic. That is an ongoing process, but a fun and gratifying one.
-
-See `src/typescript/venience`.
+`prelude.ts` defines the world state and the registries the other modules fill in as they load; `action.tsx` the verbs; `reflect/` the reflection mechanic and inner actions; `narrascope.tsx` the topics, the puzzle, and the world itself.
 
 ## Future plans
 

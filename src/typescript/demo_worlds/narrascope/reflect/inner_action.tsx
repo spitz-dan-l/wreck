@@ -1,150 +1,84 @@
-import { Gists, Gist, EXACT } from "gist";
-import { Updates as S, StoryNode, UpdatesBuilder, StoryUpdaterSpec, story_updater } from "../../../story";
-import { Knowledge } from "../../../knowledge";
-import { Venience, resource_registry } from "../prelude";
-import { update, if_not_null, if_not_null_array, if_array, compute_const } from "lib/utils";
-import { misinterpret_facet_class, interpret_facet_class, would_interpret_facet_class, cite_facet_class, would_cite_facet_class } from "../styles";
-import { StaticNameIndex, Seal } from "lib/static_resources";
+/*
+    Interpreting a facet: what happens when an inner action is applied to a
+    facet of the frame under reflection.
 
+    A successful interpretation reveals text. The revealed text is grafted
+    beneath the facet's passage, both in the past frame (retroactively, with
+    an animation) and in the knowledge base, so that considering the topic
+    again shows it too.
+*/
+import { child, exact, Gist } from 'gist';
+import { range, update } from 'lib/utils';
+import { graft, has_revealed, StoryNode, story_updater, StoryUpdaterSpec, Updates as S, UpdatesBuilder } from 'story';
+import { Venience } from '../prelude';
+import { cite_facet_class, interpret_facet_class, misinterpret_facet_class, would_cite_facet_class, would_interpret_facet_class } from '../styles';
+import { facet } from './facet';
 
-interface StaticInnerActionGistTypes {
-    // contemplation-level actions
-    scrutinize:[{ facet: 'facet' }];
-    hammer: [{ facet: 'facet' }];
-    volunteer: [{ facet: 'facet' }];
-}
-
-export type InnerActionID = keyof StaticInnerActionGistTypes;
-export const INNER_ACTION_IDS: StaticNameIndex<InnerActionID> = {
-    scrutinize: null,
-    hammer: null,
-    volunteer: null
-};
-
-declare module '../prelude' {
-    export interface StaticActionGistTypes extends StaticInnerActionGistTypes {
-    }
-
-    export interface StaticResources {
-        exposition_func: typeof Exposition;
-    }
-}
-
-type InnerActionGist = Gists[InnerActionID];
-
-type Exposition = {
-    // Text grafted beneath the facet (in the past frame) when the action succeeds.
-    // Its presence marks the action as a successful interpretation.
-    revealed_child_story?: StoryNode,
-    knowledge_updater?: (action_gist: InnerActionGist, k: Knowledge) => Knowledge,
-    // Present-tense text added to the current frame.
-    commentary?: (action_gist: InnerActionGist, current_frame_builder: UpdatesBuilder, w: Venience) => StoryUpdaterSpec[],
-    // Any further changes to the world (puzzle flags, newly available memories, etc.)
-    world_updater?: (action_gist: InnerActionGist, w: Venience) => Venience,
-};
-
-const init_knowledge = resource_registry.get('initial_world_knowledge');
-
-export function Exposition(exposition: Exposition) {
-    const child_gist = if_not_null(exposition.revealed_child_story, (s) => {
-        if (s.data.gist === undefined) {
-            throw new Error('Passed in a reavealed_child_story without a gist attribute set. Must be set.');
-        }
-        init_knowledge.update(k => k.ingest(s));
-        return s.data.gist;
-    });
-
-    return <G extends InnerActionGist>(action_gist: G) => (world: Venience): Venience => {
-        const parent_gist = action_gist[1].facet[1].knowledge;
-        
-        return update(world,
-            w => apply_facet_interpretation(w, {
-                parent_gist,
-                child_gist,
-                commentary: if_not_null(exposition.commentary,
-                    (c) => (frame, world) => c(action_gist, frame, world))
-            }),
-            {
-                ...if_not_null(exposition.knowledge_updater, (ku) => ({
-                    knowledge: k => ku(action_gist, k)
-                }))
-            },
-            w => exposition.world_updater === undefined ? w : exposition.world_updater(action_gist, w)
-        );
-    }
-}
-
-// Sealed by the world module once every Action() has queued its handlers
-// (see narrascope.tsx); sealing here would run those callbacks too early.
-resource_registry.initialize('exposition_func', Exposition);
-
-declare module '../../../story/update/update_group' {
+declare module 'story/update/update_group' {
     interface StoryUpdateGroups {
-        'interpretation_effects': 'Effects on text that occurs in the past.'
+        interpretation_effects: 'Effects on text in past frames, animated before the present-tense text.';
     }
+}
+
+export type Interpretation = {
+    // Text grafted beneath the facet when the action succeeds. Its presence marks the action as a success.
+    revealed?: StoryNode,
+    // Present-tense text added to the current frame.
+    commentary?: (action: Gist, current_frame: UpdatesBuilder, w: Venience) => StoryUpdaterSpec[],
+    // Any further changes to the world (puzzle flags, newly available memories, ...).
+    world_updater?: (action: Gist, w: Venience) => Venience,
+};
+
+// An action handler for an inner action (a gist with a `facet` child).
+export function Exposition(spec: Interpretation) {
+    return (action: Gist) => (world: Venience): Venience => {
+        const result = apply_facet_interpretation(world, {
+            facet: child(action, 'facet'),
+            revealed: spec.revealed,
+            commentary: spec.commentary === undefined ? undefined
+                : (frame, w) => spec.commentary!(action, frame, w)
+        });
+        return spec.world_updater === undefined ? result : spec.world_updater(action, result);
+    };
 }
 
 export type FacetInterpretationSpec = {
-    parent_gist: Gists['knowledge'],
-    child_gist?: Gist,
-    commentary?: (current_frame_builder: UpdatesBuilder, w: Venience) => StoryUpdaterSpec[]
-}
+    facet: Gist,
+    revealed?: StoryNode,
+    commentary?: (current_frame: UpdatesBuilder, w: Venience) => StoryUpdaterSpec[]
+};
 
-/*
-    Interpret a facet (identified by its knowledge gist, i.e. its position in the
-    story) in the frame currently under reflection:
-        - styles the facet's text as (mis)interpreted, and the facet's entry in the
-          facet list as cited,
-        - if child_gist is given, grafts that revealed text beneath the facet
-          (once), retroactively, in the past frame,
-        - adds any present-tense commentary to the current frame.
-*/
-export function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, commentary}: FacetInterpretationSpec) {
-    // add a new animation stage where we do interpretation stuff first,
-    // then add any present tense stuff second.
-    const interp_class = child_gist === undefined ? misinterpret_facet_class : interpret_facet_class;
+export function apply_facet_interpretation(world: Venience, spec: FacetInterpretationSpec): Venience {
+    if (world.current_interpretation === undefined) {
+        throw new Error('Tried to interpret a facet outside of a reflection.');
+    }
+    const revealed_gist = spec.revealed?.data.gist;
+    if (spec.revealed !== undefined && revealed_gist === undefined) {
+        throw new Error('Revealed text must have a gist.');
+    }
+    const already_revealed = revealed_gist !== undefined && has_revealed(world.knowledge, exact(spec.facet), revealed_gist);
+
+    // The frames from the one under reflection up to the current one.
+    const region = range(world.current_interpretation, world.index + 1);
+    const passage = () => S.group_name('interpretation_effects').group_stage(-1).frame(region).has_gist(exact(spec.facet));
+    const listing = () => S.group_name('interpretation_effects').group_stage(-1).frame(region).has_gist(exact(facet(spec.facet)));
+
+    const interp_class = spec.revealed === undefined ? misinterpret_facet_class : interpret_facet_class;
 
     return update(world, {
         story_updates: story_updater(
+            // Interpretation effects animate first, then the present-tense text.
             S.group_name('init_frame').group_stage(0).move_group_to(-1),
-            ...if_not_null_array(commentary, (c) => [
-                c(S.group_stage(0).frame(), world)
-            ])
-        ),
-        knowledge: k =>
-            k.update([EXACT, parent_gist], b => [b
-                .group_name('interpretation_effects')
-                .group_stage(-1)
-                .apply(b => [
-                    b.css({ [interp_class]: true }),
-                    b.would().css({ [would_interpret_facet_class]: true })
-                ]),
-                ...if_array(() => {
-                    if (child_gist === undefined) {
-                        return false;
-                    }
-                    const parent_story = k.get_exact(parent_gist);
-                    if (parent_story === undefined) {
-                        throw new Error('Tried to add a timbre to a story whose gist is not in knowledge base.');
-                    }
 
-                    const has_timbre_already = S.children(S.has_gist(child_gist)).query(parent_story);
-                    return has_timbre_already.length === 0;
-                }, () => {
-                        const child_story = k.get_exact(child_gist!)!
-                        return [b
-                            .group_name('interpretation_effects')
-                            .group_stage(-1)
-                            .add(child_story)
-                        ];
-                    })
-            ]).update(['facet', { knowledge: parent_gist }], b => b
-                .group_name('interpretation_effects')
-                .group_stage(-1)
-                .apply(b => [
-                    b.css({ [cite_facet_class]: true }),
-                    b.would().css({ [would_cite_facet_class]: true })
-                ])
-            )
+            passage().css({ [interp_class]: true }),
+            S.frame(region).has_gist(exact(spec.facet)).would().css({ [would_interpret_facet_class]: true }),
+            ...(spec.revealed !== undefined && !already_revealed ? [passage().add(spec.revealed)] : []),
+
+            listing().css({ [cite_facet_class]: true }),
+            S.frame(region).has_gist(exact(facet(spec.facet))).would().css({ [would_cite_facet_class]: true }),
+
+            ...(spec.commentary === undefined ? [] : spec.commentary(S.group_stage(0).frame(), world))
+        ),
+        knowledge: k => (spec.revealed !== undefined && !already_revealed) ? graft(k, exact(spec.facet), spec.revealed) : k
     });
 }

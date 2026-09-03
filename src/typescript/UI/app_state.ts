@@ -12,13 +12,14 @@ export type AppState = {
     updater: (world: World, command: RawInput) => CommandResult<World>
 }
 
-export function initialize_app_state(initialize_world: () => Pick<WorldDriver<World>, 'initial_result' | 'update'>): AppState {
+export function initialize_app_state<W extends World>(initialize_world: () => Pick<WorldDriver<W>, 'initial_result' | 'update'>): AppState {
     const {initial_result, update} = initialize_world();
     return {
         typeahead_index: 0,
         undo_selected: false,
         command_result: initial_result,
-        updater: update,
+        // The UI only ever hands back worlds it received from this driver.
+        updater: update as unknown as AppState['updater'],
         animation_state: new_animation_state(initial_result.world, undefined)
     };
 }

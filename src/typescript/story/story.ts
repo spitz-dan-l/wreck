@@ -3,8 +3,6 @@ import { HTMLAttributesWithout } from 'lib/jsx_utils';
 import { update } from 'lib/update';
 import { NodeProps } from './create';
 import { Gist } from 'gist';
-import { zipLongest } from 'iterative';
-import {dangerous_assert, type_or_kind_name} from 'lib/type_predicate_utils';
 import { deep_equal, drop_keys } from 'lib/utils';
 
 export type StoryHole = { kind: 'StoryHole' };
@@ -271,29 +269,19 @@ export function structurally_equal(story1: Fragment, story2: Fragment): boolean 
         return true;
     }
 
-    const tk1 = type_or_kind_name(story1), tk2 = type_or_kind_name(story2);
-    if (tk1 !== tk2) {
-        return false;
+    if (typeof story1 === 'string' || typeof story2 === 'string') {
+        return story1 === story2;
     }
-
-    if (tk1 === 'StoryHole') {
-        return true;
+    if (is_story_hole(story1) || is_story_hole(story2)) {
+        return is_story_hole(story1) && is_story_hole(story2);
     }
-
-    dangerous_assert<StoryNode>(story1);
-    dangerous_assert<StoryNode>(story2);
 
     if (!deep_equal(drop_keys(story1, 'key', 'children'), drop_keys(story2, 'key', 'children'))) {
         return false;
     }
 
-    for (const [c1, c2] of zipLongest(story1.children, story2.children)) {
-        if (c1 === undefined || c2 === undefined) {
-            return false;
-        }
-        if (!(structurally_equal(c1, c2))) {
-            return false;
-        }
+    if (story1.children.length !== story2.children.length) {
+        return false;
     }
-    return true;
+    return story1.children.every((c1, i) => structurally_equal(c1, story2.children[i]));
 }

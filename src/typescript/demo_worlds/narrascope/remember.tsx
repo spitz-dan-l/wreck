@@ -1,51 +1,21 @@
-import { bottom_up, Gist, gist, render_gist, ValidTags, Gists, GistRenderer } from "gist";
-import { append, map, update } from 'lib/utils';
-import { createElement, story_updater, Updates as S } from 'story';
-import { Action, ActionHandler, action_consume_spec } from "./action";
-import { resource_registry, Venience } from './prelude';
+/*
+    Remembering: recalling one of Katya's lessons, which teaches an action.
+    Memories become available as the puzzle progresses.
+*/
+import { child, gist, Gist, GistRenderer, render_gist } from 'gist';
+import { update } from 'lib/utils';
+import { GAP, SUBMIT } from 'parser';
+import { createElement, lookup_or_throw, story_updater, Updates as S } from 'story';
+import { Action, action_consume_spec } from './action';
+import { ActionHandler, Venience } from './prelude';
 import { insight_text_class } from './styles';
-import { GAP, SUBMIT } from "parser";
-
-
-interface Memories {
-    could_remember: Gist[];
-}
-
-declare module './prelude' {
-    export interface Venience extends Memories {
-    }
-
-    export interface StaticResources {
-        initial_world_memories: Memories
-    }
-
-    export interface StaticActionGistTypes {
-        remember: [{ subject: ValidTags }];
-    }
-}
-
-declare module 'gist' {
-    export interface StaticGistTypes {
-        'memory prompt': [{ memory: 'remember' }];
-    }
-}
-
-resource_registry.initialize('initial_world_memories', {
-    could_remember: []
-});
 
 Action({
     id: 'remember',
-    render_impls: {
-        noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => 'your memory of ' + subject,
-            render_gist.noun_phrase
-        ),
-        command_noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => ['my_memory of', subject],
-            render_gist.command_noun_phrase
-        ),
-        command_verb_phrase: (g) => ['remember', GAP, render_gist.command_noun_phrase(['memory prompt', {memory: g}])]
+    render: {
+        noun_phrase: g => `your memory of ${render_gist.noun_phrase(child(g, 'subject'))}`,
+        command_noun_phrase: g => ['my_memory of', render_gist.command_noun_phrase(child(g, 'subject'))],
+        command_verb_phrase: g => ['remember', GAP, render_gist.command_noun_phrase(gist('memory prompt', { memory: g }))]
     },
 
     description_noun_phrase: 'memory',
@@ -66,13 +36,12 @@ Action({
             }
 
             return parser.split(world.could_remember.map((memory, i) => () => {
-            // const memory = world.could_remember[0];
-                const action_gist = gist('remember', {subject: memory});
+                const action = gist('remember', { subject: memory });
                 return (
-                    parser.consume([action_consume_spec(action_gist, world), SUBMIT], () =>
+                    parser.consume([action_consume_spec(action, world), SUBMIT], () =>
                     update(world, {
-                        gist: () => action_gist,
-                        could_remember: _ => { const r = [..._]; r.splice(i, 1); return r }
+                        gist: () => action,
+                        could_remember: _ => _.filter((m, j) => j !== i)
                     }))
                 );
             }));
@@ -80,33 +49,30 @@ Action({
     }
 });
 
-ActionHandler(['remember'], (action_gist) => (world) =>
+ActionHandler({ tag: 'remember' }, (action) => (world) =>
     update(world, {
         story_updates: story_updater(
-            S.description(world.knowledge.get_exact(action_gist)!)
+            S.description(lookup_or_throw(world.knowledge, action))
         )
     })
 );
 
-GistRenderer(['memory prompt'], {
-    noun_phrase: (g) => 'something',
-    command_noun_phrase: (g) => 'something'
+// The vague prompt, when an action doesn't have its own: "remember something".
+GistRenderer({ tag: 'memory prompt' }, {
+    noun_phrase: () => 'something',
+    command_noun_phrase: () => 'something'
 }, 5);
 
-export function make_memory_available(subject_gist: Gist) {
-    return (world: Venience) =>  {
-        const memory_gist: Gists['remember'] = ['remember', {subject: subject_gist}];
-
-        const memory_prompt = <div>
-            You feel as though you might <strong>remember {render_gist.noun_phrase(['memory prompt', {memory: memory_gist}])}</strong>...
-        </div>
-    
+export function make_memory_available(subject: Gist) {
+    return (world: Venience): Venience => {
+        const memory = gist('remember', { subject });
         return update(world, {
-            could_remember: append(subject_gist),
+            could_remember: _ => [..._, subject],
             story_updates: story_updater(
-                S.prompt(memory_prompt)
+                S.prompt(<div>
+                    You feel as though you might <strong>remember {render_gist.noun_phrase(gist('memory prompt', { memory }))}</strong>...
+                </div>)
             )
         });
-        
     };
 }

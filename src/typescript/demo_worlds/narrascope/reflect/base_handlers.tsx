@@ -1,26 +1,28 @@
-import { bottom_up, gist, Gist, render_gist, Gists } from "gist";
-import { find_historical } from 'history';
-import { keys, update } from 'lib/utils';
-import { ParserThread, GAP, SUBMIT } from 'parser';
-import { createElement, StoryNode } from 'story';
-import { Action, ActionHandler, action_consume_spec, ACTION_HANDLER_FALLTHROUGH_STAGE } from "../action";
-import { get_facets } from '../facet';
-import { lock_and_brand, Puffers, Venience } from '../prelude';
-import { Exposition, INNER_ACTION_IDS, InnerActionID } from "./inner_action";
+/*
+    The inner actions: scrutinize, hammer, volunteer. Each is an Action with
+    a default handler for when it is applied to a facet it does nothing to.
+    Specific facet handlers live with the content (narrascope.tsx).
+*/
+import { child, gist, render_gist } from 'gist';
+import { find_index } from 'history';
+import { update } from 'lib/utils';
+import { GAP, ParserThread, SUBMIT } from 'parser';
+import { createElement } from 'story';
+import { Action, action_consume_spec } from '../action';
+import { ACTION_HANDLER_FALLTHROUGH_STAGE, ActionHandler, INNER_ACTION_IDS, lock_puffer, Puffers, Venience } from '../prelude';
+import { get_facets } from './facet';
+import { Exposition } from './inner_action';
 
 // scrutinize
 Action({
     id: 'scrutinize',
-    render_impls: {
-        command_verb_phrase: (g) => bottom_up(g)(
-            (tag, {facet}) => ['scrutinize', GAP, facet],
-            render_gist.command_noun_phrase
-        )
+    render: {
+        command_verb_phrase: g => ['scrutinize', GAP, render_gist.command_noun_phrase(child(g, 'facet'))]
     },
 
-    memory_prompt_impls: {
-        noun_phrase: () => 'something focused',
-        command_noun_phrase: () => 'something_focused'
+    memory_prompt: {
+        noun_phrase: 'something focused',
+        command_noun_phrase: 'something_focused'
     },
 
     description_noun_phrase: 'scrutiny',
@@ -37,10 +39,10 @@ Action({
     </div>
 });
 
-ActionHandler(['scrutinize'], 
+ActionHandler({ tag: 'scrutinize' },
     Exposition({
         commentary: (action, frame) => [
-            frame.description(<div>There is nothing particular about {render_gist.noun_phrase(action[1].facet)}</div>)
+            frame.description(<div>There is nothing particular about {render_gist.noun_phrase(child(action, 'facet'))}</div>)
         ]
     }),
     ACTION_HANDLER_FALLTHROUGH_STAGE
@@ -49,16 +51,13 @@ ActionHandler(['scrutinize'],
 // hammer
 Action({
     id: 'hammer',
-    render_impls: {
-        command_verb_phrase: (g) => bottom_up(g)(
-            (tag, {facet}) => ['hammer_against the_foundations_of', facet],
-            render_gist.command_noun_phrase
-        )
+    render: {
+        command_verb_phrase: g => ['hammer_against the_foundations_of', render_gist.command_noun_phrase(child(g, 'facet'))]
     },
 
-    memory_prompt_impls: {
-        noun_phrase: () => 'something blasphemous',
-        command_noun_phrase: () => 'something_blasphemous'
+    memory_prompt: {
+        noun_phrase: 'something blasphemous',
+        command_noun_phrase: 'something_blasphemous'
     },
 
     description_noun_phrase: 'the Hammer',
@@ -77,29 +76,25 @@ Action({
     </div>
 });
 
-ActionHandler(['hammer'],
+ActionHandler({ tag: 'hammer' },
     Exposition({
-        commentary: (action, frame, world) => [
-            frame.description(<div>Despite your attempts to dismantle {render_gist.noun_phrase(action[1].facet)}, its foundation appears strong.</div>)
+        commentary: (action, frame) => [
+            frame.description(<div>Despite your attempts to dismantle {render_gist.noun_phrase(child(action, 'facet'))}, its foundation appears strong.</div>)
         ]
     }),
-    ACTION_HANDLER_FALLTHROUGH_STAGE    
+    ACTION_HANDLER_FALLTHROUGH_STAGE
 );
-
 
 // volunteer
 Action({
     id: 'volunteer',
-    render_impls: {
-        command_verb_phrase: (g) => bottom_up(g)(
-            (tag, {facet}) => ['volunteer to_foster', facet],
-            render_gist.command_noun_phrase
-        )
+    render: {
+        command_verb_phrase: g => ['volunteer to_foster', render_gist.command_noun_phrase(child(g, 'facet'))]
     },
 
-    memory_prompt_impls: {
-        noun_phrase: () => 'something generous',
-        command_noun_phrase: () => 'something_generous'
+    memory_prompt: {
+        noun_phrase: 'something generous',
+        command_noun_phrase: 'something_generous'
     },
 
     description_noun_phrase: 'the Volunteer',
@@ -116,47 +111,42 @@ Action({
     </div>
 });
 
-ActionHandler(['volunteer'],
+ActionHandler({ tag: 'volunteer' },
     Exposition({
-        commentary: (action, frame, world) => [
-            frame.description(<div>You don't feel as if a mere act of will could improve {render_gist.noun_phrase(action[1].facet)}.</div>)
+        commentary: (action, frame) => [
+            frame.description(<div>You don't feel as if a mere act of will could improve {render_gist.noun_phrase(child(action, 'facet'))}.</div>)
         ]
     }),
-    ACTION_HANDLER_FALLTHROUGH_STAGE    
+    ACTION_HANDLER_FALLTHROUGH_STAGE
 );
 
-
-// The inner action command handler.
-// All special behavior will come from ActionHandler rules on specific action/facet combinations.
-// Hence
-Puffers(lock_and_brand('Metaphor', {
+// While reflecting, every acquired inner action can be applied to every facet.
+Puffers(lock_puffer('Metaphor', {
     handle_command: (world, parser) => {
         if (world.current_interpretation === undefined) {
             return parser.eliminate();
         }
-        const interp_world = find_historical(world, w => w.index === world.current_interpretation!)!;
-        const observable_facets = get_facets(world, interp_world.gist!)
-        
+        const interp_world = find_index(world, world.current_interpretation)!;
+        const facets = get_facets(world, interp_world);
+
         const threads: ParserThread<Venience>[] = [];
-        for (const action of keys(INNER_ACTION_IDS)) {
-            if (!world.has_acquired.get(action)) {
+        for (const id of INNER_ACTION_IDS) {
+            if (!world.has_acquired.get(id)) {
                 continue;
             }
-            for (const facet of observable_facets) {
+            for (const f of facets) {
                 threads.push(() => {
-                    const action_gist = gist(action, { facet });
+                    const action = gist(id, { facet: f });
                     return (
-                        parser.consume(
-                            [action_consume_spec(action_gist, world), SUBMIT], () =>
+                        parser.consume([action_consume_spec(action, world), SUBMIT], () =>
                         update(world, {
-                            gist: () => action_gist
+                            gist: () => action
                         }))
                     );
-                })
+                });
             }
         }
 
         return parser.split(threads);
     }
 }));
-
