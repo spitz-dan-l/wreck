@@ -130,7 +130,7 @@ function nudge_for(seq: Sequence, pattern: AbstractSequence, rule: PlacementRule
         case 'L6': return nudges.L6;
         case 'L7': return nudges.L7_step[step] ?? nudges.L7;
         case 'L4': {
-            const authored = seq.nudges.find(n => n.step === step && n.event === event);
+            const authored = seq.nudges.find(n => n.step === step && n.event === event && (n.pass === undefined || n.pass === pass));
             return authored?.text ?? seq.step_nudges?.[pass]?.[step] ?? nudges.step[step] ?? l1_nudge(pattern, step);
         }
     }
@@ -421,8 +421,9 @@ function lint_tables(story: StorySpec, pattern: AbstractSequence): string[] {
         if (!has_event(n.event)) {
             problems.push(`${title}: a nudge for step ${n.step} points at event ${n.event}, which does not exist.`);
         }
-        if (passes.every(pass => table[pass]![n.step]?.some(c => c.event === n.event))) {
-            problems.push(`${title}: the nudge for step ${n.step} on event ${n.event} is a candidate row in every pass, so it can never be said.`);
+        const said_in = n.pass === undefined ? passes : passes.filter(p => p === n.pass);
+        if (said_in.every(pass => table[pass]![n.step]?.some(c => c.event === n.event))) {
+            problems.push(`${title}: the nudge for step ${n.step} on event ${n.event} is a candidate row in every pass it is said in, so it can never be said.`);
         }
     }
     return problems;

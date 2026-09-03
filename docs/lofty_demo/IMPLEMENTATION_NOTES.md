@@ -621,3 +621,48 @@ sequence and the script named as the one place a story is named.
 the chip mode, the closing frame and the fold-on-close cost about what S1–S5
 saved. `voice` and `taught` are still stored (derivable, not asked for).
 The `held` class is still emitted (a name for "neither solid nor hollow").
+
+## Phase B6b (the round-4 verification critique)
+
+`docs/lofty_demo/round4/critique_8_verification.md` §3–§4, re-checked
+against B6a's code. World 3400 → 3424 lines, tests 1310 → 1339,
+`board.css` 340; `npm test` 63 passing in ~32 s. Headless transcript:
+`round2/transcript_final_headless.txt` (205 commands: three steps added
+to the walkthrough); screenshots re-taken and checked.
+
+- **D1.** `Nudge.pass?`: the wise man's fuel nudges are `pass: 'first'`
+  and `nudge_for` skips a nudge of another pass, so the second pass's
+  near misses get its own figurative defaults ("Who caught from him
+  first, my dear? The few, before the many." is a walkthrough trap). The
+  table lint checks a nudge against the passes it is said in.
+- **D2.** `solid_ops` is exported; `do_resume` hollows the badges and
+  references of the mapping it holds aside. The walkthrough now moves the
+  spark to the death while the second solution is open, resumes the first
+  (board test: every badge and reference of the second is hollow), then
+  moves it back before resuming the second.
+- **D3.** At the end (the wise man's board never closes) a chip expands
+  as if no board were open: `expanded_chip` and the display puffer treat
+  `ended(w)` like "no board open", the hole goes into the reopened chip's
+  ledger, and `collapse` returns it to the wise man's ledger, after the
+  coda (`chip_ops` takes the home ledger). Board test for both paths.
+- **I1.** `remember <event>` reads the history of readings: the lit
+  mapping's roles if it has the event, else the latest set-aside reading's
+  roles with "; set aside." ("It felt like the ember, and the flame, and
+  the blaze, and the ash, in the Voice of Fire; set aside.").
+- **I2.** `say that you see it` is offered through the end (`through:
+  BEAT.end`), Locked; the end-state test asserts it.
+- **I3.** The wise man's first pass has a default spark nudge, "Nothing
+  burns here yet, my dear. Find the lighting." (`step_nudges.first[4]`,
+  licensed as a nudge, §10); a walkthrough trap.
+- **I4.** The unmapped bar reads "▸ N events in neither solution" once a
+  board has two mappings; "not in the mapping" otherwise.
+- **I5.** Two engine observations added to the engine recommendations below.
+
+### Engine recommendations (continued)
+
+- After Undo the prompt holds the undone command as plain text; selecting
+  it, so that typing replaces it, would make undo-then-retype work the way
+  players expect.
+- The Undo button stays selected while the mouse rests on it, so Enter is
+  swallowed; it should lose selection on mouse-out, or Enter should go to
+  the prompt regardless.

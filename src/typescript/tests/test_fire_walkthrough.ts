@@ -15,7 +15,7 @@ import { candidates_for, place, placed } from 'demo_worlds/fire/judge';
 import { EVENT_NAMES, fire_world_spec, FireWorld, new_fire_world, STORIES, StorySpec, VOICE_OF_FIRE, WISE_MAN } from 'demo_worlds/fire';
 import { AUTHORED, QUOTED } from 'demo_worlds/fire/data/katya';
 import { SCRIPT } from 'demo_worlds/fire/puffers/classroom';
-import { applied_mapping, expanded_chip, open_mapping, remainder, role_history, set_aside_mappings } from 'demo_worlds/fire/world';
+import { applied_mapping, expanded_chip, mappings_on, open_mapping, remainder, role_history, set_aside_mappings } from 'demo_worlds/fire/world';
 import { raw, traverse_thread } from 'parser';
 import { apply_story_updates_all, Story, to_basic_text, Updates as S } from 'story';
 import { apply_command, make_update_thread } from 'world';
@@ -264,6 +264,7 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: 'say that the Voice of Fire is contained in just two lines', expect: [...QUOTED.l451, ...QUOTED.l453], check: candidates_enumerable(WISE_MAN) },
         { cmd: map_cmd(WISE_MAN, 1, 2), trap: WISE_MAN.nudges[0].text },
         { cmd: map_cmd(WISE_MAN, 1, 11), trap: 'It burns here, my dear. Where was it built?' },
+        { cmd: map_cmd(WISE_MAN, 4, 8), trap: WISE_MAN.step_nudges!.first![4]! },
         ...maps(WISE_MAN, [[1, 9], [2, 9], [3, 9], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11]]),
         { cmd: 'apply the Voice of Fire', expect: [...WISE_MAN.apply_text.first!, ...WISE_MAN.apply_after!.first!],
           check: w => {
@@ -289,6 +290,8 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: map_cmd(WISE_MAN, 1, 9), trap: FIRE.nudges.L7 },
         // The second pass is corrected in the figurative reading's terms.
         { cmd: map_cmd(WISE_MAN, 1, 3), trap: WISE_MAN.step_nudges!.second![1]! },
+        // The fuel lines' authored nudges are the literal pass's: here the kindling on the growing in number is corrected figuratively.
+        { cmd: map_cmd(WISE_MAN, 2, 5), trap: 'Who caught from him first, my dear? The few, before the many.' },
         { cmd: map_cmd(WISE_MAN, 4, 10), trap: WISE_MAN.step_nudges!.second![4]! },
         ...maps(WISE_MAN, [[1, 2], [2, 4], [3, 5]]),
         { cmd: map_cmd(WISE_MAN, 4, 8), expect: ['"His death. Very well. Hold that," says Katya.'] },
@@ -298,7 +301,7 @@ export const BEATS: { name: string, steps: Step[] }[] = [
             assert.ok(accepts(w, 'object that there is no fire'));
             assert.ok(!accepts(w, 'object that the fireplace is too abstract'));
         } },
-        { cmd: 'collapse the unmapped', label: 'wise man unmapped folded', expect_tree: ['▸ 6 events not in the mapping'], check: w => assert.ok(w.collapsed.includes('wise_man:unmapped')) },
+        { cmd: 'collapse the unmapped', label: 'wise man unmapped folded', expect_tree: ['▸ 6 events in neither solution'], check: w => assert.ok(w.collapsed.includes('wise_man:unmapped')) },
         { cmd: 'object that there is no fire', expect: [...QUOTED.l473, ...QUOTED.l475, ...QUOTED.l477_fire] },
         // The second solution set aside reopens it with its placements, never a third pass; the objections wait.
         { cmd: 'set aside the second solution', check: w => {
@@ -307,12 +310,16 @@ export const BEATS: { name: string, steps: Step[] }[] = [
             assert.ok(accepts(w, 'erase the ash left behind') && accepts(w, map_cmd(WISE_MAN, 8, 15)));
             assert.equal(w.mappings.filter(m => m.story === 'wise_man').length, 2);
         } },
-        { cmd: 'resume the first solution', check: w => {
+        // The spark moved to the death while the second is open; resuming the first holds the second as it stands, set aside.
+        { cmd: map_cmd(WISE_MAN, 4, 8), expect: ['"His death. Very well. Hold that," says Katya.'] },
+        { cmd: 'resume the first solution', label: 'second held aside', check: w => {
             locked(w, 'object', 'that the fireplace is too abstract');
             assert.ok(!frame_text(w).includes(normalise(WISE_MAN.apply_text.first![0])));
             assert.deepEqual(w.mappings.filter(m => m.story === 'wise_man').map(m => [m.pass, m.status, m.placements.length]), [['first', 'applied', 8], ['second', 'set aside', 8]]);
+            assert.equal(placed(mappings_on(w, WISE_MAN)[1], 4), 8);
         } },
         { cmd: 'set aside the first solution', check: w => assert.equal(open_mapping(w, WISE_MAN)!.placements.length, 8) },
+        ...maps(WISE_MAN, [[4, 12]]),
         { cmd: 'resume the second solution', label: 'second solution resumed', check: w => assert.ok(accepts(w, 'object that the fireplace is too abstract')) },
         { cmd: 'object that the fireplace is too abstract', expect: QUOTED.l477_abstract },
         { cmd: 'object that the spark is the myth, not the death', expect: QUOTED.l477_spark },
@@ -333,14 +340,19 @@ export const BEATS: { name: string, steps: Step[] }[] = [
             assert.deepEqual(current(w, 'ash').map(r => r.what), ['a pile of ash', 'a field of ash', 'the forest, as ash', 'the distorted doctrine']);
             assert.deepEqual(current(w, 'blaze').map(r => r.where), STORIES.map(s => s.title));
             assert.ok(accepts(w, 'remember the saying of Ok, I guess'));
-            assert.ok(!verbs(w).some(v => ['map', 'set_aside', 'say'].includes(v)));
+            assert.ok(!verbs(w).some(v => ['map', 'set_aside'].includes(v)));
+            // The line you cannot say stays on the board after the end.
+            locked(w, 'say', 'that you see it');
+            assert.ok(!accepts(w, 'say Ok, I guess'));
         } },
         { cmd: "remember the wise man's story", expect: ["— unconvincing, because you don't really see it"] },
         { cmd: 'remember the saying of Ok, I guess', expect: ['It went like this:', "But you don't really see it.", 'It felt a bit untrue, because it was.'],
           check: w => { const f = frame_text(w); assert.ok(f.endsWith('It felt a bit untrue, because it was.') && !f.includes(normalise(AUTHORED.coda[0]))); } },
         { cmd: 'remember the second listening', expect: ['It felt like nothing in particular.'] },
         // Every reading of the ember, the set-aside ones kept: the rag's stick, then the lit rag; the literal flame, then the myth.
-        { cmd: 'remember the ember', expect: ["The ember has been: the match's flame, in the campfire story; the burning stick, in the house in the woods, set aside; the lit rag, in the house in the woods; the lightning, in the forest fire; the flame, in the wise man's story, set aside; the myth of his death, in the wise man's story."] }
+        { cmd: 'remember the ember', expect: ["The ember has been: the match's flame, in the campfire story; the burning stick, in the house in the woods, set aside; the lit rag, in the house in the woods; the lightning, in the forest fire; the flame, in the wise man's story, set aside; the myth of his death, in the wise man's story."] },
+        // An event read only by a set-aside solution remembers that reading, marked.
+        { cmd: 'remember the lighting of the pyre', expect: ['It felt like the ember, and the flame, and the blaze, and the ash, in the Voice of Fire; set aside.'] }
     ] }
 ];
 
@@ -568,11 +580,11 @@ describe('the Voice of Fire, played through', function () {
     });
 
     it('remembers an event of the wise man with both solutions held', () => {
-        // The second solution lit, the first set aside: the pyre is read by the first alone, the wisdom by the second.
+        // The second solution lit, the first set aside: the pyre is read by the first alone (marked), the wisdom by the second.
         const w = world_at('second solution resumed');
         assert.equal(set_aside_mappings(w, WISE_MAN).length, 1);
         const pyre = play(w, ['remember the constructing of the pyre']);
-        assert.ok(frame_text(pyre).endsWith(AUTHORED.nothing_yet[0]));
+        assert.ok(frame_text(pyre).endsWith('It felt like the tinder, and the kindling, and the firewood, in the Voice of Fire; set aside.'));
         const wisdom = play(w, ['remember the growing up and acquiring of wisdom']);
         assert.ok(frame_text(wisdom).endsWith('It felt like the tinder, in the Voice of Fire.'));
     });

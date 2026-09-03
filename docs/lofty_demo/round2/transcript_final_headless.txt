@@ -1,0 +1,1581 @@
+You're sitting in a small classroom with Katya, your advisor. Today she is giving a lesson on what she calls the Voice of Fire.
+
+### > look at the board
+>  
+look at the board
+The board is blank. On a shelf beside it are the rolled boards of past lessons; one is labelled The Pillaging.
+
+### > remember the Pillaging
+>  
+remember the Pillaging
+Someone lives in their home.
+> live in your home
+You live in your home, as you always have.
+The Pillager enters their home.
+> enter their home
+You enter their home.
+The Pillager takes things from their home.
+> take things from their home
+You take what you want from their home, and leave.
+
+### > listen
+>  
+listen
+"It's a pattern in abstract phenomenology," she explains. "We'll start with a basic example."
+She starts by writing a series of statements on the chalkboard:
+
+### > remember the Voice of Fire
+>  
+remember the Voice of Fire
+The laying of the tinder
+The laying of the kindling over the tinder
+The stacking of the firewood over the kindling
+The sparking of the tinder, creating an ember
+The spreading of the ember to the kindling, creating a flame
+The spreading of the flame to the firewood, creating a blaze
+The consumption of all within the blaze
+The ash left behind
+
+### > listen
+>  
+listen
+She rewrites this in the standard notation of the field:
+
+### > remember the Voice of Fire
+>  
+remember the Voice of Fire
+The laying of the tinder
+> lay the tinder
+A small patch of tinder is placed in the hearth.
+The laying of the kindling over the tinder
+> lay the kindling
+A layer of kindling is added over the tinder.
+The stacking of the firewood over the kindling
+> stack the firewood
+Logs of firewood are stacked systematically over the kindling.
+The sparking of the tinder, creating an ember
+> spark the tinder
+A single spark is added to the tinder. It catches and forms an ember.
+The spreading of the ember to the kindling, creating a flame
+> spread to the kindling
+The ember glows, spreading to the kindling above. The kindling is acquired by a growing flame.
+The spreading of the flame to the firewood, creating a blaze
+> spread to the firewood
+The flame grows, and reaches the firewood, setting it alight. The blaze glows, feeding on the wooden fuel.
+The consumption of all within the blaze
+> burn
+The blaze continues to spread through the logs, arranged perfectly to give themselves up to the burning. The hearth burns bright and hot, for a time.
+The ash left behind
+> reduce to ash
+As the wooden fuel is spent, the blaze dies down, gradually dwindling to nothing. A pile of black ash is left behind in the hearth.
+
+### > remember the kindling
+>  
+remember the kindling
+Nothing has been the kindling yet.
+
+### > listen
+>  
+listen
+"Now," she says. "Consider this story:"
+A group of friends takes a weekend trip to camp in the woods.
+As it darkens outside, they gather tinder, kindling and firewood.
+They dig a pit in the ground.
+They lay the tinder in the middle of the pit.
+They pile the kindling on over it.
+They stack the logs in layers over the kindling.
+One of them lights a match, and carefully touches its flame to the tinder.
+The fire starts, spreading first to the kindling and then the logs.
+The group begins to sing an old song together.
+The fire burns brightly for awhile, and the friends tend to it, adding more logs periodically, as they continue to sing and tell stories.
+As it grows late, they stop adding wood, and the flame dwindles. The friends retreat to their tents.
+The remaining embers fizzle out, leaving behind ash.
+
+### > say that the Voice of Fire is contained in this one
+>  
+say that the Voice of Fire is contained in this one
+"Ah, I see that the story from the Voice of Fire is contained within this one," you say.
+"Indeed, my dear. Trivially so. Show it now, on the board," she says.
+
+### > pick up the chalk
+>  
+pick up the chalk
+She beckons you up. First you convert the story to the standard notation in a column on the left of the board:
+
+### > speak as the friends
+>  
+speak as the friends
+
+### > travel to the woods
+>  
+travel to the woods
+You all make your way out of town, in cars piled full of food, tents and musical instruments.
+You arrive at the campground in the woods.
+
+### > gather tinder, kindling and firewood
+>  
+gather tinder, kindling and firewood
+As it begins to grow dark, your group searches for and finds: - tinder - kindling - firewood
+
+### > dig a pit in the ground
+>  
+dig a pit in the ground
+You dig a pit, a foot deep and 3 feet in diameter.
+
+### > lay the tinder in the pit
+>  
+lay the tinder in the pit
+You place a patch of fluffy tinder in the pit.
+
+### > pile the kindling over the tinder
+>  
+pile the kindling over the tinder
+You gently pile the thin, dry sticks of kindling over the tinder.
+
+### > stack the logs over the kindling
+>  
+stack the logs over the kindling
+You stack several layers of logs, in square fashion, over the pile of kindling.
+
+### > light a match
+>  
+light a match
+The match head flickers into a tiny flame.
+
+### > touch the flame to the tinder
+>  
+touch the flame to the tinder
+The tinder burns quickly on contact with the flame.
+
+### > let it follow
+>  
+let it follow
+↳ The fire starts, spreading first to the kindling and then the logs.
+
+### > sing
+>  
+sing
+You all begin to sing an old song together.
+
+### > add logs to the fire
+>  
+add logs to the fire
+The fire burns brightly for awhile, and your group tends to it, adding more logs periodically, as you continue to sing and tell stories.
+
+### > sing
+>  
+sing
+As your group sings late into the night, you stop adding wood, and the flame dwindles.
+
+### > sleep in tents
+>  
+sleep in tents
+Your group, growing weary, crawl into their tents to sleep.
+
+### > let it follow
+>  
+let it follow
+↳ The remaining embers fizzle out, leaving behind ash.
+
+### > draw a vertical line
+>  
+draw a vertical line
+Next you draw a vertical line, creating a second column.
+In the second column you list the successive steps of the Voice of Fire. For each step, you draw a line between the step on the right, and the part of the story on the left to which it corresponds.
+
+### > map the laying of the tinder to the laying of the tinder in the pit
+>  
+map the laying of the tinder to the laying of the tinder in the pit
+→ the laying of the tinder in the pit
+
+### > erase the laying of the tinder
+>  
+erase the laying of the tinder
+The laying of the tinder is erased.
+
+### > map the laying of the tinder to the laying of the tinder in the pit
+>  
+map the laying of the tinder to the laying of the tinder in the pit
+→ the laying of the tinder in the pit
+
+### > map the laying of the kindling to the piling of the kindling
+>  
+map the laying of the kindling to the piling of the kindling
+→ the piling of the kindling
+
+### > map the stacking of the firewood to the stacking of the logs
+>  
+map the stacking of the firewood to the stacking of the logs
+→ the stacking of the logs
+
+### > map the sparking of the tinder to the touching of the flame to the tinder
+>  
+map the sparking of the tinder to the touching of the flame to the tinder
+→ the touching of the flame to the tinder
+
+### > map the spreading of the ember to the touching of the flame to the tinder
+>  
+map the spreading of the ember to the touching of the flame to the tinder
+→ the touching of the flame to the tinder
+
+### > map the spreading of the flame to the touching of the flame to the tinder
+>  
+map the spreading of the flame to the touching of the flame to the tinder
+→ the touching of the flame to the tinder
+
+### > map the consumption of all to the adding of logs to the fire
+>  
+map the consumption of all to the adding of logs to the fire
+→ the adding of logs to the fire
+
+### > map the ash left behind to the sleeping in tents
+>  
+map the ash left behind to the sleeping in tents
+→ the sleeping in tents
+
+### > apply the Voice of Fire
+>  
+apply the Voice of Fire
+The evening in the woods and the hearth on the board are the same shape.
+> lay the tinder — a patch of tinder
+You place a patch of fluffy tinder in the pit.
+> lay the kindling — the kindling
+You gently pile the thin, dry sticks of kindling over the tinder.
+> stack the firewood — the logs
+You stack several layers of logs, in square fashion, over the pile of kindling.
+> spark the tinder — the match's flame
+> spread to the kindling — the kindling, catching
+> spread to the firewood — the logs, alight
+The tinder burns quickly on contact with the flame.
+The fire starts, spreading first to the kindling and then the logs.
+> burn — the tended fire
+The fire burns brightly for awhile, and your group tends to it, adding more logs periodically, as you continue to sing and tell stories.
+> reduce to ash — a pile of ash
+Your group, growing weary, crawl into their tents to sleep.
+The remaining embers fizzle out, leaving behind ash.
+
+### > set aside the mapping
+>  
+set aside the mapping
+The mapping is set aside; the badges hollow.
+
+### > resume the mapping
+>  
+resume the mapping
+The mapping is resumed; the badges solid.
+> lay the tinder — a patch of tinder
+You place a patch of fluffy tinder in the pit.
+> lay the kindling — the kindling
+You gently pile the thin, dry sticks of kindling over the tinder.
+> stack the firewood — the logs
+You stack several layers of logs, in square fashion, over the pile of kindling.
+> spark the tinder — the match's flame
+> spread to the kindling — the kindling, catching
+> spread to the firewood — the logs, alight
+The tinder burns quickly on contact with the flame.
+The fire starts, spreading first to the kindling and then the logs.
+> burn — the tended fire
+The fire burns brightly for awhile, and your group tends to it, adding more logs periodically, as you continue to sing and tell stories.
+> reduce to ash — a pile of ash
+Your group, growing weary, crawl into their tents to sleep.
+The remaining embers fizzle out, leaving behind ash.
+
+### > say all set
+>  
+say all set
+"All set," you say. "Structurally nearly identical, as you said. Not quite a one-to-one mapping, but close."
+"Indeed," she agrees. "Close enough for our purposes today. Now, consider another story, my dear..."
+
+### > remember the campfire story
+>  
+remember the campfire story
+It went like this:
+> travel to the woods
+You all make your way out of town, in cars piled full of food, tents and musical instruments.
+You arrive at the campground in the woods.
+> gather tinder, kindling and firewood
+As it begins to grow dark, your group searches for and finds: - tinder - kindling - firewood
+> dig a pit in the ground
+You dig a pit, a foot deep and 3 feet in diameter.
+> lay the tinder in the pit
+You place a patch of fluffy tinder in the pit. — the tinder
+> pile the kindling over the tinder
+You gently pile the thin, dry sticks of kindling over the tinder. — the kindling
+> stack the logs over the kindling
+You stack several layers of logs, in square fashion, over the pile of kindling. — the firewood
+> light a match
+The match head flickers into a tiny flame.
+> touch the flame to the tinder
+The tinder burns quickly on contact with the flame.
+The fire starts, spreading first to the kindling and then the logs. — the ember — the flame — the blaze
+> sing
+You all begin to sing an old song together.
+> add logs to the fire
+The fire burns brightly for awhile, and your group tends to it, adding more logs periodically, as you continue to sing and tell stories. — the blaze
+> sing
+As your group sings late into the night, you stop adding wood, and the flame dwindles.
+> sleep in tents
+Your group, growing weary, crawl into their tents to sleep.
+The remaining embers fizzle out, leaving behind ash. — the ash
+It felt:
+— a bit warm, because they sang
+— a bit neat, because the fire was built to be burnt
+— like the Voice of Fire, because the tinder was a patch of tinder
+
+### > remember the tinder
+>  
+remember the tinder
+The tinder has been: a patch of tinder, in the campfire story.
+
+### > remember the touching of the flame to the tinder
+>  
+remember the touching of the flame to the tinder
+It went like this:
+> touch the flame to the tinder
+The tinder burns quickly on contact with the flame.
+The fire starts, spreading first to the kindling and then the logs. — the ember — the flame — the blaze
+It felt like the ember, and the flame, and the blaze, in the Voice of Fire.
+
+### > remember the ember
+>  
+remember the ember
+The ember has been: the match's flame, in the campfire story.
+
+### > remember the lighting of a match
+>  
+remember the lighting of a match
+It went like this:
+> light a match
+The match head flickers into a tiny flame.
+It felt like nothing yet. It has not been read.
+
+### > expand the campfire story
+>  
+expand the campfire story
+The campfire story unfolds.
+
+### > collapse the campfire story
+>  
+collapse the campfire story
+The campfire story folds.
+
+### > listen
+>  
+listen
+A young family moves out of the city.
+After some travel, they find a clearing in the woods, away from everything and everyone they've ever known.
+They begin to cut the trees in the surrounding wood. They begin to dig into the ground in the clearing.
+They build a wooden foundation into the ground, and upon this structure a frame for the house that they will make.
+They toil for weeks, chopping and laying wood over the frame, building walls and a roof.
+Once ready, the young family moves into their new home.
+Time passes.
+One day, a small group of children happens upon the house while wandering through the woods.
+Egging each other on, one of the children lights an oil-soaked rag on the end of a stick. He hurls it onto the roof of the house. The children scatter frantically into the woods.
+The flame from the burning stick spreads to the thatch of the house's roof. Soon, the whole roof is ablaze.
+The fire spreads to roof's frame, and the roof falls in.
+The whole house burns to the ground, the family trapped within.
+A field of ash is all that remains the next morning.
+
+### > say that it is a sad story
+>  
+say that it is a sad story
+"Well," you say, "That's quite a sad story."
+"Indeed. Can you find the Voice of Fire within it?"
+
+### > pick up the chalk
+>  
+pick up the chalk
+
+### > speak as the family
+>  
+speak as the family
+
+### > pack
+>  
+pack
+You gather what you need, and leave the rest.
+
+### > travel
+>  
+travel
+You depart the city together, entering the woods.
+
+### > travel
+>  
+travel
+You march through the woods, making camp at night, taking shelter when the weather is bad.
+
+### > travel
+>  
+travel
+You reach a clearing within the woods.
+The ground here is flat and healthy.
+
+### > cut wood
+>  
+cut wood
+You cut down the trees surrounding your clearing, and strip them of their bark.
+
+### > dig a hole
+>  
+dig a hole
+You dig into the ground in the clearing where you intend to build your home's foundation.
+
+### > build the foundation
+>  
+build the foundation
+You build a wooden foundation into the ground you have dug.
+
+### > raise the frame
+>  
+raise the frame
+Upon the foundation you raise a frame for the house that you will make.
+
+### > lay walls and a roof
+>  
+lay walls and a roof
+You toil for weeks, chopping and laying wood over the frame. The walls go up, and over them a roof of thatch.
+
+### > move in
+>  
+move in
+Once it is ready, you move into your new home.
+
+### > let it follow
+>  
+let it follow
+↳ Time passes.
+
+### > let it follow
+>  
+let it follow
+↳ One day, a small group of children happens upon the house while wandering through the woods.
+
+### > ask what the right thing to do is
+>  
+ask what the right thing to do is
+"Let's see..." you say. Once again, you approach the board, converting each line of the story to the standard notation. When you reach the point where the children fling the torch onto the roof, you pause. "What is the right thing to do here? The source of the intentional voice has changed. It's no longer from the family's perspective that things are happening. It's the children's."
+"Indeed," says Katya.
+"Every line is spoken by someone, my dear. The one who says pack is the one who packs; the consequence is reported back to them and no one else. When the one who speaks changes, we say so above the line, and we change the ink."
+She draws a short bar across the column and writes THE CHILDREN beneath it, in a second colour.
+"We do not write why they speak. We write who. Now issue their command."
+She shows you how to indicate voice switches using visual notation.
+
+### > speak as the children
+>  
+speak as the children
+— the children —
+
+### > light the rag
+>  
+light the rag
+Egging each other on, one of you lights an oil-soaked rag on the end of a stick.
+
+### > hurl it onto the roof
+>  
+hurl it onto the roof
+One of you hurls the burning stick onto the roof of the house.
+
+### > scatter
+>  
+scatter
+You scatter frantically into the woods.
+"There is no one left to speak, my dear. The children have run. Let these lines follow from what they did. We will find a voice for such things another day."
+
+### > let it follow
+>  
+let it follow
+↳ The flame from the burning stick spreads to the thatch of the house's roof. Soon, the whole roof is ablaze.
+
+### > let it follow
+>  
+let it follow
+↳ The fire spreads to roof's frame, and the roof falls in.
+
+### > let it follow
+>  
+let it follow
+↳ The whole house burns to the ground, the family trapped within.
+
+### > let it follow
+>  
+let it follow
+↳ A field of ash is all that remains the next morning.
+
+### > draw a vertical line
+>  
+draw a vertical line
+You complete the translation of the story. Then, as before, you add a vertical line and a new column.
+
+### > map the laying of the tinder to the laying of walls and a roof
+>  
+map the laying of the tinder to the laying of walls and a roof
+→ the laying of walls and a roof
+
+### > map the laying of the tinder to the lighting of the rag
+>  
+map the laying of the tinder to the lighting of the rag
+→ the lighting of the rag
+
+### > map the laying of the kindling to the laying of walls and a roof
+>  
+map the laying of the kindling to the laying of walls and a roof
+→ the laying of walls and a roof
+
+### > map the stacking of the firewood to the raising of the frame
+>  
+map the stacking of the firewood to the raising of the frame
+→ the raising of the frame
+
+### > map the sparking of the tinder to the hurling of the rag onto the roof
+>  
+map the sparking of the tinder to the hurling of the rag onto the roof
+→ the hurling of the rag onto the roof
+
+### > map the spreading of the ember to the scattering
+>  
+map the spreading of the ember to the scattering
+→ the scattering
+
+### > map the spreading of the flame to the scattering
+>  
+map the spreading of the flame to the scattering
+→ the scattering
+
+### > map the consumption of all to the scattering
+>  
+map the consumption of all to the scattering
+→ the scattering
+
+### > map the ash left behind to the scattering
+>  
+map the ash left behind to the scattering
+→ the scattering
+
+### > apply the Voice of Fire
+>  
+apply the Voice of Fire
+You struggle a bit more to map the steps from the Voice of Fire to the steps of this story. It's less clear what part of the house is the tinder, or the kindling, or the firewood. Nevertheless, you find an acceptable mapping.
+> lay the tinder — the oil-soaked rag
+Egging each other on, one of you lights an oil-soaked rag on the end of a stick.
+> lay the kindling — the thatch
+You toil for weeks, chopping and laying wood over the frame. The walls go up, and over them a roof of thatch.
+> stack the firewood — the frame
+Upon the foundation you raise a frame for the house that you will make.
+> spark the tinder — the burning stick
+One of you hurls the burning stick onto the roof of the house.
+> spread to the kindling — the flame on the thatch
+> spread to the firewood — the blaze in the frame
+> burn — the blaze
+> reduce to ash — a field of ash
+You scatter frantically into the woods.
+The flame from the burning stick spreads to the thatch of the house's roof. Soon, the whole roof is ablaze.
+The fire spreads to roof's frame, and the roof falls in.
+The whole house burns to the ground, the family trapped within.
+A field of ash is all that remains the next morning.
+
+### > remember the lighting of the rag
+>  
+remember the lighting of the rag
+It went like this:
+> light the rag
+Egging each other on, one of you lights an oil-soaked rag on the end of a stick. — the tinder
+It felt like the tinder, in the Voice of Fire.
+
+### > remember the scattering
+>  
+remember the scattering
+It went like this:
+> scatter
+You scatter frantically into the woods.
+The flame from the burning stick spreads to the thatch of the house's roof. Soon, the whole roof is ablaze.
+The fire spreads to roof's frame, and the roof falls in.
+The whole house burns to the ground, the family trapped within.
+A field of ash is all that remains the next morning. — the flame — the blaze — the ash
+It felt like the flame, and the blaze, and the ash, in the Voice of Fire.
+
+### > set aside the mapping
+>  
+set aside the mapping
+The mapping is set aside; the badges hollow.
+
+### > erase the sparking of the tinder
+>  
+erase the sparking of the tinder
+The sparking of the tinder is erased.
+
+### > collapse the unmapped
+>  
+collapse the unmapped
+The unmapped rows fold.
+
+### > map the stacking of the firewood to the building of the foundation
+>  
+map the stacking of the firewood to the building of the foundation
+→ the building of the foundation
+
+### > map the laying of the kindling to the raising of the frame
+>  
+map the laying of the kindling to the raising of the frame
+→ the raising of the frame
+
+### > map the laying of the tinder to the laying of walls and a roof
+>  
+map the laying of the tinder to the laying of walls and a roof
+→ the laying of walls and a roof
+
+### > map the sparking of the tinder to the lighting of the rag
+>  
+map the sparking of the tinder to the lighting of the rag
+→ the lighting of the rag
+
+### > expand the unmapped
+>  
+expand the unmapped
+The unmapped rows unfold.
+
+### > apply the Voice of Fire
+>  
+apply the Voice of Fire
+> lay the tinder — the thatch
+You toil for weeks, chopping and laying wood over the frame. The walls go up, and over them a roof of thatch.
+> lay the kindling — the frame
+Upon the foundation you raise a frame for the house that you will make.
+> stack the firewood — the foundation
+You build a wooden foundation into the ground you have dug.
+> spark the tinder — the lit rag
+Egging each other on, one of you lights an oil-soaked rag on the end of a stick.
+> spread to the kindling — the flame on the thatch
+> spread to the firewood — the blaze in the frame
+> burn — the blaze
+> reduce to ash — a field of ash
+You scatter frantically into the woods.
+The flame from the burning stick spreads to the thatch of the house's roof. Soon, the whole roof is ablaze.
+The fire spreads to roof's frame, and the roof falls in.
+The whole house burns to the ground, the family trapped within.
+A field of ash is all that remains the next morning.
+
+### > remember the tinder
+>  
+remember the tinder
+The tinder has been: a patch of tinder, in the campfire story; the oil-soaked rag, in the house in the woods, set aside; the thatch, in the house in the woods.
+
+### > object that there is no clear tinder
+>  
+object that there is no clear tinder
+"Quite a bit different, this time," you mutter. "There's not a clear answer for what's tinder, or kindling, or firewood. Is the tinder the oil-soaked rag, or the thatch on the roof? And in this case, the so-called 'fireplace' wasn't purposefully built up to be burnt; it was a family's home. The burning was done by someone else."
+"Quite right," says Katya. "But these details are not relevant from the perspective of the Voice of Fire, my dear. It knows only of the preparation of the fuel, and the burning of the fuel. It knows nothing of the purposes or intentions behind these actions. It simply proceeds. A pattern."
+
+### > say that it knows nothing of the morality of the burning either
+>  
+say that it knows nothing of the morality of the burning either
+"And it seems to know nothing of the morality of the burning, either," you say.
+"Indeed not," she says.
+
+### > put down the chalk
+>  
+put down the chalk
+Katya continues the lesson with another story...
+
+### > remember the house in the woods
+>  
+remember the house in the woods
+It went like this:
+> pack
+You gather what you need, and leave the rest.
+> travel
+You depart the city together, entering the woods.
+> travel
+You march through the woods, making camp at night, taking shelter when the weather is bad.
+> travel
+You reach a clearing within the woods.
+The ground here is flat and healthy.
+> cut wood
+You cut down the trees surrounding your clearing, and strip them of their bark.
+> dig a hole
+You dig into the ground in the clearing where you intend to build your home's foundation.
+> build the foundation
+You build a wooden foundation into the ground you have dug. — the firewood
+> raise the frame
+Upon the foundation you raise a frame for the house that you will make. — the kindling
+> lay walls and a roof
+You toil for weeks, chopping and laying wood over the frame. The walls go up, and over them a roof of thatch. — the tinder
+> move in
+Once it is ready, you move into your new home.
+Time passes.
+One day, a small group of children happens upon the house while wandering through the woods.
+> light the rag
+Egging each other on, one of you lights an oil-soaked rag on the end of a stick. — the ember
+> hurl it onto the roof
+One of you hurls the burning stick onto the roof of the house.
+> scatter
+You scatter frantically into the woods.
+The flame from the burning stick spreads to the thatch of the house's roof. Soon, the whole roof is ablaze.
+The fire spreads to roof's frame, and the roof falls in.
+The whole house burns to the ground, the family trapped within.
+A field of ash is all that remains the next morning. — the flame — the blaze — the ash
+It felt:
+— sad, because it was a home
+— a bit cold, because the pattern did not mind
+— unfinished, because the tinder is still two things
+— like the Voice of Fire, because the tinder was the thatch, and before that the oil-soaked rag
+
+### > listen
+>  
+listen
+A seed takes root in fertile ground.
+The season is right, and the weather is right, and a sapling rises forth.
+It grows, and time passes, and the weather is right, and it lives to become a tree.
+The tree sprouts leaves and seeds, and the season changes, and the seeds fall to the ground and the leaves protect them.
+Gradually, more trees sprout and grow and spread.
+Much time passes. The trees flourish, a forest.
+The weather becomes dry and hot, and the forest suffers. Many trees die and the ground is covered in dead brush.
+The weather happens to bring a thunderstorm. A lightning bolt strikes a dead tree, and it begins to burn.
+The flame spreads to the dead brush on the ground, and out to more trees.
+The fire burns in a rapidly-growing circle around the lightning strike.
+The forest is consumed in fire. Trees and brush are burnt to the ground.
+The flame stops at rivers and sand and rocks. The forest burns down to ash.
+
+### > pick up the chalk
+>  
+pick up the chalk
+
+### > speak as the seed
+>  
+speak as the seed
+— the seed —
+"Who takes root, my dear? No one, you would say. The notation has no line for no one. Something must command the seed, or the seed cannot be written."
+She writes THE SEED above the line, in a colour you have not seen her use, with a broken bar.
+"When nothing wants a thing, we lend it a voice anyway. The seed's. The weather's. The fire's. A voice without a body and without a wish."
+
+### > take root
+>  
+take root
+The seed takes root in fertile ground.
+
+### > speak as the season
+>  
+speak as the season
+— the season —
+"The season is right, my dear. Time passes. Those are voices too, of a thinner kind. The season commands; time commands. They have no body and no place. Write them with a double bar."
+Katya teaches you about disembodied and abstract voices in the standard notation.
+
+### > turn
+>  
+turn
+The season turns. The weather is right, and a sapling rises forth.
+
+### > speak as the tree
+>  
+speak as the tree
+— the tree —
+
+### > grow
+>  
+grow
+The sapling grows, and time passes, and the weather is right, and it lives to become a tree.
+
+### > sprout leaves and seeds
+>  
+sprout leaves and seeds
+The tree sprouts leaves and seeds. The season changes, and the seeds fall to the ground, and the leaves protect them.
+
+### > speak as the forest
+>  
+speak as the forest
+— the forest —
+
+### > spread
+>  
+spread
+Gradually, more trees sprout and grow and spread.
+
+### > speak as time
+>  
+speak as time
+— time —
+
+### > pass
+>  
+pass
+Much time passes. The trees flourish, a forest.
+
+### > speak as the weather
+>  
+speak as the weather
+— the weather —
+
+### > turn dry and hot
+>  
+turn dry and hot
+The weather becomes dry and hot, and the forest suffers. Many trees die. The forest stands full of dead trees, and the ground is covered in dead brush.
+
+### > bring a thunderstorm
+>  
+bring a thunderstorm
+A thunderstorm comes over the forest. A lightning bolt strikes a dead tree, and it begins to burn.
+
+### > speak as the fire
+>  
+speak as the fire
+— the fire —
+
+### > spread to the dead brush
+>  
+spread to the dead brush
+The flame spreads to the dead brush on the ground, and out to more trees.
+
+### > burn in a growing circle
+>  
+burn in a growing circle
+The fire burns in a rapidly-growing circle around the lightning strike.
+
+### > consume the forest
+>  
+consume the forest
+The forest is consumed in fire. Trees and brush are burnt to the ground.
+
+### > stop at the rivers
+>  
+stop at the rivers
+The flame stops at rivers and sand and rocks. The forest burns down to ash.
+
+### > draw a vertical line
+>  
+draw a vertical line
+You repeat the exercise.
+
+### > map the laying of the tinder to the turning dry and hot
+>  
+map the laying of the tinder to the turning dry and hot
+→ the turning dry and hot
+
+### > map the laying of the kindling to the turning dry and hot
+>  
+map the laying of the kindling to the turning dry and hot
+→ the turning dry and hot
+
+### > map the stacking of the firewood to the spreading of the forest
+>  
+map the stacking of the firewood to the spreading of the forest
+→ the spreading of the forest
+
+### > map the sparking of the tinder to the bringing of a thunderstorm
+>  
+map the sparking of the tinder to the bringing of a thunderstorm
+→ the bringing of a thunderstorm
+
+### > map the spreading of the ember to the spreading to the dead brush
+>  
+map the spreading of the ember to the spreading to the dead brush
+→ the spreading to the dead brush
+
+### > map the spreading of the flame to the spreading to the dead brush
+>  
+map the spreading of the flame to the spreading to the dead brush
+→ the spreading to the dead brush
+
+### > map the consumption of all to the burning in a growing circle
+>  
+map the consumption of all to the burning in a growing circle
+→ the burning in a growing circle
+
+### > map the ash left behind to the stopping at the rivers
+>  
+map the ash left behind to the stopping at the rivers
+→ the stopping at the rivers
+
+### > apply the Voice of Fire
+>  
+apply the Voice of Fire
+There are no people in this story, no intentions at all. The forest is not a well-constructed fireplace at all, but the conditions of nature happened to conspire to burn it down.
+> lay the tinder — the dead brush
+> lay the kindling — the dead trees
+The weather becomes dry and hot, and the forest suffers. Many trees die. The forest stands full of dead trees, and the ground is covered in dead brush.
+> stack the firewood — the trees
+Gradually, more trees sprout and grow and spread.
+> spark the tinder — the lightning
+A thunderstorm comes over the forest. A lightning bolt strikes a dead tree, and it begins to burn.
+> spread to the kindling — the flame
+> spread to the firewood — the fire in the trees
+The flame spreads to the dead brush on the ground, and out to more trees.
+> burn — the blaze
+The fire burns in a rapidly-growing circle around the lightning strike.
+> reduce to ash — the forest, as ash
+The flame stops at rivers and sand and rocks. The forest burns down to ash.
+
+### > set aside the mapping
+>  
+set aside the mapping
+The mapping is set aside; the badges hollow.
+
+### > apply the Voice of Fire
+>  
+apply the Voice of Fire
+> lay the tinder — the dead brush
+> lay the kindling — the dead trees
+The weather becomes dry and hot, and the forest suffers. Many trees die. The forest stands full of dead trees, and the ground is covered in dead brush.
+> stack the firewood — the trees
+Gradually, more trees sprout and grow and spread.
+> spark the tinder — the lightning
+A thunderstorm comes over the forest. A lightning bolt strikes a dead tree, and it begins to burn.
+> spread to the kindling — the flame
+> spread to the firewood — the fire in the trees
+The flame spreads to the dead brush on the ground, and out to more trees.
+> burn — the blaze
+The fire burns in a rapidly-growing circle around the lightning strike.
+> reduce to ash — the forest, as ash
+The flame stops at rivers and sand and rocks. The forest burns down to ash.
+
+### > put down the chalk
+>  
+put down the chalk
+"And now, the final story for today's lesson," says Katya...
+
+### > listen
+>  
+listen
+A boy is born to parents of no consequence.
+The boy is curious, charismatic, intelligent. He grows up and acquires wisdom.
+As a man, he seeks answers to old questions. Questions of purpose, consciousness, the dynamics of reality.
+The man gains a small circle of like-minded seekers who listen to him, astounded by his ideas.
+The man's followers grow in number. Word of his wisdom spreads, attracting more followers.
+The man begins to give speeches to more and more devoted followers. He begins to repeat himself. His words become ear-worms, ever more viral and convincing.
+Some of his followers begin to write down the wise man's teachings.
+The man dies unexpectedly.
+His closest followers construct a great funeral pyre, and lay his body on it.
+The wise man's funeral is attended by multitudes of his followers.
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+The most central followers continue to write the dead man's words, and in time they adjust his words, and embellish the stories about him, in the interest of reaching as many people as possible. His death becomes mythologized.
+Books spread across the land. The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted.
+Time passes. The words are interpretted and reinterpretted until they hardly resemble the original ideas at all.
+
+### > pick up the chalk
+>  
+pick up the chalk
+
+### > speak as the boy
+>  
+speak as the boy
+— the boy —
+
+### > be born
+>  
+be born
+You are born to parents of no consequence.
+
+### > grow up and acquire wisdom
+>  
+grow up and acquire wisdom
+You are curious, charismatic, intelligent. You grow up and acquire wisdom.
+
+### > speak as the man
+>  
+speak as the man
+— the man —
+
+### > seek answers to old questions
+>  
+seek answers to old questions
+You seek answers to old questions. Questions of purpose, consciousness, the dynamics of reality.
+
+### > gain a small circle of seekers
+>  
+gain a small circle of seekers
+You gain a small circle of like-minded seekers who listen to you, astounded by your ideas.
+
+### > speak as the followers
+>  
+speak as the followers
+— the followers —
+
+### > grow in number
+>  
+grow in number
+You grow in number. Word of the man's wisdom spreads, and more of you come.
+
+### > speak as the man
+>  
+speak as the man
+— the man —
+
+### > give speeches
+>  
+give speeches
+You give speeches to more and more devoted followers. You begin to repeat yourself. Your words become ear-worms, ever more viral and convincing.
+
+### > speak as the followers
+>  
+speak as the followers
+— the followers —
+
+### > write down his teachings
+>  
+write down his teachings
+Some of you begin to write down the wise man's teachings.
+
+### > speak as the man
+>  
+speak as the man
+— the man —
+
+### > die unexpectedly
+>  
+die unexpectedly
+You die unexpectedly.
+
+### > speak as the closest followers
+>  
+speak as the closest followers
+— the closest followers —
+
+### > construct a pyre and lay his body on it
+>  
+construct a pyre and lay his body on it
+You construct a great funeral pyre, and lay his body on it.
+
+### > speak as the followers
+>  
+speak as the followers
+— the followers —
+
+### > attend the funeral
+>  
+attend the funeral
+You attend the wise man's funeral in multitudes.
+
+### > speak as the closest followers
+>  
+speak as the closest followers
+— the closest followers —
+
+### > light the pyre
+>  
+light the pyre
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+
+### > adjust and embellish his words
+>  
+adjust and embellish his words
+You continue to write the dead man's words, and in time you adjust his words, and embellish the stories about him, in the interest of reaching as many people as possible. His death becomes mythologized.
+
+### > speak as the books
+>  
+speak as the books
+— the books —
+
+### > spread across the land
+>  
+spread across the land
+Books spread across the land.
+
+### > be read and repeated and reprinted
+>  
+be read and repeated and reprinted
+The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted.
+
+### > speak as time
+>  
+speak as time
+— time —
+
+### > pass
+>  
+pass
+Time passes. The words are interpreted and reinterpreted until they hardly resemble the original ideas at all.
+
+### > draw a vertical line
+>  
+draw a vertical line
+
+### > say that the Voice of Fire is contained in just two lines
+>  
+say that the Voice of Fire is contained in just two lines
+"That's an awful lot of extra story," you mutter, performing the exercise on the board again. "In fact, I think the entirety of the Voice of Fire's story is contained in just two lines from this sequence."
+"Indeed. So, write it out," says Katya.
+
+### > map the laying of the tinder to the constructing of the pyre
+>  
+map the laying of the tinder to the constructing of the pyre
+→ the constructing of the pyre
+
+### > map the laying of the kindling to the constructing of the pyre
+>  
+map the laying of the kindling to the constructing of the pyre
+→ the constructing of the pyre
+
+### > map the stacking of the firewood to the constructing of the pyre
+>  
+map the stacking of the firewood to the constructing of the pyre
+→ the constructing of the pyre
+
+### > map the sparking of the tinder to the lighting of the pyre
+>  
+map the sparking of the tinder to the lighting of the pyre
+→ the lighting of the pyre
+
+### > map the spreading of the ember to the lighting of the pyre
+>  
+map the spreading of the ember to the lighting of the pyre
+→ the lighting of the pyre
+
+### > map the spreading of the flame to the lighting of the pyre
+>  
+map the spreading of the flame to the lighting of the pyre
+→ the lighting of the pyre
+
+### > map the consumption of all to the lighting of the pyre
+>  
+map the consumption of all to the lighting of the pyre
+→ the lighting of the pyre
+
+### > map the ash left behind to the lighting of the pyre
+>  
+map the ash left behind to the lighting of the pyre
+→ the lighting of the pyre
+
+### > apply the Voice of Fire
+>  
+apply the Voice of Fire
+You do. Just
+His closest followers construct a great funeral pyre, and lay his body on it.
+and
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+participate in the mapping.
+> lay the tinder — the pyre's tinder
+> lay the kindling — the pyre's kindling
+> stack the firewood — the pyre's wood
+You construct a great funeral pyre, and lay his body on it.
+> spark the tinder — the flame
+> spread to the kindling — the flame
+> spread to the firewood — the blaze
+> burn — the blaze
+> reduce to ash — his body, as ash
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+"Now, my dear, please find the second solution," says Katya.
+
+### > remember the two lines
+>  
+remember the two lines
+It went like this:
+> construct a pyre and lay his body on it
+You construct a great funeral pyre, and lay his body on it. — the tinder — the kindling — the firewood
+> light the pyre
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash. — the ember — the flame — the blaze — the ash
+It felt:
+— contained, because everything else stood outside
+
+### > collapse the unmapped
+>  
+collapse the unmapped
+The unmapped rows fold.
+
+### > expand the unmapped
+>  
+expand the unmapped
+The unmapped rows unfold.
+
+### > ask what she means
+>  
+ask what she means
+"The second? What do you mean?"
+"The figurative solution, my dear. The one without any literal mention of wood or flame," she says.
+
+### > set aside the first solution
+>  
+set aside the first solution
+The first solution is set aside; the badges hollow.
+
+### > map the laying of the tinder to the growing up and acquiring of wisdom
+>  
+map the laying of the tinder to the growing up and acquiring of wisdom
+→ the growing up and acquiring of wisdom
+
+### > map the laying of the kindling to the gaining of a small circle
+>  
+map the laying of the kindling to the gaining of a small circle
+→ the gaining of a small circle
+
+### > map the stacking of the firewood to the growing in number
+>  
+map the stacking of the firewood to the growing in number
+→ the growing in number
+
+### > map the sparking of the tinder to the dying unexpectedly
+>  
+map the sparking of the tinder to the dying unexpectedly
+→ the dying unexpectedly
+"His death. Very well. Hold that," says Katya.
+
+### > map the sparking of the tinder to the adjusting of his words
+>  
+map the sparking of the tinder to the adjusting of his words
+→ the adjusting of his words
+
+### > map the spreading of the ember to the adjusting of his words
+>  
+map the spreading of the ember to the adjusting of his words
+→ the adjusting of his words
+
+### > map the spreading of the flame to the spreading across the land
+>  
+map the spreading of the flame to the spreading across the land
+→ the spreading across the land
+
+### > map the consumption of all to the being read and repeated and reprinted
+>  
+map the consumption of all to the being read and repeated and reprinted
+→ the being read and repeated and reprinted
+
+### > map the ash left behind to the passing of time, in the wise man's story
+>  
+map the ash left behind to the passing of time, in the wise man's story
+→ the passing of time, in the wise man's story
+
+### > apply the Voice of Fire
+>  
+apply the Voice of Fire
+It takes you some time, but you gradually work it out. The construction of the fireplace is the replication of the man's wisdom within his mind (tinder), his initial and central followers (kindling), and the wider community of followers (firewood). The mythologizing of his death marks the spark, which yields ever increasing distortions to his ideology, which spread through his original community and beyond. At the end, his wisdom has become ash, spread far and wide across the adherents to the book.
+> lay the tinder — his wisdom
+You are curious, charismatic, intelligent. You grow up and acquire wisdom.
+> lay the kindling — his central followers
+You gain a small circle of like-minded seekers who listen to you, astounded by your ideas.
+> stack the firewood — the wider community
+You grow in number. Word of the man's wisdom spreads, and more of you come.
+> spark the tinder — the myth of his death
+> spread to the kindling — the distortions
+You continue to write the dead man's words, and in time you adjust his words, and embellish the stories about him, in the interest of reaching as many people as possible. His death becomes mythologized.
+> spread to the firewood — the books
+Books spread across the land.
+> burn — the echoes
+The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted.
+> reduce to ash — the distorted doctrine
+Time passes. The words are interpreted and reinterpreted until they hardly resemble the original ideas at all.
+
+### > collapse the unmapped
+>  
+collapse the unmapped
+The unmapped rows fold.
+
+### > object that there is no fire
+>  
+object that there is no fire
+"Katya, I have to say, it seems this second solution hardly fits the spirit of the Voice of Fire."
+"Why so, my dear?"
+"There's no fire, no wood, no burning directly involved."
+
+### > set aside the second solution
+>  
+set aside the second solution
+The second solution is set aside; the badges hollow.
+
+### > map the sparking of the tinder to the dying unexpectedly
+>  
+map the sparking of the tinder to the dying unexpectedly
+→ the dying unexpectedly
+"His death. Very well. Hold that," says Katya.
+
+### > resume the first solution
+>  
+resume the first solution
+The first solution is resumed; the badges solid.
+> lay the tinder — the pyre's tinder
+> lay the kindling — the pyre's kindling
+> stack the firewood — the pyre's wood
+You construct a great funeral pyre, and lay his body on it.
+> spark the tinder — the flame
+> spread to the kindling — the flame
+> spread to the firewood — the blaze
+> burn — the blaze
+> reduce to ash — his body, as ash
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+
+### > set aside the first solution
+>  
+set aside the first solution
+The first solution is set aside; the badges hollow.
+
+### > map the sparking of the tinder to the adjusting of his words
+>  
+map the sparking of the tinder to the adjusting of his words
+→ the adjusting of his words
+
+### > resume the second solution
+>  
+resume the second solution
+The second solution is resumed; the badges solid.
+> lay the tinder — his wisdom
+You are curious, charismatic, intelligent. You grow up and acquire wisdom.
+> lay the kindling — his central followers
+You gain a small circle of like-minded seekers who listen to you, astounded by your ideas.
+> stack the firewood — the wider community
+You grow in number. Word of the man's wisdom spreads, and more of you come.
+> spark the tinder — the myth of his death
+> spread to the kindling — the distortions
+You continue to write the dead man's words, and in time you adjust his words, and embellish the stories about him, in the interest of reaching as many people as possible. His death becomes mythologized.
+> spread to the firewood — the books
+Books spread across the land.
+> burn — the echoes
+The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted.
+> reduce to ash — the distorted doctrine
+Time passes. The words are interpreted and reinterpreted until they hardly resemble the original ideas at all.
+
+### > object that the fireplace is too abstract
+>  
+object that the fireplace is too abstract
+"The structure of the fireplace is so abstract- the man's wisdom? His 'legitimate following'?"
+
+### > object that the spark is the myth, not the death
+>  
+object that the spark is the myth, not the death
+"And the timing doesn't seem to add up; the man dies, but then they turn him into a myth. So which event is the spark? His actual death? Or the mythological version of his death?"
+
+### > object that the ash is still structured
+>  
+object that the ash is still structured
+"And the so-called 'ash' at the end; while it may no longer resemble the original knowledge of the man, it is still highly structured; more structured than a pile of ash."
+"These are all good questions, my dear. In time, we will answer them all. For now, recognize that the Voice of Fire fits on both levels."
+
+### > remember the wise man's story
+>  
+remember the wise man's story
+It went like this:
+> be born
+You are born to parents of no consequence.
+> grow up and acquire wisdom
+You are curious, charismatic, intelligent. You grow up and acquire wisdom. — the tinder
+> seek answers to old questions
+You seek answers to old questions. Questions of purpose, consciousness, the dynamics of reality.
+> gain a small circle of seekers
+You gain a small circle of like-minded seekers who listen to you, astounded by your ideas. — the kindling
+> grow in number
+You grow in number. Word of the man's wisdom spreads, and more of you come. — the firewood
+> give speeches
+You give speeches to more and more devoted followers. You begin to repeat yourself. Your words become ear-worms, ever more viral and convincing.
+> write down his teachings
+Some of you begin to write down the wise man's teachings.
+> die unexpectedly
+You die unexpectedly.
+> construct a pyre and lay his body on it
+You construct a great funeral pyre, and lay his body on it.
+> attend the funeral
+You attend the wise man's funeral in multitudes.
+> light the pyre
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+> adjust and embellish his words
+You continue to write the dead man's words, and in time you adjust his words, and embellish the stories about him, in the interest of reaching as many people as possible. His death becomes mythologized. — the ember — the flame
+> spread across the land
+Books spread across the land. — the blaze
+> be read and repeated and reprinted
+The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted. — the blaze
+> pass
+Time passes. The words are interpreted and reinterpreted until they hardly resemble the original ideas at all. — the ash
+It felt:
+— a bit relieving, at first, because only two lines burned
+— then not, because all of them did
+— like the Voice of Fire, because the tinder was his wisdom
+
+### > say Ok, I guess
+>  
+say Ok, I guess
+"Ok, I guess," you mutter.
+But you don't really see it.
+
+### > remember the wise man's story
+>  
+remember the wise man's story
+It went like this:
+> be born
+You are born to parents of no consequence.
+> grow up and acquire wisdom
+You are curious, charismatic, intelligent. You grow up and acquire wisdom. — the tinder
+> seek answers to old questions
+You seek answers to old questions. Questions of purpose, consciousness, the dynamics of reality.
+> gain a small circle of seekers
+You gain a small circle of like-minded seekers who listen to you, astounded by your ideas. — the kindling
+> grow in number
+You grow in number. Word of the man's wisdom spreads, and more of you come. — the firewood
+> give speeches
+You give speeches to more and more devoted followers. You begin to repeat yourself. Your words become ear-worms, ever more viral and convincing.
+> write down his teachings
+Some of you begin to write down the wise man's teachings.
+> die unexpectedly
+You die unexpectedly.
+> construct a pyre and lay his body on it
+You construct a great funeral pyre, and lay his body on it.
+> attend the funeral
+You attend the wise man's funeral in multitudes.
+> light the pyre
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+> adjust and embellish his words
+You continue to write the dead man's words, and in time you adjust his words, and embellish the stories about him, in the interest of reaching as many people as possible. His death becomes mythologized. — the ember — the flame
+> spread across the land
+Books spread across the land. — the blaze
+> be read and repeated and reprinted
+The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted. — the blaze
+> pass
+Time passes. The words are interpreted and reinterpreted until they hardly resemble the original ideas at all. — the ash
+It felt:
+— a bit relieving, at first, because only two lines burned
+— then not, because all of them did
+— unconvincing, because you don't really see it
+— like the Voice of Fire, because the tinder was his wisdom
+
+### > remember the saying of Ok, I guess
+>  
+remember the saying of Ok, I guess
+It went like this:
+>  
+say Ok, I guess
+"Ok, I guess," you mutter.
+But you don't really see it.
+It felt a bit untrue, because it was.
+
+### > remember the second listening
+>  
+remember the second listening
+It went like this:
+>  
+listen
+She rewrites this in the standard notation of the field:
+It felt like nothing in particular.
+
+### > remember the ember
+>  
+remember the ember
+The ember has been: the match's flame, in the campfire story; the burning stick, in the house in the woods, set aside; the lit rag, in the house in the woods; the lightning, in the forest fire; the flame, in the wise man's story, set aside; the myth of his death, in the wise man's story.
+
+### > remember the lighting of the pyre
+>  
+remember the lighting of the pyre
+It went like this:
+> light the pyre
+The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
+It felt like the ember, and the flame, and the blaze, and the ash, in the Voice of Fire; set aside.
+
+### available commands:
+  remember the Voice of Fire
+  remember the laying of the tinder
+  remember the laying of the kindling
+  remember the stacking of the firewood
+  remember the sparking of the tinder
+  remember the spreading of the ember
+  remember the spreading of the flame
+  remember the consumption of all
+  remember the ash left behind
+  remember the tinder
+  remember the kindling
+  remember the firewood
+  remember the ember
+  remember the flame
+  remember the blaze
+  remember the ash
+  remember the Pillaging
+  remember the traveling to the woods
+  remember the gathering of tinder, kindling and firewood
+  remember the digging of a pit
+  remember the laying of the tinder in the pit
+  remember the piling of the kindling
+  remember the stacking of the logs
+  remember the lighting of a match
+  remember the touching of the flame to the tinder
+  remember the first singing
+  remember the adding of logs to the fire
+  remember the second singing
+  remember the sleeping in tents
+  remember the campfire story
+  remember the packing
+  remember the first traveling
+  remember the second traveling
+  remember the third traveling
+  remember the cutting of wood
+  remember the digging of a hole
+  remember the building of the foundation
+  remember the raising of the frame
+  remember the laying of walls and a roof
+  remember the moving in
+  remember the lighting of the rag
+  remember the hurling of the rag onto the roof
+  remember the scattering
+  remember the house in the woods
+  remember the taking root
+  remember the turning of the season
+  remember the growing
+  remember the sprouting of leaves and seeds
+  remember the spreading of the forest
+  remember the passing of time, in the forest fire
+  remember the turning dry and hot
+  remember the bringing of a thunderstorm
+  remember the spreading to the dead brush
+  remember the burning in a growing circle
+  remember the consuming of the forest
+  remember the stopping at the rivers
+  remember the forest fire
+  remember the being born
+  remember the growing up and acquiring of wisdom
+  remember the seeking of answers
+  remember the gaining of a small circle
+  remember the growing in number
+  remember the giving of speeches
+  remember the writing down of his teachings
+  remember the dying unexpectedly
+  remember the constructing of the pyre
+  remember the attending of the funeral
+  remember the lighting of the pyre
+  remember the adjusting of his words
+  remember the spreading across the land
+  remember the being read and repeated and reprinted
+  remember the passing of time, in the wise man's story
+  remember the wise man's story
+  remember the two lines
+  remember the looking at the board
+  remember the first listening
+  remember the second listening
+  remember the third listening
+  remember the saying that the Voice of Fire is contained in this one
+  remember the first picking up of the chalk
+  remember the first drawing of the vertical line
+  remember the saying of all set
+  remember the fourth listening
+  remember the saying that it is a sad story
+  remember the second picking up of the chalk
+  remember the asking what the right thing to do is
+  remember the second drawing of the vertical line
+  remember the objecting that there is no clear tinder
+  remember the saying that it knows nothing of the morality of the burning either
+  remember the first putting down of the chalk
+  remember the fifth listening
+  remember the third picking up of the chalk
+  remember the third drawing of the vertical line
+  remember the second putting down of the chalk
+  remember the sixth listening
+  remember the fourth picking up of the chalk
+  remember the fourth drawing of the vertical line
+  remember the saying that the Voice of Fire is contained in just two lines
+  remember the asking what she means
+  remember the objecting that there is no fire
+  remember the objecting that the fireplace is too abstract
+  remember the objecting about the spark
+  remember the objecting that the ash is still structured
+  remember the saying of Ok, I guess
+  expand the steps
+  expand the unmapped
+  expand the campfire story
+  expand the house in the woods
+  expand the forest fire
+  collapse the story
+  collapse the being born
+  collapse the growing up and acquiring of wisdom
+  collapse the seeking of answers
+  collapse the gaining of a small circle
+  collapse the growing in number
+  collapse the giving of speeches
+  collapse the writing down of his teachings
+  collapse the dying unexpectedly
+  collapse the constructing of the pyre
+  collapse the attending of the funeral
+  collapse the lighting of the pyre
+  collapse the adjusting of his words
+  collapse the spreading across the land
+  collapse the being read and repeated and reprinted
+  collapse the passing of time, in the wise man's story

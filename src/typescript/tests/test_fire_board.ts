@@ -239,6 +239,23 @@ describe('the board', function () {
             assert.ok(has(one(story, S.has_gist(exact(board_gist(seq)))), 'chip'), `${seq} is a chip`);
         }
         assert.ok(has(board, 'unmapped-collapsed'));
+        // Resuming the other solution hollows every badge and reference of the one it holds aside.
+        const held = world_at('second held aside');
+        const held_story = tree(held);
+        const held_id = held.mappings.filter(m => m.story === WISE_MAN.id)[1].id;
+        const held_badges = S.has_gist({ tag: 'badge', params: { seq: 'wise_man', id: held_id } }).query(held_story).map(([b]) => b as StoryNode);
+        assert.equal(held_badges.length, 8);
+        assert.ok(held_badges.every(b => has(b, 'hollow') && !has(b, 'held') && !has(b, 'solid')));
+        assert.ok(S.has_gist({ tag: 'reference', params: { seq: 'wise_man', id: held_id } }).query(held_story).every(([r]) => has(r as StoryNode, 'hollow')));
+        // At the end a chip expands into view (the hole in its ledger) and collapse returns the hole to the wise man's ledger, after the coda.
+        const reopened = play(w, ['expand the campfire story']);
+        const campfire_ledger = S.has_gist(exact(ledger_gist('campfire'))).query(tree(reopened))[0][1];
+        assert.deepEqual(hole_path(tree(reopened)).slice(0, campfire_ledger.length), campfire_ledger);
+        const back = tree(play(reopened, ['collapse the campfire story']));
+        const [wise_ledger, wise_path] = S.has_gist(exact(ledger_gist('wise_man'))).query(back)[0];
+        assert.deepEqual(hole_path(back).slice(0, wise_path.length), wise_path);
+        const kids = (wise_ledger as StoryNode).children;
+        assert.ok(is_story_hole(kids[kids.length - 1]) && kids.slice(0, -1).some(c => is_story_node(c) && has(c, 'coda')));
     });
 
     it('never builds a board or a frame inside a chip', () => {

@@ -74,6 +74,7 @@ export interface Nudge {
     step: number;
     event: number;
     text: string;
+    pass?: Pass;        // said in this pass only (the wise man's fuel nudges are the literal pass's)
 }
 
 // A wrong option offered during transcription: Available, and issuing it

@@ -10,13 +10,13 @@ import { Nudge, StorySpec, SubSequenceSpec } from './types';
 const WOOD_MY_DEAR = 'Wood, my dear. You are looking for wood. There are only two lines in which anything burns. Find them; the rest will keep.';
 const IT_BURNS_HERE = 'It burns here, my dear. Where was it built?';
 
-// The fuel steps on the lines the second solution will use, and on the burning itself.
+// The fuel steps on the lines the second solution will use, and on the burning itself: the literal pass's nudges.
 const fuel_nudges: Nudge[] = [];
 for (const step of [1, 2, 3]) {
     for (const event of [2, 4, 5]) {
-        fuel_nudges.push({ step, event, text: WOOD_MY_DEAR });
+        fuel_nudges.push({ step, event, text: WOOD_MY_DEAR, pass: 'first' });
     }
-    fuel_nudges.push({ step, event: 11, text: IT_BURNS_HERE });
+    fuel_nudges.push({ step, event: 11, text: IT_BURNS_HERE, pass: 'first' });
 }
 
 const LITERAL_ROWS = {
@@ -188,6 +188,9 @@ export const WISE_MAN: StorySpec = {
     nudges: fuel_nudges,
     // The second pass is corrected in the figurative reading's terms (l. 471), not the literal fire's.
     step_nudges: {
+        first: {
+            4: 'Nothing burns here yet, my dear. Find the lighting.'
+        },
         second: {
             1: 'Not wood this time, my dear. What was laid in him, before anyone else came?',
             2: 'Who caught from him first, my dear? The few, before the many.',

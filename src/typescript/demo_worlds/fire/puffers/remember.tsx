@@ -13,7 +13,9 @@ import { AUTHORED } from '../data/katya';
 import { participants, role_entries } from '../judge';
 import { capitalised, ordinal_names, role_name } from '../names';
 import { event_gist, paragraphs, sequence_passage, step_gist, strip_gists } from '../board';
-import { applied_mapping, BEAT, classroom_commands, converted, ended, FireWorld, has_said, LESSON_VOICE, pattern_of, phrase, readings, role_history } from '../world';
+import {
+    applied_mapping, BEAT, classroom_commands, converted, ended, FireWorld, has_said, LESSON_VOICE, pattern_for, pattern_of, phrase, readings, role_history
+} from '../world';
 
 function remembered(w: FireWorld, body: Fragment[]): FireWorld {
     return update(w, { story_updates: story_updater(S.description(<div className="memory">{body}</div>)) });
@@ -28,14 +30,19 @@ function feelings_list(lines: string[]): StoryNode {
 
 // STORY EVENTS
 
-// The event's passage, and how it felt: the roles the lit mapping gives it, or nothing yet.
+// The event's passage, and how it felt: the roles the lit mapping gives it;
+// else, from the history of readings, the roles its latest set-aside reading
+// gave it, marked; else nothing yet.
 function remember_event(w: FireWorld, story: StorySpec, n: number): FireWorld {
     const passage = strip_gists(lookup_or_throw(w.knowledge, event_gist(story.id, n)));
     const applied = applied_mapping(w, story);
-    const roles = applied === undefined ? [] : role_entries(participants(story, pattern_of(applied), applied).filter(p => p.event === n), story.title);
-    const feeling = roles.length > 0
-        ? [`It felt like ${roles.map(r => role_name(r.role)).join(', and ')}, in ${pattern_of(applied!).voice.name}.`]
-        : AUTHORED.nothing_yet;
+    const lit = applied === undefined ? undefined : participants(story, pattern_of(applied), applied).filter(p => p.event === n);
+    const reading = lit !== undefined && lit.length > 0
+        ? { parts: lit, current: true }
+        : readings(w).filter(r => r.story === story && r.parts.some(p => p.event === n)).map(r => ({ parts: r.parts.filter(p => p.event === n), current: false })).pop();
+    const feeling = reading === undefined
+        ? AUTHORED.nothing_yet
+        : [`It felt like ${role_entries(reading.parts, story.title).map(r => role_name(r.role)).join(', and ')}, in ${pattern_for(story).voice.name}${reading.current ? '.' : '; set aside.'}`];
     return remembered(w, [...paragraphs(AUTHORED.went_like_this), passage, ...paragraphs(feeling)]);
 }
 

@@ -159,7 +159,7 @@ export const SCRIPT: Line[] = [
     },
     { ...objection, command: 'object that the ash is still structured', name: 'the objecting that the ash is still structured', says: ['l477_ash', 'l479'] },
     // After l. 479, whichever solution is lit (SPEC §6).
-    { command: 'say that you see it', name: 'the saying that you see it', beat: BEAT.wise_man, optional: true, after: 'object that the ash is still structured', says: [], locked: true },
+    { command: 'say that you see it', name: 'the saying that you see it', beat: BEAT.wise_man, through: BEAT.end, optional: true, after: 'object that the ash is still structured', says: [], locked: true },
     {
         command: 'say Ok, I guess', name: 'the saying of Ok, I guess', feeling: 'It felt a bit untrue, because it was.', beat: BEAT.wise_man,
         says: ['l481'], board: () => coda_ops(AUTHORED.coda), advances: true

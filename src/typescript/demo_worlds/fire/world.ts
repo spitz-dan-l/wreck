@@ -83,12 +83,13 @@ export function board_story(w: FireWorld): StorySpec | undefined {
 
 // The chip expanded while no board is open (at most one: expanding another
 // collapses it). While one is, only display commands and `remember` are
-// offered, so no frame or board is ever created inside a chip's ledger.
+// offered, so no frame or board is ever created inside a chip's ledger. At
+// the end the last board stays open and counts as none.
 export function expanded_chip(w: FireWorld): StorySpec | undefined {
-    if (w.board !== undefined) {
+    if (w.board !== undefined && !ended(w)) {
         return undefined;
     }
-    return STORIES.find(s => w.finished.includes(s.id) && !w.collapsed.includes(`${s.id}:chip`));
+    return STORIES.find(s => s.id !== w.board && w.finished.includes(s.id) && !w.collapsed.includes(`${s.id}:chip`));
 }
 
 // Where a story's board is: closed; converting its ¶s; converted, awaiting

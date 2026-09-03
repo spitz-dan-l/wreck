@@ -21,7 +21,7 @@ import { update } from 'lib/utils';
 import { EVENT_NAMES, STORIES, StorySpec } from '../data';
 import { chip_ops, event_ops, paragraphs, steps_ops, story_ops } from '../board';
 import { capitalised } from '../names';
-import { BEAT, board_story, converted, event_frame, expanded_chip, FireWorld, phase, phrase } from '../world';
+import { BEAT, board_story, converted, ended, event_frame, expanded_chip, FireWorld, phase, phrase } from '../world';
 import { rows_of } from './mapping';
 
 interface Thing {
@@ -32,9 +32,10 @@ interface Thing {
     ops: (w: FireWorld, collapsed: boolean) => StoryUpdaterSpec[];   // `w` has the toggle applied
 }
 
+// At the end the lesson's last board stays open: a chip is expanded as if none were, and the hole returns to that board's ledger.
 function chip(w: FireWorld, story: StorySpec): Thing {
-    const alone = w.board === undefined;
-    return { name: story.title, id: `${story.id}:chip`, subject: story.title, ops: (_, c) => chip_ops(story, c, alone) };
+    const alone = w.board === undefined || ended(w);
+    return { name: story.title, id: `${story.id}:chip`, subject: story.title, ops: (_, c) => chip_ops(story, c, alone, ended(w) ? w.board : undefined) };
 }
 
 function things(w: FireWorld): Thing[] {

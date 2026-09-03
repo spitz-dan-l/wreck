@@ -240,8 +240,9 @@ function barcode_node(story: StorySpec, mappings: Mapping[]): StoryNode {
     return <span className="barcode">{badges}</span> as StoryNode;
 }
 
-function unmapped_bar_node(seq: string, count: number): StoryNode {
-    return <div gist={unmapped_gist(seq)} className="unmapped-bar">{`▸ ${count} events not in the mapping`}</div> as StoryNode;
+// "▸ N events not in the mapping", or, where two solutions exist, "in neither solution".
+function unmapped_bar_node(seq: string, count: number, two: boolean): StoryNode {
+    return <div gist={unmapped_gist(seq)} className="unmapped-bar">{`▸ ${count} events ${two ? 'in neither solution' : 'not in the mapping'}`}</div> as StoryNode;
 }
 
 // A copy of a node with no gists and no frame index, so that later ops never land on the reprint (SPEC §3).
@@ -387,7 +388,7 @@ export function rows_ops(
         ];
     });
     const transcribed = story.events.filter(e => frame_of(e.index) !== undefined).length;
-    return [...ops, ...run_ops, ...unmapped_ops(story, unmapped_folded, transcribed - mapped.length)];
+    return [...ops, ...run_ops, ...unmapped_ops(story, unmapped_folded, transcribed - mapped.length, mappings.length > 1)];
 }
 
 // `apply`: the Fire speaks under each step; each mapped row is annotated (once per role); the badges are solid.
@@ -412,7 +413,8 @@ export function unapply_ops(story: StorySpec, m: Mapping): StoryUpdaterSpec[] {
     ];
 }
 
-function solid_ops(story: StorySpec, m: Mapping, solid: boolean): StoryUpdaterSpec[] {
+// A mapping's badges and references: solid when it is lit, hollow when it is set aside.
+export function solid_ops(story: StorySpec, m: Mapping, solid: boolean): StoryUpdaterSpec[] {
     return [
         S.has_gist({ tag: 'badge', params: { seq: story.id, id: m.id } }).css({ solid, hollow: !solid, held: false }),
         S.has_gist({ tag: 'reference', params: { seq: story.id, id: m.id } }).css({ solid, hollow: !solid, held: false })
@@ -435,12 +437,15 @@ export function finish_board_ops(story: StorySpec, mappings: Mapping[]): StoryUp
 
 // DISPLAY ONLY (SPEC §6 expand/collapse)
 
-// `expand <sequence>` reopens the chip and, when no board is open, moves the
-// hole into its ledger so the reopened board is in view; `collapse` moves it back.
-export function chip_ops(story: StorySpec, on: boolean, move_hole: boolean): StoryUpdaterSpec[] {
+// `expand <sequence>` reopens the chip and, when no board is open (or the
+// lesson has ended on the wise man's board), moves the hole into its ledger
+// so the reopened board is in view; `collapse` moves it back to `home`: the
+// root, or the ledger of the board the lesson ended on (the coda keeps its place).
+export function chip_ops(story: StorySpec, on: boolean, move_hole: boolean, home?: string): StoryUpdaterSpec[] {
+    const back = home === undefined ? S.story_root() : at(ledger_gist(home));
     return [
         at(board_gist(story.id)).css({ chip: on }),
-        ...(move_hole ? (on ? move_hole_into(S.story_root()) : move_hole_into(at(ledger_gist(story.id)))) : [])
+        ...(move_hole ? (on ? move_hole_into(back) : move_hole_into(at(ledger_gist(story.id)))) : [])
     ];
 }
 
@@ -456,10 +461,10 @@ export function event_ops(frame: number, collapsed: boolean): StoryUpdaterSpec[]
     return [S.frame(frame).css({ collapsed })];
 }
 
-export function unmapped_ops(story: StorySpec, collapsed: boolean, count: number): StoryUpdaterSpec[] {
+export function unmapped_ops(story: StorySpec, collapsed: boolean, count: number, two: boolean): StoryUpdaterSpec[] {
     return [
         at(board_gist(story.id)).css({ 'unmapped-collapsed': collapsed }),
         at(unmapped_gist(story.id)).remove(),
-        ...(collapsed ? [at(left_gist(story.id)).add(unmapped_bar_node(story.id, count))] : [])
+        ...(collapsed ? [at(left_gist(story.id)).add(unmapped_bar_node(story.id, count, two))] : [])
     ];
 }

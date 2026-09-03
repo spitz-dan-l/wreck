@@ -18,7 +18,9 @@ import { Puffer } from 'puffer';
 import { graft, remove_gists, story_updater, StoryUpdaterSpec, Updates as S } from 'story';
 import { update } from 'lib/utils';
 import { EVENT_NAMES, Mapping, Pass, passes, StorySpec, SUB_SEQUENCES } from '../data';
-import { annotation_node, apply_ops, applied_gist, erase_ops, event_gist, paragraphs, place_ops, reference_text, rendition_text, rows_ops, unapply_ops } from '../board';
+import {
+    annotation_node, apply_ops, applied_gist, erase_ops, event_gist, paragraphs, place_ops, reference_text, rendition_text, rows_ops, solid_ops, unapply_ops
+} from '../board';
 import { capitalised } from '../names';
 import { apply as judge_apply, erase, new_mapping, participants, place, placed, step_of, violations } from '../judge';
 import {
@@ -156,12 +158,15 @@ function do_set_aside(w: FireWorld, story: StorySpec, mapping: Mapping): FireWor
     return update(next, { story_updates: story_updater(rows_of(next, story)) });
 }
 
-// `resume` a set-aside mapping: it is lit again; the mapping open meanwhile keeps its placements, set aside.
+// `resume` a set-aside mapping: it is lit again; the mapping open meanwhile keeps its placements, set aside (its badges hollow).
 function do_resume(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     const open = open_mapping(w, story);
     let next = w;
     if (open !== undefined) {
-        next = update(next, { mappings: _ => replace_mapping(_, open, { ...open, status: 'set aside' }) });
+        next = update(next, {
+            mappings: _ => replace_mapping(_, open, { ...open, status: 'set aside' }),
+            story_updates: story_updater(solid_ops(story, open, false))
+        });
     }
     return light(next, story, mapping, 'resume');
 }
