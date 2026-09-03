@@ -57,7 +57,11 @@ function candidates_enumerable(story: StorySpec) {
     };
 }
 
-const L1 = (step: number) => `The Voice of Fire does not skip, my dear. ${step_name(step)[0].toUpperCase()}${step_name(step).slice(1)} is not on the board.`;
+// The L1 nudge, then the plain list of every step still off the board.
+const L1 = (...steps: number[]) =>
+    `The Voice of Fire does not skip, my dear. ${step_name(steps[0])[0].toUpperCase()}${step_name(steps[0]).slice(1)} is not on the board.`
+    + ` Unplaced: ${steps.map(step_name).join(', ')}.`;
+const ALL_STEPS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 // A line the character cannot yet say is offered Locked (SPEC §0.11): its verb typed, the rest shows dimmed.
 function locked(w: FireWorld, verb: string, rest: string) {
@@ -72,11 +76,12 @@ export const BEATS: { name: string, steps: Step[] }[] = [
     { name: 'beat 0: the classroom', steps: [
         { cmd: 'look at the board', expect: AUTHORED.shelf, check: w => assert.ok(accepts(w, 'remember the Pillaging')) },
         { cmd: 'remember the Pillaging', expect: ['Someone lives in their home.', 'take things from their home'] },
+        // Nothing to fold before the notation exists: neither expand nor collapse is offered yet.
         { cmd: 'listen', expect: QUOTED.l162, expect_tree: ['The laying of the tinder', 'The ash left behind'],
-          check: w => assert.ok(accepts(w, 'expand the steps') && !accepts(w, 'collapse the steps')) },
+          check: w => assert.ok(!accepts(w, 'expand the steps') && !accepts(w, 'collapse the steps')) },
         { cmd: 'remember the Voice of Fire', expect: ['The ash left behind'], check: w => assert.ok(!frame_text(w).includes('reduce to ash')) },
         { cmd: 'listen', expect: QUOTED.l182, expect_tree: ['lay the tinder', 'A pile of black ash is left behind in the hearth.'],
-          check: w => assert.ok(accepts(w, 'remember the laying of the tinder')) },
+          check: w => assert.ok(accepts(w, 'remember the laying of the tinder') && accepts(w, 'collapse the steps') && !accepts(w, 'expand the steps')) },
         { cmd: 'remember the Voice of Fire', label: 'notation remembered', expect: ['reduce to ash'] },
         { cmd: 'remember the kindling', expect: ['Nothing has been the kindling yet.'] },
         { cmd: 'listen', expect: [...QUOTED.l218, CAMPFIRE.prose[0], CAMPFIRE.prose[11]] },
@@ -86,7 +91,8 @@ export const BEATS: { name: string, steps: Step[] }[] = [
     ] },
     { name: 'beat 1: the campfire', steps: [
         // No mark in the text before Katya teaches the notation (l. 350).
-        { cmd: 'speak as the friends', check: w => { assert.equal(w.voice, 'the friends'); assert.ok(!frame_text(w).includes('— the friends —')); } },
+        { cmd: 'speak as the friends', expect: ['You speak as the friends.'],
+          check: w => { assert.equal(w.voice, 'the friends'); assert.ok(!frame_text(w).includes('— the friends —')); } },
         { cmd: 'travel to the woods', expect: ['You arrive at the campground in the woods.'] },
         { cmd: 'gather tinder, kindling and firewood' },
         { cmd: 'dig a pit in the ground' },
@@ -95,7 +101,7 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: 'stack the logs over the kindling' },
         { cmd: 'light a match', check: w => { assert.equal(w.cursor, 7); assert.equal(remainder(w, CAMPFIRE), 'and carefully touches its flame to the tinder.'); } },
         { cmd: 'touch the flame to the tinder', label: 'campfire touched', check: w => { assert.equal(w.cursor, 8); assert.equal(remainder(w, CAMPFIRE), undefined); } },
-        { cmd: 'spread to the kindling', trap: 'The friends do not command the fire, my dear.' },
+        { cmd: 'spread to the kindling', trap: 'The friends do not command the fire, my dear. Let it follow.' },
         { cmd: 'let it follow', expect: ['↳ The fire starts, spreading first to the kindling and then the logs.'] },
         { cmd: 'sing' },
         { cmd: 'add logs to the fire' },
@@ -105,11 +111,11 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: 'draw a vertical line', label: 'campfire lined', expect: QUOTED.l309, check: candidates_enumerable(CAMPFIRE) },
         { cmd: map_cmd(CAMPFIRE, 8, 11), trap: 'The singing is not ash. What is left behind, afterward, when no one is tending?' },
         { cmd: map_cmd(CAMPFIRE, 1, 2), trap: FIRE.nudges.step[1]! },
-        { cmd: 'apply the Voice of Fire', trap: L1(1) },
+        { cmd: 'apply the Voice of Fire', trap: L1(...ALL_STEPS) },
         { cmd: map_cmd(CAMPFIRE, 1, 4), label: 'campfire first map', expect: ['→ the laying of the tinder in the pit'] },
         // Erasing a step leaves nothing behind on the row; re-mapping it comes back.
         { cmd: 'erase the laying of the tinder', label: 'campfire erased', check: w => { assert.equal(open_mapping(w, CAMPFIRE)!.placements.length, 0); assert.ok(!accepts(w, 'erase the laying of the tinder')); } },
-        { cmd: 'apply the Voice of Fire', trap: L1(1) },
+        { cmd: 'apply the Voice of Fire', trap: L1(...ALL_STEPS) },
         ...maps(CAMPFIRE, [[1, 4], [2, 5], [3, 6], [4, 8], [5, 8], [6, 8], [7, 10]]),
         { cmd: 'apply the Voice of Fire', trap: L1(8) },
         ...maps(CAMPFIRE, [[8, 12]]),
@@ -143,7 +149,7 @@ export const BEATS: { name: string, steps: Step[] }[] = [
           check: w => assert.ok(!frame_text(w).includes('— the ember, in the Voice of Fire')) },
         { cmd: 'remember the ember', expect: ["The ember has been: the match's flame, in the campfire story."] },
         // l. 288 belongs to the touch alone, not to the match.
-        { cmd: 'remember the lighting of a match', expect: ['The match head flickers into a tiny flame.', 'It felt like nothing yet. It has not been read.'],
+        { cmd: 'remember the lighting of a match', expect: ['The match head flickers into a tiny flame.', 'It has not been read in any voice yet.'],
           check: w => assert.ok(!frame_text(w).includes(normalise(CAMPFIRE.prose[7]))) },
         { cmd: 'expand the campfire story', label: 'campfire chip expanded', check: w => assert.ok(!w.collapsed.includes('campfire:chip') && accepts(w, 'collapse the campfire story')) },
         { cmd: 'collapse the campfire story', label: 'campfire chip collapsed', check: w => assert.ok(w.collapsed.includes('campfire:chip')) }
@@ -166,7 +172,7 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: 'light the rag', trap: 'You are still speaking as the family, my dear. Would the family light the rag? Change the voice, then command.' },
         { cmd: 'ask what the right thing to do is', expect: [...QUOTED.l348, ...QUOTED.l350, ...AUTHORED.voice_switches, ...QUOTED.l350b],
           check: w => assert.ok(accepts(w, 'speak as the children')) },
-        { cmd: 'speak as the children', label: 'children speaking', expect: ['— the children —'] },
+        { cmd: 'speak as the children', label: 'children speaking', expect: ['— the children —', 'You speak as the children.'] },
         { cmd: 'light the rag', expect: ['one of you lights an oil-soaked rag'] },
         { cmd: 'hurl it onto the roof' },
         { cmd: 'scatter', expect: AUTHORED.burning_lines, check: w => assert.equal(w.cursor, 10) },
@@ -348,7 +354,9 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: "remember the wise man's story", expect: ["— unconvincing, because you don't really see it"] },
         { cmd: 'remember the saying of Ok, I guess', expect: ['It went like this:', "But you don't really see it.", 'It felt a bit untrue, because it was.'],
           check: w => { const f = frame_text(w); assert.ok(f.endsWith('It felt a bit untrue, because it was.') && !f.includes(normalise(AUTHORED.coda[0]))); } },
-        { cmd: 'remember the second listening', expect: ['It felt like nothing in particular.'] },
+        // Only the three classroom events with a feeling of their own are rememberable (SPEC §10).
+        { cmd: 'remember the second picking up of the chalk', expect: ['It felt a bit ordinary, because it was chalk.'],
+          check: w => assert.ok(!accepts(w, 'remember the second listening') && !accepts(w, 'remember the looking at the board')) },
         // Every reading of the ember, the set-aside ones kept: the rag's stick, then the lit rag; the literal flame, then the myth.
         { cmd: 'remember the ember', expect: ["The ember has been: the match's flame, in the campfire story; the burning stick, in the house in the woods, set aside; the lit rag, in the house in the woods; the lightning, in the forest fire; the flame, in the wise man's story, set aside; the myth of his death, in the wise man's story."] },
         // An event read only by a set-aside solution remembers that reading, marked.
@@ -361,7 +369,8 @@ export const BEATS: { name: string, steps: Step[] }[] = [
             assert.ok(!accepts(w, map_cmd(HOUSE, 1, 9)) && !accepts(w, 'set aside the mapping'));
             locked(w, 'say', 'that you see it');
         } },
-        { cmd: 'apply the Pillaging', trap: 'The Pillaging does not skip, my dear. The living in their home is not on the board.' },
+        { cmd: 'apply the Pillaging', trap: 'The Pillaging does not skip, my dear. The living in their home is not on the board.'
+            + ' Unplaced: the living in their home, the entering of their home, the taking of things from their home.' },
         { cmd: 'map the living in their home to the moving in', label: 'pillaging placed', expect: ['→ the moving in'],
           check: w => assert.deepEqual(mappings_on(w, HOUSE, PILLAGING).map(m => m.placements), [[{ step: 1, event: 10 }]]) },
         // The refusals are in the acceptance script (they are the attempt), so they are steps, not traps: a nudge, and nothing changes.
@@ -373,7 +382,8 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         // A third refusal: the nudge alone.
         { cmd: `map the entering of their home to ${ev(HOUSE, 13)}`, expect: [PILLAGING.nudges.step[2]],
           check: (w, before) => { assert.equal(state_snapshot(w), state_snapshot(before)); assert.ok(frame_text(w).endsWith(PILLAGING.nudges.step[2])); } },
-        { cmd: 'apply the Pillaging', trap: 'The Pillaging does not skip, my dear. The entering of their home is not on the board.' },
+        { cmd: 'apply the Pillaging', trap: 'The Pillaging does not skip, my dear. The entering of their home is not on the board.'
+            + ' Unplaced: the entering of their home, the taking of things from their home.' },
         { cmd: 'remember the tinder', expect: ['The tinder has been: a patch of tinder, in the campfire story; the oil-soaked rag, in the house in the woods, set aside; the thatch, in the house in the woods; the dead brush, in the forest fire; the pyre\'s tinder, in the wise man\'s story, set aside; his wisdom, in the wise man\'s story.'] },
         { cmd: 'put down the chalk', label: 'attempt folded', check: w => {
             assert.equal(w.board, WISE_MAN.id);

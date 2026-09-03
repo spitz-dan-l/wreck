@@ -14,7 +14,7 @@ import { StoryEventSpec, StorySpec, voice as voice_of, VoiceId } from '../data';
 import { AUTHORED, QUOTED } from '../data/katya';
 import { new_mapping } from '../judge';
 import {
-    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, speak_as_gist, speak_as_ops,
+    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, speak_as_gist, speak_as_line, speak_as_ops,
     voice_mark_node
 } from '../board';
 import { board_story, command_spec, converted, FireWorld, pattern_for, phase, phrase } from '../world';
@@ -69,10 +69,11 @@ function follow(w: FireWorld, story: StorySpec): FireWorld {
     });
 }
 
-// A trap: the nudge is the frame's consequence; nothing else changes.
-export function nudge_frame(w: FireWorld, nudge: string): FireWorld {
+// A trap: the nudge is the frame's consequence, with any plain narration
+// that goes with it (the L1 list of what is still unplaced); nothing else changes.
+export function nudge_frame(w: FireWorld, nudge: string, ...also: string[]): FireWorld {
     return update(w, {
-        story_updates: story_updater(S.frame().css({ nudge: true }), S.consequence(paragraphs([nudge])))
+        story_updates: story_updater(S.frame().css({ nudge: true }), S.consequence(paragraphs([nudge, ...also])))
     });
 }
 
@@ -88,11 +89,12 @@ function has_line_here(w: FireWorld, story: StorySpec, v: VoiceId | undefined): 
 }
 
 // `speak as`: sets the voice and draws its bar (in the text form too, once
-// Katya has taught the notation at l. 350). A voice with no line at the
-// cursor is refused with a nudge (SPEC §10); at a consequence-only ¶ no one
-// speaks. The first disembodied and the first abstract voice that have a
-// line bring Katya's speeches (SPEC §5.3), the abstract one followed by
-// l. 419's last sentence.
+// Katya has taught the notation at l. 350), and says plainly whose voice it
+// now is, whether or not the notation has been taught. A voice with no line
+// at the cursor is refused with a nudge (SPEC §10); at a consequence-only ¶
+// no one speaks. The first disembodied and the first abstract voice that
+// have a line bring Katya's speeches (SPEC §5.3), the abstract one followed
+// by l. 419's last sentence.
 function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
     const voice = voice_of(v);
     if (story.follows.includes(w.cursor!)) {
@@ -110,6 +112,7 @@ function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
         taught: _ => teach ? [..._, kind] : _,
         story_updates: story_updater(
             w.taught.includes('voice') ? S.consequence(voice_mark_node(v)) : [],
+            S.consequence(speak_as_line(v)),
             teach ? S.consequence(paragraphs(speech!)) : [],
             speak_as_ops(story, w.index, v, w.voice)
         )
@@ -122,13 +125,18 @@ function speakable_voices(w: FireWorld, story: StorySpec): VoiceId[] {
     return all.filter(v => v !== w.voice);
 }
 
-// `draw a vertical line`: the rule and the right column appear, the hole moves to the ledger, and the mapping opens.
+// `draw a vertical line`: the rule and the right column appear, the hole
+// moves to the ledger, and the mapping opens. Where the .md has no sentence
+// for it (the wise man, whose l. 451 narrates it a command later) the board
+// says plainly what went up, so the frame is never empty (Phase B9).
+const LINE_DRAWN = 'The rule goes up, and the steps beside it.';
+
 function draw_line(w: FireWorld, story: StorySpec): FireWorld {
     return update(w, {
         gist: () => classroom_gist(DRAW_LINE.command, w.lesson, DRAW_LINE.name, DRAW_LINE.feeling),
         mappings: _ => [..._, new_mapping(story, pattern_for(story), 'first', w.index)],
         story_updates: story_updater(
-            story.line_text === undefined ? [] : S.consequence(paragraphs(QUOTED[story.line_text])),
+            S.consequence(paragraphs(story.line_text === undefined ? [LINE_DRAWN] : QUOTED[story.line_text])),
             draw_line_ops(story, pattern_for(story))
         )
     });

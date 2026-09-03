@@ -1,11 +1,16 @@
 /*
     Expand and collapse (SPEC §6): display-only toggles on the things the
     board can fold — the steps' notation, a board's story (its ¶s), its
-    unmapped rows, an event's consequence, a finished sequence's chip. Each
-    is a class on a gist-addressed node of a board (and, for the unmapped
-    rows, one bar); reprints made by `remember` are never touched. Each
-    prints one line, so the player has confirmation when the board is off
-    screen (SPEC §8).
+    unmapped rows, a finished sequence's chip. Each is a class on a
+    gist-addressed node of a board (and, for the unmapped rows, one bar);
+    reprints made by `remember` are never touched. Each prints one line, so
+    the player has confirmation when the board is off screen (SPEC §8).
+
+    A toggle is offered only where it has something to do (Phase B9): the
+    steps only once Katya has written the notation (l. 182), the unmapped
+    rows only where some row is mapped and some is not. SPEC §6's per-event
+    `expand <event>` is not offered: one entry per transcribed event flooded
+    the list (fifteen of them by the wise man) and buried the way on.
 
     Chips: while no board is open, at most one chip is expanded at a time
     (expanding another folds the first), the hole sits in its ledger so the
@@ -18,11 +23,11 @@ import { GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
 import { story_updater, StoryUpdaterSpec, Updates as S } from 'story';
 import { update } from 'lib/utils';
-import { EVENT_NAMES, STORIES, StorySpec } from '../data';
-import { chip_ops, event_ops, paragraphs, steps_ops, story_ops } from '../board';
+import { STORIES, StorySpec } from '../data';
+import { chip_ops, paragraphs, steps_ops, story_ops } from '../board';
 import { capitalised } from '../names';
-import { BEAT, board_story, converted, ended, event_frame, expanded_chip, FireWorld, phase, phrase } from '../world';
-import { rows_of } from './mapping';
+import { BEAT, board_story, ended, expanded_chip, FireWorld, phase, phrase } from '../world';
+import { rows_of, unmapped_rows } from './mapping';
 
 interface Thing {
     name: string;
@@ -40,18 +45,17 @@ function chip(w: FireWorld, story: StorySpec): Thing {
 
 function things(w: FireWorld): Thing[] {
     const result: Thing[] = [];
-    if (w.lesson >= BEAT.chalk) {
+    // Not before the second `listen`: until Katya rewrites them there is no notation to fold.
+    if (w.lesson >= BEAT.notation) {
         result.push({ name: 'the steps', id: 'steps', subject: 'the steps', plural: true, ops: (_, c) => steps_ops(c) });
     }
     const story = board_story(w);
     if (story !== undefined) {
         result.push({ name: 'the story', id: `${story.id}:story`, subject: 'the story', ops: (_, c) => story_ops(story, c) });
-        if (phase(w, story) === 'lined' || phase(w, story) === 'mapping') {
+        // Only where there is something to fold and something to keep.
+        const rows = unmapped_rows(w, story);
+        if ((phase(w, story) === 'lined' || phase(w, story) === 'mapping') && rows.unmapped > 0 && rows.mapped > 0) {
             result.push({ name: 'the unmapped', id: `${story.id}:unmapped`, subject: 'the unmapped rows', plural: true, ops: next => rows_of(next, story) });
-        }
-        for (let n = 1; n <= converted(w, story); n++) {
-            const name = EVENT_NAMES[story.id][n - 1];
-            result.push({ name, id: `${story.id}:${n}`, subject: name, ops: (_, c) => event_ops(event_frame(w, story, n)!, c) });
         }
     }
     for (const s of STORIES) {

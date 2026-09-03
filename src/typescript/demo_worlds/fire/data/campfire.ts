@@ -106,7 +106,7 @@ export const CAMPFIRE: StorySpec = {
     ],
     follows: [8, 12],
     traps: [
-        { prose: 8, voice: 'the friends', command: 'spread to the kindling', nudge: 'The friends do not command the fire, my dear.' }
+        { prose: 8, voice: 'the friends', command: 'spread to the kindling', nudge: 'The friends do not command the fire, my dear. Let it follow.' }
     ],
     candidates: {
         'the Voice of Fire': {
@@ -127,6 +127,15 @@ export const CAMPFIRE: StorySpec = {
         { step: 7, event: 7, text: 'The match is a small thing. Look for the hearth burning bright and hot, for a time.' },
         { step: 4, event: 7, text: 'Lit, but not yet touched to anything. Find the touch.' }
     ],
+    // The spark and both spreadings are one line of this story; the default
+    // nudges do not say that several steps may share a line, and a first-time
+    // player has no way to guess it (round 5, player 1).
+    step_nudges: {
+        first: {
+            5: 'It caught and it spread in one breath, my dear. One line of the story holds the spark and the spreading both.',
+            6: 'It caught and it spread in one breath, my dear. One line of the story holds the spark and the spreading both.'
+        }
+    },
     feelings: [
         'a bit warm, because they sang',
         'a bit neat, because the fire was built to be burnt'

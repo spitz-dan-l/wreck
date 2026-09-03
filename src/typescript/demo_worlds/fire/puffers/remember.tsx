@@ -104,23 +104,22 @@ function remember_step(w: FireWorld, n: number): FireWorld {
 
 // CLASSROOM EVENTS
 
-interface ClassroomEvent { frame: number; name: string; feeling: string[]; }
+interface ClassroomEvent { frame: number; name: string; feeling: string }
 
-// The player's own rememberable frames so far, with ordinals over the whole lesson.
+// The player's own rememberable frames so far, with ordinals over the whole
+// lesson. Only the three with an authored feeling (SPEC §10, §12's cut
+// order): "the listening" and its like had nothing of their own to say, and
+// one entry per line said filled the option list (Phase B9).
 export function classroom_events(w: FireWorld): ClassroomEvent[] {
     const found = classroom_commands(w);
     const names = ordinal_names(found.map(f => f.name));
-    return found.map((f, i) => ({
-        frame: f.frame,
-        name: names[i],
-        feeling: f.feeling === '' ? AUTHORED.nothing_in_particular : [f.feeling]
-    }));
+    return found.map((f, i) => ({ frame: f.frame, name: names[i], feeling: f.feeling })).filter(e => e.feeling !== '');
 }
 
 function remember_classroom_event(w: FireWorld, e: ClassroomEvent): FireWorld {
     const found = S.frame(e.frame).query(w.story);
     const reprint = found.length === 0 ? [] : [strip_gists(found[0][0])];
-    return remembered(w, [...paragraphs(AUTHORED.went_like_this), ...reprint, ...paragraphs(e.feeling)]);
+    return remembered(w, [...paragraphs(AUTHORED.went_like_this), ...reprint, ...paragraphs([e.feeling])]);
 }
 
 // WHAT CAN BE REMEMBERED

@@ -19,6 +19,7 @@ import { update } from 'lib/utils';
 import { AbstractSequence, CAMPFIRE, FOREST, HOUSE, PILLAGING, STORIES, StorySpec, WISE_MAN } from '../data';
 import { AUTHORED, QUOTED, QuotedKey } from '../data/katya';
 import { new_mapping, placed } from '../judge';
+import { capitalised } from '../names';
 import {
     attempt_ops, chip_ops, classroom_gist, coda_ops, event_passage, finish_board_ops, open_board_ops, paragraphs, prose_told, reveal_notation_ops,
     show_lesson_board_ops, teach_voices_ops
@@ -33,7 +34,7 @@ import {
 export interface Line {
     command: string | ((w: FireWorld) => string);   // the wording may depend on the board (the spark objection)
     name: string;                                   // "the saying of all set"
-    feeling?: string;                               // "It felt like nothing in particular." unless authored
+    feeling?: string;                               // SPEC §10; a line without one is not rememberable
     beat: number;
     through?: number;                               // offered from `beat` through this beat (`look at the board`)
     optional?: true;                                // offered whenever unsaid; does not hold up the beat's other lines
@@ -121,8 +122,13 @@ function fold_attempt(story: StorySpec, home: StorySpec) {
 
 const told = (story: StorySpec, beat: number): Line =>
     ({ command: 'listen', name: 'the listening', beat, says: [], shows: () => [prose_told(story)], advances: true });
+// Where Katya has no line for it (every board but the campfire's), the
+// board going up is said plainly, so the command is never silent (Phase B9).
 const pick_up = (story: StorySpec, beat: number, says: QuotedKey[] = []): Line =>
-    ({ command: 'pick up the chalk', name: 'the picking up of the chalk', feeling: 'It felt a bit ordinary, because it was chalk.', beat, says, advances: true, then: open_board(story) });
+    ({
+        command: 'pick up the chalk', name: 'the picking up of the chalk', feeling: 'It felt a bit ordinary, because it was chalk.', beat, says,
+        also: says.length > 0 ? undefined : [`${capitalised(story.title)} goes up on the board.`], advances: true, then: open_board(story)
+    });
 const put_down = (story: StorySpec, beat: number, says: QuotedKey[]): Line =>
     ({ command: 'put down the chalk', name: 'the putting down of the chalk', beat, requires: applied(story), says, advances: true, then: close_board(story) });
 
@@ -192,11 +198,11 @@ export const SCRIPT: Line[] = [
     // The Pillaging on the house (SPEC §12): never gating; put down folds it again.
     {
         command: `try ${PILLAGING.voice.name} on ${HOUSE.title}`, name: `the trying of ${PILLAGING.voice.name} on ${HOUSE.title}`, beat: BEAT.end, optional: true,
-        says: [], then: try_pattern(HOUSE, PILLAGING)
+        says: [], also: [`${capitalised(HOUSE.title)} comes back up, with ${PILLAGING.voice.name}'s steps beside the Fire's.`], then: try_pattern(HOUSE, PILLAGING)
     },
     {
         command: 'put down the chalk', name: 'the putting down of the chalk', beat: BEAT.end,
-        requires: w => w.board === HOUSE.id, says: [], then: fold_attempt(HOUSE, WISE_MAN)
+        requires: w => w.board === HOUSE.id, says: [], also: [`${capitalised(HOUSE.title)} folds back to a chip.`], then: fold_attempt(HOUSE, WISE_MAN)
     }
 ];
 

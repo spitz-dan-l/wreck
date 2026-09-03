@@ -72,7 +72,6 @@ export const AUTHORED = {
     coda: ['Beneath the board, in your own colour, is the afternoon: everything you said, and everything that followed.'],
     // SPEC §12: once the Pillaging has been refused on both of the steps that fit nothing.
     no_fit: ['"Not every voice fits every story, my dear. That is a lesson for another day."'],
-    nothing_yet: ['It felt like nothing yet. It has not been read.'],
-    went_like_this: ['It went like this:'],
-    nothing_in_particular: ['It felt like nothing in particular.']
+    nothing_yet: ['It has not been read in any voice yet.'],
+    went_like_this: ['It went like this:']
 };

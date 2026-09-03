@@ -160,6 +160,15 @@ export const HOUSE: StorySpec = {
     nudges: [
         { step: 1, event: 5, text: 'Wood that is cut is not yet laid.' }
     ],
+    // The whole burning of the house is one line: the spreading, the blaze and the ash share it.
+    step_nudges: {
+        first: {
+            5: 'The burning is all one line here, my dear. The spreading, the blaze and the ash are in it together.',
+            6: 'The burning is all one line here, my dear. The spreading, the blaze and the ash are in it together.',
+            7: 'The burning is all one line here, my dear. The spreading, the blaze and the ash are in it together.',
+            8: 'The burning is all one line here, my dear. The spreading, the blaze and the ash are in it together.'
+        }
+    },
     feelings: [
         'sad, because it was a home',
         'a bit cold, because the pattern did not mind',

@@ -35,6 +35,7 @@ export interface Rejected {
     step?: number;
     event?: number;
     nudge: string;
+    unplaced?: string;      // L1 only: plain narration naming every step still off the board
 }
 
 export type Verdict = Accepted | Rejected;
@@ -204,13 +205,15 @@ export function place(
     return { ok: true, mapping: next, derives: row.derives, ...(row.mark === undefined ? {} : { mark: row.mark }) };
 }
 
-// Every rule the whole mapping breaks, L1 first, then by step.
+// Every rule the whole mapping breaks, L1 first, then by step. An L1
+// rejection carries the whole list of missing steps as plain narration, so
+// the nudge is not a one-at-a-time guessing game (Phase B9).
 export function violations(seq: Sequence, pattern: AbstractSequence, mapping: Mapping, set_aside: Mapping[] = []): Rejected[] {
     const result: Rejected[] = [];
-    for (const step of pattern.steps) {
-        if (placed(mapping, step.index) === undefined) {
-            result.push({ ok: false, rule: 'L1', step: step.index, nudge: l1_nudge(pattern, step.index) });
-        }
+    const missing = pattern.steps.filter(s => placed(mapping, s.index) === undefined);
+    const unplaced = `Unplaced: ${missing.map(s => s.name).join(', ')}.`;
+    for (const step of missing) {
+        result.push({ ok: false, rule: 'L1', step: step.index, nudge: l1_nudge(pattern, step.index), unplaced });
     }
     for (const p of mapping.placements) {
         result.push(...check_placement(seq, pattern, mapping, p.step, set_aside));

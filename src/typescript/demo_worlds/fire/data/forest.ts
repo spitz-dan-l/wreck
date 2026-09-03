@@ -137,6 +137,13 @@ export const FOREST: StorySpec = {
         { step: 1, event: 1, text: 'A seed is not laid to burn. What here is dry?' },
         { step: 4, event: 7, text: 'Dry is not lit. What strikes?' }
     ],
+    // The dry wood is laid all at once here: one line holds the tinder and the kindling.
+    step_nudges: {
+        first: {
+            1: 'No one laid this fireplace, my dear. One line dries the small and the large together.',
+            2: 'No one laid this fireplace, my dear. One line dries the small and the large together.'
+        }
+    },
     feelings: [
         'like nothing, because no one wanted it',
         'a bit familiar, because the thin voices sounded like the one on the right'

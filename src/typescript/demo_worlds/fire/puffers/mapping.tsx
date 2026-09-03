@@ -37,6 +37,18 @@ function label(story: StorySpec, m: Mapping): string {
     return passes(story, m.voice).length > 1 ? `the ${m.pass} solution` : 'the mapping';
 }
 
+// How the story's own pattern's mappings divide the transcribed rows: what
+// `collapse the unmapped` would fold, and what it would leave. Offered only
+// where both are more than none (Phase B9).
+export function unmapped_rows(w: FireWorld, story: StorySpec): { mapped: number, unmapped: number } {
+    const own = pattern_for(story);
+    const mine = mappings_on(w, story, own);
+    const transcribed = converted(w, story);
+    const mapped = story.events.filter(e =>
+        e.index <= transcribed && mine.some(m => m.placements.some(p => p.event === e.index))).length;
+    return { mapped, unmapped: transcribed - mapped };
+}
+
 // The board's rows as the story's own pattern's mappings make them (bands,
 // the unmapped bar, the empty voice runs); a second pattern tried on the
 // board puts badges on the rows but never bands them.
@@ -143,7 +155,7 @@ function light(w: FireWorld, story: StorySpec, m: Mapping, how: 'first' | 'again
 function do_apply(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     const result = judge_apply(story, pattern_of(mapping), mapping, set_aside_mappings(w, story));
     if (!result.ok) {
-        return nudge_frame(w, result.nudge);
+        return nudge_frame(w, result.nudge, ...(result.unplaced === undefined ? [] : [result.unplaced]));
     }
     return light(w, story, mapping, has_said_applied(w, story, mapping.pass) ? 'again' : 'first');
 }

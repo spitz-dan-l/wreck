@@ -175,6 +175,13 @@ export function voice_mark_node(voice: VoiceId): StoryNode {
     return <div className="voice-mark">{`— ${voice_of(voice).name} —`}</div> as StoryNode;
 }
 
+// What `speak as` did, said plainly (Phase B9): the notation mark is the
+// board's business and is not written before l. 350, so without this the
+// command printed nothing at all.
+export function speak_as_line(voice: VoiceId): StoryNode {
+    return <div>{`You speak as ${voice_of(voice).name}.`}</div> as StoryNode;
+}
+
 // The player's own bar, at the head of the transcript (SPEC §7): the afternoon is one run in the player's voice.
 function you_bar_node(): StoryNode {
     return <div gist={you_bar_gist()} className="voice-bar kind-embodied voice-you you-bar">YOU</div> as StoryNode;
@@ -470,10 +477,6 @@ export function steps_ops(collapsed: boolean): StoryUpdaterSpec[] {
 
 export function story_ops(story: StorySpec, collapsed: boolean): StoryUpdaterSpec[] {
     return [at(board_gist(story.id)).css({ 'story-collapsed': collapsed })];
-}
-
-export function event_ops(frame: number, collapsed: boolean): StoryUpdaterSpec[] {
-    return [S.frame(frame).css({ collapsed })];
 }
 
 export function unmapped_ops(story: StorySpec, collapsed: boolean, count: number, two: boolean): StoryUpdaterSpec[] {

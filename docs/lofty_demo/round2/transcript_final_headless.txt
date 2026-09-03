@@ -105,6 +105,7 @@ She beckons you up. First you convert the story to the standard notation in a co
 ### > speak as the friends
 >  
 speak as the friends
+You speak as the friends.
 
 ### > travel to the woods
 >  
@@ -347,7 +348,7 @@ remember the lighting of a match
 It went like this:
 > light a match
 The match head flickers into a tiny flame.
-It felt like nothing yet. It has not been read.
+It has not been read in any voice yet.
 
 ### > expand the campfire story
 >  
@@ -385,10 +386,12 @@ say that it is a sad story
 ### > pick up the chalk
 >  
 pick up the chalk
+The house in the woods goes up on the board.
 
 ### > speak as the family
 >  
 speak as the family
+You speak as the family.
 
 ### > pack
 >  
@@ -465,6 +468,7 @@ She shows you how to indicate voice switches using visual notation.
 >  
 speak as the children
 — the children —
+You speak as the children.
 
 ### > light the rag
 >  
@@ -739,11 +743,13 @@ The flame stops at rivers and sand and rocks. The forest burns down to ash.
 ### > pick up the chalk
 >  
 pick up the chalk
+The forest fire goes up on the board.
 
 ### > speak as the seed
 >  
 speak as the seed
 — the seed —
+You speak as the seed.
 "Who takes root, my dear? No one, you would say. The notation has no line for no one. Something must command the seed, or the seed cannot be written."
 She writes THE SEED above the line, in a colour you have not seen her use, with a broken bar.
 "When nothing wants a thing, we lend it a voice anyway. The seed's. The weather's. The fire's. A voice without a body and without a wish."
@@ -757,6 +763,7 @@ The seed takes root in fertile ground.
 >  
 speak as the season
 — the season —
+You speak as the season.
 "The season is right, my dear. Time passes. Those are voices too, of a thinner kind. The season commands; time commands. They have no body and no place. Write them with a double bar."
 Katya teaches you about disembodied and abstract voices in the standard notation.
 
@@ -769,6 +776,7 @@ The season turns. The weather is right, and a sapling rises forth.
 >  
 speak as the tree
 — the tree —
+You speak as the tree.
 
 ### > grow
 >  
@@ -784,6 +792,7 @@ The tree sprouts leaves and seeds. The season changes, and the seeds fall to the
 >  
 speak as the forest
 — the forest —
+You speak as the forest.
 
 ### > spread
 >  
@@ -794,6 +803,7 @@ Gradually, more trees sprout and grow and spread.
 >  
 speak as time
 — time —
+You speak as time.
 
 ### > pass
 >  
@@ -804,6 +814,7 @@ Much time passes. The trees flourish, a forest.
 >  
 speak as the weather
 — the weather —
+You speak as the weather.
 
 ### > turn dry and hot
 >  
@@ -819,6 +830,7 @@ A thunderstorm comes over the forest. A lightning bolt strikes a dead tree, and 
 >  
 speak as the fire
 — the fire —
+You speak as the fire.
 
 ### > spread to the dead brush
 >  
@@ -953,11 +965,13 @@ Time passes. The words are interpretted and reinterpretted until they hardly res
 ### > pick up the chalk
 >  
 pick up the chalk
+The wise man's story goes up on the board.
 
 ### > speak as the boy
 >  
 speak as the boy
 — the boy —
+You speak as the boy.
 
 ### > be born
 >  
@@ -973,6 +987,7 @@ You are curious, charismatic, intelligent. You grow up and acquire wisdom.
 >  
 speak as the man
 — the man —
+You speak as the man.
 
 ### > seek answers to old questions
 >  
@@ -988,6 +1003,7 @@ You gain a small circle of like-minded seekers who listen to you, astounded by y
 >  
 speak as the followers
 — the followers —
+You speak as the followers.
 
 ### > grow in number
 >  
@@ -998,6 +1014,7 @@ You grow in number. Word of the man's wisdom spreads, and more of you come.
 >  
 speak as the man
 — the man —
+You speak as the man.
 
 ### > give speeches
 >  
@@ -1008,6 +1025,7 @@ You give speeches to more and more devoted followers. You begin to repeat yourse
 >  
 speak as the followers
 — the followers —
+You speak as the followers.
 
 ### > write down his teachings
 >  
@@ -1018,6 +1036,7 @@ Some of you begin to write down the wise man's teachings.
 >  
 speak as the man
 — the man —
+You speak as the man.
 
 ### > die unexpectedly
 >  
@@ -1028,6 +1047,7 @@ You die unexpectedly.
 >  
 speak as the closest followers
 — the closest followers —
+You speak as the closest followers.
 
 ### > construct a pyre and lay his body on it
 >  
@@ -1038,6 +1058,7 @@ You construct a great funeral pyre, and lay his body on it.
 >  
 speak as the followers
 — the followers —
+You speak as the followers.
 
 ### > attend the funeral
 >  
@@ -1048,6 +1069,7 @@ You attend the wise man's funeral in multitudes.
 >  
 speak as the closest followers
 — the closest followers —
+You speak as the closest followers.
 
 ### > light the pyre
 >  
@@ -1063,6 +1085,7 @@ You continue to write the dead man's words, and in time you adjust his words, an
 >  
 speak as the books
 — the books —
+You speak as the books.
 
 ### > spread across the land
 >  
@@ -1078,6 +1101,7 @@ The words that are distorted echoes of the wise man's ideas are read and repeate
 >  
 speak as time
 — time —
+You speak as time.
 
 ### > pass
 >  
@@ -1087,6 +1111,7 @@ Time passes. The words are interpreted and reinterpreted until they hardly resem
 ### > draw a vertical line
 >  
 draw a vertical line
+The rule goes up, and the steps beside it.
 
 ### > say that the Voice of Fire is contained in just two lines
 >  
@@ -1431,14 +1456,14 @@ say Ok, I guess
 But you don't really see it.
 It felt a bit untrue, because it was.
 
-### > remember the second listening
+### > remember the second picking up of the chalk
 >  
-remember the second listening
+remember the second picking up of the chalk
 It went like this:
 >  
-listen
-She rewrites this in the standard notation of the field:
-It felt like nothing in particular.
+pick up the chalk
+The house in the woods goes up on the board.
+It felt a bit ordinary, because it was chalk.
 
 ### > remember the ember
 >  
@@ -1456,6 +1481,7 @@ It felt like the ember, and the flame, and the blaze, and the ash, in the Voice 
 ### > try the Pillaging on the house in the woods
 >  
 try the Pillaging on the house in the woods
+The house in the woods comes back up, with the Pillaging's steps beside the Fire's.
 
 ### > map the living in their home to the moving in
 >  
@@ -1486,6 +1512,7 @@ The tinder has been: a patch of tinder, in the campfire story; the oil-soaked ra
 ### > put down the chalk
 >  
 put down the chalk
+The house in the woods folds back to a chip.
 
 ### > remember the Pillaging
 >  
@@ -1575,55 +1602,17 @@ You take what you want from their home, and leave.
   remember the passing of time, in the wise man's story
   remember the wise man's story
   remember the two lines
-  remember the looking at the board
-  remember the first listening
-  remember the second listening
-  remember the third listening
-  remember the saying that the Voice of Fire is contained in this one
   remember the first picking up of the chalk
   remember the first drawing of the vertical line
-  remember the saying of all set
-  remember the fourth listening
-  remember the saying that it is a sad story
   remember the second picking up of the chalk
-  remember the asking what the right thing to do is
   remember the second drawing of the vertical line
-  remember the objecting that there is no clear tinder
-  remember the saying that it knows nothing of the morality of the burning either
-  remember the first putting down of the chalk
-  remember the fifth listening
   remember the third picking up of the chalk
   remember the third drawing of the vertical line
-  remember the second putting down of the chalk
-  remember the sixth listening
   remember the fourth picking up of the chalk
   remember the fourth drawing of the vertical line
-  remember the saying that the Voice of Fire is contained in just two lines
-  remember the asking what she means
-  remember the objecting that there is no fire
-  remember the objecting that the fireplace is too abstract
-  remember the objecting about the spark
-  remember the objecting that the ash is still structured
   remember the saying of Ok, I guess
-  remember the trying of the Pillaging on the house in the woods
-  remember the third putting down of the chalk
-  expand the steps
+  collapse the steps
+  collapse the story
   expand the campfire story
   expand the house in the woods
   expand the forest fire
-  collapse the story
-  collapse the being born
-  collapse the growing up and acquiring of wisdom
-  collapse the seeking of answers
-  collapse the gaining of a small circle
-  collapse the growing in number
-  collapse the giving of speeches
-  collapse the writing down of his teachings
-  collapse the dying unexpectedly
-  collapse the constructing of the pyre
-  collapse the attending of the funeral
-  collapse the lighting of the pyre
-  collapse the adjusting of his words
-  collapse the spreading across the land
-  collapse the being read and repeated and reprinted
-  collapse the passing of time, in the wise man's story

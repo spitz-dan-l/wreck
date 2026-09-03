@@ -774,3 +774,145 @@ Tests: `test_prompt_controls.ts`; the board test for the notation now
 expects it shown after the second `listen`, folded by `collapse the steps`;
 the walkthrough's end-state check uses `collapse the steps`. Transcript
 unchanged.
+
+## Phase B9: the confusion scan
+
+The author found that `listen` then `expand the steps` printed "The steps
+unfold." and unfolded nothing (the notation does not exist until the second
+`listen`), and suspected many more of the same: behaviour that is right in
+the expected order and a no-op, a contradiction or a dead end on any
+deviation. So the deviations are now enumerated by machine.
+
+**The scanner** (`demo_worlds/fire/scan.ts`, run by `node
+scripts/confusion_scan.js`; report in `round5/confusion_scan.md`). From the
+initial world and from every state along the acceptance script, it
+enumerates every command the parser accepts — the typeahead's option list is
+the ground truth of what a player can tap — applies each one, and classifies
+what happened. Scanning every state of the script is therefore also scanning
+every **one-command deviation** from it.
+
+What a command did is read three ways: the world's own fields (`collapsed`
+apart: what is folded is bookkeeping, whether anything folded is a question
+for the tree); the **whole story tree as a tag-and-class signature**, so a
+fold that folds nothing shows up as no change at all; and the text the new
+frame printed. The signature is the one costly thing (thousands of nodes by
+the end) and is taken lazily, only where the verdict turns on it.
+
+The classes: **NO-OP** (accepted, prints nothing and changes nothing; or a
+display command whose one-line consequence claims a fold that the tree does
+not show); **EMPTY** (the frame prints nothing at all); **THROW**;
+**REPEAT** (the same command twice running, advancing twice and printing the
+same thing); **NOISE** (more than a dozen options with the advancing ones
+buried, or more than six per-event folds); and **DEAD END**.
+
+**DEAD END is a reachability proof, not a look-ahead.** From the state each
+command leaves behind, `can_reach` runs a best-first search over *advancing*
+commands only (`remember`, `expand`, `collapse` are pruned) and must
+actually play its way to the next scene boundary — the next `apply`, the
+next board closed, the next beat (`stage(w)` = the beat, the boards closed,
+the applies made). `reaches_end` chains those hops to l. 481, so a `true`
+there is the whole lesson played out. Two things make it fast enough:
+
+- the moves are **generated from the world**, not enumerated by the parser
+  (`advancing_moves`): the beat's classroom lines, and, at a board, the next
+  event's command, `let it follow`, the story's voices, or — at a mapping —
+  the candidate rows of the pass (`candidates_for`), the erases and the
+  apply. Enumerating a mapping state with `traverse_thread` costs seconds
+  and lists a hundred `map`s of which two or three are candidates;
+- states are **keyed** (`search_key`: the beat, the board, the cursor, the
+  voice, what is finished and taught, every mapping's placements and status,
+  the classroom lines said, and the events converted — the cursor alone is
+  not enough, since two events of one ¶ leave it where it was), a proof is
+  cached by that key across the whole scan, and at one state only the first
+  few commands of each verb are proved (a hundred `map`s leave a hundred
+  states to prove, and a few of each verb is the sample).
+
+`supervenience.ts`'s `search_future` was not used: its dimensions are
+declared for a world of gists and interpretations, and a plain keyed
+best-first over the six fields above (scene, board, cursor, voice, the
+placed steps, the mapping statuses) is a dozen lines and needs no spec.
+
+**What it found, and what was done** (`round5/confusion_scan.md` has each
+finding with the sequence that reaches it, the text it printed and the
+class; it ends with what remains, by design):
+
+1. `expand the steps` / `collapse the steps` were offered from the first
+   `listen` (`BEAT.chalk`), one beat before Katya writes the notation: the
+   toggle set a class on a node that was `absent`, so it printed "The steps
+   unfold." and unfolded nothing. Now offered from `BEAT.notation`.
+2. The per-event `expand <event>` / `collapse <event>` of SPEC §6 are **no
+   longer offered at all**: one entry per transcribed event (sixteen by the
+   wise man) flooded the list and buried the way on. `the story`, `the
+   steps`, `the unmapped` and the chips remain. (`event_ops` deleted.)
+3. `collapse the unmapped` was offered whenever a mapping was open, so it
+   folded nothing when every row was mapped and folded the whole column when
+   none was. Offered only where some row is mapped and some is not
+   (`unmapped_rows`).
+4. `speak as <voice>` printed nothing before l. 350 and, after it, only the
+   notation mark — which the board hides, the bar saying it. It now always
+   prints one plain line, "You speak as the children." (`speak_as_line`),
+   whatever the notation has taught; the mark is unchanged, so SPEC §7's
+   "no mark before the speech" and the transcript's marks both stand.
+5. `pick up the chalk` printed nothing for the house, the forest and the
+   wise man (only the campfire has l. 248 for it), and neither did `try the
+   Pillaging on the house in the woods` or the `put down the chalk` that
+   folds it again. Each says plainly what happened ("The house in the woods
+   goes up on the board.") — board chrome in the register of §8 [C5 D7], no
+   Katya.
+6. `remember <classroom event>` offered one entry per line said — "the
+   listening", "the looking at the board", "the objecting …" — all of which
+   printed the same "It felt like nothing in particular." (round 5, player
+   2: "recall the first and second listening identically"). Only the three
+   with a feeling of their own are offered now: the picking up of the chalk,
+   the drawing of the vertical line, the saying of Ok, I guess. This is
+   SPEC §12's first cut, taken. (`AUTHORED.nothing_in_particular` deleted.)
+7. "It felt like nothing yet. It has not been read." said nothing to a
+   player who had not yet met a reading (round 5, player 2). Now plain:
+   "It has not been read in any voice yet."
+8. The campfire trap ends with the way on: "The friends do not command the
+   fire, my dear. Let it follow." (a nudge, §10). Round 5, players 1, 2
+   and 3 all stopped there.
+9. **Several steps on one line.** Player 1 placed steps 1–4 and 8 of the
+   campfire and gave up after twenty attempts at 5, 6 and 7, because
+   nothing says that one line of a story may hold several steps. The
+   sequences now carry their own L4 defaults for the passes where the
+   acceptance mapping shares a line (`StorySpec.step_nudges`, the mechanism
+   the wise man's figurative pass already used): the campfire's s5 and s6
+   ("It caught and it spread in one breath, my dear. One line of the story
+   holds the spark and the spreading both."), the house's s5–s8 (all the
+   scattering), the forest's s1 and s2 (all the dead brush). The wise man's
+   literal pass already says it in `WOOD_MY_DEAR` ("There are only two lines
+   in which anything burns").
+10. The L1 nudge named one missing step at a time. It keeps its sentence
+    and gains a plain list: "The Voice of Fire does not skip, my dear. The
+    spreading of the ember is not on the board. Unplaced: the spreading of
+    the ember, the spreading of the flame, the consumption of all."
+    (`Rejected.unplaced`, filled by `violations`, printed by `nudge_frame`'s
+    extra paragraphs. The Pillaging's L1 gets it too.)
+
+**The author's unwinnable-state hypothesis** ("initial spread of ember if
+the player chose sing before let it follow") does not hold, and the proof is
+now standing: at the campfire's ¶8, the only commands offered are `let it
+follow` and the trap — `sing` belongs to ¶9 and the transcription puffer
+offers a ¶'s command only at that ¶ (`test_fire_scan.ts` asserts the exact
+option list there). No consequence-only ¶ in any story can be skipped or
+attached elsewhere, so no mapping is ever made unsolvable by the
+transcription. The scan found no state at all from which the next scene is
+out of reach.
+
+**The test** (`tests/test_fire_scan.ts`, ~45 s): the scan over a sample of
+the acceptance states (the first six, then one in twenty-five, then the
+last), failing on any NO-OP, EMPTY, DEAD END, THROW or REPEAT not in an
+allowlist that carries its reason; the deviation classes (a trap, a fold
+mid-board, a wrong map and an erase, the wrong voice at the house's pause,
+a set aside after apply, the Voice of Fire lent to a story line, the wise
+man's first solution resumed) each proved to leave the next scene reachable,
+and the first of them played all the way to l. 481; and
+`round2/acceptance_script.json` (which the screenshot and scan drivers read)
+kept equal to `ACCEPTANCE_SCRIPT`.
+
+**Deviations from SPEC recorded here**: §6's `expand <event>` is not offered
+(2); §10's "any other classroom event: It felt like nothing in particular."
+is cut, as §12's cut order allows (6); §7's "It felt like nothing yet. It
+has not been read." is reworded (7); `speak as` prints a line of its own
+alongside the mark (4).
