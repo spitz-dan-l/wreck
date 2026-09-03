@@ -113,9 +113,10 @@
     margin-bottom: 0.3em;
     line-height: 1.8em;
 }
+/* Its indent is padding, not margin: when the prompt is pinned its background must cover the rows it stands over. */
 .board .left #story-hole,
 .board .ledger #story-hole {
-    margin-inline-start: 1.5em;
+    padding-inline-start: 1.5em;
     margin-top: 0.6em;
 }
 /* Inside a board the prompt has rows beneath it (the ¶s still to convert),
@@ -130,7 +131,7 @@
     height: 1em;
 }
 .board .left .frame.collapsed .output-text { display: none; }
-.board.story-collapsed .prose { display: none; }
+.board.story-collapsed .prose, .prose.folded { display: none; }
 .board.unmapped-collapsed .left .frame.event:not(.mapped) { display: none; }
 .board.unmapped-collapsed .left .prose:not(.mapped) { display: none; }
 /* Folding the unmapped rows folds the voice runs that hold none of the mapping, the followed lines and the wrong attempts with them. */
@@ -329,6 +330,74 @@
 .story.voices-taught .left.voice-the-season #story-hole .parsed-text > span:first-child::before { content: 'the season'; }
 .story.voices-taught .left.voice-time #story-hole .parsed-text > span:first-child::before { content: 'time'; }
 
+/* THE PROMPT, PINNED (Phase B10). The prompt, its typeahead and its controls
+   stick to the bottom of the view whenever their place in the transcript is
+   below it, so that the eye never loses the prompt while the board changes
+   above; the page scrolls the transcript to show the change above the pinned
+   prompt (UI/animation.ts). The typeahead is in the flow and capped, and
+   scrolls on its own when the options are many. */
+/* The page's scrolling is the engine's, one motion after each command (UI/animation.ts); the browser's own scroll anchoring would cut that motion short when a node above the view changes size. */
+#terminal { overflow-anchor: none; }
+#story-hole {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: black;
+    display: flow-root;
+    padding-bottom: 0.4em;
+    box-shadow: 0 -0.8em 0.8em -0.4em black;
+}
+/* Its height does not follow the number of options (three or fewer), so the page's end does not shift as they change. */
+#story-hole { min-height: 9em; }
+#story-hole ul.typeahead {
+    position: relative;
+    max-height: 40vh;
+    overflow-y: auto;
+}
+#story-hole ul.typeahead li.footer { position: static; top: auto; height: 0.5em; }
+/* The engine reads natural positions with the pinned things unpinned for a moment. */
+#terminal.measuring #story-hole,
+#terminal.measuring .columns .right { position: static !important; }
+
+/* FOLDS ANIMATE (Phase B10). What a fold hides shrinks over 300 ms before it
+   is hidden, and what an unfold shows grows from nothing; the steps column
+   and the board change height in place, in view. The engine marks a node
+   whose class changed with eph_adding_<class> / eph_removing_<class> for the
+   animation, and gives a node marked --is-collapsing its measured height to
+   shrink from (UI/animation.ts). */
+.story:is(.animation-pre-compute, .animation-start) :is(
+    .notation.eph_adding_collapsed,
+    .prose.eph_adding_folded,
+    .board.eph_adding_chip .ledger > .frame:not(.closing),
+    .board.eph_adding_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge)
+) { display: block !important; overflow: hidden; --is-collapsing: 1; }
+.story:is(.animation-pre-compute, .animation-start) .board.eph_adding_chip .columns { display: flex !important; overflow: hidden; --is-collapsing: 1; }
+.story.animation-start.animation-active :is(
+    .notation.eph_adding_collapsed,
+    .prose.eph_adding_folded,
+    .board.eph_adding_chip .columns,
+    .board.eph_adding_chip .ledger > .frame:not(.closing),
+    .board.eph_adding_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge)
+) { max-height: 0 !important; opacity: 0.01; transition: max-height 300ms ease-in, opacity 250ms ease-in; }
+.story.animation-start :is(
+    .notation.eph_removing_collapsed,
+    .prose.eph_removing_folded,
+    .board.eph_removing_chip .columns,
+    .board.eph_removing_chip .ledger > .frame:not(.closing),
+    .board.eph_removing_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge),
+    .columns .right.eph_removing_hidden,
+    .columns .rule.eph_removing_hidden
+) { max-height: 0; opacity: 0.01; overflow: hidden; }
+.story.animation-start.animation-active :is(
+    .notation.eph_removing_collapsed,
+    .prose.eph_removing_folded,
+    .board.eph_removing_chip .columns,
+    .board.eph_removing_chip .ledger > .frame:not(.closing),
+    .board.eph_removing_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge),
+    .columns .right.eph_removing_hidden,
+    .columns .rule.eph_removing_hidden
+) { opacity: 1; transition: max-height 300ms ease-out, opacity 250ms ease-in 100ms; }
+
 /* THE PROMPT */
 
 /* A Locked option: the engine's glyph is a combining character on a space
@@ -360,7 +429,7 @@
         position: sticky;
         top: 0;
         z-index: 2;
-        max-height: 45vh;
+        max-height: 36vh;
         overflow-y: auto;
         background: black;
         border-bottom: 1px solid rgba(255, 255, 240, 0.35);
@@ -372,8 +441,11 @@
     .board .left .frame,
     .board .ledger .frame { margin-inline-start: 0.6em; }
     .board .left #story-hole,
-    .board .ledger #story-hole { margin-inline-start: 0.6em; }
+    .board .ledger #story-hole { padding-inline-start: 0.6em; }
     .step .chalk { line-height: 1.4em; }
+    /* The pinned prompt and the pinned steps leave the story a band between them. */
+    #story-hole ul.typeahead { max-height: 24vh; }
+    #story-hole { min-height: 13em; }
 }
 
 /* TOUCH: room for a finger on every tappable thing. */
