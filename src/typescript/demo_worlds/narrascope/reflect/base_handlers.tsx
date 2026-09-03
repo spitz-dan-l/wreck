@@ -8,12 +8,6 @@ import { get_facets } from '../facet';
 import { lock_and_brand, Puffers, Venience } from '../prelude';
 import { Exposition, INNER_ACTION_IDS, InnerActionID } from "./inner_action";
 
-declare module 'gist' {
-    export interface StaticGistTypes {
-        bloop: []
-    }
-}
-
 // scrutinize
 Action({
     id: 'scrutinize',

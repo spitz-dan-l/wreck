@@ -22,23 +22,29 @@ I have not tested for IE/Edge/Opera/Android.
 
 ## Development
 
-You need npm and a node version >= 12.17.0. (I did `sudo npm install -g n` and then did `sudo n lts`.)
+You need Node 20 or newer (there is an `.nvmrc`), and npm.
 
 Clone this repo and `npm install`.
 
 A few commands are exposed as npm package scripts:
 
 #### `npm test`
-Performs type-checking, compiles to JS in the build/ directory and runs unit tests.
+Type-checks, compiles to JS in the `build/` directory and runs the unit tests. The supervenience tests search the whole demo for a winning path, so they take a while.
+
+#### `npm run typecheck`
+Type-checks only, without emitting anything.
 
 #### `npm run debug`
-Same as above, but runs the unit tests in debug mode, so you can insert breakpoints and step through interactively.
+Same as `npm test`, but runs the unit tests in debug mode, so you can insert breakpoints and step through interactively.
 
 #### `npm run build-dev`
-Bundles the game and saves it in `dist/venience.js`. It will Just Work if you open `dist/venience.html` in your browser. NOTE: DOES NOT DO TYPE CHECKING.
+Bundles the game (with source maps) and saves it in `dist/venience.js`. It will Just Work if you open `dist/venience.html` in your browser. NOTE: DOES NOT DO TYPE CHECKING. The entry point is `src/typescript/entry_points/build_dev.tsx`, which has a list of commands to replay on startup so you can skip ahead while developing.
 
 #### `npm run build`
-Builds the game in production mode- no source maps, smaller bundle, faster renders. Also saves to `dist/venience.js` so `build` and `build-dev` overwrite each other.
+Builds the game in production mode- no source maps, smaller bundle, faster renders. Also saves to `dist/venience.js` so `build` and `build-dev` overwrite each other. The entry point is `src/typescript/entry_points/build_prod.tsx`.
+
+#### Playing from the command line
+After `npm run compile`, `node scripts/play.js "consider sam" "remember something meditative" ...` applies a sequence of commands to a fresh game, printing each frame's text and the commands available at the end. This is the quickest way to check game logic without a browser. `node scripts/search_stats.js` times the future searches the tests run.
 
 ## Architecture
 

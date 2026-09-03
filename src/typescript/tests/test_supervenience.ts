@@ -5,11 +5,9 @@ import { deep_equal, included, array_last, drop_keys } from 'lib/utils';
 
 // import { new_hex_world, Hex } from '../typescript/demo_worlds/hex_port';
 // import { new_bird_world, BirdWorld } from '../typescript/demo_worlds/puffer_bird_world';
-import { match, GistPattern, UNION } from 'gist';
-
 import { Venience, new_venience_world } from 'demo_worlds/narrascope';
+import { goals as demo_goals, space as demo_space, command_filter as demo_command_filter } from 'demo_worlds/narrascope/supervenience_spec';
 import { search_future, NarrativeDimension, NarrativeGoal, FutureSearchSpec, CommandFilter } from 'supervenience';
-import { find_index } from 'history';
 
 const simulator_id = 'playtester';
 
@@ -57,50 +55,11 @@ describe('supervenience narrascope', () => {
         return w.end;
     }
 
-    let goals: NarrativeGoal<Venience>[] = [
-        w => !!w.has_chill,
-        w => !!w.has_recognized_something_wrong,
-        w => !!w.is_curious_about_history,
-        w => !!w.has_admitted_negligence,
-        w => !!w.has_unpacked_culpability,
-        w => !!w.has_volunteered,
-        goal_met
-    ]
-
-
-    const gist_pat: GistPattern = ['consider', {
-        subject: [UNION,
-            ['Sam'],
-            ['your history with Sam']
-        ]
-    }];
-    let space: NarrativeDimension<Venience>[] = [
-        w => {
-            if (w.owner !== 'Metaphor') {
-                return false;
-            }
-
-            let g = find_index(w, w.current_interpretation!)!.gist;
-
-            if (g === null) {
-                return null;
-            }
-            if (match(g)(gist_pat)) {
-                return g;
-            }
-            return null;
-        },
-        w => w.has_tried,
-        w => w.has_acquired,
-        w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
-    ];
-
-    let command_filter: CommandFilter<Venience> = (w, cmd) => {
-        if (cmd[0] && cmd[0].token === 'notes') {
-            return false;
-        }
-        return true;
-    }
+    // The goals, dimensions and command filter are the ones the game itself uses
+    // (see demo_worlds/narrascope/supervenience_spec).
+    const goals: NarrativeGoal<Venience>[] = demo_goals;
+    const space: NarrativeDimension<Venience>[] = demo_space;
+    const command_filter: CommandFilter<Venience> = demo_command_filter;
 
     it('beats narrascope demo using dimensions', () => {
         let spec: FutureSearchSpec<Venience> = {

@@ -2,12 +2,12 @@ import { gist, Gist, gists_equal, gist_to_string, render_gist, ValidTags, match,
 import { history_array, find_index } from "history";
 import { update, keys, included } from "lib/utils";
 import { stages } from "lib/stages";
-import { Parser, ParserThread, GAP, SUBMIT } from "parser";
+import { Parser, ParserThread, GAP, SUBMIT, RawConsumeSpec } from "parser";
 import { createElement, Hole, story_updater, Updates as S } from "story";
 import { is_simulated, search_future } from "supervenience";
 import { Action } from "../action";
 import { get_facets, render_facet_list } from "../facet";
-import { lock_and_brand, resource_registry, Venience } from "../prelude";
+import { ActionID, lock_and_brand, resource_registry, Venience } from "../prelude";
 import { interpreting_class, unfocused_class, would_start_interpreting_class, would_stop_interpreting_class } from "../styles";
 import { get_thread_maker } from "../supervenience_spec";
 import { INNER_ACTION_IDS } from "./inner_action";
@@ -23,20 +23,20 @@ const global_lock = resource_registry.get('global_lock').get_pre_runtime();
 let metaphor_lock = global_lock('Metaphor');
 
 
+// Only frames produced by these actions can be reflected on. Their gists have
+// noun phrase renderings, and their contents are in the knowledge base.
+const REFLECTABLE_ACTION_IDS: ActionID[] = ['consider', 'remember', 'notes'];
+
+function is_reflectable(w: Venience): boolean {
+    return w.gist !== undefined && included(w.gist[0], REFLECTABLE_ACTION_IDS);
+}
+
 function begin_contemplation(world: Venience, parser: Parser) {
     if (world.previous === undefined) {
         return parser.eliminate();
     }
 
-    /*
-        TODO:
-        need to update the criteria for whether something is contemplatable.
-
-        Or, if everything is contemplatable, would need to be very thorough about:
-            - making all action gists renderable as noun_phrase/command_noun_phrase
-            - figure out how to expose the right depth of facets for exploration.
-    */
-    let contemplatable_worlds: Venience[] = history_array(world).filter(w => w.gist !== undefined && w.gist[0] !== 'reflect');
+    let contemplatable_worlds: Venience[] = history_array(world).filter(is_reflectable);
     
     let gists: Gist[] = [];
     for (let w of contemplatable_worlds) {
@@ -47,7 +47,7 @@ function begin_contemplation(world: Venience, parser: Parser) {
 
     parser.label_context = { interp: true, filler: true };
 
-    const immediate_world: Venience | undefined = (world.previous.gist !== undefined && world.previous.gist[0] !== 'reflect') ?
+    const immediate_world: Venience | undefined = is_reflectable(world.previous) ?
         world.previous :
         undefined;
 
@@ -137,6 +137,11 @@ function make_direct_thread(world: Venience, immediate_world: Venience | undefin
 }
 
 const indirect_simulator = 'indirect_contemplation';
+
+// The consume spec 'begin_reflection on' is tokenized as 'begin', 'reflection', 'on'.
+function is_begin_reflection_command(cmd: RawConsumeSpec[]): boolean {
+    return cmd[0]?.token === 'begin' && cmd[1]?.token === 'reflection';
+}
                 
 function make_indirect_thread(world: Venience, immediate_world: Venience | undefined, gists: Gist[]): ParserThread<Venience> {
     return (parser) =>
@@ -157,7 +162,7 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | undef
             });
 
             // move the next story hole inside the current frame
-            world = update(world, {
+            const world_with_hole = update(world, {
                 story_updates: story_updater(
                     S.group_name('init_frame').apply(s => [
                         s.story_hole().remove(),
@@ -174,14 +179,13 @@ function make_indirect_thread(world: Venience, immediate_world: Venience | undef
                 search_id: indirect_search_id,
                 simulator_id: indirect_simulator,
                 command_filter: (w, cmd) => {
-                    let would_contemplate = cmd[0] && cmd[0].token === 'analyze';
-
+                    // Only reflect once we've reached the target; never reflect on anything else along the way.
                     if (w.gist && gists_equal(w.gist, target_gist[1].subject)) {
-                        return would_contemplate;
+                        return is_begin_reflection_command(cmd);
                     }
-                    return !would_contemplate;
+                    return !is_begin_reflection_command(cmd);
                 }
-            }, world);
+            }, world_with_hole);
 
             if (result.result === undefined) {
                 return parser.eliminate();

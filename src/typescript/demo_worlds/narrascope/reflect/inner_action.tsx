@@ -33,9 +33,14 @@ declare module '../prelude' {
 type InnerActionGist = Gists[InnerActionID];
 
 type Exposition = {
+    // Text grafted beneath the facet (in the past frame) when the action succeeds.
+    // Its presence marks the action as a successful interpretation.
     revealed_child_story?: StoryNode,
     knowledge_updater?: (action_gist: InnerActionGist, k: Knowledge) => Knowledge,
+    // Present-tense text added to the current frame.
     commentary?: (action_gist: InnerActionGist, current_frame_builder: UpdatesBuilder, w: Venience) => StoryUpdaterSpec[],
+    // Any further changes to the world (puzzle flags, newly available memories, etc.)
+    world_updater?: (action_gist: InnerActionGist, w: Venience) => Venience,
 };
 
 const init_knowledge = resource_registry.get('initial_world_knowledge');
@@ -63,7 +68,8 @@ export function Exposition(exposition: Exposition) {
                 ...if_not_null(exposition.knowledge_updater, (ku) => ({
                     knowledge: k => ku(action_gist, k)
                 }))
-            }
+            },
+            w => exposition.world_updater === undefined ? w : exposition.world_updater(action_gist, w)
         );
     }
 }
@@ -77,13 +83,22 @@ declare module '../../../story/update/update_group' {
     }
 }
 
-type FacetInterpretationSpec = {
+export type FacetInterpretationSpec = {
     parent_gist: Gists['knowledge'],
     child_gist?: Gist,
     commentary?: (current_frame_builder: UpdatesBuilder, w: Venience) => StoryUpdaterSpec[]
 }
 
-function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, commentary}: FacetInterpretationSpec) {
+/*
+    Interpret a facet (identified by its knowledge gist, i.e. its position in the
+    story) in the frame currently under reflection:
+        - styles the facet's text as (mis)interpreted, and the facet's entry in the
+          facet list as cited,
+        - if child_gist is given, grafts that revealed text beneath the facet
+          (once), retroactively, in the past frame,
+        - adds any present-tense commentary to the current frame.
+*/
+export function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, commentary}: FacetInterpretationSpec) {
     // add a new animation stage where we do interpretation stuff first,
     // then add any present tense stuff second.
     const interp_class = child_gist === undefined ? misinterpret_facet_class : interpret_facet_class;
@@ -100,7 +115,7 @@ function apply_facet_interpretation(world: Venience, {parent_gist, child_gist, c
                 .group_name('interpretation_effects')
                 .group_stage(-1)
                 .apply(b => [
-                    b.debug('addboi').css({ [interp_class]: true }),
+                    b.css({ [interp_class]: true }),
                     b.would().css({ [would_interpret_facet_class]: true })
                 ]),
                 ...if_array(() => {
