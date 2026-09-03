@@ -135,3 +135,86 @@ nodes and gists for B2 to relocate.
 - Knowledge holds every event of a story from board open (gist
   `event(seq, n)`) and the two abstract sequences (`abstract sequence`,
   `step(voice, n)`).
+
+## Phase B2 (the board UI)
+
+Build with `npm run build-dev:fire` (or `build:fire`), open `dist/fire.html`;
+`node scripts/screenshot_fire.js` plays the acceptance script in headless
+Chromium (Playwright from the global install at
+`/opt/node22/lib/node_modules/playwright`, browsers at
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`), fails on any page or console
+error or if the last line is missing, and writes the five screenshots to
+`docs/lofty_demo/screenshots/`.
+
+**Engine change (general bug).** `UI/components/input_prompt.tsx`: the
+prompt cleared its DOM `<input>` only when the *rendered* text changed
+between renders. When keystrokes and Enter arrive within one render tick
+(a scripted driver, a paste), every `ChangeText` and the `Submit` are
+reduced in one pass, the text before and after the pass are both empty,
+and the input keeps the submitted command; the next command is appended to
+it. Reproduced on the narrascope page too. Fix: compare against the input's
+actual value. No other engine change; no change to `parsed_text.tsx`.
+
+**§8 claims verified in code before use.** New frames land where the hole
+is (`dsl.tsx: init_story_updates` replaces the hole by `[EmptyFrame, Hole]`,
+applied first on every command); the hole is moved with
+`S.story_hole().remove()` + `insert_after(<Hole/>, true)` / `add(<Hole/>,
+true)` and in the DOM the single `#story-hole` element is re-appended;
+`S.frame(i)`, `S.frame()` and `has_gist` search the whole tree, so nested
+frames are addressable; `dom_lookup_path` walks `childNodes`, which matches
+the story tree one node per child (strings are text nodes); css ops carry
+`eph_adding_/eph_removing_` markers and `animate()` measures every element,
+so added nodes and toggled classes animate for free; `scroll_down` scrolls
+`.typeahead .footer` into view wherever the hole is (verified in `.left`
+and in `.ledger`: the prompt is in view in the screenshots).
+
+**Story-tree shape.** As §8, with gists `lesson_board`, `board(seq)`,
+`left(seq)`, `rule(seq)`, `right(seq)`, `ledger(seq)`, `prose(seq, n)`,
+`voice_bar(seq, frame)`, `step(seq, n)`, `targets(seq, n)`, `spoken(seq, n)`,
+`badge(seq, event, step, pass)`, `reference(seq, step, pass)`,
+`rendition(seq, step, pass)`, `annotation(seq, n, pass, role)`,
+`unmapped(seq)`. The lesson board's steps use `seq = 'lesson'`; the
+knowledge passages of the abstract sequences use the voice id. Boards are
+inserted after the frame of the command that opens them
+(`S.frame().insert_after`), so they sit at their chronological position.
+
+**Resolved ambiguities / deviations.**
+- The board's ¶s are split into pieces where a ¶ yields two events, from
+  the events' `remainder` (a suffix of the ¶); the piece still to convert is
+  underlined once the first event is issued. The cursor ¶ is bright, the
+  others dim, a followed ¶ gets "↳".
+- `say all set` folds the board to a chip, but its own frame (Katya's reply,
+  l. 313–315) was created in the ledger before the fold; the chip therefore
+  hides the ledger except its last frame (CSS), so the reply stays visible
+  under the chip. A frame cannot be moved after the fact by value.
+- Voice bars are inserted on every `speak as` (after its frame, with the
+  hole moved after the bar) and hidden by CSS until l. 350, when one class
+  on the story root (`voices-taught`) reveals every bar and every `You`
+  mark at once. The `You` mark is a class on every non-event frame, drawn
+  by CSS; frame 0 (the opening, no command) has none. The carat's voice is
+  a per-voice CSS rule on `.left`'s `voice-<slug>` class, one rule per
+  voice in `dist/board.css`; `parsed_text.tsx` is untouched.
+- Bands: `band-<step>` classes on the row; the CSS colours the row's left
+  border by the highest step it holds (the badges show all of them).
+- The unmapped bar is appended at the end of `.left`; the count is the
+  board's events minus the rows holding a badge of any mapping (both
+  wise-man solutions count), so the wise man's is "6 events".
+- `expand/collapse the steps` toggles every `.notation` node at once (the
+  lesson board's and every board's); `<event>` folds its frame's output;
+  `the story` hides the board's ¶s.
+- The typeahead is `position: static` inside a board (the engine's
+  absolute typeahead is right at the root, where nothing follows it, but in
+  `.left` it overlaid the ¶s still to convert).
+- The right column is `position: sticky; top: 0; align-self: flex-start`
+  with its own `max-height: 100vh; overflow-y: auto` (R2); the scroll
+  container is `#terminal`.
+- Colours per step as §8, as `--step-rgb` custom properties; voices never
+  use fill colour (bars are rules: solid, dashed, double).
+- `dist/fire.html` loads `global.css`, `cursor.css`, `history.css`,
+  `prompt.css`, `board.css` and `fire.js`; `interpretations.css` is
+  narrascope's and is not loaded.
+- The screenshot driver types each command with real key events and waits
+  for the world index to advance and the animation lock to clear; the
+  Google font request is answered with an empty stylesheet so the run does
+  not touch the network. The acceptance script JSON is regenerated from
+  `ACCEPTANCE_SCRIPT` (it now includes `collapse the unmapped`).

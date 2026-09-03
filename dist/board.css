@@ -1,0 +1,269 @@
+/* The Voice of Fire: the board (SPEC section 8). Loaded by fire.html after the engine's stylesheets. */
+
+/* Step colours: chunks of abstraction. Never used for voices. */
+.step-1 { --step-rgb: 227, 197, 101; }   /* straw */
+.step-2 { --step-rgb: 210, 166, 121; }   /* tan */
+.step-3 { --step-rgb: 160, 110, 60; }    /* bark */
+.step-4 { --step-rgb: 255, 140, 0; }     /* orange */
+.step-5 { --step-rgb: 224, 58, 58; }     /* red */
+.step-6 { --step-rgb: 178, 34, 34; }     /* deep red */
+.step-7 { --step-rgb: 220, 20, 60; }     /* crimson */
+.step-8 { --step-rgb: 154, 154, 154; }   /* grey */
+
+.hidden { display: none !important; }
+
+/* BOARDS */
+
+.board {
+    display: block;
+    margin: 1.5em 0;
+    border-top: 1px solid rgba(255, 255, 240, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 240, 0.5);
+    padding: 0.5em 0 1em 0;
+}
+
+.board-title {
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 0.3em 0;
+}
+
+.columns {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 1.5em;
+}
+
+.columns .left {
+    flex: 3 1 0;
+    min-width: 0;
+}
+
+.columns .rule {
+    flex: 0 0 1px;
+    background: rgba(255, 255, 240, 0.5);
+}
+
+.columns .right {
+    flex: 2 1 0;
+    min-width: 0;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+.board.lesson .columns .right {
+    position: static;
+    flex: 1 1 0;
+    max-height: none;
+}
+
+/* Chips: a finished board folded to its title and barcode. Only the last
+   frame of its ledger (Katya's reply to `say all set`) stays in view. */
+.board.chip .columns { display: none; }
+.board.chip .ledger > .frame:not(:last-child) { display: none; }
+.board.chip { padding-bottom: 0.3em; }
+
+.barcode { margin-left: 1em; }
+.barcode .badge { margin-right: 0.15em; }
+
+/* THE LEFT COLUMN */
+
+.prose {
+    white-space: normal;
+    line-height: 1.8em;
+    margin-top: 1em;
+    --alpha-color: 0.55;
+}
+.prose.cursor { --alpha-color: 1; }
+.prose.done { --alpha-color: 0.55; }
+.prose.followed { --alpha-color: 0.7; }
+.prose.followed::before { content: '\21B3  '; }
+.prose .piece.remainder {
+    --alpha-color: 1;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 240, 0.6);
+}
+.prose.cursor .piece { --alpha-color: 0.55; }
+.prose.cursor .piece:first-child { --alpha-color: 1; }
+.prose.cursor .piece.remainder { --alpha-color: 1; }
+
+.board .left .frame,
+.board .ledger .frame {
+    margin-top: 0.6em;
+    margin-inline-start: 1.5em;
+    padding-left: 0.6em;
+    border-left: 3px solid transparent;
+}
+.board .left .frame .output-text,
+.board .ledger .frame .output-text {
+    margin-top: 0.3em;
+    margin-bottom: 0.3em;
+    line-height: 1.8em;
+}
+.board .left #story-hole,
+.board .ledger #story-hole {
+    margin-inline-start: 1.5em;
+    margin-top: 0.6em;
+}
+/* Inside a board the prompt has rows beneath it (the ¶s still to convert),
+   so the typeahead takes its own space instead of overlaying them. */
+.board #story-hole ul.typeahead {
+    position: static;
+}
+.board #story-hole ul.typeahead li.footer {
+    position: static;
+    height: 1em;
+}
+.board .left .frame.collapsed .output-text { display: none; }
+.board.story-collapsed .prose { display: none; }
+.board.unmapped-collapsed .left .frame.event:not(.mapped) { display: none; }
+.board.unmapped-collapsed .left .prose:not(.mapped) { display: none; }
+.unmapped-bar {
+    margin-top: 1em;
+    --alpha-color: 0.7;
+}
+.follows { --alpha-color: 0.85; }
+
+/* Bands: the row's left edge in the colour of the step it holds. */
+.frame.band-1 { border-left-color: rgb(227, 197, 101); }
+.frame.band-2 { border-left-color: rgb(210, 166, 121); }
+.frame.band-3 { border-left-color: rgb(160, 110, 60); }
+.frame.band-4 { border-left-color: rgb(255, 140, 0); }
+.frame.band-5 { border-left-color: rgb(224, 58, 58); }
+.frame.band-6 { border-left-color: rgb(178, 34, 34); }
+.frame.band-7 { border-left-color: rgb(220, 20, 60); }
+.frame.band-8 { border-left-color: rgb(154, 154, 154); }
+
+/* Badges: numbered, in the step's colour; solid when applied, hollow when set aside. */
+.badge {
+    display: inline-block;
+    min-width: 1.2em;
+    height: 1.4em;
+    line-height: 1.4em;
+    text-align: center;
+    border-radius: 0.2em;
+    margin-left: 0.5em;
+    padding: 0 0.3em;
+    font-weight: 700;
+    border: 1px solid rgb(var(--step-rgb));
+    --rgb-color: var(--step-rgb);
+    --alpha-color: 1;
+    vertical-align: middle;
+}
+.badge.solid {
+    background: rgb(var(--step-rgb));
+    --rgb-color: 0, 0, 0;
+}
+.badge.hollow {
+    background: transparent;
+    --alpha-color: 0.3;
+    border-color: rgba(var(--step-rgb), 0.3);
+}
+
+.annotation {
+    margin-left: 0.6em;
+    --rgb-color: 255, 140, 0;
+    --alpha-color: 0.9;
+    font-style: italic;
+}
+
+/* THE RIGHT COLUMN */
+
+.step {
+    margin-bottom: 0.8em;
+    padding-left: 0.6em;
+    border-left: 3px solid rgb(var(--step-rgb));
+}
+.step .chalk {
+    font-weight: 700;
+    --rgb-color: var(--step-rgb);
+}
+.step .notation {
+    margin-left: 1em;
+    --alpha-color: 0.8;
+    white-space: normal;
+    line-height: 1.6em;
+}
+.step .notation.absent { display: none; }
+.step .notation.collapsed { display: none; }
+.step .notation .command { font-weight: 700; }
+.step .targets { margin-left: 1em; }
+.step .reference {
+    --rgb-color: var(--step-rgb);
+    --alpha-color: 1;
+    white-space: normal;
+}
+.step .reference.hollow { --alpha-color: 0.3; }
+.step .spoken { margin-left: 1em; }
+.step .rendition {
+    --rgb-color: 255, 140, 0;
+    white-space: normal;
+    line-height: 1.6em;
+    margin-top: 0.3em;
+}
+.step .rendition blockquote {
+    margin: 0 0 0 1em;
+    --alpha-color: 0.8;
+}
+
+/* THE LEDGER */
+
+.ledger { margin-top: 0.5em; }
+
+/* VOICES. A bar above the lines a voice speaks: solid for an embodied
+   voice, dashed for a disembodied one, double-ruled for an abstract one.
+   Nothing is drawn until the notation is taught (l. 350). */
+.voice-bar { display: none; }
+.story.voices-taught .voice-bar {
+    display: block;
+    margin: 1em 0 0.3em 0;
+    padding-top: 0.2em;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-size: 0.9em;
+    border-top: 2px solid rgba(255, 255, 240, 0.8);
+}
+.story.voices-taught .voice-bar.kind-disembodied { border-top-style: dashed; }
+.story.voices-taught .voice-bar.kind-abstract { border-top: 4px double rgba(255, 255, 240, 0.8); }
+
+/* The player's own frames: the You mark, once the notation is taught. */
+.story.voices-taught .frame.you > .input-text::before {
+    content: 'YOU';
+    display: block;
+    letter-spacing: 0.15em;
+    font-size: 0.8em;
+    --alpha-color: 0.6;
+    border-top: 2px solid rgba(255, 255, 240, 0.5);
+    margin: 0.8em 0 0.2em 0;
+    padding-top: 0.1em;
+    width: 6em;
+}
+.story.voices-taught .board .frame.you > .input-text::before { margin-top: 0.3em; }
+
+/* The carat shows the current voice, once the notation is taught. */
+.story.voices-taught .left.spoken #story-hole .parsed-text > span:first-child::before {
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-size: 0.8em;
+    --alpha-color: 0.7;
+    margin-right: 0.6em;
+}
+.story.voices-taught .left.voice-the-friends #story-hole .parsed-text > span:first-child::before { content: 'the friends'; }
+.story.voices-taught .left.voice-the-family #story-hole .parsed-text > span:first-child::before { content: 'the family'; }
+.story.voices-taught .left.voice-the-children #story-hole .parsed-text > span:first-child::before { content: 'the children'; }
+.story.voices-taught .left.voice-the-boy #story-hole .parsed-text > span:first-child::before { content: 'the boy'; }
+.story.voices-taught .left.voice-the-man #story-hole .parsed-text > span:first-child::before { content: 'the man'; }
+.story.voices-taught .left.voice-the-followers #story-hole .parsed-text > span:first-child::before { content: 'the followers'; }
+.story.voices-taught .left.voice-the-closest-followers #story-hole .parsed-text > span:first-child::before { content: 'the closest followers'; }
+.story.voices-taught .left.voice-the-seed #story-hole .parsed-text > span:first-child::before { content: 'the seed'; }
+.story.voices-taught .left.voice-the-tree #story-hole .parsed-text > span:first-child::before { content: 'the tree'; }
+.story.voices-taught .left.voice-the-forest #story-hole .parsed-text > span:first-child::before { content: 'the forest'; }
+.story.voices-taught .left.voice-the-weather #story-hole .parsed-text > span:first-child::before { content: 'the weather'; }
+.story.voices-taught .left.voice-the-fire #story-hole .parsed-text > span:first-child::before { content: 'the fire'; }
+.story.voices-taught .left.voice-the-books #story-hole .parsed-text > span:first-child::before { content: 'the books'; }
+.story.voices-taught .left.voice-the-season #story-hole .parsed-text > span:first-child::before { content: 'the season'; }
+.story.voices-taught .left.voice-time #story-hole .parsed-text > span:first-child::before { content: 'time'; }

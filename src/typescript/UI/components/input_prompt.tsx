@@ -43,10 +43,15 @@ export const InputPrompt: Renderer<InputPromptProps> = (props, old?) => {
         return result;
     }
 
-    if (props.parsing.raw.text !== old.old_props.parsing.raw.text) {
-        const input = input_prompt_input.get(old.old_root);
+    // The DOM input is compared by its actual value, not the last rendered
+    // props: when keystrokes and a submit arrive within one render tick (a
+    // scripted driver, a paste), the props before and after can both be
+    // empty while the input still holds the submitted text.
+    const input = input_prompt_input.get(old.old_root);
+    if (input.value !== props.parsing.raw.text) {
         input.value = props.parsing.raw.text;
-
+    }
+    if (props.parsing.raw.text !== old.old_props.parsing.raw.text) {
         input_prompt_text.render(props, old);
     }
 

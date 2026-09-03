@@ -2,8 +2,9 @@
     Transcription (SPEC §5, §6): at the open board, the player speaks as a
     voice and issues each ¶'s imperative in that voice, or lets a ¶ follow
     from the previous event. Traps are offered too; they print their nudge
-    and change nothing. When the last ¶ is converted, the player draws the
-    vertical line and the mapping begins.
+    and change nothing. The prompt sits at the cursor ¶ (the hole moves
+    down the left column), each event's frame lands under its ¶, and when
+    the last ¶ is converted the player draws the vertical line.
 */
 import { GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
@@ -12,7 +13,9 @@ import { update } from 'lib/utils';
 import { StoryEventSpec, StorySpec, voice as voice_of, VoiceId, VOICE_OF_FIRE } from '../data';
 import { AUTHORED, LINE_TEXT, QUOTED } from '../data/katya';
 import { new_mapping } from '../judge';
-import { chalk_column, classroom_gist, event_gist, paragraphs } from '../board';
+import {
+    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, slug, speak_as_ops
+} from '../board';
 import { board_story, command_spec, converted, FireWorld, phrase, scene_of } from '../world';
 
 // Katya's line when a ¶ is reached during transcription (the house's burning lines, SPEC §5.2).
@@ -28,9 +31,12 @@ function reached(story: StorySpec, from: number, to: number) {
 // Issue the next event of the cursor ¶ in the current voice.
 function issue_event(w: FireWorld, story: StorySpec, e: StoryEventSpec): FireWorld {
     const cursor = w.cursor!;
-    const next = story.events[converted(w, story) + 1];
+    const n_before = converted(w, story);
+    const next = story.events[n_before + 1];
     const same_line = next !== undefined && next.prose === e.prose;
     const new_cursor = same_line ? cursor : cursor + 1;
+    // Which piece of the ¶ this event converts: how many of its events came before it.
+    const piece = story.events.filter(o => o.prose === e.prose && o.index < e.index).length;
     return update(w, {
         gist: () => event_gist(story.id, e.index),
         sequences: { [story.id]: { events: _ => [..._, w.index] } },
@@ -39,7 +45,10 @@ function issue_event(w: FireWorld, story: StorySpec, e: StoryEventSpec): FireWor
         remainder: () => same_line ? e.remainder : undefined,
         story_updates: story_updater(
             S.consequence(paragraphs(e.consequence)),
-            reached(story, cursor, new_cursor)
+            S.frame().css({ event: true, [`voice-${slug(w.voice!)}`]: true }),
+            reached(story, cursor, new_cursor),
+            same_line ? light_remainder_ops(story, e.prose, piece + 1) : [],
+            advance_cursor_ops(story, cursor, new_cursor)
         )
     });
 }
@@ -52,8 +61,10 @@ function follow(w: FireWorld, story: StorySpec): FireWorld {
         cursor: cursor + 1,
         remainder: () => undefined,
         story_updates: story_updater(
-            S.frame(previous).consequence(<div>{story.prose[cursor - 1]}</div>),
-            reached(story, cursor, cursor + 1)
+            S.frame(previous).consequence(<div className="follows">{story.prose[cursor - 1]}</div>),
+            reached(story, cursor, cursor + 1),
+            follow_ops(story, cursor),
+            advance_cursor_ops(story, cursor, cursor + 1)
         )
     });
 }
@@ -65,15 +76,18 @@ export function nudge_frame(w: FireWorld, nudge: string): FireWorld {
     });
 }
 
-// `speak as`: sets the voice; the first disembodied and the first abstract voice bring Katya's speeches (SPEC §5.3).
-function speak_as(w: FireWorld, v: VoiceId): FireWorld {
+// `speak as`: sets the voice and draws its bar; the first disembodied and the first abstract voice bring Katya's speeches (SPEC §5.3).
+function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
     const kind = voice_of(v).kind;
     const speech = kind === 'disembodied' ? AUTHORED.disembodied : kind === 'abstract' ? AUTHORED.abstract : undefined;
     const teach = speech !== undefined && !w.taught.includes(kind);
     return update(w, {
         voice: v,
         taught: _ => teach ? [..._, kind] : _,
-        story_updates: story_updater(teach ? S.consequence(paragraphs(speech!)) : [])
+        story_updates: story_updater(
+            teach ? S.consequence(paragraphs(speech!)) : [],
+            speak_as_ops(story, w.index, v, w.voice)
+        )
     });
 }
 
@@ -83,7 +97,7 @@ export function speakable_voices(w: FireWorld, story: StorySpec): VoiceId[] {
     return all.filter(v => v !== w.voice);
 }
 
-// `draw a vertical line`: the right column appears and the mapping opens.
+// `draw a vertical line`: the rule and the right column appear, the hole moves to the ledger, and the mapping opens.
 function draw_line(w: FireWorld, story: StorySpec): FireWorld {
     const key = LINE_TEXT[story.id];
     return update(w, {
@@ -92,7 +106,7 @@ function draw_line(w: FireWorld, story: StorySpec): FireWorld {
         mappings: _ => [..._, new_mapping(story, VOICE_OF_FIRE, 'first')],
         story_updates: story_updater(
             key === undefined ? [] : S.consequence(paragraphs(QUOTED[key])),
-            S.description(chalk_column(VOICE_OF_FIRE, false))
+            draw_line_ops(story)
         )
     });
 }
@@ -124,7 +138,7 @@ export const transcription_puffer: Puffer<FireWorld> = {
             }
         }
         for (const v of speakable_voices(world, story)) {
-            threads.push(p => p.consume(['speak_as', GAP, phrase(v)], () => p.submit(() => speak_as(world, v))));
+            threads.push(p => p.consume(['speak_as', GAP, phrase(v)], () => p.submit(() => speak_as(world, story, v))));
         }
         return parser.split(threads);
     }

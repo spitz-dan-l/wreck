@@ -15,7 +15,7 @@ import { fire_world_spec, FireWorld, new_fire_world, STORIES, StorySpec, VOICE_O
 import { AUTHORED, QUOTED } from 'demo_worlds/fire/data/katya';
 import { applied_mapping, set_aside_mappings } from 'demo_worlds/fire/world';
 import { raw, traverse_thread } from 'parser';
-import { apply_story_updates_all, to_basic_text } from 'story';
+import { apply_story_updates_all, to_basic_text, Updates as S } from 'story';
 import { apply_command, make_update_thread } from 'world';
 import { document_text, normalise } from './test_fire_judge';
 
@@ -195,6 +195,7 @@ export const WALKTHROUGH: Step[] = [
         assert.ok(commands(w).includes('object that there is no fire'));
         assert.ok(!commands(w).includes('object that the fireplace is too abstract'));
     } },
+    { cmd: 'collapse the unmapped', expect: ['▸ 6 events not in the mapping'], check: w => assert.ok(w.collapsed.includes('wise_man:unmapped')) },
     { cmd: 'object that there is no fire', expect: [...QUOTED.l473, ...QUOTED.l475, ...QUOTED.l477_fire] },
     { cmd: 'object that the fireplace is too abstract', expect: QUOTED.l477_abstract },
     { cmd: 'object that the spark is the myth, not the death', expect: QUOTED.l477_spark },
@@ -224,6 +225,12 @@ export const ACCEPTANCE_SCRIPT: string[] = WALKTHROUGH.filter(s => s.trap === un
 
 function text(w: FireWorld): string {
     return normalise(to_basic_text(apply_story_updates_all(w.story, w.story_updates)));
+}
+
+// The text of the latest frame alone.
+function frame_text(w: FireWorld): string {
+    const story = apply_story_updates_all(w.story, w.story_updates);
+    return normalise(to_basic_text(S.frame().query(story)[0][0]));
 }
 
 function commands(w: FireWorld): string[] {
@@ -271,7 +278,8 @@ describe('the Voice of Fire, played through', () => {
             const after = text(world);
             if (step.trap !== undefined) {
                 assert.ok(commands(before).includes(step.cmd), `the trap "${step.cmd}" is not enumerable`);
-                assert.ok(after.endsWith(normalise(step.trap) + ' >'), `"${step.cmd}" did not print its nudge; the frame ends: ${after.slice(-200)}`);
+                const frame = frame_text(world);
+                assert.ok(frame.endsWith(normalise(step.trap)), `"${step.cmd}" did not print its nudge; the frame ends: ${frame.slice(-200)}`);
                 assert.equal(state_snapshot(world), state_snapshot(before), `"${step.cmd}" changed the state`);
             }
             for (const expected of step.expect ?? []) {

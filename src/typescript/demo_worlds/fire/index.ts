@@ -9,7 +9,7 @@ import { empty_knowledge, ingest, Knowledge, story_updater, Updates as S } from 
 import { get_initial_world, world_driver } from 'world';
 import { ABSTRACT_SEQUENCES } from './data';
 import { QUOTED } from './data/katya';
-import { chalk_column, paragraphs } from './board';
+import { paragraphs, sequence_passage } from './board';
 import { FireWorld } from './world';
 import { classroom_puffer } from './puffers/classroom';
 import { display_puffer } from './puffers/display';
@@ -24,7 +24,7 @@ export * from './data';
 function initial_knowledge(): Knowledge {
     let k = empty_knowledge();
     for (const seq of ABSTRACT_SEQUENCES) {
-        k = ingest(k, chalk_column(seq, true));
+        k = ingest(k, sequence_passage(seq));
     }
     return k;
 }

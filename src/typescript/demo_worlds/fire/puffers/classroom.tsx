@@ -3,16 +3,19 @@
     Katya says back (SPEC §9), as a script of commands gated by the scene
     the lesson is in, plus `look at the board` and `pick up the chalk`.
     The transcription and mapping of each board live in their own puffers;
-    this one moves the lesson between them.
+    this one moves the lesson between them, opens and closes the boards.
 */
 import { ConsumeSpec, GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
-import { createElement, ingest, StoryNode, story_updater, Updates as S } from 'story';
+import { createElement, ingest, StoryNode, story_updater, StoryUpdaterSpec, Updates as S } from 'story';
 import { update } from 'lib/utils';
 import { CAMPFIRE, FOREST, HOUSE, STORIES, StorySpec, VOICE_OF_FIRE, WISE_MAN } from '../data';
 import { AUTHORED, QUOTED, QuotedKey } from '../data/katya';
 import { placed } from '../judge';
-import { board_open, chalk_column, classroom_gist, event_passage, paragraphs, prose_told } from '../board';
+import {
+    classroom_gist, event_passage, finish_board_ops, open_board_ops, paragraphs, prose_told, reveal_notation_ops,
+    show_lesson_board_ops, teach_voices_ops
+} from '../board';
 import { applied_mapping, board_story, FireWorld, has_said, phrase, SceneId, scene_of } from '../world';
 
 // One line of the script: a command, when it is offered, what it prints, and what it changes.
@@ -23,6 +26,7 @@ interface Line {
     says: QuotedKey[];                              // paragraphs printed as the frame's consequence, verbatim
     also?: string[];                                // authored paragraphs printed after them
     shows?: (w: FireWorld) => StoryNode[];          // printed as the frame's description
+    board?: (w: FireWorld) => StoryUpdaterSpec[];   // ops on the board
     next?: SceneId;
     then?: (w: FireWorld) => FireWorld;
     locked?: boolean;
@@ -35,8 +39,8 @@ function applied(story: StorySpec) {
 }
 
 // Open a story's board (SPEC §6 `pick up the chalk`): the ¶s in the left
-// column, the cursor on the first, no voice yet, and every event of the
-// story known to the knowledge tree.
+// column, the cursor on the first, no voice yet, the hole inside, and
+// every event of the story known to the knowledge tree.
 function open_board(story: StorySpec) {
     return (w: FireWorld): FireWorld => update(w, {
         board: story.id,
@@ -46,17 +50,19 @@ function open_board(story: StorySpec) {
         scene: scene_of(story, 'transcribing'),
         sequences: { [story.id]: () => ({ events: [], finished: false }) },
         knowledge: k => story.events.reduce((acc, e) => ingest(acc, event_passage(story, e)), k),
-        story_updates: story_updater(S.description(board_open(story)))
+        story_updates: story_updater(open_board_ops(story, VOICE_OF_FIRE))
     });
 }
 
-// Finish the board's sequence (SPEC §6 `say all set`): titled, closed, the hole back at the root.
+// Finish the board's sequence (SPEC §6 `say all set`): titled, a chip, the hole back at the root.
 function finish_board(story: StorySpec) {
     return (w: FireWorld): FireWorld => update(w, {
         board: () => undefined,
         voice: () => undefined,
         cursor: () => undefined,
-        sequences: { [story.id]: { finished: true } }
+        sequences: { [story.id]: { finished: true } },
+        collapsed: c => [...c, `${story.id}:chip`],
+        story_updates: story_updater(finish_board_ops(story, w.mappings.filter(m => m.sequence === story.id)))
     });
 }
 
@@ -78,11 +84,11 @@ export const SCRIPT: Line[] = [
     },
     {
         command: 'listen', scene: 'classroom', says: ['l162', 'l164'],
-        shows: () => [chalk_column(VOICE_OF_FIRE, false)], next: 'chalk'
+        board: () => show_lesson_board_ops(VOICE_OF_FIRE), next: 'chalk'
     },
     {
         command: 'listen', scene: 'chalk', says: ['l182'],
-        shows: () => [chalk_column(VOICE_OF_FIRE, true)], next: 'notation'
+        board: () => reveal_notation_ops(), next: 'notation'
     },
     {
         command: 'listen', scene: 'notation', says: ['l218'],
@@ -105,6 +111,7 @@ export const SCRIPT: Line[] = [
         command: 'ask what the right thing to do is', scene: scene_of(HOUSE, 'transcribing'),
         requires: w => w.cursor === 9 && !w.taught.includes('voice'),
         says: ['l348', 'l350'], also: AUTHORED.voice_switches,
+        board: () => teach_voices_ops(),
         then: w => update(w, { taught: _ => [..._, 'voice'] })
     },
     {
@@ -204,7 +211,8 @@ function say_line(w: FireWorld, line: Line): FireWorld {
         said: _ => [..._, line.command],
         story_updates: story_updater(
             consequence.length > 0 ? S.consequence(paragraphs(consequence)) : [],
-            line.shows === undefined ? [] : S.description(line.shows(w))
+            line.shows === undefined ? [] : S.description(line.shows(w)),
+            line.board === undefined ? [] : line.board(w)
         )
     });
     if (line.next !== undefined) {

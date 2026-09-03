@@ -1,19 +1,22 @@
 /*
     Mapping (SPEC §4, §6, §7): with the vertical line drawn, the player maps
     steps of the Voice of Fire onto the board's events, erases placements,
-    applies the mapping, and sets it aside or resumes it. Applying prints
-    the apply text, lets the Fire speak the story in its own terms,
-    annotates the mapped rows (in the transcript and in knowledge), and
-    fills the roles; setting aside reverses all of that; resuming redoes it.
+    applies the mapping, and sets it aside or resumes it. A placement puts a
+    badge on the row and a reference under the step; applying prints the
+    apply text, lets the Fire speak under each step, annotates the mapped
+    rows (in the transcript and in knowledge), and fills the roles; setting
+    aside reverses all of that and hollows the badges; resuming redoes it.
 */
 import { GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
-import { createElement, graft, story_updater, Updates as S } from 'story';
+import { graft, story_updater, StoryUpdaterSpec, Updates as S } from 'story';
 import { update } from 'lib/utils';
 import { Mapping, StepIndex, STORIES, StorySpec, TWO_LINES, VOICE_OF_FIRE } from '../data';
-import { apply as judge_apply, erase, participants, place, role_entries } from '../judge';
+import { apply as judge_apply, erase, participants, place, placed, role_entries } from '../judge';
 import { event_names } from '../names';
-import { annotation, annotation_gist, event_gist, exact_gist, paragraphs, remove_gists, rendition, spoken_gist } from '../board';
+import {
+    annotation_node, apply_ops, erase_ops, event_gist, exact_gist, mapped_rows_ops, paragraphs, place_ops, remove_gists, unapply_ops
+} from '../board';
 import {
     applied_mapping, board_story, event_frame, FireWorld, open_mapping, phrase, replace_mapping, scene_of, set_aside_mappings
 } from '../world';
@@ -30,19 +33,38 @@ function label(story: StorySpec, m: Mapping): string {
     return story.id === 'wise_man' ? `the ${m.pass} solution` : 'the mapping';
 }
 
+// The rows holding a badge, across every mapping of the board, as classes (for `collapse the unmapped`).
+function rows_ops(w: FireWorld, story: StorySpec, mappings: Mapping[]): StoryUpdaterSpec[] {
+    const mapped = mappings.filter(m => m.sequence === story.id).flatMap(m => m.placements.map(p => p.event));
+    return mapped_rows_ops(story, mapped, e => event_frame(w, story.id, e));
+}
+
 function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepIndex, event: number): FireWorld {
     const verdict = place(story, FIRE, mapping, step, event, set_aside_mappings(w, story));
     if (!verdict.ok) {
         return nudge_frame(w, verdict.nudge);
     }
+    const mappings = replace_mapping(w.mappings, mapping, verdict.mapping);
+    const name = event_names(story, STORIES)[event - 1];
     return update(w, {
-        mappings: _ => replace_mapping(_, mapping, verdict.mapping),
-        story_updates: story_updater(verdict.mark === undefined ? [] : S.consequence(paragraphs([verdict.mark])))
+        mappings: () => mappings,
+        story_updates: story_updater(
+            verdict.mark === undefined ? [] : S.consequence(paragraphs([verdict.mark])),
+            place_ops(story, step, mapping.pass, event, event_frame(w, story.id, event)!, name, placed(mapping, step)),
+            rows_ops(w, story, mappings)
+        )
     });
 }
 
-function do_erase(w: FireWorld, mapping: Mapping, step: StepIndex): FireWorld {
-    return update(w, { mappings: _ => replace_mapping(_, mapping, erase(mapping, step)) });
+function do_erase(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepIndex): FireWorld {
+    const mappings = replace_mapping(w.mappings, mapping, erase(mapping, step));
+    return update(w, {
+        mappings: () => mappings,
+        story_updates: story_updater(
+            erase_ops(story, step, mapping.pass, placed(mapping, step)!),
+            rows_ops(w, story, mappings)
+        )
+    });
 }
 
 // The consequences of an applied mapping (SPEC §7.2–4), added to the world; `undo` takes them away again.
@@ -59,10 +81,7 @@ function consequences(w: FireWorld, story: StorySpec, m: Mapping, undo: boolean)
                 return result;
             },
             knowledge: k => remove_gists(k, { tag: 'annotation', params: { seq: story.id, pass: m.pass } }),
-            story_updates: story_updater(
-                S.has_gist(exact_gist(spoken_gist(story.id, m.pass))).remove(),
-                S.has_gist({ tag: 'annotation', params: { seq: story.id, pass: m.pass } }).remove()
-            )
+            story_updates: story_updater(unapply_ops(story, m.pass))
         });
     }
     return update(w, {
@@ -74,13 +93,8 @@ function consequences(w: FireWorld, story: StorySpec, m: Mapping, undo: boolean)
             return result;
         },
         knowledge: k => parts.reduce((acc, p) =>
-            graft(acc, exact_gist(event_gist(story.id, p.event)), annotation(story.id, p.event, m.pass, p.role)), k),
-        story_updates: story_updater(
-            S.description(rendition(story, FIRE, parts, m.pass)),
-            parts.map(p => S.frame(event_frame(w, story.id, p.event)!)
-                .first(S.has_class('input-text'))
-                .add(annotation(story.id, p.event, m.pass, p.role)))
-        )
+            graft(acc, exact_gist(event_gist(story.id, p.event)), annotation_node(story.id, p.event, m.pass, p.role)), k),
+        story_updates: story_updater(apply_ops(story, FIRE, parts, m.pass, e => event_frame(w, story.id, e)))
     });
 }
 
@@ -124,8 +138,14 @@ function do_set_aside(w: FireWorld, story: StorySpec, mapping: Mapping): FireWor
 function do_resume(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     const resumed: Mapping = { ...mapping, status: 'applied' };
     // Any mapping still open on this board is dropped: the resumed one is the story's reading again.
+    const dropped = w.mappings.filter(m => m.sequence === story.id && m.status === 'open');
+    const mappings = replace_mapping(w.mappings, mapping, resumed).filter(m => !dropped.includes(m));
     let next = update(w, {
-        mappings: _ => replace_mapping(_, mapping, resumed).filter(m => !(m.sequence === story.id && m.status === 'open'))
+        mappings: () => mappings,
+        story_updates: story_updater(
+            dropped.flatMap(m => m.placements.map(p => erase_ops(story, p.step, m.pass, p.event))),
+            rows_ops(w, story, mappings)
+        )
     });
     next = consequences(next, story, resumed, false);
     return next;
@@ -167,7 +187,7 @@ export const mapping_puffer: Puffer<FireWorld> = {
                 const step = FIRE.steps[placement.step - 1];
                 threads.push(p =>
                     p.consume(['erase', GAP, phrase(step.name)], () =>
-                    p.submit(() => do_erase(world, open, placement.step))));
+                    p.submit(() => do_erase(world, story, open, placement.step))));
             }
             threads.push(p =>
                 p.consume(['apply', GAP, phrase(FIRE.voice.name)], () =>

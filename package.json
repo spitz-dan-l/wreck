@@ -10,7 +10,9 @@
     "debug": "echo 'Remember to open chrome://inspect in a tab before running this.\\n' && tsc -p tsconfig.json && mocha --require ./build/tests/setup.js --inspect-brk build/tests",
     "build": "esbuild src/typescript/entry_points/build_prod.tsx --bundle --minify --target=es2020 --outfile=dist/venience.js --log-level=warning",
     "build-dev": "esbuild src/typescript/entry_points/build_dev.tsx --bundle --sourcemap --target=es2020 --outfile=dist/venience.js --log-level=warning",
-    "clean": "rm -rf build dist/venience.js.map"
+    "clean": "rm -rf build dist/venience.js.map",
+    "build:fire": "esbuild src/typescript/entry_points/build_fire_prod.tsx --bundle --minify --target=es2020 --outfile=dist/fire.js --log-level=warning",
+    "build-dev:fire": "esbuild src/typescript/entry_points/build_fire_dev.tsx --bundle --sourcemap --target=es2020 --outfile=dist/fire.js --log-level=warning"
   },
   "repository": {
     "type": "git",
