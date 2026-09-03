@@ -1,4 +1,4 @@
-# The Voice of Fire — demo specification (v1.3)
+# The Voice of Fire — demo specification (v1.4)
 
 Synthesized from round 1 of the design loop: three proposals
 (`round1/design_{A,B,C}.md`), two critiques (`round1/critique_1_textual.md`,
@@ -10,7 +10,10 @@ are under `src/typescript/`.
 
 v1.2 applies the round-2 play critique of the headless build
 (`round2/critique_4_play_b1.md`, marked `[C4]`) and the orchestrator's notes
-(`round2/orchestrator_notes_b1.md`). v1.3 applies the round-3 critiques:
+(`round2/orchestrator_notes_b1.md`). v1.4 promotes the Pillaging attempt from optional-more to required (§12)
+after the round-4 verification (`round4/critique_8_verification.md`,
+`[C8]`), whose defects D1–D3 and improvements I1–I4 are applied too.
+v1.3 applies the round-3 critiques:
 the fresh-eyes play (`round3/critique_6_play_b3.md`, `[C6]`), the code
 review (`round3/critique_7_code.md`, `[C7]`) and the browser critique
 (`round3/critique_5_ui.md`, `[C5]`: notation shown, chips reopening at the
@@ -899,13 +902,28 @@ via revived would-effects; a fixed right-hand board panel; narrow layout;
 phrase-level targets inside a consequence; C's recolouring of the left
 column on apply ("the home" → "the fuel").
 
-**Optional-more** (only after everything in §0–§11 passes review):
-`try the Pillaging on the house in the woods` after l. 481: reopens the
-house chip with the Pillaging's three steps in the right column; L4 fails
-at step 2 ("They came upon it. Did they go in?") and step 3 ("What did they
-take?"); Katya: "Not every voice fits every story, my dear. That is a lesson
-for another day." This is the only place l. 124 ("they might find that they
-cannot") is ever true. It never gates.
+**Optional in play, required in the build (v1.4; asked for by the round-3
+and round-4 play critics as the one change still worth making)**
+`[C6 §7; C8 §6]`: `try the Pillaging on the house in the woods`, offered
+after l. 481 (the end) and never gating anything. It reopens the house chip
+(the chip mode of §8) with the Pillaging's three steps as a second pattern
+column beside the Voice of Fire's (gists for steps, targets and rendition
+carry the pattern id). Its candidate table on the house: step 1 "Someone
+lives in their home" → {e10 `move in` · the family}; steps 2 and 3 have no
+candidates, so every placement fails L4 with the Pillaging's own default
+nudges: step 2 "They came upon it. Did they go in?", step 3 "What did they
+take?" (the .md's own gap: the children enter nothing and take nothing).
+Once the player has been refused on both step 2 and step 3, Katya says,
+once: "Not every voice fits every story, my dear. That is a lesson for
+another day." — the demo's only new Katya line, licensed by l. 124 ("They
+might find that they cannot") and l. 543 ("which voice works for this
+story"). `put down the chalk` folds the house board and returns the hole
+to the wise man's ledger. `apply` is offered and fails L1 as usual; nothing
+about the Pillaging appears in `remember <role>` since nothing is ever
+applied. `remember the Pillaging` shows its steps in both forms
+throughout. `say that you see it` stays Locked. Step short names: "the
+living in their home", "the entering of their home", "the taking of things
+from their home".
 
 **Cut order if v1 runs long**: `remember` of the classroom events'
 feelings (keep the three authored ones); the lesson-board chip; the barcode
