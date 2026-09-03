@@ -6,6 +6,20 @@ A playable demo is available as part of the [Spring Thing 2018](http://springthi
 
 It is written in Typescript and runs in the browser.
 
+There are two demos in this repository:
+
+- **Narrascope** (`dist/venience.html`): the 2018–2020 demo, a bus ride
+  spent reflecting on a conversation, built around consider / remember /
+  reflect and retroactively revealed text.
+- **The Voice of Fire** (`dist/fire.html`): Katya's lesson from
+  [Core puzzle mechanics in Venience World](dist/posts/puzzle_lofty.md),
+  playable: four stories converted into the "standard notation" by issuing
+  their imperatives in a chosen voice, then mapped onto the Voice of Fire on
+  a two-column chalkboard, with the wise man's literal and figurative
+  solutions side by side. It was designed and honed by a multi-round
+  design loop against that document; the record, the specification and the
+  implementation notes are under [`docs/lofty_demo/`](docs/lofty_demo/README.md).
+
 If you're interested in adapting it for your purposes, or learning about how it works, please drop me a line at spitz.dan.L+venienceworld@gmail.com or DM [@VenienceWorld](https://twitter.com/venienceworld) on twitter.
 
 This code is released under the MIT license.
@@ -43,8 +57,11 @@ Bundles the game with esbuild (with source maps) and saves it in `dist/venience.
 #### `npm run build`
 Builds the game in production mode- minified, no source maps. Also saves to `dist/venience.js` so `build` and `build-dev` overwrite each other. The entry point is `src/typescript/entry_points/build_prod.tsx`.
 
+#### `npm run build:fire` / `npm run build-dev:fire`
+The same two builds for the Voice of Fire demo: entry points `src/typescript/entry_points/build_fire_{prod,dev}.tsx`, output `dist/fire.js`, page `dist/fire.html` (which also loads `dist/board.css`).
+
 #### Playing from the command line
-After `npm run compile`, `node scripts/play.js "consider sam" "remember something meditative" ...` applies a sequence of commands to a fresh game, printing each frame's text and the commands available at the end. This is the quickest way to check game logic without a browser. `node scripts/search_stats.js` times the future searches the tests run.
+After `npm run compile`, `node scripts/play.js "consider sam" "remember something meditative" ...` applies a sequence of commands to a fresh game, printing each frame's text and the commands available at the end. This is the quickest way to check game logic without a browser. `PLAY_WORLD=fire node scripts/play.js "look at the board" "listen" ...` plays the Voice of Fire demo the same way (`PLAY_FULL=1` prints every frame); `docs/lofty_demo/round2/acceptance_script.json` is a complete play-through. `node scripts/screenshot_fire.js` plays it in headless Chromium and saves screenshots. `node scripts/search_stats.js` times the future searches the narrascope tests run.
 
 ## Architecture
 
