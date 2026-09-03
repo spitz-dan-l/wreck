@@ -30,6 +30,10 @@ describes is a command the player issues on a two-column chalkboard:
   left until both the rag and the thatch have been the tinder in turn; the
   wise man's literal and figurative solutions stand on one board, one lit
   and one dimmed.
+- The Pillaging tried on the house after the lesson ends: the judge refuses
+  it in its own terms ("They came upon it. Did they go in?"), and Katya's
+  one new line, "Not every voice fits every story, my dear", is the
+  document's "they might find that they cannot" made true.
 - The document's own mechanics from its first half: events are objects
   (`remember the touching of the flame to the tinder` prints it verbatim
   with how it felt), sequences are objects (`remember the campfire story`
@@ -54,9 +58,15 @@ PLAY_WORLD=fire node scripts/play.js "look at the board" "listen"   # headless
 node scripts/screenshot_fire.js                                     # browser run + screenshots
 ```
 
-The full acceptance script (every command of a complete play-through) is
-`round2/acceptance_script.json`; `round2/transcript_b5b_headless.txt` is
-its transcript.
+The full acceptance script (every command of a complete play-through, 213
+commands) is `round2/acceptance_script.json`; `round2/transcript_final_headless.txt`
+is its transcript. The built demo is published at
+https://venienceworld.com/next/fire.html (the `next/` folder on `master`).
+
+Size: about 3,500 lines of TypeScript for the world (half of it data), 1,400
+of tests (65 tests, about 30 seconds), 350 of CSS; two small engine changes
+(a prompt-clearing bug, and `remove_gists` beside `graft`) and one CSS token
+(a font fallback).
 
 ## The loop
 
@@ -99,9 +109,13 @@ simple types and extensibility (`critique_7_code.md`). All three were
 applied (B4, B5a, B5b).
 
 **Round 4 — verification.** A verification critic re-checked every earlier
-finding and played adversarially in both the browser and headlessly; a final
-code review judged whether the result is "pristine" (`round4/`). Their
-remaining findings were applied in the final phase.
+finding and played adversarially in both the browser and headlessly
+(`round4/critique_8_verification.md`: "ready to hand to the author after
+D1 and D2"); a final code review judged whether the result is "pristine"
+(`critique_9_code_final.md`: "the judge and the data are pristine now;
+world and board one short pass away"). Both were applied (B6a, B6b), and
+the one change both play critics still asked for, the Pillaging attempt,
+was promoted from optional to required and built (B7).
 
 `SPEC.md` carries the rulings from every round, marked by critique
 (`[C3]` … `[C7]`), and §13 records what was disputed and why it was decided
