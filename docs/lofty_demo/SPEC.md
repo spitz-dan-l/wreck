@@ -550,7 +550,7 @@ precedes it. `[C4 D1]`
 campfire story; the oil-soaked rag, in the house in the woods, set aside;
 the thatch, in the house in the woods; …" — a history of readings, deduped
 per (role, sequence, derived), with set-aside readings kept and marked
-(nothing: "Nothing has been the tinder yet."). The generated "It felt" line
+(nothing: "Nothing has been the tinder yet: the Voice of Fire has not been applied to anything."). The generated "It felt" line
 carries the road not taken: "— like the Voice of Fire, because the tinder
 was the thatch, and before that the rag". `[C6 I-2, I-5]`
 **`remember the Voice of Fire`** / **`the Pillaging`**: the steps in both forms.

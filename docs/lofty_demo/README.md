@@ -117,6 +117,24 @@ world and board one short pass away"). Both were applied (B6a, B6b), and
 the one change both play critics still asked for, the Pillaging attempt,
 was promoted from optional to required and built (B7).
 
+**Round 5 — the confused-player detector.** After the author's own test
+drive found an order-sensitive no-op (`expand the steps` before the
+notation exists), three deliberately naive players on a small model played
+the build with no knowledge of it and logged every confusion
+(`round5/player_{1,2,3}*.md`), and a mechanical scanner was built
+(`demo_worlds/fire/scan.ts`, `scripts/confusion_scan.js`,
+`round5/confusion_scan.md`): from every state of the acceptance script it
+applies every offered command and flags no-ops, empty consequences,
+untrue messages, repeats, typeahead noise, and, by a keyed search over
+advancing commands, any state from which the ending is no longer reachable.
+Before the fixes: 6 no-ops, 18 silent commands, 154 noisy states, no dead
+ends; after: none. The fixes (Phase B9) gate commands that could only be
+no-ops, narrate the silent ones, drop the per-event fold options, add
+nudges that reveal when several steps share one line, and make the apply
+refusal name the unplaced steps. The scan runs as a test, sampled, on every
+`npm test`; two more naive players re-played the fixed build
+(`round5/player_{4,5}*.md`).
+
 `SPEC.md` carries the rulings from every round, marked by critique
 (`[C3]` … `[C7]`), and §13 records what was disputed and why it was decided
 as it was. `IMPLEMENTATION_NOTES.md` is the implementer's log of every

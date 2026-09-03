@@ -83,7 +83,7 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: 'listen', expect: QUOTED.l182, expect_tree: ['lay the tinder', 'A pile of black ash is left behind in the hearth.'],
           check: w => assert.ok(accepts(w, 'remember the laying of the tinder') && accepts(w, 'collapse the steps') && !accepts(w, 'expand the steps')) },
         { cmd: 'remember the Voice of Fire', label: 'notation remembered', expect: ['reduce to ash'] },
-        { cmd: 'remember the kindling', expect: ['Nothing has been the kindling yet.'] },
+        { cmd: 'remember the kindling', expect: ['Nothing has been the kindling yet: the Voice of Fire has not been applied to anything.'] },
         { cmd: 'listen', expect: [...QUOTED.l218, CAMPFIRE.prose[0], CAMPFIRE.prose[11]] },
         { cmd: 'say that the Voice of Fire is contained in this one', expect: [...QUOTED.l244, ...QUOTED.l246] },
         { cmd: 'pick up the chalk', expect: QUOTED.l248,

@@ -85,7 +85,7 @@ function remember_role(w: FireWorld, role: string): FireWorld {
     const entries = role_history(w, role);
     const name = role_name(role);
     const text = entries.length === 0
-        ? `Nothing has been ${name} yet.`
+        ? `Nothing has been ${name} yet: the Voice of Fire has not been applied to anything.`
         : `${capitalised(name)} has been: ${entries.map(e => `${e.what}, in ${e.where}${e.current ? '' : ', set aside'}`).join('; ')}.`;
     return remembered(w, paragraphs([text]));
 }
