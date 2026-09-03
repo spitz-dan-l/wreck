@@ -4,7 +4,7 @@ import { update, keys, included } from "lib/utils";
 import { stages } from "lib/stages";
 import { Parser, ParserThread, GAP, SUBMIT, RawConsumeSpec } from "parser";
 import { createElement, Hole, story_updater, Updates as S } from "story";
-import { is_simulated, search_future } from "supervenience";
+import { is_in_any_simulation, search_future } from "supervenience";
 import { Action } from "../action";
 import { get_facets, render_facet_list } from "../facet";
 import { ActionID, lock_and_brand, resource_registry, Venience } from "../prelude";
@@ -53,7 +53,9 @@ function begin_contemplation(world: Venience, parser: Parser) {
 
     const direct_thread = make_direct_thread(world, immediate_world);
 
-    if (gists.length === 1 || is_simulated(indirect_simulator, world)) {
+    // The indirect form runs its own future search, so it is never offered
+    // inside a simulation (nested searches are far too expensive).
+    if (gists.length === 1 || is_in_any_simulation(world)) {
         return direct_thread(parser);
     }
 

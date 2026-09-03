@@ -214,6 +214,13 @@ export function is_simulated<W extends World>(simulator_id: string, world: W) {
     return find_historical(world, w => entry.has(w)) !== undefined;
 }
 
+// Is this world's timeline inside *any* running future search?
+// Useful for behaviors that should only happen for a real player, such as
+// kicking off further (nested) searches.
+export function is_in_any_simulation<W extends World>(world: W) {
+    return Object.keys(ACTIVE_SIMULATORS).some(id => is_simulated(id, world));
+}
+
 function begin_search<W extends World>(simulator_id: string, world: W) {
     let entry: Set<World>;
     if (simulator_id in ACTIVE_SIMULATORS) {
