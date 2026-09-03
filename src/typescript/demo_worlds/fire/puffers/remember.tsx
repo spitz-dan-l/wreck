@@ -14,7 +14,8 @@ import { participants, role_entries } from '../judge';
 import { capitalised, ordinal_names, role_name } from '../names';
 import { event_gist, paragraphs, sequence_passage, step_gist, strip_gists } from '../board';
 import {
-    applied_mapping, BEAT, classroom_commands, converted, ended, FireWorld, has_said, LESSON_VOICE, pattern_for, pattern_of, phrase, readings, role_history
+    applied_mapping, BEAT, classroom_commands, converted, ended, FireWorld, has_said, LESSON_VOICE, pattern_for, pattern_of, phrase, readings, role_history,
+    sequence_finished
 } from '../world';
 
 function remembered(w: FireWorld, body: Fragment[]): FireWorld {
@@ -98,7 +99,7 @@ function remember_pattern(w: FireWorld, pattern: AbstractSequence): FireWorld {
 }
 
 function remember_step(w: FireWorld, n: number): FireWorld {
-    return remembered(w, [strip_gists(lookup_or_throw(w.knowledge, step_gist(LESSON_VOICE.voice.id, n)))]);
+    return remembered(w, [strip_gists(lookup_or_throw(w.knowledge, step_gist(LESSON_VOICE.voice.id, LESSON_VOICE.voice.id, n)))]);
 }
 
 // CLASSROOM EVENTS
@@ -152,7 +153,7 @@ export const remember_puffer: Puffer<FireWorld> = {
             for (let n = 1; n <= converted(world, story); n++) {
                 offer(EVENT_NAMES[story.id][n - 1], () => remember_event(world, story, n));
             }
-            if (world.finished.includes(story.id)) {
+            if (sequence_finished(world, story)) {
                 offer(story.title, () => remember_story(world, story));
             }
         }

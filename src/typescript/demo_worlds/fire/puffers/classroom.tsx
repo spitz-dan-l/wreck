@@ -16,11 +16,11 @@ import { ConsumeSpec, GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
 import { createElement, ingest, StoryNode, story_updater, StoryUpdaterSpec, Updates as S } from 'story';
 import { update } from 'lib/utils';
-import { CAMPFIRE, FOREST, HOUSE, STORIES, StorySpec, WISE_MAN } from '../data';
+import { AbstractSequence, CAMPFIRE, FOREST, HOUSE, PILLAGING, STORIES, StorySpec, WISE_MAN } from '../data';
 import { AUTHORED, QUOTED, QuotedKey } from '../data/katya';
-import { placed } from '../judge';
+import { new_mapping, placed } from '../judge';
 import {
-    chip_ops, classroom_gist, coda_ops, event_passage, finish_board_ops, open_board_ops, paragraphs, prose_told, reveal_notation_ops,
+    attempt_ops, chip_ops, classroom_gist, coda_ops, event_passage, finish_board_ops, open_board_ops, paragraphs, prose_told, reveal_notation_ops,
     show_lesson_board_ops, teach_voices_ops
 } from '../board';
 import {
@@ -95,6 +95,30 @@ function close_board(story: StorySpec) {
     };
 }
 
+// After the end (SPEC §12): the Pillaging tried on the house. The house chip
+// reopens in the chip mode with the Pillaging's column beside the Fire's and
+// a mapping of it open; `put down the chalk` folds it again and gives the
+// hole back to the wise man's ledger, the board the lesson ended on.
+function try_pattern(story: StorySpec, pattern: AbstractSequence) {
+    return (w: FireWorld): FireWorld => update(w, {
+        board: story.id,
+        cursor: story.prose.length + 1,
+        voice: () => undefined,
+        mappings: _ => [..._, new_mapping(story, pattern, 'first', w.index)],
+        collapsed: c => c.filter(x => x !== `${story.id}:chip`),
+        story_updates: story_updater(attempt_ops(story, pattern_for(story), pattern, w.collapsed.includes('steps')))
+    });
+}
+
+function fold_attempt(story: StorySpec, home: StorySpec) {
+    return (w: FireWorld): FireWorld => update(w, {
+        board: home.id,
+        cursor: () => undefined,
+        collapsed: c => [...c, `${story.id}:chip`],
+        story_updates: story_updater(chip_ops(story, true, true, home.id))
+    });
+}
+
 const told = (story: StorySpec, beat: number): Line =>
     ({ command: 'listen', name: 'the listening', beat, says: [], shows: () => [prose_told(story)], advances: true });
 const pick_up = (story: StorySpec, beat: number, says: QuotedKey[] = []): Line =>
@@ -163,6 +187,15 @@ export const SCRIPT: Line[] = [
     {
         command: 'say Ok, I guess', name: 'the saying of Ok, I guess', feeling: 'It felt a bit untrue, because it was.', beat: BEAT.wise_man,
         says: ['l481'], board: () => coda_ops(AUTHORED.coda), advances: true
+    },
+    // The Pillaging on the house (SPEC §12): never gating; put down folds it again.
+    {
+        command: `try ${PILLAGING.voice.name} on ${HOUSE.title}`, name: `the trying of ${PILLAGING.voice.name} on ${HOUSE.title}`, beat: BEAT.end, optional: true,
+        says: [], then: try_pattern(HOUSE, PILLAGING)
+    },
+    {
+        command: 'put down the chalk', name: 'the putting down of the chalk', beat: BEAT.end,
+        requires: w => w.board === HOUSE.id, says: [], then: fold_attempt(HOUSE, WISE_MAN)
     }
 ];
 

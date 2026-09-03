@@ -11,7 +11,7 @@ import { Gist } from 'gist';
 import { ConsumeSpec, GAP } from 'parser';
 import { Knowledge } from 'story';
 import { World } from 'world';
-import { AbstractSequence, ABSTRACT_SEQUENCES, Mapping, Pass, STORIES, story, StorySpec, VoiceId, VOICE_OF_FIRE } from './data';
+import { AbstractSequence, ABSTRACT_SEQUENCES, Mapping, Pass, passes, STORIES, story, StorySpec, VoiceId, VOICE_OF_FIRE } from './data';
 import { Participant, participants, role_entries } from './judge';
 
 // The beats of the lesson (SPEC §9), in order. `lesson` is the index of the current one.
@@ -208,14 +208,21 @@ export function role_history(w: FireWorld, role: string): RoleReading[] {
     return result;
 }
 
-// MAPPINGS
-
-export function mappings_on(w: FireWorld, story: StorySpec): Mapping[] {
-    return w.mappings.filter(m => m.story === story.id);
+// Whether a story's sequence is finished and titled: its board closed, or (the wise man) its last solution applied.
+export function sequence_finished(w: FireWorld, story: StorySpec): boolean {
+    const all = passes(story, pattern_for(story).voice.id);
+    return w.finished.includes(story.id) || (all.length > 1 && has_said_applied(w, story, all[all.length - 1]));
 }
 
-export function open_mapping(w: FireWorld, story: StorySpec): Mapping | undefined {
-    return mappings_on(w, story).find(m => m.status === 'open');
+// MAPPINGS
+
+// The mappings on a story's board; of one pattern, if given.
+export function mappings_on(w: FireWorld, story: StorySpec, pattern?: AbstractSequence): Mapping[] {
+    return w.mappings.filter(m => m.story === story.id && (pattern === undefined || m.voice === pattern.voice.id));
+}
+
+export function open_mapping(w: FireWorld, story: StorySpec, pattern?: AbstractSequence): Mapping | undefined {
+    return mappings_on(w, story, pattern).find(m => m.status === 'open');
 }
 
 export function applied_mapping(w: FireWorld, story: StorySpec): Mapping | undefined {
@@ -231,9 +238,15 @@ export function pattern_of(m: Mapping): AbstractSequence {
     return ABSTRACT_SEQUENCES.find(s => s.voice.id === m.voice)!;
 }
 
-// The pattern a story's board maps: the one whose candidate table it has (one per board).
+// A story's own pattern: the lesson's, where the story has a table for it.
 export function pattern_for(story: StorySpec): AbstractSequence {
-    return ABSTRACT_SEQUENCES.find(s => story.candidates[s.voice.id] !== undefined) ?? LESSON_VOICE;
+    return story.candidates[LESSON_VOICE.voice.id] === undefined ? ABSTRACT_SEQUENCES.find(s => story.candidates[s.voice.id] !== undefined) ?? LESSON_VOICE : LESSON_VOICE;
+}
+
+// The pattern the board is mapping with now: the latest mapping's (the Pillaging, tried after the end), else the story's own.
+export function board_pattern(w: FireWorld, story: StorySpec): AbstractSequence {
+    const latest = mappings_on(w, story).slice(-1)[0];
+    return latest === undefined ? pattern_for(story) : pattern_of(latest);
 }
 
 // Replace the mapping that `is` (by identity) with `replacement`.

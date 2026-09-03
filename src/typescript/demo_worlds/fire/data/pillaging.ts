@@ -1,7 +1,7 @@
 /*
-    The Pillaging (l. 108–114): the other abstract sequence, on the shelf of
-    past lessons. Data only in v1: it is rememberable, and has no candidate
-    table in any story (SPEC §5.5).
+    The Pillaging (l. 108–114): the other pattern, on the shelf of past
+    lessons. Rememberable, and tried on the house in the woods after the end
+    (SPEC §12), where its second and third steps fit nothing.
 */
 import { AbstractSequence } from './types';
 import { voice } from './voices';

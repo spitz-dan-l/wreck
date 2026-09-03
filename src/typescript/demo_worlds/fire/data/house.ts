@@ -136,6 +136,14 @@ export const HOUSE: StorySpec = {
         }
     ],
     candidates: {
+        // The Pillaging tried on the house (SPEC §12): someone lives in their home; the children enter nothing and take nothing.
+        'the Pillaging': {
+            first: {
+                1: [{ event: 10, derives: 'the family' }],
+                2: [],
+                3: []
+            }
+        },
         'the Voice of Fire': {
             first: {
                 1: [{ event: 11, derives: 'the oil-soaked rag' }, { event: 9, derives: 'the thatch' }],

@@ -22,7 +22,8 @@ const SHOTS = [
     { after: 'ask what the right thing to do is', nth: 1, file: '2_house_pause.png', target: '#story-hole', above: 900 },
     { after: 'speak as the fire', nth: 1, file: '3_forest_voices.png', target: '[data-gist="board[seq=\\"forest\\"]"]' },
     { after: 'collapse the unmapped', nth: 3, file: '4_wise_man_both_solutions.png', target: '[data-gist="board[seq=\\"wise_man\\"]"]' },
-    { after: 'say Ok, I guess', nth: 1, file: '5_the_end.png', target: '#story-hole', above: 1200 }
+    { after: 'say Ok, I guess', nth: 1, file: '5_the_end.png', target: '#story-hole', above: 1200 },
+    { after: 'map the taking of things from their home to the hurling of the rag onto the roof', nth: 1, file: '6_pillaging_attempt.png', target: '#story-hole', above: 2500, height: 2700 }
 ];
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json', '.png': 'image/png' };
@@ -88,7 +89,15 @@ async function main() {
                     terminal.scrollTop = above === undefined ? top : Math.max(0, el.getBoundingClientRect().top + terminal.scrollTop - above);
                 }, shot);
                 await page.waitForTimeout(200);
+                // A tall shot (the house board with both pattern columns and the ledger): a taller viewport for this one.
+                if (shot.height !== undefined) {
+                    await page.setViewportSize({ width: 1400, height: shot.height });
+                    await page.waitForTimeout(200);
+                }
                 await page.screenshot({ path: path.join(OUT, shot.file) });
+                if (shot.height !== undefined) {
+                    await page.setViewportSize({ width: 1400, height: 1500 });
+                }
                 console.log(`screenshot ${++shot_index}: ${shot.file} (after "${cmd}")`);
             }
         }

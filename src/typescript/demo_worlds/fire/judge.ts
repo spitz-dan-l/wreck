@@ -371,10 +371,12 @@ function lint_prose(story: StorySpec): string[] {
     return problems;
 }
 
-// The candidate tables for a voice: every step has rows on real events, once
-// each; an apply text per pass; an absorbed step is a candidate somewhere;
-// an authored nudge is not a row in every pass.
-function lint_tables(story: StorySpec, pattern: AbstractSequence): string[] {
+// The candidate tables for a pattern: every step has a row (possibly empty:
+// the step fits nothing) on real events, once each; an apply text per pass;
+// an absorbed step is a candidate somewhere; an authored nudge is not a row
+// in every pass it is said in.
+// `own`: the story's `absorbs` are written for its own pattern; a second pattern tried on it is not held to them.
+function lint_tables(story: StorySpec, pattern: AbstractSequence, own: boolean): string[] {
     const problems: string[] = [];
     const title = story.title;
     const has_event = (e: number) => story.events.some(ev => ev.index === e);
@@ -387,8 +389,8 @@ function lint_tables(story: StorySpec, pattern: AbstractSequence): string[] {
         const rows = table[pass]!;
         for (const step of pattern.steps) {
             const cands = rows[step.index];
-            if (cands === undefined || cands.length === 0) {
-                problems.push(`${title}, ${pass} pass: step ${step.index} has no candidates.`);
+            if (cands === undefined) {
+                problems.push(`${title}, ${pass} pass: step ${step.index} has no row.`);
                 continue;
             }
             const seen = new Set<number>();
@@ -407,7 +409,7 @@ function lint_tables(story: StorySpec, pattern: AbstractSequence): string[] {
         }
     }
     for (const e of story.events) {
-        for (const s of e.absorbs ?? []) {
+        for (const s of own ? e.absorbs ?? [] : []) {
             if (!pattern.steps.some(step => step.index === s)) {
                 problems.push(`${title}: event ${e.index} absorbs a step ${s} that ${pattern.voice.name} does not have.`);
                 continue;
@@ -429,6 +431,6 @@ function lint_tables(story: StorySpec, pattern: AbstractSequence): string[] {
     return problems;
 }
 
-export function lint_story(story: StorySpec, pattern: AbstractSequence): string[] {
-    return [...lint_events(story), ...lint_prose(story), ...lint_tables(story, pattern)];
+export function lint_story(story: StorySpec, pattern: AbstractSequence, own = true): string[] {
+    return [...lint_events(story), ...lint_prose(story), ...lint_tables(story, pattern, own)];
 }

@@ -12,10 +12,10 @@
 import * as assert from 'assert';
 import 'mocha';
 import { candidates_for, place, placed } from 'demo_worlds/fire/judge';
-import { EVENT_NAMES, fire_world_spec, FireWorld, new_fire_world, STORIES, StorySpec, VOICE_OF_FIRE, WISE_MAN } from 'demo_worlds/fire';
+import { EVENT_NAMES, fire_world_spec, FireWorld, new_fire_world, PILLAGING, STORIES, StorySpec, VOICE_OF_FIRE, WISE_MAN } from 'demo_worlds/fire';
 import { AUTHORED, QUOTED } from 'demo_worlds/fire/data/katya';
 import { SCRIPT } from 'demo_worlds/fire/puffers/classroom';
-import { applied_mapping, expanded_chip, mappings_on, open_mapping, remainder, role_history, set_aside_mappings } from 'demo_worlds/fire/world';
+import { applied_mapping, expanded_chip, mappings_on, open_mapping, remainder, role_history, sequence_finished, set_aside_mappings } from 'demo_worlds/fire/world';
 import { raw, traverse_thread } from 'parser';
 import { apply_story_updates_all, Story, to_basic_text, Updates as S } from 'story';
 import { apply_command, make_update_thread } from 'world';
@@ -297,7 +297,7 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: map_cmd(WISE_MAN, 4, 8), expect: ['"His death. Very well. Hold that," says Katya.'] },
         ...maps(WISE_MAN, [[4, 12], [5, 12], [6, 13], [7, 14], [8, 15]]),
         { cmd: 'apply the Voice of Fire', expect: WISE_MAN.apply_text.second!, check: w => {
-            assert.ok(w.finished.includes('wise_man'));
+            assert.ok(sequence_finished(w, WISE_MAN));
             assert.ok(accepts(w, 'object that there is no fire'));
             assert.ok(!accepts(w, 'object that the fireplace is too abstract'));
         } },
@@ -353,6 +353,35 @@ export const BEATS: { name: string, steps: Step[] }[] = [
         { cmd: 'remember the ember', expect: ["The ember has been: the match's flame, in the campfire story; the burning stick, in the house in the woods, set aside; the lit rag, in the house in the woods; the lightning, in the forest fire; the flame, in the wise man's story, set aside; the myth of his death, in the wise man's story."] },
         // An event read only by a set-aside solution remembers that reading, marked.
         { cmd: 'remember the lighting of the pyre', expect: ['It felt like the ember, and the flame, and the blaze, and the ash, in the Voice of Fire; set aside.'] }
+    ] },
+    { name: 'after the end: the Pillaging on the house', steps: [
+        { cmd: 'try the Pillaging on the house in the woods', label: 'pillaging attempt', check: w => {
+            assert.equal(w.board, HOUSE.id);
+            assert.ok(accepts(w, 'map the living in their home to the moving in') && accepts(w, 'apply the Pillaging'));
+            assert.ok(!accepts(w, map_cmd(HOUSE, 1, 9)) && !accepts(w, 'set aside the mapping'));
+            locked(w, 'say', 'that you see it');
+        } },
+        { cmd: 'apply the Pillaging', trap: 'The Pillaging does not skip, my dear. The living in their home is not on the board.' },
+        { cmd: 'map the living in their home to the moving in', label: 'pillaging placed', expect: ['→ the moving in'],
+          check: w => assert.deepEqual(mappings_on(w, HOUSE, PILLAGING).map(m => m.placements), [[{ step: 1, event: 10 }]]) },
+        // The refusals are in the acceptance script (they are the attempt), so they are steps, not traps: a nudge, and nothing changes.
+        { cmd: `map the entering of their home to ${ev(HOUSE, 11)}`, expect: [PILLAGING.nudges.step[2]],
+          check: (w, before) => { assert.equal(state_snapshot(w), state_snapshot(before)); assert.ok(!text(w).includes(AUTHORED.no_fit[0])); } },
+        // Refused on both of the steps that fit nothing, Katya's one line (SPEC §12), once.
+        { cmd: `map the taking of things from their home to ${ev(HOUSE, 12)}`, expect: [PILLAGING.nudges.step[3], ...AUTHORED.no_fit],
+          check: (w, before) => { assert.equal(state_snapshot(w), state_snapshot(before)); assert.equal(text(w).split(AUTHORED.no_fit[0]).length - 1, 1); } },
+        // A third refusal: the nudge alone.
+        { cmd: `map the entering of their home to ${ev(HOUSE, 13)}`, expect: [PILLAGING.nudges.step[2]],
+          check: (w, before) => { assert.equal(state_snapshot(w), state_snapshot(before)); assert.ok(frame_text(w).endsWith(PILLAGING.nudges.step[2])); } },
+        { cmd: 'apply the Pillaging', trap: 'The Pillaging does not skip, my dear. The entering of their home is not on the board.' },
+        { cmd: 'remember the tinder', expect: ['The tinder has been: a patch of tinder, in the campfire story; the oil-soaked rag, in the house in the woods, set aside; the thatch, in the house in the woods; the dead brush, in the forest fire; the pyre\'s tinder, in the wise man\'s story, set aside; his wisdom, in the wise man\'s story.'] },
+        { cmd: 'put down the chalk', label: 'attempt folded', check: w => {
+            assert.equal(w.board, WISE_MAN.id);
+            assert.ok(w.collapsed.includes('house:chip') && !accepts(w, 'try the Pillaging on the house in the woods') && !accepts(w, 'put down the chalk'));
+            assert.equal(text(w).split(AUTHORED.no_fit[0]).length - 1, 1);
+            locked(w, 'say', 'that you see it');
+        } },
+        { cmd: 'remember the Pillaging', expect: ['Someone lives in their home.', 'take things from their home'] }
     ] }
 ];
 

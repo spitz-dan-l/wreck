@@ -71,7 +71,7 @@ describe('fire data', () => {
         }
         for (const story of STORIES) {
             assert.deepEqual(lint_story(story, FIRE), []);
-            assert.deepEqual(lint_story(story, PILLAGING), []);
+            assert.deepEqual(lint_story(story, PILLAGING, false), []);
             for (const v of story.voices) {
                 assert.ok(VOICES.some(voice => voice.id === v), `${story.title} offers the voice ${v}, which does not exist.`);
             }

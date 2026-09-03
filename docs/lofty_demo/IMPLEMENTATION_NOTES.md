@@ -666,3 +666,54 @@ to the walkthrough); screenshots re-taken and checked.
 - The Undo button stays selected while the mouse rests on it, so Enter is
   swallowed; it should lose selection on mouse-out, or Enter should go to
   the prompt regardless.
+
+## Phase B7 (the Pillaging on the house, SPEC v1.4 §12)
+
+World 3424 → 3512 lines, tests 1339 → 1405, `board.css` 340 → 348; `npm
+test` 65 passing in ~32 s. Headless transcript:
+`round2/transcript_final_headless.txt` (213 commands, the attempt with its
+refusals included); a sixth screenshot, `6_pillaging_attempt.png` (the
+house board with both pattern columns and the two nudges in the ledger,
+taken in a taller viewport).
+
+- **The attempt.** After l. 481 the classroom offers `try the Pillaging on
+  the house in the woods` (optional, never gating; said once). It reopens
+  the house chip in the chip mode — the hole in the house's ledger — with
+  the Pillaging's three steps as a second pattern column beside the Fire's
+  (`attempt_ops`; class `second`, narrower, in cool colours that are no
+  chunk of the Fire's), and opens a mapping of the Pillaging on the house.
+  `put down the chalk` (a script line of the end beat, offered while the
+  house is the board) folds the board again and returns the hole to the
+  wise man's ledger, the board the lesson ended on (`fold_attempt`).
+- **Two patterns on one board.** The `right`, `step`, `targets` and
+  `spoken` gists carry the pattern id; `mappings_on(w, story, pattern?)`,
+  `open_mapping(w, story, pattern?)`; `board_pattern(w, story)` is the
+  pattern of the board's latest mapping (the Pillaging during the attempt),
+  `pattern_for(story)` the story's own. Badges and references carry a
+  `pattern-<id>` class; `rows_of` bands the rows from the story's own
+  pattern's mappings only, so the Pillaging's placement puts a badge on
+  `move in` and no band, and the Fire's badges are untouched (board test).
+- **Data.** The Pillaging's table on the house lives in `house.ts` under
+  its voice id: step 1 → {e10 `move in` · the family}; steps 2 and 3 have
+  empty rows (the lint now allows an empty row: the step fits nothing; the
+  story's `absorbs` are checked against its own pattern only). Its default
+  nudges are on the Pillaging's `AbstractSequence` as before ("They came
+  upon it. Did they go in?", "What did they take?").
+- **Katya's line.** Once the pattern has been refused on every step that
+  has no candidates in this story (`refused` gists on refused maps;
+  `mapping.tsx: refuse`), Katya says, once: "Not every voice fits every
+  story, my dear. That is a lesson for another day." (`AUTHORED.no_fit`).
+  The walkthrough plays two refusals (the line printed exactly once), a
+  third (the nudge alone), `apply the Pillaging` failing L1 before and
+  after, `remember the tinder` untouched, and the fold restoring the hole.
+- **Licence.** The one new Katya line is licensed by SPEC §12 (l. 124,
+  l. 543). Also new in the grammar: the command `try the Pillaging on the
+  house in the woods` and its event name "the trying of the Pillaging on
+  the house in the woods" (in the collision set); the Pillaging's step
+  short names are §12's. `say that you see it` stays Locked throughout;
+  `remember the Pillaging` is unchanged; nothing of the Pillaging reaches
+  `remember <role>` since nothing is ever applied.
+- **`finished`** now means boards closed and sub-sequences registered; the
+  wise man's sequence being finished by its last solution is derived
+  (`sequence_finished`), so the open board at the end is never offered as
+  a chip.

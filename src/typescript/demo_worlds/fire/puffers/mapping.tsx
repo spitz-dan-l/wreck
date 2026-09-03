@@ -17,15 +17,17 @@ import { GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
 import { graft, remove_gists, story_updater, StoryUpdaterSpec, Updates as S } from 'story';
 import { update } from 'lib/utils';
-import { EVENT_NAMES, Mapping, Pass, passes, StorySpec, SUB_SEQUENCES } from '../data';
+import { AbstractSequence, EVENT_NAMES, Mapping, Pass, passes, StorySpec, SUB_SEQUENCES } from '../data';
 import {
-    annotation_node, apply_ops, applied_gist, erase_ops, event_gist, paragraphs, place_ops, reference_text, rendition_text, rows_ops, solid_ops, unapply_ops
+    annotation_node, apply_ops, applied_gist, erase_ops, event_gist, paragraphs, place_ops, reference_text, refused_gist, rendition_text, rows_ops, solid_ops,
+    unapply_ops
 } from '../board';
+import { AUTHORED } from '../data/katya';
 import { capitalised } from '../names';
 import { apply as judge_apply, erase, new_mapping, participants, place, placed, step_of, violations } from '../judge';
 import {
-    applied_mapping, board_story, converted, ended, event_frame, FireWorld, has_said, has_said_applied, mappings_on, open_mapping, pattern_for, pattern_of,
-    phase, phrase, replace_mapping, set_aside_mappings, voice_runs
+    applied_mapping, board_pattern, board_story, converted, ended, event_frame, FireWorld, frames_with, has_said, has_said_applied, mappings_on, open_mapping,
+    pattern_for, pattern_of, phase, phrase, replace_mapping, set_aside_mappings, voice_runs
 } from '../world';
 import { nudge_frame } from './transcription';
 import { exact } from 'gist';
@@ -35,18 +37,35 @@ function label(story: StorySpec, m: Mapping): string {
     return passes(story, m.voice).length > 1 ? `the ${m.pass} solution` : 'the mapping';
 }
 
-// The board's rows as the story's mappings make them (bands, the unmapped bar, the empty voice runs).
+// The board's rows as the story's own pattern's mappings make them (bands,
+// the unmapped bar, the empty voice runs); a second pattern tried on the
+// board puts badges on the rows but never bands them.
 export function rows_of(w: FireWorld, story: StorySpec, mappings: Mapping[] = w.mappings): StoryUpdaterSpec[] {
+    const own = pattern_for(story);
     return rows_ops(
-        story, pattern_for(story), mappings.filter(m => m.story === story.id), e => event_frame(w, story, e),
+        story, own, mappings.filter(m => m.story === story.id && m.voice === own.voice.id), e => event_frame(w, story, e),
         w.collapsed.includes(`${story.id}:unmapped`), voice_runs(w, story)
     );
 }
 
+// A refused placement: its nudge, and — once the pattern has been refused
+// on every step that fits nothing in this story (SPEC §12: the Pillaging on
+// the house) — Katya's line, once.
+function refuse(w: FireWorld, story: StorySpec, pattern: AbstractSequence, mapping: Mapping, step: number, nudge: string): FireWorld {
+    const unfit = pattern.steps.filter(s => (story.candidates[pattern.voice.id]?.[mapping.pass]?.[s.index] ?? []).length === 0).map(s => s.index);
+    const refused = (from: FireWorld) => frames_with(from, 'refused').filter(f => f.params.seq === story.id && f.params.pattern === pattern.voice.id).map(f => f.params.step);
+    const before = refused(w);
+    const all_refused = unfit.length > 0 && unfit.every(s => before.includes(s) || s === step);
+    const said = unfit.every(s => before.includes(s));
+    const next = update(nudge_frame(w, nudge), { gist: () => refused_gist(story.id, pattern.voice.id, step) });
+    return all_refused && !said ? update(next, { story_updates: story_updater(S.consequence(paragraphs(AUTHORED.no_fit))) }) : next;
+}
+
 function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: number, event: number): FireWorld {
-    const verdict = place(story, pattern_of(mapping), mapping, step, event, set_aside_mappings(w, story));
+    const pattern = pattern_of(mapping);
+    const verdict = place(story, pattern, mapping, step, event, set_aside_mappings(w, story));
     if (!verdict.ok) {
-        return nudge_frame(w, verdict.nudge);
+        return refuse(w, story, pattern, mapping, step, verdict.nudge);
     }
     const mappings = replace_mapping(w.mappings, mapping, verdict.mapping);
     const name = EVENT_NAMES[story.id][event - 1];
@@ -54,7 +73,7 @@ function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: number, 
         mappings: () => mappings,
         story_updates: story_updater(
             S.consequence(paragraphs([reference_text(name), ...(verdict.mark === undefined ? [] : [verdict.mark])])),
-            place_ops(story, mapping, step, event, event_frame(w, story, event)!, name, placed(mapping, step)),
+            place_ops(story, pattern, mapping, step, event, event_frame(w, story, event)!, name, placed(mapping, step)),
             rows_of(w, story, mappings)
         )
     });
@@ -99,19 +118,14 @@ function unlight_ops(story: StorySpec, m: Mapping) {
 // brings with it. The apply text and `apply_after` print on the first apply
 // of the pass (SPEC §7.1); a resume says so in one line; a later apply
 // prints the rendition alone. The literal solution registers "the two
-// lines" as a sequence of its own, and the last of two solutions finishes
-// and titles the story's sequence (SPEC §5.4).
+// lines" as a sequence of its own (SPEC §5.4).
 function light(w: FireWorld, story: StorySpec, m: Mapping, how: 'first' | 'again' | 'resume'): FireWorld {
     const lit: Mapping = { ...m, status: 'applied' };
     const after = how === 'first' ? story.apply_after?.[m.pass] ?? [] : [];
     const consequence = how === 'first' ? story.apply_text[m.pass] ?? []
         : how === 'resume' ? [`${capitalised(label(story, m))} is resumed; the badges solid.`]
         : [];
-    const all_passes = passes(story, m.voice);
-    const now_finished = [
-        ...SUB_SEQUENCES.filter(sub => sub.story === story.id && sub.pass === m.pass).map(sub => sub.id),
-        ...(all_passes.length > 1 && m.pass === all_passes[all_passes.length - 1] ? [story.id] : [])
-    ].filter(id => !w.finished.includes(id));
+    const now_finished = SUB_SEQUENCES.filter(sub => sub.story === story.id && sub.pass === m.pass && !w.finished.includes(sub.id)).map(sub => sub.id);
     let next = update(w, {
         gist: () => applied_gist(story.id, m.pass),
         mappings: _ => replace_mapping(_, m, lit),
@@ -190,8 +204,8 @@ export const mapping_puffer: Puffer<FireWorld> = {
             return parser.eliminate();
         }
         const threads: ParserThread<FireWorld>[] = [];
-        const pattern = pattern_for(story);
-        const open = open_mapping(world, story);
+        const pattern = board_pattern(world, story);
+        const open = open_mapping(world, story, pattern);
         const applied = applied_mapping(world, story);
         const names = EVENT_NAMES[story.id];
         const transcribed = converted(world, story);

@@ -129,7 +129,7 @@ function draw_line(w: FireWorld, story: StorySpec): FireWorld {
         mappings: _ => [..._, new_mapping(story, pattern_for(story), 'first', w.index)],
         story_updates: story_updater(
             story.line_text === undefined ? [] : S.consequence(paragraphs(QUOTED[story.line_text])),
-            draw_line_ops(story)
+            draw_line_ops(story, pattern_for(story))
         )
     });
 }

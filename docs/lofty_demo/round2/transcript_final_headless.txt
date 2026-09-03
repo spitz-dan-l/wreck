@@ -1453,6 +1453,53 @@ It went like this:
 The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.
 It felt like the ember, and the flame, and the blaze, and the ash, in the Voice of Fire; set aside.
 
+### > try the Pillaging on the house in the woods
+>  
+try the Pillaging on the house in the woods
+
+### > map the living in their home to the moving in
+>  
+map the living in their home to the moving in
+→ the moving in
+
+### > map the entering of their home to the lighting of the rag
+>  
+map the entering of their home to the lighting of the rag
+They came upon it. Did they go in?
+
+### > map the taking of things from their home to the hurling of the rag onto the roof
+>  
+map the taking of things from their home to the hurling of the rag onto the roof
+What did they take?
+"Not every voice fits every story, my dear. That is a lesson for another day."
+
+### > map the entering of their home to the scattering
+>  
+map the entering of their home to the scattering
+They came upon it. Did they go in?
+
+### > remember the tinder
+>  
+remember the tinder
+The tinder has been: a patch of tinder, in the campfire story; the oil-soaked rag, in the house in the woods, set aside; the thatch, in the house in the woods; the dead brush, in the forest fire; the pyre's tinder, in the wise man's story, set aside; his wisdom, in the wise man's story.
+
+### > put down the chalk
+>  
+put down the chalk
+
+### > remember the Pillaging
+>  
+remember the Pillaging
+Someone lives in their home.
+> live in your home
+You live in your home, as you always have.
+The Pillager enters their home.
+> enter their home
+You enter their home.
+The Pillager takes things from their home.
+> take things from their home
+You take what you want from their home, and leave.
+
 ### available commands:
   remember the Voice of Fire
   remember the laying of the tinder
@@ -1558,8 +1605,9 @@ It felt like the ember, and the flame, and the blaze, and the ash, in the Voice 
   remember the objecting about the spark
   remember the objecting that the ash is still structured
   remember the saying of Ok, I guess
+  remember the trying of the Pillaging on the house in the woods
+  remember the third putting down of the chalk
   expand the steps
-  expand the unmapped
   expand the campfire story
   expand the house in the woods
   expand the forest fire

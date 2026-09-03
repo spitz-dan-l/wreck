@@ -61,6 +61,14 @@
     max-height: none;
 }
 
+/* A second pattern tried on a board (the Pillaging on the house, SPEC §12): a
+   narrower column beside the story's own, its steps and badges in cool
+   colours that are no chunk of the Fire's. */
+.columns .right.second { flex: 0 1 22em; }
+.pattern-the-pillaging.step-1 { --step-rgb: 170, 190, 220; }
+.pattern-the-pillaging.step-2 { --step-rgb: 130, 160, 210; }
+.pattern-the-pillaging.step-3 { --step-rgb: 100, 130, 190; }
+
 /* Chips: a finished board folded to its title and barcode. Only the frame
    that closed it (Katya's reply to `say all set`) stays in view. */
 .board.chip .columns { display: none; }
