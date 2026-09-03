@@ -1,6 +1,6 @@
 
 
-import { GistPattern, gist_pattern, match, UNION } from 'gist';
+import { GistPattern, gist_pattern, gist_to_string, match, UNION } from 'gist';
 import { find_index } from '../../history';
 import { CommandFilter, FutureSearchSpec, NarrativeDimension, NarrativeGoal, search_future } from '../../supervenience';
 import { update_thread_maker } from '../../world';
@@ -23,25 +23,58 @@ const gist_pat: GistPattern = ['consider', {
     ]
 }];
 
-export const space: NarrativeDimension<Venience>[] = [
-    w => {
-        if (w.owner !== 'Metaphor') {
-            return false;
-        }
+// Which frame is under reflection, if it is one of the puzzle's topics.
+export const reflection_dimension: NarrativeDimension<Venience> = w => {
+    if (w.owner !== 'Metaphor') {
+        return false;
+    }
 
-        let g = find_index(w, w.current_interpretation!)!.gist;
+    let g = find_index(w, w.current_interpretation!)!.gist;
 
-        if (g === undefined) {
-            return undefined;
-        }
-        if (match(g)(gist_pat)) {
-            return g;
-        }
+    if (g === undefined) {
         return undefined;
-    },
-    w => w.has_tried,
-    w => w.has_acquired,
-    w => [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end],
+    }
+    if (match(g)(gist_pat)) {
+        return g;
+    }
+    return undefined;
+};
+
+// What the player just did. This determines what can be reflected on directly next.
+export const last_action_dimension: NarrativeDimension<Venience> = w =>
+    w.gist === undefined ? undefined : gist_to_string(w.gist);
+
+// The set of actions acquired so far.
+export const acquired_dimension: NarrativeDimension<Venience> = w =>
+    [...w.has_acquired].filter(([, on]) => on).map(([id]) => id).sort();
+
+// Which memories are currently available to remember.
+export const memories_dimension: NarrativeDimension<Venience> = w =>
+    w.could_remember.map(gist_to_string).sort();
+
+// Which topics can currently be considered.
+export const topics_dimension: NarrativeDimension<Venience> = w =>
+    w.can_consider.data.filter(e => e.value).map(e => gist_to_string(e.key)).sort();
+
+// Progress through the puzzle.
+export const progress_dimension: NarrativeDimension<Venience> = w =>
+    [!!w.has_chill, !!w.has_recognized_something_wrong, !!w.is_curious_about_history, !!w.has_admitted_negligence, !!w.has_unpacked_culpability, !!w.has_volunteered, !!w.end];
+
+/*
+    The narrative dimensions used to prune the future search. Two worlds that
+    agree on all of these are treated as the same state.
+
+    Note that "which commands have been tried" is deliberately *not* a
+    dimension: it only affects how commands are displayed, and including it
+    makes the number of distinct states exponential in the number of commands.
+*/
+export const space: NarrativeDimension<Venience>[] = [
+    reflection_dimension,
+    last_action_dimension,
+    acquired_dimension,
+    memories_dimension,
+    topics_dimension,
+    progress_dimension
 ];
 
 export const command_filter: CommandFilter<Venience> = (w, cmd) => {

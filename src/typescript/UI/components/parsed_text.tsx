@@ -2,7 +2,7 @@ import { createElement, story_to_dom, StoryRenderer, StoryNode, RendererBaseProp
 import { Renderer, Component } from '../framework/framework';
 import { MatchStatus, Parsing, Token, TokenAvailability, TokenMatch } from '../../parser';
 
-export const Carat = () => <span>>&nbsp;</span>;
+export const Carat = () => <span>{'>'}&nbsp;</span>;
 
 function cssify_status(status: MatchStatus): string {
   switch (status) {

@@ -3,7 +3,7 @@ import { Gensym } from "../../lib/gensym";
 import { StaticMap, StaticNameIndexFor } from "../../lib/static_resources";
 import { included } from "../../lib/utils";
 import { find_all_nodes, find_node, FoundNode, Fragment, is_story_hole, is_story_node, Path, StoryNode, story_lookup_path } from "../story";
-import { GistPattern, match } from "../../gist";
+import { GistPattern, match_loose } from "../../gist";
 
 
 export type StoryQuery = (story: Fragment) => FoundNode[];
@@ -188,7 +188,7 @@ export const StoryQueries: StoryQueries = {
         },
     has_gist: (pat) => 
         (story) => find_all_nodes(story,
-            (n) => is_story_node(n) && n.data.gist !== undefined && match(n.data.gist)(pat))
+            (n) => is_story_node(n) && n.data.gist !== undefined && !!match_loose(n.data.gist, pat))
 }
 
 // StoryQueryIndex.initialize('path', (path) =>

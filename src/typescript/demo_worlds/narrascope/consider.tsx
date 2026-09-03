@@ -1,7 +1,7 @@
 import { createElement, story_updater, Updates as S, Fragment, is_story_node, StoryNode } from "story";
 import { TopicID, resource_registry, STATIC_TOPIC_IDS, Venience } from "./prelude";
-import { bottom_up, RenderImplsForPattern, GistRenderer, gist, render_gist, Gists } from "gist";
-import { GistAssoc } from "knowledge";
+import { bottom_up, RenderImplsForPattern, GistRenderer, gist, render_gist, Gists, EXACT } from "gist";
+import { GistAssoc, knowledge_gist } from "knowledge";
 import { StaticMap } from "lib/static_resources";
 import { Action, action_consume_spec } from "./action";
 import { keys, update, included } from "lib/utils";
@@ -33,7 +33,9 @@ declare module './prelude' {
 
 resource_registry.initialize('initial_world_consider', {
     can_consider: new GistAssoc<boolean, TopicID>([
-        { key: gist('the present moment'), value: true }
+        { key: gist('the present moment'), value: true },
+        { key: gist('Sam'), value: true },
+        { key: gist('yourself'), value: true }
     ])
 });
 
@@ -63,6 +65,14 @@ export function assert_is_topic(x: Fragment): asserts x is Topic {
 }
 
 const init_knowledge = resource_registry.get('initial_world_knowledge');
+
+// The story to print when considering a topic. Text revealed through reflection
+// is grafted onto the topic *as it appeared in a considered frame*, so prefer that
+// version when it exists, falling back to the pristine topic.
+export function topic_story(world: Venience, topic_gist: Gists[TopicID], action_gist: Gists['consider']): StoryNode {
+    return world.knowledge.get([EXACT, knowledge_gist(topic_gist, action_gist)])
+        ?? world.knowledge.get_exact(topic_gist)!;
+}
 
 export function Topic(topic: Fragment) {
     assert_is_topic(topic);
@@ -118,7 +128,7 @@ Action({
                             update(world, {
                                 gist: () => action_gist,
                                 story_updates: story_updater(
-                                    S.description(world.knowledge.get_exact(topic_gist)!)
+                                    S.description(topic_story(world, topic_gist, action_gist))
                                 )
                             })))
                         );

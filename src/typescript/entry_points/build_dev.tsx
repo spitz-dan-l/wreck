@@ -12,12 +12,12 @@ function prepare_world() {
 
     let {initial_result, update, css_rules} = new_world()
 
-    const DEBUG_COMMANDS = [
-        'consider the present moment',
-        'consider sam',
-        'remember something meditative',
-        'begin reflection on my memory of reflection',
-        // 'scrutinize reflection'
+    // Commands to replay on startup, to skip ahead while developing.
+    const DEBUG_COMMANDS: string[] = [
+        // 'consider sam',
+        // 'remember something meditative',
+        // 'consider sam',
+        // 'begin reflection on my impression of sam',
     ];
 
     for (const cmd of DEBUG_COMMANDS) {

@@ -1,41 +1,35 @@
-// const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const EvalSourceMapDevToolPlugin = require('webpack').EvalSourceMapDevToolPlugin;
+const path = require('path');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
-const path = require('path');
-
-module.exports = {
-    entry: "./src/typescript/entry_points/build_dev.tsx",
-    output: {
-        filename: "venience.js",
-        path: path.resolve(__dirname, "dist")
-    },
-
-    devtool: 'source-map',//false,
-
-    resolve: {
-        plugins: [new TsconfigPathsPlugin({ configFile: "./tsconfig.json" })],
-        // Add '.ts' and '.tsx' as resolvable extensions.
-        extensions: [".ts", ".tsx", ".js", ".json"],
-        // alias: { handlebars: 'handlebars/dist/handlebars.min.js' }
-    },
-    module: {
-        rules: [
-            // all files with a `.ts` or `.tsx` extension will be handled by `ts-loader`
-            { test: /\.tsx?$/, loader: "ts-loader", options: { transpileOnly: true} }
-        ]
-    },
-    // module: {
-    //     rules: [
-    //         { test: /\.(ts|js)x?$/, loader: 'babel-loader', exclude: /node_modules/ },
-    //     ]
-    // },
-
-    // plugins: [
-    //     // NOTE: the Eval plugin actually follows the exclude: option, while the vanilla one just doesn't. Dumb.
-    //     new EvalSourceMapDevToolPlugin({
-    //         test: /\.(ts|js)x?$/,
-    //         exclude: /node_modules/
-    //     })
-    // ]
+// `npm run build` (production) bundles entry_points/build_prod.tsx.
+// `npm run build-dev` (development) bundles entry_points/build_dev.tsx.
+// Both write dist/venience.js, which dist/venience.html loads.
+module.exports = (env, argv) => {
+    const production = argv.mode === 'production';
+    return {
+        entry: production
+            ? './src/typescript/entry_points/build_prod.tsx'
+            : './src/typescript/entry_points/build_dev.tsx',
+        output: {
+            filename: 'venience.js',
+            path: path.resolve(__dirname, 'dist'),
+            clean: false
+        },
+        devtool: production ? false : 'source-map',
+        resolve: {
+            plugins: [new TsconfigPathsPlugin({ configFile: './tsconfig.json' })],
+            extensions: ['.ts', '.tsx', '.js', '.json']
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.tsx?$/,
+                    loader: 'ts-loader',
+                    // Type checking is done by `npm test` / `npm run typecheck`; the bundler only transpiles.
+                    options: { transpileOnly: true }
+                }
+            ]
+        },
+        performance: { hints: false }
+    };
 };

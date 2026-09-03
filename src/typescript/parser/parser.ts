@@ -38,7 +38,7 @@ type NoMatch = {
 
 const NO_MATCH: NoMatch = {kind: 'NoMatch'} as NoMatch;
 
-function is_no_match<T extends {}>(x: T | NoMatch): x is NoMatch {
+function is_no_match(x: unknown): x is NoMatch {
     return x === NO_MATCH; //('kind' in x) && x.kind === 'NoMatch';
 }
 
@@ -52,7 +52,7 @@ function parse_restart(n_splits: number): ParseRestart {
 }
 
 function is_parse_restart<T>(x: T | ParseRestart): x is ParseRestart {
-    return (typeof(x) === 'object') && ('kind' in x) && x.kind === 'ParseRestart';
+    return (typeof(x) === 'object') && (x !== null) && ('kind' in x) && (x as ParseRestart).kind === 'ParseRestart';
 }
 
 // class ParseRestart {

@@ -21,7 +21,7 @@ Action({
 
     render_impls: {
         noun_phrase: g => bottom_up(g)(
-            (tag, {subject}) => 'your notes' + subject !== undefined ? ` about ${subject}` : '',
+            (tag, {subject}) => subject !== undefined ? `your notes about ${subject}` : 'your notes',
             render_gist.noun_phrase
         ),
         command_noun_phrase: g => bottom_up(g)(

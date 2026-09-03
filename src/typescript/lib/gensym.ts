@@ -31,7 +31,7 @@ export function parse_gensym(s: string): Gensym {
 
 export function gensym_value(s: Gensym): number {
     let new_state = parseInt(s.replace(prefix, ''));
-    if (new_state == NaN) {
+    if (Number.isNaN(new_state)) {
         throw new Error(`Tried to parse invalid gensym: ${s}`);
     }
     return new_state;

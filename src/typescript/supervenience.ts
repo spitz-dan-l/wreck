@@ -1,7 +1,7 @@
 import {World, WorldSpec, update_thread_maker, add_parsing} from './world';
 import { traverse_thread, ParserThread, RawConsumeSpec, Parser, gate } from './parser';
 import { deep_equal, drop_keys } from './lib/utils';
-import { find_historical } from './history';
+import { find_historical, history_array } from './history';
 
 /*
     Take a world and return some projection of it that is somehow descriptive
@@ -160,7 +160,12 @@ export function search_future<W extends World>(spec: FutureSearchSpec<W>, world:
 
             const neighbor_states = Object.values(transitions);
             if (neighbor_states.length === 0) {
-                throw new Error('Future search reached a non-goal terminal state');
+                const recent_commands = history_array(w)
+                    .map(h => h.parsing?.raw.text)
+                    .filter(t => t !== undefined)
+                    .reverse()
+                    .slice(-6);
+                throw new Error(`Future search (simulator ${spec.simulator_id}, search ${spec.search_id}) reached a non-goal terminal state after commands: ${JSON.stringify(recent_commands)}`);
             }
             for (let parse_result of neighbor_states) { 
                 const dest = add_parsing(parse_result.result, parse_result.parsing, w.index + 1);
@@ -207,6 +212,13 @@ export function is_simulated<W extends World>(simulator_id: string, world: W) {
 
     const entry = ACTIVE_SIMULATORS[simulator_id];
     return find_historical(world, w => entry.has(w)) !== undefined;
+}
+
+// Is this world's timeline inside *any* running future search?
+// Useful for behaviors that should only happen for a real player, such as
+// kicking off further (nested) searches.
+export function is_in_any_simulation<W extends World>(world: W) {
+    return Object.keys(ACTIVE_SIMULATORS).some(id => is_simulated(id, world));
 }
 
 function begin_search<W extends World>(simulator_id: string, world: W) {

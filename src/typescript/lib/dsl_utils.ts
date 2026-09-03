@@ -71,8 +71,8 @@ export function make_dsl<Funcs extends (DomainMappedFunction<keyof Funcs>) & Fun
 export function make_dsl<Funcs extends DomainMappedFunction<keyof Funcs>>(prop_builder: DSLPropImpl<Funcs>): DSLProps<Funcs>;
 export function make_dsl<Funcs extends DomainMappedFunction<keyof Funcs>>(prop_builder: DSLPropImpl<Funcs>, call_builder?: any): DSLProps<Funcs> {
     const handlers: ProxyHandler<DSLProps<Funcs>> = {
-        get: <K extends keyof Funcs>(a: unknown, name: K) =>
-            prop_builder(name)
+        get: (a: unknown, name: string | symbol) =>
+            prop_builder(name as keyof Funcs)
     };
 
     if (call_builder !== undefined) {

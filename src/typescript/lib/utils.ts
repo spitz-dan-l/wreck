@@ -565,7 +565,7 @@ type MethodProperties<T extends {}> = {
     [K in keyof T]: T[K] extends (...args: any) => any ? K : never
 }[keyof T];
 
-export function bound_method<T, K extends MethodProperties<T>>(instance: T, name: K): T[K] {
+export function bound_method<T extends {}, K extends MethodProperties<T>>(instance: T, name: K): T[K] {
     return (instance[name] as unknown as F.Function).bind(instance) as unknown as T[K];
 }
 

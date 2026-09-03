@@ -1,25 +1,28 @@
 {
     "compilerOptions": {
         "outDir": "./build/",
+        "rootDir": "./src/typescript",
         "sourceMap": true,
         "noImplicitAny": true,
-        "moduleResolution": "node",
+        "module": "node16",
+        "moduleResolution": "node16",
         "esModuleInterop": true,
-        "module": "CommonJS",
-        "target": "es2017",
+        "target": "es2020",
         "lib": ["esnext", "dom"],
         "jsx": "react",
         "jsxFactory": "createElement",
         "incremental": true,
+        "tsBuildInfoFile": "./build/tsconfig.tsbuildinfo",
         "allowSyntheticDefaultImports": true,
         "experimentalDecorators": true,
-        "extendedDiagnostics": true,
         "skipDefaultLibCheck": true,
         "strictNullChecks": true,
         "strictBindCallApply": true,
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
         "noImplicitThis": true,
-        "baseUrl": "src/typescript"
+        "paths": {
+            "*": ["./src/typescript/*"]
+        }
     }
 }
