@@ -1,4 +1,4 @@
-# The Voice of Fire — demo specification (v1.1)
+# The Voice of Fire — demo specification (v1.2)
 
 Synthesized from round 1 of the design loop: three proposals
 (`round1/design_{A,B,C}.md`), two critiques (`round1/critique_1_textual.md`,
@@ -7,6 +7,10 @@ and the spec critique (`round1/critique_3_spec.md`), whose thirteen defects
 and fourteen risks are all applied here (v1.0 → v1.1; the changes are marked
 `[C3]`). Bare line numbers cite `dist/posts/puzzle_lofty.md`. Engine paths
 are under `src/typescript/`.
+
+v1.2 applies the round-2 play critique of the headless build
+(`round2/critique_4_play_b1.md`, marked `[C4]`) and the orchestrator's notes
+(`round2/orchestrator_notes_b1.md`).
 
 Where the round-1 documents converged, this spec records the convergence.
 Where they still disagreed, §13 lists the ruling and the reason.
@@ -285,7 +289,7 @@ piling of the kindling; the stacking of the logs; the lighting of a match;
 the touching of the flame to the tinder; the singing (×2, ordinals); the
 adding of logs to the fire; the sleeping in tents.
 Absorbs: e8 [4,5,6].
-Candidates (first pass): s1→{e4 · the tinder}; s2→{e5 · the kindling};
+Candidates (first pass): s1→{e4 · a patch of tinder}; s2→{e5 · the kindling};
 s3→{e6 · the logs}; s4→{e8 · the ember}; s5→{e8 · the flame}; s6→{e8 · the blaze};
 s7→{e10 · the blaze}; s8→{e12 · a pile of ash}.
 Authored nudges: (s8, e11) "The singing is not ash. What is left behind,
@@ -467,8 +471,9 @@ their nudge.
 | `map <step> to <event>` | during mapping | Judged (§4). Success: badge on the row, `→ event` under the step. Replaces an earlier placement of the step. |
 | `erase <step>` | during mapping | Removes that placement (no residue that the judge reads). |
 | `apply the Voice of Fire` | during mapping, always offered | §7; fails L1 with its nudge when incomplete. |
-| `set aside the mapping` / `resume the mapping` (wise man: `… the first solution`, `… the second solution`) | after any `apply` | Reverses/redoes §7's consequences; badges hollow/solid; opens/closes the second pass. `[C3 D9]` |
-| `say all set` | after an applied mapping (l. 313) | Katya's reply; finishes the sequence; collapses the board to a chip; hole back to the root. |
+| `set aside the mapping` / `resume the mapping` (wise man: `… the first solution`, `… the second solution`) | after any `apply` | Reverses §7's consequences; badges hollow. Where the voice has no second-pass table for this sequence, the mapping returns to `open` with its placements kept, and `map`, `erase`, `apply` are offered again (`apply` re-applies; `resume` is the no-edit shortcut). Where it has one, the second pass opens (L7). `[C3 D9; C4 D2]` |
+| `put down the chalk` | house and forest, after apply (and, in the house, after l. 389) | Finishes the sequence and collapses the board; l. 393 / l. 421 follow. The campfire uses `say all set` (l. 313); the wise man is closed by the objections. `[C4 I4]` |
+| `say all set` | campfire, after an applied mapping (l. 313) | Katya's reply; finishes the sequence; collapses the board to a chip; hole back to the root. |
 | `expand <thing>` / `collapse <thing>` | any time a board is open or after | Things: `the story` (all ¶), `the steps` (notation of the right column), `the unmapped` (rows with no badge), `<event>` (its consequence), `<sequence>` (a chip). Display only. |
 | `remember <event | sequence | role | the Voice of Fire | the Pillaging>` | any time | §7. |
 | `say that you see it` | after l. 479 | **Locked.** |
@@ -495,7 +500,9 @@ row: several badges. **`erase`**: the badge and reference go.
 2. Under each step in the right column, the Fire speaks: `› <step command>
    — <derived participant>` and, indented, the target event's consequence
    text, all in the fire's colour (this is the sequence's summary in the
-   pattern's terms; l. 66, 98). Nothing new is authored for it.
+   pattern's terms; l. 66, 98). Nothing new is authored for it. In the
+   headless/text rendition, steps that share an event are grouped: their
+   step lines together, the consequence once. `[C4 I1]`
 3. Each mapped row's command line gets a fire-coloured annotation
    `— the <role>`; knowledge is grafted with the same annotation under the
    event, so `remember <event>` later shows it (l. 136).
@@ -507,14 +514,18 @@ Badges of an applied mapping are solid; of a set-aside one, hollow and 30%.
 removed, the roles entries dropped) and hollows the badges; **`resume`**
 redoes them. `[C3 D9]`
 
-**`remember <event>`**: the frame's command and consequence verbatim, then
-its feeling: authored for the player's classroom events (§10), and for story
-events "— the <role>, in the Voice of Fire" if mapped and applied, else
-"It felt like nothing yet. It has not been read."
-**`remember <sequence>`**: every event verbatim (collapsed to command lines
-with `expand` available) then "It felt:" with the authored list (§5) plus one
-generated line per applied mapping: "— like the Voice of Fire, because the
-tinder was <derived>".
+**`remember <event>`**: "It went like this:" (l. 47), then the frame's
+command and consequence verbatim, then one feeling line: authored for the
+player's classroom events (§10); for story events "It felt like the
+<role>, in the Voice of Fire." (several roles: "like the ember, and the
+flame, and the blaze") if mapped and applied, else "It felt like nothing
+yet. It has not been read." `[C4 D5, I2]`
+**`remember <sequence>`**: "It went like this:" (l. 73), then every event
+verbatim (collapsed to command lines with `expand` available) then "It
+felt:" with the authored list (§5) plus one generated line per applied
+mapping: "— like the Voice of Fire, because the tinder was <derived>".
+A consequence-only ¶ belongs to exactly one event: the last event whose ¶
+precedes it. `[C4 D1]`
 **`remember <role>`**: "The tinder has been: a patch of tinder, in the
 campfire story; an oil-soaked rag, in the house in the woods; …" (nothing:
 "Nothing has been the tinder yet.")
@@ -611,7 +622,8 @@ the rolled boards of past lessons; one is labelled The Pillaging."
 board appears with the eight chalk statements (l. 166–180) in the right
 column. `listen`: l. 182; each statement gains its notation (collapsed);
 `expand the steps` shows l. 185–215. `remember the laying of the tinder`
-etc. available. `listen`: l. 218 and the campfire ¶s (l. 220–242) print as
+etc. available; before this `listen`, `remember the Voice of Fire` shows
+only the chalk form. `[C4 D7]` `listen`: l. 218 and the campfire ¶s (l. 220–242) print as
 prose in a frame. Typeahead: `say that the Voice of Fire is contained in
 this one` → l. 244–246. `pick up the chalk` → l. 248 "She beckons you up.";
 the campfire board opens; the lesson board collapses to a chip; the ¶s
@@ -643,7 +655,7 @@ nothing of the morality of the burning either` → l. 389–391. `say all set`
 **Beat 3 — the forest.** `pick up the chalk`; empty voice; `speak as …` with
 the Voice-of-Fire trap; Katya's two speeches at their triggers (§5.3);
 transcription; line; mapping (loose); `apply`; apply text (l. 419). No
-exchange (the .md has none). `say all set` → l. 421 "And now, the final story
+exchange (the .md has none). `put down the chalk` → l. 421 "And now, the final story
 for today's lesson," and `listen` → wise man ¶s.
 
 **Beat 4 — the wise man, literal.** `pick up the chalk`; transcription with
@@ -651,7 +663,10 @@ its voice switches; `draw a vertical line`; `say that the Voice of Fire is
 contained in just two lines` → l. 451–453 "Indeed. So, write it out."; eight
 `map`s onto e9 and e11 (the "Wood, my dear" nudge guards); `apply` → l.
 455–463 then l. 465 "Now, my dear, please find the second solution."
-`collapse the unmapped` is offered (thirteen rows fold to one bar).
+`collapse the unmapped` is offered (thirteen rows fold to one bar). Order
+within the literal apply: l. 455–463, the Fire's rendition, then l. 465.
+`[C4 D9]` The objections (beat 5) are offered only while the second
+solution is the applied one. `[C4 D4]`
 
 **Beat 5 — the wise man, figurative.** `ask what she means` → l. 467–469.
 `set aside the first solution` (badges go hollow; the second pass opens;
@@ -681,7 +696,9 @@ All in the document's register: short declaratives, "my dear", no
 exclamation marks, no explanations from Katya beyond these, no player
 lines inside Katya's blocks. `[C3 D7, D11, R6, R7]`
 
-**Katya on voice switches (at l. 350, after "Indeed,"):**
+**Katya on voice switches (at l. 350, after `"Indeed," says Katya.`; l. 350's
+second sentence, "She shows you how to indicate voice switches using visual
+notation.", prints after the speech `[C4 D3]`):**
 > "Every line is spoken by someone, my dear. The one who says *pack* is the
 > one who packs; the consequence is reported back to them and no one else.
 > When the one who speaks changes, we say so above the line, and we change
@@ -702,7 +719,15 @@ lines inside Katya's blocks. `[C3 D7, D11, R6, R7]`
 > anyway. The seed's. The weather's. The fire's. A voice without a body and
 > without a wish."
 
-**Katya on abstract voices (first abstract `speak as`, the season or time):**
+**Katya on disembodied voices — trigger: the first `speak as` of a
+disembodied voice that has the cursor ¶'s line (the seed at ¶1). A wrong
+disembodied voice prints the I8 nudge instead and does not consume the
+speech. `[C4 D6]`**
+
+**Katya on abstract voices (first abstract `speak as` that has the cursor
+¶'s line, the season at ¶2 or time at ¶6). After it, l. 419's last
+sentence prints as narration: "Katya teaches you about disembodied and
+abstract voices in the standard notation." `[C4 D3]`:**
 > "The season is right, my dear. Time passes. Those are voices too, of a
 > thinner kind. The season commands; time commands. They have no body and no
 > place. Write them with a double bar."
@@ -720,8 +745,11 @@ lines inside Katya's blocks. `[C3 D7, D11, R6, R7]`
   own."
 
 **Rule nudges:**
-- L1 at apply: "The Voice of Fire does not skip, my dear. Something is
-  missing from the board."
+- L1 at apply: "The Voice of Fire does not skip, my dear. <The first
+  unplaced step's name, capitalised> is not on the board." `[C4 I7]`
+- A `speak as` of a voice that has no line at the cursor ¶ (forest, wise
+  man): "The <voice> has no line here, my dear. Who acts?" and the voice is
+  not changed. `[C4 I8]`
 - L2 (a step already placed elsewhere is re-mapped): silent; the placement
   moves.
 - L3: "The Voice of Fire proceeds in order, my dear. It does not reach the
@@ -769,7 +797,12 @@ sentence:**
 rolled boards of past lessons; one is labelled The Pillaging."
 
 **The coda**: "Beneath the board, in your own colour, is the afternoon:
-everything you said, and everything that followed."
+everything you said, and everything that followed." It is its own node
+after the last frame, not part of the `say Ok, I guess` frame. `[C4 D8]`
+
+**The mark** is Katya's line and is printed as one: `"His death. Very well.
+Hold that," says Katya.` `[C4 I9]` Each objection sentence keeps the .md's
+quotation marks. `[C4 I6]`
 
 ---
 
