@@ -61,7 +61,7 @@ node scripts/screenshot_fire.js                                     # browser ru
 The full acceptance script (every command of a complete play-through, 213
 commands) is `round2/acceptance_script.json`; `round2/transcript_final_headless.txt`
 is its transcript. The built demo is published at
-https://venienceworld.com/next/fire.html (the `next/` folder on `master`).
+https://venienceworld.com/next/fire.html (the `next/` folder on `gh-pages`).
 
 Size: about 3,500 lines of TypeScript for the world (half of it data), 1,400
 of tests (65 tests, about 30 seconds), 350 of CSS; two small engine changes
