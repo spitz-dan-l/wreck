@@ -115,8 +115,10 @@ function update_animation_state(new_state: AppState, old_state: AppState): AppSt
 }
 
 function undo(state: AppState) {
-    // find the beginning of the current (possibly-compound) world
     let w = state.command_result.world;
+    if (w.previous === undefined) {
+        return state;
+    }
     
     let prev_command_result = state.updater(
         w.previous!,

@@ -23,7 +23,7 @@ import { get_initial_world, world_driver } from 'world';
 
 import { action_description } from './action';
 import { Topic } from './consider';
-import { ActionHandler, add_initial_knowledge, all_puffers, get_initial_knowledge, global_lock, Puffers, unlocked_puffer, Venience } from './prelude';
+import { ActionHandler, all_puffers, get_initial_knowledge, global_lock, Puffers, unlocked_puffer, Venience } from './prelude';
 import { apply_facet_interpretation, Exposition, facet } from './reflect';
 import { make_memory_available } from './remember';
 import { insight_text_class } from './styles';
@@ -187,11 +187,9 @@ ActionHandler({ tag: 'consider', children: { subject: { tag: 'Sam' } } }, action
     something is wrong, and makes the memory of scrutiny available.
 */
 
-const something_is_wrong = add_initial_knowledge(
-    <div gist={gist('the old affinity')} className={insight_text_class}>
-        ...Something is wrong.
-    </div> as StoryNode
-);
+const something_is_wrong = <div gist={gist('the old affinity')} className={insight_text_class}>
+    ...Something is wrong.
+</div> as StoryNode;
 
 ActionHandler({ tag: 'reflect', children: { subject: { tag: 'consider', children: { subject: { tag: 'Sam' } } } } }, () => w => {
     if (w.has_chill) {

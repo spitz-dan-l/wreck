@@ -71,8 +71,9 @@ export function gists_equal(a: Gist | undefined, b: Gist | undefined): boolean {
     return true;
 }
 
-// A canonical, readable rendering, e.g. `consider(subject: Sam)` or `action description[action=notes]`.
+// A canonical, readable rendering, e.g. `consider(subject: Sam)` or `action description[action="notes"]`.
 // Equal gists always render to the same string, so it doubles as a map key.
+// (Tags are assumed not to contain the punctuation used here.)
 export function gist_to_string(g: Gist): string {
     let result = g.tag;
     if (g.children !== undefined && Object.keys(g.children).length > 0) {
@@ -80,7 +81,7 @@ export function gist_to_string(g: Gist): string {
         result += `(${parts.join(', ')})`;
     }
     if (g.params !== undefined && Object.keys(g.params).length > 0) {
-        const parts = Object.keys(g.params).sort().map(k => `${k}=${String(g.params![k])}`);
+        const parts = Object.keys(g.params).sort().map(k => `${k}=${JSON.stringify(g.params![k])}`);
         result += `[${parts.join(', ')}]`;
     }
     return result;
@@ -100,6 +101,8 @@ function key_union(a: object, b: object): string[] {
         values. Unlisted children and parameters are unconstrained.
       - { exact: gist }, matching exactly that gist.
       - { any_of: [patterns] }, matching if any of them match.
+    (So `exact` and `any_of` are reserved: a partial pattern can't name a
+    child called `exact` or `any_of`.)
 */
 export interface GistPatternObject {
     readonly tag?: string;

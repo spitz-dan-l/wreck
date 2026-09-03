@@ -13,7 +13,7 @@
 */
 import { Gist, GistPattern, exact, gists_equal, gist_to_string, match } from 'gist';
 import { createElement } from './create';
-import { find_all_nodes, FoundNode, Fragment, is_story_node, StoryNode } from './story';
+import { find_all_nodes, FoundNode, Fragment, is_story_node, StoryNode, structurally_equal } from './story';
 
 export type Knowledge = StoryNode;
 
@@ -67,17 +67,19 @@ export function ingest(knowledge: Knowledge, story: StoryNode): Knowledge {
 }
 
 // The passage for a gist: a top-level passage with exactly that gist, or
-// else the unique passage nested anywhere with that gist.
+// else the passage nested anywhere with that gist. A passage may be nested
+// in several places (the same node embedded in several top-level passages);
+// that is fine as long as all the copies say the same thing.
 export function lookup(knowledge: Knowledge, g: Gist): StoryNode | undefined {
     const top = knowledge.children.find(c => is_gist_node(c) && gists_equal(c.data.gist, g));
     if (top !== undefined) {
         return top as StoryNode;
     }
-    const found = find_gists(knowledge, exact(g));
-    if (found.length > 1) {
-        throw new Error(`Ambiguous knowledge lookup: ${found.length} passages have the gist ${gist_to_string(g)}.`);
+    const found = find_gists(knowledge, exact(g)).map(([n]) => n);
+    if (found.some(n => !structurally_equal(n, found[0]))) {
+        throw new Error(`Ambiguous knowledge lookup: ${found.length} different passages have the gist ${gist_to_string(g)}.`);
     }
-    return found[0]?.[0];
+    return found[0];
 }
 
 export function lookup_or_throw(knowledge: Knowledge, g: Gist): StoryNode {
@@ -94,7 +96,10 @@ export function has_revealed(knowledge: Knowledge, parent: GistPattern, child_gi
         gist_children(n).some(c => gists_equal(c.data.gist, child_gist)));
 }
 
-// Append `child` beneath every passage matching `parent` that doesn't have it yet.
+// Append `child` beneath every passage matching `parent` that doesn't have it
+// yet. Deliberately multi-target: a passage embedded in several places (such
+// as an action's description inside both the notes and the memory of it) is
+// revealed everywhere at once.
 export function graft(knowledge: Knowledge, parent: GistPattern, child: StoryNode): Knowledge {
     const child_gist = child.data.gist;
     if (child_gist === undefined) {
