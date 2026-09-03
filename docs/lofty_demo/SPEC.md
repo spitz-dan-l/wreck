@@ -11,8 +11,11 @@ are under `src/typescript/`.
 v1.2 applies the round-2 play critique of the headless build
 (`round2/critique_4_play_b1.md`, marked `[C4]`) and the orchestrator's notes
 (`round2/orchestrator_notes_b1.md`). v1.3 applies the round-3 critiques:
-the fresh-eyes play (`round3/critique_6_play_b3.md`, `[C6]`) and the code
-review (`round3/critique_7_code.md`, `[C7]`).
+the fresh-eyes play (`round3/critique_6_play_b3.md`, `[C6]`), the code
+review (`round3/critique_7_code.md`, `[C7]`) and the browser critique
+(`round3/critique_5_ui.md`, `[C5]`: notation shown, chips reopening at the
+prompt, hollow badges legible, a visible Locked glyph, reserved typeahead
+height, a font fallback, short bars, labelled passes, nudges styled apart).
 
 Where the round-1 documents converged, this spec records the convergence.
 Where they still disagreed, §13 lists the ruling and the reason.
@@ -550,7 +553,14 @@ was the thatch, and before that the rag". `[C6 I-2, I-5]`
 **`remember the Voice of Fire`** / **`the Pillaging`**: the steps in both forms.
 
 **Voice notation (l. 350)**: no voice bar is drawn, and no mark printed in
-the text form, before Katya's speech. `[C6 D-7]`
+the text form, before Katya's speech. `[C6 D-7]` The `You` mark is a bar
+like the others, not a rule on every frame: one `YOU` bar at the head of
+the transcript (the afternoon is one run in the player's voice, interrupted
+by the boards' runs), drawn retroactively at l. 350, plus a `YOU` bar on
+`speak as` frames and traps inside a board's column; nothing on ledger
+frames, `let it follow` frames or root dialogue. Once taught, the `speak
+as` frame's "— the x —" line is hidden on the board (the bar says it).
+`[C5 D4]`
 When it prints, the bars for every voice used so far (the friends on the
 campfire chip, the family on the open board) and the `You` bar on every
 frame of the player's own appear retroactively (`S.map_worlds` +
@@ -625,7 +635,11 @@ the board (`update.tsx` addresses the DOM by path from the story root).
   house board, which is where the .md puts the pause); in `.ledger` during
   mapping (nudges, marks, apply texts, the objections). `[C3 D13]`
 - `say all set` collapses the board to a chip (title + barcode). `expand
-  <sequence>` reopens it. The wise man's board is left expanded at the end.
+  <sequence>` reopens it and moves the hole into that board's ledger so
+  the reopened board is in view; `collapse` moves it back. `[C5 D3]`
+  Display commands (`expand`, `collapse`, `erase`, `set aside`, `resume`)
+  print a one-line consequence so the player has confirmation when the
+  board is off screen. `[C5 D7]` The wise man's board is left expanded at the end.
   Colour palette per step (chunks of abstraction, l. 152): 1 straw, 2 tan,
   3 bark, 4 orange, 5 red, 6 deep red, 7 crimson, 8 grey. Voice marks never
   use fill colour.
