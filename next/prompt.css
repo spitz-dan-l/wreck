@@ -130,3 +130,32 @@ ul.typeahead {
       /* color: orange; */
 }
 
+
+/* Tap controls beside the prompt: backspace a token, clear, enter. Shown where
+   there is no keyboard to rely on (touch screens) and on narrow screens. */
+.prompt-controls {
+      display: none;
+      gap: 0.6em;
+      margin-top: 0.6em;
+      float: right;
+      clear: right;
+}
+@media (pointer: coarse), (max-width: 700px) {
+      .prompt-controls { display: flex; }
+}
+.prompt-controls .control {
+      min-width: 2.8em;
+      min-height: 2.8em;
+      line-height: 2.8em;
+      padding: 0 0.6em;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 240, 0.4);
+      border-radius: 0.3em;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+}
+.prompt-controls .control.disabled { --alpha-color: 0.3; }
+.prompt-controls .control:active { background: dimgray; }
+.undo-button { padding: 0.2em 0.4em; }
