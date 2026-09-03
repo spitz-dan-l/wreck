@@ -113,10 +113,10 @@ export const CAMPFIRE: StorySpec = {
                 1: [{ event: 4, derives: 'a patch of tinder' }],
                 2: [{ event: 5, derives: 'the kindling' }],
                 3: [{ event: 6, derives: 'the logs' }],
-                4: [{ event: 8, derives: 'the ember' }],
-                5: [{ event: 8, derives: 'the flame' }],
-                6: [{ event: 8, derives: 'the blaze' }],
-                7: [{ event: 10, derives: 'the blaze' }],
+                4: [{ event: 8, derives: "the match's flame" }],
+                5: [{ event: 8, derives: 'the kindling, catching' }],
+                6: [{ event: 8, derives: 'the logs, alight' }],
+                7: [{ event: 10, derives: 'the tended fire' }],
                 8: [{ event: 12, derives: 'a pile of ash' }]
             }
         }

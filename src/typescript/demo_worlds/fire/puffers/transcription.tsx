@@ -78,15 +78,19 @@ function has_line_here(w: FireWorld, story: StorySpec, v: VoiceId): boolean {
     return next !== undefined && next.prose === w.cursor && next.voices.includes(v);
 }
 
-// `speak as`: sets the voice and draws its bar. A voice with no line at
-// the cursor is refused with a nudge (SPEC §10). The first disembodied and
-// the first abstract voice that have a line bring Katya's speeches
-// (SPEC §5.3), the abstract one followed by l. 419's last sentence.
+// `speak as`: sets the voice and draws its bar (in the text form too, once
+// Katya has taught the notation at l. 350). A voice with no line at the
+// cursor is refused with a nudge (SPEC §10); at a consequence-only ¶ no one
+// speaks. The first disembodied and the first abstract voice that have a
+// line bring Katya's speeches (SPEC §5.3), the abstract one followed by
+// l. 419's last sentence.
 function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
     const voice = voice_of(v);
+    if (story.follows.includes(w.cursor!)) {
+        return nudge_frame(w, 'No one speaks here, my dear. Let it follow.');
+    }
     if (!has_line_here(w, story, v)) {
-        const name = voice.name[0].toUpperCase() + voice.name.slice(1);
-        return nudge_frame(w, `${name} ${voice.plural ? 'have' : 'has'} no line here, my dear. Who acts?`);
+        return nudge_frame(w, `No line here for ${voice.name}, my dear. Who acts?`);
     }
     const kind = voice.kind;
     const speech = kind === 'disembodied' ? AUTHORED.disembodied : kind === 'abstract' ? [...AUTHORED.abstract, ...QUOTED.l419b] : undefined;
@@ -95,7 +99,7 @@ function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
         voice: v,
         taught: _ => teach ? [..._, kind] : _,
         story_updates: story_updater(
-            S.consequence(paragraphs([voice_bar_text(v)])),
+            w.taught.includes('voice') ? S.consequence(paragraphs([voice_bar_text(v)])) : [],
             teach ? S.consequence(paragraphs(speech!)) : [],
             speak_as_ops(story, w.index, v, w.voice)
         )

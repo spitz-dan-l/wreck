@@ -35,7 +35,7 @@ export const FOREST: StorySpec = {
             index: 2, voices: ['the season'], prose: 2,
             command: 'turn',
             name: 'the turning of the season',
-            consequence: ['The season is right, and the weather is right, and a sapling rises forth.'],
+            consequence: ['The season turns. The weather is right, and a sapling rises forth.'],
             authored: true
         },
         {

@@ -412,3 +412,71 @@ outside `demo_worlds/fire` and the tests.
 - `traverse_thread` reruns the whole thread per prefix (O(commands ×
   chunks) parses); an enumerator that keeps the parser's partial state
   would make command enumeration cheap enough to use in the UI.
+
+## Phase B5a (the round-3 play critique, SPEC v1.3)
+
+`docs/lofty_demo/round3/critique_6_play_b3.md` §3–§7 implemented. World
+3230 → 3299 lines, tests 1137 → 1175; `npm test` 59 passing in ~1 m 06 s.
+Headless transcript: `round2/transcript_b5_headless.txt` (202 commands);
+screenshots re-taken.
+
+**Defects.**
+- **D-1 / D-2** were folded into B4 (the [C6] rule): setting aside the
+  second solution reopens it with its placements, never a third pass;
+  resuming the first while the second is open keeps the second's
+  placements as set aside; both are never lit. The walkthrough plays both
+  directions.
+- **D-3 / D-8.** "No line here for the fire, my dear. Who acts?"; at a
+  consequence-only ¶ (the house's burning lines) any `speak as` prints "No
+  one speaks here, my dear. Let it follow." No agreement to get wrong;
+  `Voice.plural` stays as data.
+- **D-4.** The apply text and `apply_after` print on the first apply of a
+  pass only; later applies and every `resume` print the rendition alone
+  (`has_said_applied`, read from the history's `applied` gists). The
+  transcript now has l. 383 and the campfire's sentence once each.
+- **D-5.** `Sequence.step_nudges` — a sequence's own L4 defaults per pass,
+  consulted after the authored (step, event) nudges and before the voice's
+  defaults. The wise man's second pass carries the critique's eight
+  figurative nudges verbatim (they are not in SPEC §5.4/§10; recorded here
+  as licensed nudges, §10's category). Two of them are traps in the
+  walkthrough.
+- **D-6.** SPEC v1.3 §10 licenses "▸ <N> events not in the mapping"; unchanged.
+- **D-7.** The text form prints "— the x —" only once `taught` includes
+  `voice` (l. 350); the board's bars were already gated by `voices-taught`.
+
+**Improvements.**
+- **I-1.** The campfire derives s4 "the match's flame", s5 "the kindling,
+  catching", s6 "the logs, alight", s7 "the tended fire".
+- **I-2 / I-5.** The roles are no longer world state: `readings(w)` is
+  every apply in the history (the `applied` frames, each with the
+  participants of the mapping lit there), and `role_history(w, role)`
+  dedupes them per (sequence, participant), marking a reading `current`
+  when the sequence's lit mapping still derives it. `remember <role>` keeps
+  the set-aside readings, ", set aside"; the generated feeling reads "because
+  the tinder was the thatch, and before that the oil-soaked rag" — the
+  participant as derived, where SPEC §7's example abbreviates to "the rag".
+  `remember the ember` at the end lists six readings, two set aside.
+- **I-3.** `say Ok, I guess` (and the Locked `say that you see it`) follow
+  l. 479 whichever solution is lit; a test sets the second aside first.
+- **I-4.** The Pillaging's second consequence is "You enter their home."
+- **I-6 / §7.** `Line.locked` may depend on the world. The four objections
+  are offered once the second solution has been applied and are Locked
+  while it is not the lit one (the verb Available, the rest dimmed); the
+  spark's wording follows the second solution's placement whatever its
+  status. `object that there is no clear tinder` is offered from the
+  house's first apply and Locked until both the rag and the thatch have
+  been the tinder of an applied house mapping; since l. 389 and `put down
+  the chalk` follow it in the script, the house cannot be left without the
+  change of mind (l. 140). The walkthrough objects after the thatch apply
+  and asserts Locked before, Available after.
+- **§6.** The forest's e2 reads "The season turns. The weather is right,
+  and a sapling rises forth."
+- **Person and tense (the rule).** Embodied voices are addressed in the
+  second person; voices without a body (disembodied, abstract) are reported
+  in the third. The one exception is mandated: e11 `light the pyre`, spoken
+  by the closest followers, has ¶11 verbatim (SPEC §5.4) and so is the one
+  embodied event reported in the third person.
+
+**Engine.** No change. `classroom_commands` and `readings` walk the history
+from the world itself (the frames puffer clears the gist before each
+command, so the current frame is never double-counted).

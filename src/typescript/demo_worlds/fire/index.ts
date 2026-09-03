@@ -38,7 +38,6 @@ const initial_world: FireWorld = {
     cursor: undefined,
     sequences: {},
     mappings: [],
-    roles: {},
     collapsed: ['steps'],       // the steps' notation is folded until `expand the steps`
     taught: [],
     knowledge: initial_knowledge()

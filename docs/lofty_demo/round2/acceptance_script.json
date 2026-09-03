@@ -42,6 +42,7 @@
 "remember the campfire story",
 "remember the tinder",
 "remember the touching of the flame to the tinder",
+"remember the ember",
 "remember the lighting of a match",
 "expand the campfire story",
 "collapse the campfire story",
@@ -83,7 +84,6 @@
 "apply the Voice of Fire",
 "remember the lighting of the rag",
 "remember the scattering",
-"object that there is no clear tinder",
 "set aside the mapping",
 "erase the sparking of the tinder",
 "collapse the unmapped",
@@ -94,8 +94,10 @@
 "expand the unmapped",
 "apply the Voice of Fire",
 "remember the tinder",
+"object that there is no clear tinder",
 "say that it knows nothing of the morality of the burning either",
 "put down the chalk",
+"remember the house in the woods",
 "listen",
 "pick up the chalk",
 "speak as the seed",
@@ -197,5 +199,6 @@
 "say Ok, I guess",
 "remember the wise man's story",
 "remember the saying of Ok, I guess",
-"remember the second listening"
+"remember the second listening",
+"remember the ember"
 ]

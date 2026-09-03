@@ -12,7 +12,7 @@ import { AUTHORED, CLASSROOM_EVENTS } from '../data/katya';
 import { participants, step_of } from '../judge';
 import { ordinal_names, role_name } from '../names';
 import { event_gist, paragraphs, sequence_passage, step_gist, strip_gists } from '../board';
-import { applied_mapping, BEAT, classroom_commands, ended, FireWorld, has_said, LESSON_VOICE, phrase, voice_of_mapping } from '../world';
+import { applied_mapping, BEAT, classroom_commands, ended, FireWorld, has_said, LESSON_VOICE, phrase, readings, role_history, voice_of_mapping } from '../world';
 
 function remembered(w: FireWorld, body: Fragment[]): FireWorld {
     return update(w, { story_updates: story_updater(S.description(<div className="memory">{body}</div>)) });
@@ -60,7 +60,15 @@ function remember_story(w: FireWorld, story: StorySpec): FireWorld {
         const voice = voice_of_mapping(applied);
         const first = participants(story, voice, applied).find(p => p.step === voice.steps[0].index);
         if (first !== undefined) {
-            feelings.push(`like ${voice.voice.name}, because ${role_name(first.role)} was ${first.derives}`);
+            // The road not taken (SPEC §7): what the first step's role was in earlier readings of this pass, latest first.
+            const before: string[] = [];
+            for (const r of readings(w).filter(r => r.story === story && r.pass === applied.pass).reverse()) {
+                const was = r.parts.find(p => p.step === first.step)?.derives;
+                if (was !== undefined && was !== first.derives && !before.includes(was)) {
+                    before.push(was);
+                }
+            }
+            feelings.push(`like ${voice.voice.name}, because ${role_name(first.role)} was ${[first.derives, ...before].join(', and before that ')}`);
         }
     }
     return remembered(w, sequence_body(w, story, story.events.map(e => e.index), feelings));
@@ -68,12 +76,13 @@ function remember_story(w: FireWorld, story: StorySpec): FireWorld {
 
 // ROLES
 
+// A history of readings, the set-aside ones kept and marked (SPEC §7).
 function remember_role(w: FireWorld, role: string): FireWorld {
-    const entries = w.roles[role] ?? [];
+    const entries = role_history(w, role);
     const name = role_name(role);
     const text = entries.length === 0
         ? `Nothing has been ${name} yet.`
-        : `${name[0].toUpperCase()}${name.slice(1)} has been: ${entries.map(e => `${e.what}, in ${e.where}`).join('; ')}.`;
+        : `${name[0].toUpperCase()}${name.slice(1)} has been: ${entries.map(e => `${e.what}, in ${e.where}${e.current ? '' : ', set aside'}`).join('; ')}.`;
     return remembered(w, paragraphs([text]));
 }
 

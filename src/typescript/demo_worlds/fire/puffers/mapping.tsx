@@ -3,9 +3,10 @@
     steps of the board's voice onto its events, erases placements, applies
     the mapping, and sets it aside or resumes it. A placement puts a badge
     on the row and a reference under the step; applying prints the apply
-    text, lets the Fire speak under each step, annotates the mapped rows
-    (in the transcript and in knowledge), and fills the roles; setting
+    text (the first time), lets the Fire speak under each step and
+    annotates the mapped rows (in the transcript and in knowledge); setting
     aside reverses all of that and hollows the badges; resuming redoes it.
+    What the roles have been is read from the history (world.ts readings).
 
     Setting aside the last pass of a story (or its only one) reopens that
     mapping with its placements kept, so the player can change their mind
@@ -18,10 +19,10 @@ import { graft, remove_gists, story_updater, StoryUpdaterSpec, Updates as S } fr
 import { update } from 'lib/utils';
 import { EVENT_NAMES, Mapping, Pass, passes, StepIndex, StorySpec, SUB_SEQUENCES } from '../data';
 import { annotation_node, apply_ops, applied_gist, erase_ops, event_gist, paragraphs, place_ops, reference_text, rendition_text, rows_ops, unapply_ops } from '../board';
-import { apply as judge_apply, erase, participants, place, placed, role_entries, violations } from '../judge';
+import { apply as judge_apply, erase, participants, place, placed, violations } from '../judge';
 import {
-    applied_mapping, board_story, ended, event_frame, FireWorld, has_said, mappings_on, open_mapping, phase, phrase, replace_mapping,
-    set_aside_mappings, voice_for, voice_of_mapping
+    applied_mapping, board_story, ended, event_frame, FireWorld, has_said, has_said_applied, mappings_on, open_mapping, phase, phrase,
+    replace_mapping, set_aside_mappings, voice_for, voice_of_mapping
 } from '../world';
 import { nudge_frame } from './transcription';
 import { exact } from 'gist';
@@ -63,32 +64,17 @@ function do_erase(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepIn
     });
 }
 
-// The consequences of an applied mapping (SPEC §7.2–4), added to the world; `undo` takes them away again.
+// The consequences of an applied mapping (SPEC §7.2–3), added to the world; `undo` takes them away again.
 function consequences(w: FireWorld, story: StorySpec, m: Mapping, undo: boolean): FireWorld {
     const voice = voice_of_mapping(m);
     const parts = participants(story, voice, m);
-    const entries = role_entries(parts, story.title);
     if (undo) {
         return update(w, {
-            roles: r => {
-                const result = { ...r };
-                for (const e of entries) {
-                    result[e.role] = (result[e.role] ?? []).filter(x => x.where !== e.where);
-                }
-                return result;
-            },
             knowledge: k => remove_gists(k, { tag: 'annotation', params: { seq: story.id, id: m.id } }),
             story_updates: story_updater(unapply_ops(story, m))
         });
     }
     return update(w, {
-        roles: r => {
-            const result = { ...r };
-            for (const e of entries) {
-                result[e.role] = [...(result[e.role] ?? []), e];
-            }
-            return result;
-        },
         knowledge: k => parts.reduce((acc, p) =>
             graft(acc, exact(event_gist(story.id, p.event)), annotation_node(story.id, p.event, m.id, p.role)), k),
         story_updates: story_updater(
@@ -129,12 +115,13 @@ function light(w: FireWorld, story: StorySpec, m: Mapping, with_text: boolean): 
     return next;
 }
 
+// The apply text is printed on the first apply of a pass only (SPEC §7.1); later applies print the rendition alone.
 function do_apply(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     const result = judge_apply(story, voice_of_mapping(mapping), mapping, set_aside_mappings(w, story));
     if (!result.ok) {
         return nudge_frame(w, result.nudge);
     }
-    return light(w, story, mapping, true);
+    return light(w, story, mapping, !has_said_applied(w, story, mapping.pass));
 }
 
 // `set aside`: the mapping's consequences are undone and its badges hollow.
@@ -231,14 +218,3 @@ export const mapping_puffer: Puffer<FireWorld> = {
         return parser.split(threads);
     }
 };
-
-// Whether this pass has been applied before (its apply text has been printed): a frame labelled `applied(seq, pass)`.
-export function has_said_applied(w: FireWorld, story: StorySpec, pass: Pass): boolean {
-    for (let h: FireWorld | undefined = w.previous; h !== undefined; h = h.previous) {
-        const g = h.gist;
-        if (g !== undefined && g.tag === 'applied' && g.params!.seq === story.id && g.params!.pass === pass) {
-            return true;
-        }
-    }
-    return false;
-}

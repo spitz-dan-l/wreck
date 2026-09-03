@@ -185,8 +185,8 @@ describe('the judge: the campfire', () => {
         assert.equal(result.mapping.status, 'applied');
         assert.deepEqual(result.participants.map(p => [p.role, p.derives]), [
             ['tinder', 'a patch of tinder'], ['kindling', 'the kindling'], ['firewood', 'the logs'],
-            ['ember', 'the ember'], ['flame', 'the flame'], ['blaze', 'the blaze'],
-            ['blaze', 'the blaze'], ['ash', 'a pile of ash']
+            ['ember', "the match's flame"], ['flame', 'the kindling, catching'], ['blaze', 'the logs, alight'],
+            ['blaze', 'the tended fire'], ['ash', 'a pile of ash']
         ]);
         // The roles gain one entry per (role, sequence): the blaze only once.
         assert.deepEqual(role_entries(result.participants, CAMPFIRE.title).map(r => r.role),

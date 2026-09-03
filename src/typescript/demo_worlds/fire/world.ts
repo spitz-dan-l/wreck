@@ -1,17 +1,18 @@
 /*
     The world state of the Voice of Fire demo (SPEC §3): which beat of the
     lesson we are in, the open board and the cursor on it, the sequences
-    transcribed so far, the mappings and what applying them has made the
-    roles, and the knowledge tree. Everything else — the board's phase, the
-    remainder of a two-event ¶, which lines have been said — is derived.
+    transcribed so far, the mappings, and the knowledge tree. Everything
+    else — the board's phase, the remainder of a two-event ¶, which lines
+    have been said, what the roles have been — is derived, mostly from the
+    gists that label the frames of the history.
     Plus the grammar helpers the puffers share.
 */
 import { Gist } from 'gist';
 import { ConsumeSpec, GAP } from 'parser';
 import { Knowledge } from 'story';
 import { World } from 'world';
-import { AbstractSequence, ABSTRACT_SEQUENCES, Mapping, STORIES, StorySpec, VoiceId, VOICE_OF_FIRE } from './data';
-import { RoleEntry } from './judge';
+import { AbstractSequence, ABSTRACT_SEQUENCES, Mapping, Pass, STORIES, StorySpec, VoiceId, VOICE_OF_FIRE } from './data';
+import { Participant, participants, role_entries } from './judge';
 
 // The beats of the lesson (SPEC §9), in order. `lesson` is the index of the current one.
 export const BEAT = {
@@ -39,7 +40,6 @@ export interface FireWorld extends World {
     readonly cursor: number | undefined;            // next unconverted ¶ (1-based)
     readonly sequences: { [id: string]: SequenceState };
     readonly mappings: Mapping[];
-    readonly roles: { [role: string]: RoleEntry[] };       // accumulated on apply
     readonly collapsed: string[];                   // ids of collapsed things (display only)
     readonly taught: string[];                      // 'voice' | 'disembodied' | 'abstract'
     readonly knowledge: Knowledge;
@@ -93,7 +93,9 @@ export function event_frame(w: FireWorld, story_id: string, n: number): number |
     return w.sequences[story_id]?.events[n - 1];
 }
 
-// The classroom commands said so far, oldest first: the frames labelled with a `classroom` gist.
+// The classroom commands said so far, oldest first: the frames labelled with
+// a `classroom` gist (the world's own frame included; the frames puffer
+// clears the gist before each command).
 export interface ClassroomCommand { frame: number; command: string; beat: number; }
 
 // Worlds are immutable, and the parser asks many times per keystroke: the walk is done once per world.
@@ -105,7 +107,7 @@ export function classroom_commands(w: FireWorld): ClassroomCommand[] {
         return cached;
     }
     const found: ClassroomCommand[] = [];
-    for (let h: FireWorld | undefined = w.previous; h !== undefined; h = h.previous) {
+    for (let h: FireWorld | undefined = w; h !== undefined; h = h.previous) {
         const g = h.gist;
         if (g !== undefined && g.tag === 'classroom') {
             found.push({ frame: h.index, command: g.params!.command as string, beat: g.params!.beat as number });
@@ -118,6 +120,54 @@ export function classroom_commands(w: FireWorld): ClassroomCommand[] {
 
 export function has_said(w: FireWorld, command: string): boolean {
     return classroom_commands(w).some(c => c.command === command);
+}
+
+// READINGS: every apply in the history, oldest first (the frames labelled `applied(seq, pass)`).
+
+export interface Reading {
+    story: StorySpec;
+    pass: Pass;
+    parts: Participant[];   // what the mapping lit at that frame made of the roles
+}
+
+export function readings(w: FireWorld): Reading[] {
+    const found: Reading[] = [];
+    for (let h: FireWorld | undefined = w; h !== undefined; h = h.previous) {
+        const g = h.gist;
+        if (g !== undefined && g.tag === 'applied') {
+            const story = STORIES.find(s => s.id === g.params!.seq)!;
+            const m = h.mappings.find(x => x.sequence === story.id && x.pass === g.params!.pass)!;
+            found.push({ story, pass: m.pass, parts: participants(story, voice_of_mapping(m), m) });
+        }
+    }
+    return found.reverse();
+}
+
+// Whether this pass of a story has been applied before (its apply text has been printed).
+export function has_said_applied(w: FireWorld, story: StorySpec, pass: Pass): boolean {
+    return readings(w).some(r => r.story === story && r.pass === pass);
+}
+
+// What a role has been (SPEC §7): a history of readings, one per (sequence,
+// participant), oldest first; a reading is current if the sequence's lit
+// mapping still makes it so, else it was set aside.
+export interface RoleReading {
+    what: string;
+    where: string;      // the sequence's title
+    current: boolean;
+}
+
+export function role_history(w: FireWorld, role: string): RoleReading[] {
+    const result: RoleReading[] = [];
+    for (const r of readings(w)) {
+        const entry = role_entries(r.parts, r.story.title).find(e => e.role === role);
+        if (entry !== undefined && !result.some(x => x.what === entry.what && x.where === entry.where)) {
+            const lit = applied_mapping(w, r.story);
+            const current = lit !== undefined && participants(r.story, voice_of_mapping(lit), lit).some(p => p.role === role && p.derives === entry.what);
+            result.push({ what: entry.what, where: entry.where, current });
+        }
+    }
+    return result;
 }
 
 // MAPPINGS

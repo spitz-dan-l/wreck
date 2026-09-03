@@ -24,7 +24,7 @@ export const PILLAGING: AbstractSequence = {
             chalk: 'The Pillager enters their home.',
             name: 'the entering of their home',
             command: 'enter their home',
-            consequence: 'You enter their home. No one asked you in.',
+            consequence: 'You enter their home.',
             role: 'the Pillager',
             after: [1]
         },

@@ -4,8 +4,11 @@
     lesson (world.ts BEAT), plus `look at the board` and `pick up the chalk`.
     Within a beat the lines come in order: the first unsaid one is offered
     (when its requirement holds); optional lines are offered whenever
-    unsaid. The transcription and mapping of each board live in their own
-    puffers; this one moves the lesson between them, opens and closes boards.
+    unsaid. A line the character cannot yet say is offered Locked (SPEC
+    §0.11): l. 385 until both tinders have been read, each objection while
+    the first solution is the lit one, `say that you see it` ever. The
+    transcription and mapping of each board live in their own puffers; this
+    one moves the lesson between them, opens and closes boards.
 */
 import { ConsumeSpec, GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
@@ -18,7 +21,9 @@ import {
     classroom_gist, coda_ops, event_passage, finish_board_ops, open_board_ops, paragraphs, prose_told, reveal_notation_ops,
     show_lesson_board_ops, teach_voices_ops
 } from '../board';
-import { applied_mapping, BEAT, classroom_commands, FireWorld, LESSON_VOICE, phase, phrase, voice_for } from '../world';
+import {
+    applied_mapping, BEAT, classroom_commands, FireWorld, has_said_applied, LESSON_VOICE, mappings_on, phase, phrase, role_history, voice_for
+} from '../world';
 
 // One line of the script: a command, when it is offered, what it prints, and what it changes.
 interface Line {
@@ -33,11 +38,18 @@ interface Line {
     board?: (w: FireWorld) => StoryUpdaterSpec[];   // ops on the board
     advances?: true;                                // moves the lesson to the next beat
     then?: (w: FireWorld) => FireWorld;
-    locked?: boolean;
+    locked?: boolean | ((w: FireWorld) => boolean);   // offered, but not yet sayable
 }
 
 const applied = (story: StorySpec) => (w: FireWorld) => applied_mapping(w, story) !== undefined;
 const second_lit = (w: FireWorld) => applied_mapping(w, WISE_MAN)?.pass === 'second';
+// The objections are offered once the second solution has been applied, and are sayable only while it is the lit one.
+const objection = { beat: BEAT.wise_man, requires: (w: FireWorld) => has_said_applied(w, WISE_MAN, 'second'), locked: (w: FireWorld) => !second_lit(w) };
+// l. 385 reports having tried both tinders (l. 140): both the rag and the thatch have been the tinder of an applied house mapping.
+const both_tinders = (w: FireWorld) => {
+    const read = role_history(w, 'tinder').filter(r => r.where === HOUSE.title).map(r => r.what);
+    return read.includes('the oil-soaked rag') && read.includes('the thatch');
+};
 
 // Open a story's board (SPEC §6 `pick up the chalk`): the ¶s in the left
 // column, the cursor on the first, no voice yet, the hole inside, and
@@ -89,7 +101,7 @@ export const SCRIPT: Line[] = [
         board: () => teach_voices_ops(),
         then: w => update(w, { taught: _ => [..._, 'voice'] })
     },
-    { command: 'object that there is no clear tinder', beat: BEAT.house, requires: applied(HOUSE), says: ['l385', 'l387'] },
+    { command: 'object that there is no clear tinder', beat: BEAT.house, requires: w => has_said_applied(w, HOUSE, 'first'), locked: w => !both_tinders(w), says: ['l385', 'l387'] },
     { command: 'say that it knows nothing of the morality of the burning either', beat: BEAT.house, requires: applied(HOUSE), says: ['l389', 'l391'] },
     { command: 'put down the chalk', beat: BEAT.house, requires: applied(HOUSE), says: ['l393'], advances: true, then: close_board(HOUSE) },
     told(FOREST, BEAT.house_done),
@@ -105,18 +117,23 @@ export const SCRIPT: Line[] = [
         command: WISE_MAN.set_aside_after!, beat: BEAT.wise_man,
         requires: w => applied_mapping(w, WISE_MAN)?.pass === 'first', says: ['l467', 'l469']
     },
-    // The objections (l. 473–477), in the .md's order, while the second solution is the lit one.
-    { command: 'object that there is no fire', beat: BEAT.wise_man, requires: second_lit, says: ['l473', 'l475', 'l477_fire'] },
-    { command: 'object that the fireplace is too abstract', beat: BEAT.wise_man, requires: second_lit, says: ['l477_abstract'] },
+    // The objections (l. 473–477), in the .md's order; the spark's wording follows the second solution's placement.
+    { ...objection, command: 'object that there is no fire', says: ['l473', 'l475', 'l477_fire'] },
+    { ...objection, command: 'object that the fireplace is too abstract', says: ['l477_abstract'] },
     {
-        command: w => applied_mapping(w, WISE_MAN) !== undefined && placed(applied_mapping(w, WISE_MAN)!, 4) === 8
-            ? 'object that the spark is the death, not the myth'
-            : 'object that the spark is the myth, not the death',
-        beat: BEAT.wise_man, requires: second_lit, says: ['l477_spark']
+        ...objection,
+        command: w => {
+            const second = mappings_on(w, WISE_MAN).find(m => m.pass === 'second');
+            return second !== undefined && placed(second, 4) === 8
+                ? 'object that the spark is the death, not the myth'
+                : 'object that the spark is the myth, not the death';
+        },
+        says: ['l477_spark']
     },
-    { command: 'object that the ash is still structured', beat: BEAT.wise_man, requires: second_lit, says: ['l477_ash', 'l479'] },
-    { command: 'say that you see it', beat: BEAT.wise_man, optional: true, after: 'object that the ash is still structured', requires: second_lit, says: [], locked: true },
-    { command: 'say Ok, I guess', beat: BEAT.wise_man, requires: second_lit, says: ['l481'], board: () => coda_ops(AUTHORED.coda), advances: true }
+    { ...objection, command: 'object that the ash is still structured', says: ['l477_ash', 'l479'] },
+    // After l. 479, whichever solution is lit (SPEC §6).
+    { command: 'say that you see it', beat: BEAT.wise_man, optional: true, after: 'object that the ash is still structured', says: [], locked: true },
+    { command: 'say Ok, I guess', beat: BEAT.wise_man, says: ['l481'], board: () => coda_ops(AUTHORED.coda), advances: true }
 ];
 
 function command_of(line: Line, w: FireWorld): string {
@@ -183,7 +200,7 @@ function say_line(w: FireWorld, line: Line, command: string): FireWorld {
 export const classroom_puffer: Puffer<FireWorld> = {
     handle_command: (world, parser) => {
         const threads: ParserThread<FireWorld>[] = offered(world).map(({ line, command }) => p =>
-            p.consume(line_spec(command, !!line.locked), () =>
+            p.consume(line_spec(command, typeof line.locked === 'function' ? line.locked(world) : !!line.locked), () =>
             p.submit(() => say_line(world, line, command))));
         return parser.split(threads);
     }

@@ -95,6 +95,7 @@ export interface Sequence {
     events: { index: number, absorbs?: StepIndex[] }[];
     candidates: { [voice: VoiceId]: CandidateTable };  // keyed by the abstract sequence's voice id
     nudges: Nudge[];
+    step_nudges?: { [pass in Pass]?: { [s in StepIndex]?: string } };   // this sequence's own L4 defaults for a pass (the figurative wise man)
 }
 
 export interface StorySpec extends Sequence {

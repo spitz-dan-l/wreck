@@ -134,8 +134,8 @@ export function erase(mapping: Mapping, step: StepIndex): Mapping {
 
 // The nudge for a failed placement (SPEC §4): the rule's own text for L3,
 // L6 and L7; for L4, the authored (sequence, step, event) nudge if there is
-// one, else the step's default.
-function nudge_for(seq: Sequence, voice: AbstractSequence, rule: PlacementRule, step: StepIndex, event: number): string {
+// one, else the sequence's default for this pass, else the step's default.
+function nudge_for(seq: Sequence, voice: AbstractSequence, rule: PlacementRule, step: StepIndex, event: number, pass: Pass): string {
     const nudges = voice.nudges;
     switch (rule) {
         case 'L3': return nudges.L3;
@@ -143,7 +143,7 @@ function nudge_for(seq: Sequence, voice: AbstractSequence, rule: PlacementRule, 
         case 'L7': return nudges.L7_step[step] ?? nudges.L7;
         case 'L4': {
             const authored = seq.nudges.find(n => n.step === step && n.event === event);
-            return authored?.text ?? nudges.step[step] ?? l1_nudge(voice, step);
+            return authored?.text ?? seq.step_nudges?.[pass]?.[step] ?? nudges.step[step] ?? l1_nudge(voice, step);
         }
     }
 }
@@ -165,7 +165,7 @@ function check_placement(
     }
     const broken: Rejected[] = [];
     const reject = (rule: PlacementRule) =>
-        broken.push({ ok: false, rule, step, event, nudge: nudge_for(seq, voice, rule, step, event) });
+        broken.push({ ok: false, rule, step, event, nudge: nudge_for(seq, voice, rule, step, event, mapping.pass) });
 
     // L3: every placed step this one follows lands no later than it, and it
     // lands no later than every placed step that follows it.

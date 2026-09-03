@@ -186,6 +186,19 @@ export const WISE_MAN: StorySpec = {
         }
     },
     nudges: fuel_nudges,
+    // The second pass is corrected in the figurative reading's terms (l. 471), not the literal fire's.
+    step_nudges: {
+        second: {
+            1: 'Not wood this time, my dear. What was laid in him, before anyone else came?',
+            2: 'Who caught from him first, my dear? The few, before the many.',
+            3: 'And who caught from them? The many.',
+            4: 'What set it going, once he could no longer speak for himself?',
+            5: 'What spread, my dear, and through whom?',
+            6: 'What spread, my dear, and through whom?',
+            7: 'Where did it burn longest, and in whose hands?',
+            8: 'What is left of him at the end, my dear? Not his body.'
+        }
+    },
     feelings: [
         'a bit relieving, at first, because only two lines burned',
         'then not, because all of them did'
