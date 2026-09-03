@@ -40,12 +40,12 @@ export function event(story: StorySpec, index: number): StoryEventSpec {
     return e;
 }
 
-// The prose lines that `let it follow` appends to this event: the follows
-// lines after its ¶ and before the next converted ¶.
+// The prose lines that `let it follow` appends to this event: a
+// consequence-only ¶ belongs to exactly one event, the last event whose ¶
+// precedes it (SPEC §7).
 export function followed_lines(story: StorySpec, index: number): number[] {
     const e = event(story, index);
-    const next = story.events.find(o => o.prose > e.prose);
-    return story.follows.filter(f => f > e.prose && (next === undefined || f < next.prose));
+    return story.follows.filter(f => f > e.prose && !story.events.some(o => o.index > e.index && o.prose < f));
 }
 
 // Every paragraph of the event's consequence, the followed lines included.

@@ -25,6 +25,7 @@ export const QUOTED = {
     l346: ['"Indeed. Can you find the Voice of Fire within it?"'],
     l348: [`"Let's see..." you say. Once again, you approach the board, converting each line of the story to the standard notation. When you reach the point where the children fling the torch onto the roof, you pause. "What is the right thing to do here? The source of the intentional voice has changed. It's no longer from the family's perspective that things are happening. It's the children's."`],
     l350: ['"Indeed," says Katya.'],
+    l350b: ['She shows you how to indicate voice switches using visual notation.'],
     l383: ['You complete the translation of the story. Then, as before, you add a vertical line and a new column.'],
     l385: [`"Quite a bit different, this time," you mutter. "There's not a clear answer for what's tinder, or kindling, or firewood. Is the tinder the oil-soaked rag, or the thatch on the roof? And in this case, the so-called 'fireplace' wasn't purposefully built up to be burnt; it was a family's home. The burning was done by someone else."`],
     l387: ['"Quite right," says Katya. "But these details are not relevant from the perspective of the Voice of Fire, my dear. It knows only of the preparation of the fuel, and the burning of the fuel. It knows nothing of the purposes or intentions behind these actions. It simply proceeds. A pattern."'],
@@ -32,6 +33,7 @@ export const QUOTED = {
     l391: ['"Indeed not," she says.'],
     l393: ['Katya continues the lesson with another story...'],
     l419: ['You repeat the exercise.'],
+    l419b: ['Katya teaches you about disembodied and abstract voices in the standard notation.'],
     l421: ['"And now, the final story for today\'s lesson," says Katya...'],
     l451: [`"That's an awful lot of extra story," you mutter, performing the exercise on the board again. "In fact, I think the entirety of the Voice of Fire's story is contained in just two lines from this sequence."`],
     l453: ['"Indeed. So, write it out," says Katya.'],
@@ -39,10 +41,10 @@ export const QUOTED = {
     l469: ['"The figurative solution, my dear. The one without any literal mention of wood or flame," she says.'],
     l473: ['"Katya, I have to say, it seems this second solution hardly fits the spirit of the Voice of Fire."'],
     l475: ['"Why so, my dear?"'],
-    l477_fire: ["There's no fire, no wood, no burning directly involved."],
-    l477_abstract: ["The structure of the fireplace is so abstract- the man's wisdom? His 'legitimate following'?"],
-    l477_spark: ["And the timing doesn't seem to add up; the man dies, but then they turn him into a myth. So which event is the spark? His actual death? Or the mythological version of his death?"],
-    l477_ash: ["And the so-called 'ash' at the end; while it may no longer resemble the original knowledge of the man, it is still highly structured; more structured than a pile of ash."],
+    l477_fire: ['"There\'s no fire, no wood, no burning directly involved."'],
+    l477_abstract: ['"The structure of the fireplace is so abstract- the man\'s wisdom? His \'legitimate following\'?"'],
+    l477_spark: ['"And the timing doesn\'t seem to add up; the man dies, but then they turn him into a myth. So which event is the spark? His actual death? Or the mythological version of his death?"'],
+    l477_ash: ['"And the so-called \'ash\' at the end; while it may no longer resemble the original knowledge of the man, it is still highly structured; more structured than a pile of ash."'],
     l479: ['"These are all good questions, my dear. In time, we will answer them all. For now, recognize that the Voice of Fire fits on both levels."'],
     l481: ['"Ok, I guess," you mutter.', "But you don't really see it."]
 };
@@ -70,6 +72,7 @@ export const AUTHORED = {
     ],
     coda: ['Beneath the board, in your own colour, is the afternoon: everything you said, and everything that followed.'],
     nothing_yet: ['It felt like nothing yet. It has not been read.'],
+    went_like_this: ['It went like this:'],
     nothing_in_particular: ['It felt like nothing in particular.']
 };
 
@@ -87,6 +90,7 @@ export const CLASSROOM_EVENTS: { [command: string]: { name: string, feeling?: st
     'listen': { name: 'the listening' },
     'pick up the chalk': { name: 'the picking up of the chalk', feeling: 'It felt a bit ordinary, because it was chalk.' },
     'draw a vertical line': { name: 'the drawing of the vertical line', feeling: 'It felt a bit decisive, because there was no line, and then there was.' },
+    'put down the chalk': { name: 'the putting down of the chalk' },
     'say all set': { name: 'the saying of all set' },
     'say that the Voice of Fire is contained in this one': { name: 'the saying that the Voice of Fire is contained in this one' },
     'say that it is a sad story': { name: 'the saying that it is a sad story' },

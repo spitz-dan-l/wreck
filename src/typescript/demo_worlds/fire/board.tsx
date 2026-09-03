@@ -44,6 +44,7 @@ export const rendition_gist = (seq: string, step: number, pass: string): Gist =>
 export const annotation_gist = (seq: string, n: number, pass: string, role: string): Gist =>
     gist('annotation', undefined, { seq, n, pass, role });
 export const unmapped_gist = (seq: string): Gist => gist('unmapped', undefined, { seq });
+export const rendition_text_gist = (seq: string, pass: string): Gist => gist('rendition_text', undefined, { seq, pass });
 export const classroom_gist = (command: string): Gist => gist('classroom', undefined, { command });
 
 export const exact_gist = exact;
@@ -61,13 +62,13 @@ export function paragraphs(ps: string[]): StoryNode[] {
 
 // One step in both forms: the chalk statement, its notation (folded), and
 // the places where its targets and the Fire's rendition will go.
-export function step_node(seq: string, step: Step, notation_absent: boolean): StoryNode {
+export function step_node(seq: string, step: Step, notation_absent: boolean, omit_notation = false): StoryNode {
     return <div gist={step_gist(seq, step.index)} className={`step step-${step.index}`}>
         <div className="chalk">{step.chalk}</div>
-        <div className={'notation collapsed' + (notation_absent ? ' absent' : '')}>
+        {omit_notation ? [] : <div className={'notation collapsed' + (notation_absent ? ' absent' : '')}>
             <div className="command">{'> ' + step.command}</div>
             <div>{step.consequence}</div>
-        </div>
+        </div>}
         <div gist={targets_gist(seq, step.index)} className="targets"></div>
         <div gist={spoken_gist(seq, step.index)} className="spoken"></div>
     </div> as StoryNode;
@@ -79,10 +80,10 @@ export function steps_column(seq: string, fire: AbstractSequence, hidden: boolea
     </div> as StoryNode;
 }
 
-// The knowledge passage for an abstract sequence: its steps in both forms.
-export function sequence_passage(seq: AbstractSequence): StoryNode {
+// The passage for an abstract sequence: its steps in both forms, or in the chalk form alone.
+export function sequence_passage(seq: AbstractSequence, with_notation = true): StoryNode {
     return <div gist={sequence_gist(seq.voice.id)} className="right">
-        {seq.steps.map(s => step_node(seq.voice.id, s, false))}
+        {seq.steps.map(s => step_node(seq.voice.id, s, false, !with_notation))}
     </div> as StoryNode;
 }
 
@@ -154,21 +155,56 @@ export function event_passage(story: StorySpec, e: StoryEventSpec): StoryNode {
     </div> as StoryNode;
 }
 
+// A badge is "held" when placed, solid once applied, hollow once set aside.
 export function badge_node(seq: string, event: number, step: number, pass: string): StoryNode {
-    return <span gist={badge_gist(seq, event, step, pass)} className={`badge step-${step} solid`}>{String(step)}</span> as StoryNode;
+    return <span gist={badge_gist(seq, event, step, pass)} className={`badge step-${step} held`}>{String(step)}</span> as StoryNode;
 }
 
 export function reference_node(seq: string, step: number, pass: string, event_name: string): StoryNode {
-    return <div gist={reference_gist(seq, step, pass)} className={`reference step-${step} solid`}>{'→ ' + event_name}</div> as StoryNode;
+    return <div gist={reference_gist(seq, step, pass)} className={`reference step-${step} held`}>{'→ ' + event_name}</div> as StoryNode;
 }
 
-// The Fire speaks (SPEC §7.2): under a step, its command, the derived participant, and the target event's consequence.
-export function rendition_node(story: StorySpec, fire: AbstractSequence, p: Participant, pass: string): StoryNode {
+export function reference_text(event_name: string): string {
+    return '→ ' + event_name;
+}
+
+// The Fire speaks (SPEC §7.2): under a step, its command and the derived
+// participant; the target event's consequence once, under the first of the
+// steps that share it.
+export function rendition_node(story: StorySpec, fire: AbstractSequence, p: Participant, pass: string, with_consequence: boolean): StoryNode {
     const step = fire.steps.find(s => s.index === p.step)!;
     return <div gist={rendition_gist(story.id, p.step, pass)} className={`rendition step-${p.step}`}>
         <div>{`> ${step.command} — ${p.derives}`}</div>
-        <blockquote>{paragraphs(event_consequence(story, p.event))}</blockquote>
+        {with_consequence ? <blockquote>{paragraphs(event_consequence(story, p.event))}</blockquote> : []}
     </div> as StoryNode;
+}
+
+// The same, as one text: the steps grouped by the event they share, its consequence once (SPEC §7.2).
+export function rendition_text(story: StorySpec, fire: AbstractSequence, parts: Participant[], pass: string): StoryNode {
+    const groups: Participant[][] = [];
+    for (const p of parts) {
+        const last = groups[groups.length - 1];
+        if (last !== undefined && last[0].event === p.event) {
+            last.push(p);
+        } else {
+            groups.push([p]);
+        }
+    }
+    return <div gist={rendition_text_gist(story.id, pass)} className="spoken-text">
+        {groups.map(g => <div className="spoken-group">
+            {g.map(p => <div>{`> ${fire.steps.find(s => s.index === p.step)!.command} — ${p.derives}`}</div>)}
+            <blockquote>{paragraphs(event_consequence(story, g[0].event))}</blockquote>
+        </div>)}
+    </div> as StoryNode;
+}
+
+// The voice bar as text, for the `speak as` frame.
+export function voice_bar_text(voice: VoiceId): string {
+    return `— ${voice_of(voice).name} —`;
+}
+
+export function coda_node(text: string[]): StoryNode {
+    return <div className="coda">{paragraphs(text)}</div> as StoryNode;
 }
 
 // The fire-coloured note on a mapped row (SPEC §7.3).
@@ -183,7 +219,8 @@ export function barcode_node(story: StorySpec, mappings: Mapping[]): StoryNode {
         for (const m of mappings) {
             for (const p of m.placements) {
                 if (p.event === e.index) {
-                    badges.push(<span className={`badge step-${p.step} ${m.status === 'set aside' ? 'hollow' : 'solid'}`}>{String(p.step)}</span> as StoryNode);
+                    const look = m.status === 'applied' ? 'solid' : m.status === 'set aside' ? 'hollow' : 'held';
+                    badges.push(<span className={`badge step-${p.step} ${look}`}>{String(p.step)}</span> as StoryNode);
                 }
             }
         }
@@ -332,8 +369,13 @@ export function mapped_rows_ops(story: StorySpec, mapped_events: number[], frame
 
 // `apply`: the Fire speaks under each step; each mapped row is annotated; the badges of this pass are solid.
 export function apply_ops(story: StorySpec, fire: AbstractSequence, parts: Participant[], pass: string, frame_of: (event: number) => number | undefined): StoryUpdaterSpec[] {
+    const seen_events = new Set<number>();
     return [
-        ...parts.map(p => at(spoken_gist(story.id, p.step)).add(rendition_node(story, fire, p, pass))),
+        ...parts.map(p => {
+            const first = !seen_events.has(p.event);
+            seen_events.add(p.event);
+            return at(spoken_gist(story.id, p.step)).add(rendition_node(story, fire, p, pass, first));
+        }),
         ...parts.map(p => S.frame(frame_of(p.event)!).first(S.has_class('input-text')).add(annotation_node(story.id, p.event, pass, p.role))),
         ...solid_ops(story, pass, true)
     ];
@@ -343,6 +385,7 @@ export function apply_ops(story: StorySpec, fire: AbstractSequence, parts: Parti
 export function unapply_ops(story: StorySpec, pass: string): StoryUpdaterSpec[] {
     return [
         S.has_gist({ tag: 'rendition', params: { seq: story.id, pass } }).remove(),
+        S.has_gist({ tag: 'rendition_text', params: { seq: story.id, pass } }).remove(),
         S.has_gist({ tag: 'annotation', params: { seq: story.id, pass } }).remove(),
         ...solid_ops(story, pass, false)
     ];
@@ -350,9 +393,14 @@ export function unapply_ops(story: StorySpec, pass: string): StoryUpdaterSpec[] 
 
 function solid_ops(story: StorySpec, pass: string, solid: boolean): StoryUpdaterSpec[] {
     return [
-        S.has_gist({ tag: 'badge', params: { seq: story.id, pass } }).css({ solid, hollow: !solid }),
-        S.has_gist({ tag: 'reference', params: { seq: story.id, pass } }).css({ solid, hollow: !solid })
+        S.has_gist({ tag: 'badge', params: { seq: story.id, pass } }).css({ solid, hollow: !solid, held: false }),
+        S.has_gist({ tag: 'reference', params: { seq: story.id, pass } }).css({ solid, hollow: !solid, held: false })
     ];
+}
+
+// The coda (SPEC §9): its own node after the last frame.
+export function coda_ops(text: string[]): StoryUpdaterSpec[] {
+    return [S.frame().insert_after(coda_node(text))];
 }
 
 // `say all set`: the board folds to a chip with its barcode; the hole returns to the root.

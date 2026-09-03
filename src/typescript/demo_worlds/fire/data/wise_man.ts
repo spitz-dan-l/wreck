@@ -83,7 +83,7 @@ export const WISE_MAN: StorySpec = {
             index: 5, voices: ['the followers'], prose: 5,
             command: 'grow in number',
             name: 'the growing in number',
-            consequence: ['You grow in number. Word of his wisdom spreads, and more of you come.'],
+            consequence: ["You grow in number. Word of the man's wisdom spreads, and more of you come."],
             authored: true
         },
         {
@@ -173,7 +173,7 @@ export const WISE_MAN: StorySpec = {
                 4: [
                     ...LITERAL_ROWS[4],
                     { event: 12, derives: 'the myth of his death' },
-                    { event: 8, derives: 'his death', mark: 'His death. Very well. Hold that.' }
+                    { event: 8, derives: 'his death', mark: '"His death. Very well. Hold that," says Katya.' }
                 ],
                 5: [...LITERAL_ROWS[5], { event: 12, derives: 'the distortions' }],
                 6: [...LITERAL_ROWS[6], { event: 13, derives: 'the books' }],
@@ -188,14 +188,16 @@ export const WISE_MAN: StorySpec = {
         'then not, because all of them did'
     ],
     grafted_feeling: "unconvincing, because you don't really see it",
+    apply_after: {
+        first: ['"Now, my dear, please find the second solution," says Katya.']
+    },
     apply_text: {
         first: [
             'You do. Just',
             'His closest followers construct a great funeral pyre, and lay his body on it.',
             'and',
             "The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.",
-            'participate in the mapping.',
-            '"Now, my dear, please find the second solution," says Katya.'
+            'participate in the mapping.'
         ],
         second: [
             "It takes you some time, but you gradually work it out. The construction of the fireplace is the replication of the man's wisdom within his mind (tinder), his initial and central followers (kindling), and the wider community of followers (firewood). The mythologizing of his death marks the spark, which yields ever increasing distortions to his ideology, which spread through his original community and beyond. At the end, his wisdom has become ash, spread far and wide across the adherents to the book."

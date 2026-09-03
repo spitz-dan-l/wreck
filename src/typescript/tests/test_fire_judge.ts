@@ -52,6 +52,11 @@ export function normalise(s: string): string {
     return s.replace(/\s+/g, ' ').trim();
 }
 
+// A sentence quoted on its own keeps the .md's quotation marks (SPEC §10); the marks at its edges are not part of the match.
+export function unquote(s: string): string {
+    return s.replace(/^"/, '').replace(/"$/, '');
+}
+
 // The document, whitespace-normalised, without its footnote markers.
 export function document_text(): string {
     const raw = fs.readFileSync(path.join(__dirname, '..', '..', 'dist', 'posts', 'puzzle_lofty.md'), 'utf8');
@@ -86,16 +91,23 @@ describe('fire data', () => {
             'The tinder burns quickly on contact with the flame.',
             'The fire starts, spreading first to the kindling and then the logs.'
         ]);
-        // The house's burning lines all follow from the scattering.
+        // The house's burning lines all follow from the scattering, and only from it; the campfire's ¶ 8 only from the touch.
         assert.equal(event_consequence(HOUSE, 13).length, 5);
         assert.equal(event_consequence(HOUSE, 10).length, 3);
+        assert.equal(event_consequence(HOUSE, 11).length, 1);
+        assert.equal(event_consequence(HOUSE, 12).length, 1);
+        assert.ok(!event_consequence(HOUSE, 11).some(p => p === HOUSE.prose[9]));
+        assert.equal(event_consequence(CAMPFIRE, 7).length, 1);
+        assert.ok(!event_consequence(CAMPFIRE, 7).includes(CAMPFIRE.prose[7]));
+        assert.equal(event_consequence(CAMPFIRE, 11).length, 1);
+        assert.equal(event_consequence(CAMPFIRE, 12).length, 2);
         assert.deepEqual(TWO_LINES.events, [9, 11]);
     });
 
     it('quotes the document verbatim', () => {
         const md = document_text();
         const check = (text: string, what: string) =>
-            assert.ok(md.includes(normalise(text)), `${what} is not in the document verbatim: "${text}"`);
+            assert.ok(md.includes(unquote(normalise(text))), `${what} is not in the document verbatim: "${text}"`);
 
         for (const seq of ABSTRACT_SEQUENCES) {
             for (const step of seq.steps) {
@@ -166,7 +178,7 @@ describe('the judge: the campfire', () => {
         const result = applied(CAMPFIRE, mapping);
         assert.equal(result.mapping.status, 'applied');
         assert.deepEqual(result.participants.map(p => [p.role, p.derives]), [
-            ['tinder', 'the tinder'], ['kindling', 'the kindling'], ['firewood', 'the logs'],
+            ['tinder', 'a patch of tinder'], ['kindling', 'the kindling'], ['firewood', 'the logs'],
             ['ember', 'the ember'], ['flame', 'the flame'], ['blaze', 'the blaze'],
             ['blaze', 'the blaze'], ['ash', 'a pile of ash']
         ]);
@@ -239,7 +251,7 @@ describe('the judge: the campfire', () => {
         assert.ok(!result.ok);
         assert.equal(result.rule, 'L1');
         assert.equal(result.step, 8);
-        assert.equal(result.nudge, NUDGE.L1);
+        assert.equal(result.nudge, 'The Voice of Fire does not skip, my dear. The ash left behind is not on the board.');
         // Erasing a step reopens the hole.
         const full = chain(CAMPFIRE, CAMPFIRE_MAPPING);
         assert.equal(apply(CAMPFIRE, FIRE, erase(full, 3)).ok, false);
@@ -395,7 +407,7 @@ describe("the judge: the wise man's story", () => {
         const with_death = place(WISE_MAN, FIRE, chain(WISE_MAN, FIGURATIVE.filter(([s]) => s !== 4), second, [first]), 4, 8, [first]);
         assert.ok(with_death.ok);
         assert.equal(with_death.derives, 'his death');
-        assert.equal(with_death.mark, 'His death. Very well. Hold that.');
+        assert.equal(with_death.mark, '"His death. Very well. Hold that," says Katya.');
         const death = applied(WISE_MAN, with_death.mapping, [first]);
         assert.equal(death.participants[3].event, 8);
         // Both solutions can be held at once: one applied, one set aside, on different events.

@@ -15,7 +15,8 @@ import { Mapping, StepIndex, STORIES, StorySpec, TWO_LINES, VOICE_OF_FIRE } from
 import { apply as judge_apply, erase, participants, place, placed, role_entries } from '../judge';
 import { event_names } from '../names';
 import {
-    annotation_node, apply_ops, erase_ops, event_gist, exact_gist, mapped_rows_ops, paragraphs, place_ops, remove_gists, unapply_ops
+    annotation_node, apply_ops, erase_ops, event_gist, exact_gist, mapped_rows_ops, paragraphs, place_ops, reference_text, remove_gists,
+    rendition_text, unapply_ops
 } from '../board';
 import {
     applied_mapping, board_story, event_frame, FireWorld, open_mapping, phrase, replace_mapping, scene_of, set_aside_mappings
@@ -49,7 +50,7 @@ function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepInde
     return update(w, {
         mappings: () => mappings,
         story_updates: story_updater(
-            verdict.mark === undefined ? [] : S.consequence(paragraphs([verdict.mark])),
+            S.consequence(paragraphs([reference_text(name), ...(verdict.mark === undefined ? [] : [verdict.mark])])),
             place_ops(story, step, mapping.pass, event, event_frame(w, story.id, event)!, name, placed(mapping, step)),
             rows_ops(w, story, mappings)
         )
@@ -94,7 +95,10 @@ function consequences(w: FireWorld, story: StorySpec, m: Mapping, undo: boolean)
         },
         knowledge: k => parts.reduce((acc, p) =>
             graft(acc, exact_gist(event_gist(story.id, p.event)), annotation_node(story.id, p.event, m.pass, p.role)), k),
-        story_updates: story_updater(apply_ops(story, FIRE, parts, m.pass, e => event_frame(w, story.id, e)))
+        story_updates: story_updater(
+            S.description(rendition_text(story, FIRE, parts, m.pass)),
+            apply_ops(story, FIRE, parts, m.pass, e => event_frame(w, story.id, e))
+        )
     });
 }
 
@@ -103,9 +107,14 @@ function do_apply(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     if (!result.ok) {
         return nudge_frame(w, result.nudge);
     }
+    const after = story.apply_after?.[mapping.pass] ?? [];
     let next = update(w, {
         mappings: _ => replace_mapping(_, mapping, result.mapping),
-        story_updates: story_updater(S.consequence(paragraphs(story.apply_text[mapping.pass] ?? [])))
+        story_updates: story_updater(
+            S.consequence(paragraphs(story.apply_text[mapping.pass] ?? [])),
+            // l. 465 comes after the Fire's rendition (SPEC §5.4): the prompt category prints last.
+            after.length === 0 ? [] : S.prompt(paragraphs(after))
+        )
     });
     next = consequences(next, story, result.mapping, false);
     if (story.id === TWO_LINES.story && mapping.pass === 'first') {
@@ -121,15 +130,22 @@ function do_apply(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     return next;
 }
 
+// `set aside` (SPEC §6): where the story has a second-pass table, the
+// mapping is set aside and the second pass opens (L7); where it has none,
+// the mapping returns to open with its placements kept, so that the
+// player can change their mind (l. 140).
 function do_set_aside(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
     let next = consequences(w, story, mapping, true);
+    const has_second_pass = story.candidates[FIRE.voice.id]?.second !== undefined;
+    if (!has_second_pass) {
+        const reopened: Mapping = { ...mapping, status: 'open', reopened: true };
+        return update(next, { mappings: _ => replace_mapping(_, mapping, reopened) });
+    }
     const aside: Mapping = { ...mapping, status: 'set aside' };
     next = update(next, { mappings: _ => replace_mapping(_, mapping, aside) });
-    // The next pass opens if the story has a table for it.
-    const next_pass = 'second';
-    if (story.candidates[FIRE.voice.id]?.[next_pass] !== undefined && open_mapping(next, story) === undefined) {
+    if (open_mapping(next, story) === undefined) {
         next = update(next, {
-            mappings: _ => [..._, { voice: FIRE.voice.id, sequence: story.id, pass: next_pass, placements: [], status: 'open' as const }]
+            mappings: _ => [..._, { voice: FIRE.voice.id, sequence: story.id, pass: 'second' as const, placements: [], status: 'open' as const }]
         });
     }
     return next;
@@ -203,6 +219,12 @@ export const mapping_puffer: Puffer<FireWorld> = {
                 threads.push(p =>
                     p.consume(['resume', GAP, phrase(label(story, m))], () =>
                     p.submit(() => do_resume(world, story, m))));
+            }
+            // A reopened mapping can be resumed as it was: the no-edit shortcut for apply.
+            if (open !== undefined && open.reopened) {
+                threads.push(p =>
+                    p.consume(['resume', GAP, phrase(label(story, open))], () =>
+                    p.submit(() => do_apply(world, story, open))));
             }
         }
         return parser.split(threads);

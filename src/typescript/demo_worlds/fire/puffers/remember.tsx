@@ -11,7 +11,7 @@ import { ABSTRACT_SEQUENCES, AbstractSequence, FIRE_ROLES, STORIES, StorySpec, S
 import { AUTHORED, CLASSROOM_EVENTS } from '../data/katya';
 import { placed, step_of } from '../judge';
 import { event_names, ordinal_names, role_name } from '../names';
-import { event_gist, paragraphs, sequence_gist, step_gist, strip_gists } from '../board';
+import { event_gist, paragraphs, sequence_passage, step_gist, strip_gists } from '../board';
 import { applied_mapping, FireWorld, phrase } from '../world';
 
 const FIRE = VOICE_OF_FIRE;
@@ -40,16 +40,16 @@ function remember_event(w: FireWorld, story: StorySpec, n: number): FireWorld {
         }
     }
     const feeling = roles.length > 0
-        ? roles.map(r => `— the ${r}, in ${FIRE.voice.name}`)
+        ? [`It felt like ${roles.map(r => `the ${r}`).join(', and ')}, in ${FIRE.voice.name}.`]
         : AUTHORED.nothing_yet;
-    return remembered(w, [passage, ...paragraphs(feeling)]);
+    return remembered(w, [...paragraphs(AUTHORED.went_like_this), passage, ...paragraphs(feeling)]);
 }
 
 // SEQUENCES
 
 function sequence_body(w: FireWorld, story: StorySpec, events: number[], feelings: string[]): Fragment[] {
     const passages = events.map(n => strip_gists(lookup_or_throw(w.knowledge, event_gist(story.id, n))));
-    return [...passages, feelings_list(feelings)];
+    return [...paragraphs(AUTHORED.went_like_this), ...passages, feelings_list(feelings)];
 }
 
 function remember_story(w: FireWorld, story: StorySpec): FireWorld {
@@ -79,8 +79,10 @@ function remember_role(w: FireWorld, role: string): FireWorld {
 
 // ABSTRACT SEQUENCES AND STEPS
 
+// The Voice of Fire in the chalk form alone until Katya has written the notation (l. 182).
 function remember_sequence(w: FireWorld, seq: AbstractSequence): FireWorld {
-    return remembered(w, [strip_gists(lookup_or_throw(w.knowledge, sequence_gist(seq.voice.id)))]);
+    const with_notation = seq !== FIRE || w.scene !== 'chalk';
+    return remembered(w, [strip_gists(sequence_passage(seq, with_notation))]);
 }
 
 function remember_step(w: FireWorld, n: number): FireWorld {
@@ -112,7 +114,7 @@ export function classroom_events(w: FireWorld): ClassroomEvent[] {
 function remember_classroom_event(w: FireWorld, e: ClassroomEvent): FireWorld {
     const found = S.frame(e.frame).query(w.story);
     const reprint = found.length === 0 ? [] : [strip_gists(found[0][0])];
-    return remembered(w, [...reprint, ...paragraphs(e.feeling)]);
+    return remembered(w, [...paragraphs(AUTHORED.went_like_this), ...reprint, ...paragraphs(e.feeling)]);
 }
 
 // WHAT CAN BE REMEMBERED

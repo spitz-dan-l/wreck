@@ -221,7 +221,8 @@ export function violations(story: StorySpec, voice: AbstractSequence, mapping: M
     const result: Rejected[] = [];
     for (const step of voice.steps) {
         if (placed(mapping, step.index) === undefined) {
-            result.push({ ok: false, rule: 'L1', step: step.index, nudge: voice.nudges.L1 });
+            const name = step.name[0].toUpperCase() + step.name.slice(1);
+            result.push({ ok: false, rule: 'L1', step: step.index, nudge: voice.nudges.L1.replace('{step}', name) });
         }
     }
     for (const p of mapping.placements) {

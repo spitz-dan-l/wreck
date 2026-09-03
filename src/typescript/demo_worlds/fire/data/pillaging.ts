@@ -44,7 +44,7 @@ export const PILLAGING: AbstractSequence = {
             2: 'They came upon it. Did they go in?',
             3: 'What did they take?'
         },
-        L1: 'The Pillaging does not skip, my dear. Something is missing from the board.',
+        L1: 'The Pillaging does not skip, my dear. {step} is not on the board.',
         L3: 'The Pillaging proceeds in order, my dear. Nothing is taken from a house no one has entered.',
         L6: 'One line cannot be two things at once, my dear. Who lives there, and who enters?',
         L7: 'That line is spoken for, my dear. It belongs to the first solution.',

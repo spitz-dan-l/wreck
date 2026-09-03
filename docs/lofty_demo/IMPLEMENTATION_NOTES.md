@@ -218,3 +218,84 @@ inserted after the frame of the command that opens them
   Google font request is answered with an empty stylesheet so the run does
   not touch the network. The acceptance script JSON is regenerated from
   `ACCEPTANCE_SCRIPT` (it now includes `collapse the unmapped`).
+
+## Phase B3 (the round-2 play critique, SPEC v1.2)
+
+All of D1–D9 and I1–I10 and the orchestrator's notes are in, with these
+particulars:
+
+- **D1.** `followed_lines` attaches a consequence-only ¶ to the single
+  event with the greatest index whose ¶ precedes it. Regressions in the
+  judge test (`event_consequence`) and in the walkthrough (`remember the
+  lighting of a match` has no l. 288; `remember the lighting of the rag` has
+  no l. 336).
+- **D2.** In a story with no second-pass table, `set aside the mapping`
+  returns the mapping to `open` with its placements kept (`Mapping.reopened`
+  marks it; badges hollow, roles, rendition and annotations dropped);
+  `map`, `erase`, `apply` are offered again and `resume the mapping`
+  re-applies it unchanged. The critic's test sequence ("map tinder to the
+  laying of walls and a roof" straight after set aside) is refused by L6,
+  correctly: the thatch line still holds the kindling. The walkthrough
+  frees each line first (firewood → foundation, kindling → frame, then
+  tinder → thatch) and ends with "the thatch, in the house in the woods".
+- **D3.** l. 350's second sentence prints after the voice speech; l. 419's
+  last sentence after the abstract-voices speech. Both are in `QUOTED` and
+  covered by the verbatim test.
+- **D4.** Every objection, the Locked line and l. 481 require the second
+  solution to be the applied one; the walkthrough probes it (set aside the
+  second, resume the first: nothing is offered).
+- **D5.** "It went like this:" heads every event and sequence replay,
+  classroom events included.
+- **D6 / I8.** `speak as` is accepted only for a voice that has the cursor
+  ¶'s line; otherwise "The <voice> has no line here, my dear. Who acts?"
+  prints and nothing changes (the voice, the speeches). The forest's
+  speeches therefore fire at the seed and the season.
+- **D7.** `remember the Voice of Fire` is built from the data with the
+  chalk form alone until the second `listen` (the notation is not merely
+  hidden: `to_basic_text` would still print it).
+- **D8.** The coda is its own node (`.coda`) inserted after the last frame
+  in the ledger; `remember the saying of Ok, I guess` ends with "But you
+  don't really see it." then its feeling.
+- **D9.** `StorySpec.apply_after` holds l. 465; it prints in the frame's
+  prompt category, which the engine lays out last, after the rendition in
+  the description category.
+- **I1.** The text rendition (the apply frame's description, gist
+  `rendition_text(seq, pass)`) groups the steps that share an event, its
+  consequence once; on the board each step's `.spoken` gets its line and
+  only the first of the sharing steps carries the consequence.
+- **I2.** `remember <event>` prints one feeling line ("It felt like the
+  ember, and the flame, and the blaze, in the Voice of Fire."); the
+  annotations stay in the passage and on the board.
+- **I3.** s1 derives "a patch of tinder" in the campfire.
+- **I4.** `put down the chalk` closes the house (after l. 389) and the
+  forest (after apply); `say all set` remains the campfire's; the wise man
+  is closed by the objections. Named "the putting down of the chalk" for
+  `remember`.
+- **I5.** The `let it follow` frame prints "↳ ¶" as its consequence; the
+  appended paragraph is no longer duplicated into the previous frame on the
+  board (knowledge still attaches it to the previous event, so `remember`
+  and the rendition show it there). On the board every ¶ row now has one
+  frame beneath it, followed ¶s included.
+- **I6 / I9.** The four objection sentences keep the .md's quotation
+  marks; the verbatim test strips a quotation mark at either edge of a
+  passage before matching. The mark prints as `"His death. Very well. Hold
+  that," says Katya.`
+- **I7.** `nudges.L1` is a template; the judge fills `{step}` with the first
+  unplaced step's name, capitalised ("The laying of the tinder is not on
+  the board.").
+- **I10.** l. 449 spells "interpretted and reinterpretted"; the prose keeps
+  the .md's spelling, and e15's authored consequence uses "interpreted and
+  reinterpreted" as SPEC §5.4 gives it. The verbatim test exempts e15
+  because it is `authored`.
+- **Orchestrator 5.** e5 (the followers) now reads "Word of the man's
+  wisdom spreads"; every other authored line was checked for a consistent
+  person within its voice.
+- **Orchestrator 6–7.** `speak as` prints "— the children —" and a
+  successful `map` prints "→ <event name>" as the frame's consequence. On
+  the board these sit in the ledger/left-column frame as the log of the act
+  while the bar and the badge/reference are the board's state; a node
+  cannot be in two places, so the text is a second, gist-less node.
+- Badges are "held" (outlined) when placed, solid once applied, hollow once
+  set aside; the barcode follows the mapping's status.
+- The house's `say all set` frame in the chip: the chip CSS shows the
+  ledger's last frame, which is now `put down the chalk` (l. 393).

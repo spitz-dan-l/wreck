@@ -138,7 +138,7 @@
 .frame.band-7 { border-left-color: rgb(220, 20, 60); }
 .frame.band-8 { border-left-color: rgb(154, 154, 154); }
 
-/* Badges: numbered, in the step's colour; solid when applied, hollow when set aside. */
+/* Badges: numbered, in the step's colour; held (outlined) when placed, solid when applied, hollow when set aside. */
 .badge {
     display: inline-block;
     min-width: 1.2em;
@@ -162,6 +162,13 @@
     background: transparent;
     --alpha-color: 0.3;
     border-color: rgba(var(--step-rgb), 0.3);
+}
+
+.coda {
+    margin-top: 2em;
+    --alpha-color: 0.85;
+    white-space: normal;
+    line-height: 1.8em;
 }
 
 .annotation {

@@ -13,7 +13,7 @@ import { CAMPFIRE, FOREST, HOUSE, STORIES, StorySpec, VOICE_OF_FIRE, WISE_MAN } 
 import { AUTHORED, QUOTED, QuotedKey } from '../data/katya';
 import { placed } from '../judge';
 import {
-    classroom_gist, event_passage, finish_board_ops, open_board_ops, paragraphs, prose_told, reveal_notation_ops,
+    classroom_gist, coda_ops, event_passage, finish_board_ops, open_board_ops, paragraphs, prose_told, reveal_notation_ops,
     show_lesson_board_ops, teach_voices_ops
 } from '../board';
 import { applied_mapping, board_story, FireWorld, has_said, phrase, SceneId, scene_of } from '../world';
@@ -110,7 +110,7 @@ export const SCRIPT: Line[] = [
         // The pause at ¶9 (l. 348): in the family's voice, the children's line cannot be issued.
         command: 'ask what the right thing to do is', scene: scene_of(HOUSE, 'transcribing'),
         requires: w => w.cursor === 9 && !w.taught.includes('voice'),
-        says: ['l348', 'l350'], also: AUTHORED.voice_switches,
+        says: ['l348', 'l350'], also: [...AUTHORED.voice_switches, ...QUOTED.l350b],
         board: () => teach_voices_ops(),
         then: w => update(w, { taught: _ => [..._, 'voice'] })
     },
@@ -126,14 +126,14 @@ export const SCRIPT: Line[] = [
         says: ['l389', 'l391']
     },
     {
-        command: 'say all set', scene: scene_of(HOUSE, 'mapping'),
+        command: 'put down the chalk', scene: scene_of(HOUSE, 'mapping'),
         requires: w => applied(HOUSE)(w) && has_said(w, 'say that it knows nothing of the morality of the burning either'),
         says: ['l393'], next: scene_of(HOUSE, 'done'), then: finish_board(HOUSE)
     },
     { command: 'listen', scene: scene_of(HOUSE, 'done'), says: [], shows: () => [prose_told(FOREST)], next: scene_of(FOREST, 'ready') },
     { command: 'pick up the chalk', scene: scene_of(FOREST, 'ready'), says: [], then: open_board(FOREST) },
     {
-        command: 'say all set', scene: scene_of(FOREST, 'mapping'), requires: applied(FOREST),
+        command: 'put down the chalk', scene: scene_of(FOREST, 'mapping'), requires: applied(FOREST),
         says: ['l421'], next: scene_of(FOREST, 'done'), then: finish_board(FOREST)
     },
     { command: 'listen', scene: scene_of(FOREST, 'done'), says: [], shows: () => [prose_told(WISE_MAN)], next: scene_of(WISE_MAN, 'ready') },
@@ -154,33 +154,33 @@ export const SCRIPT: Line[] = [
     },
     {
         command: 'object that the fireplace is too abstract', scene: scene_of(WISE_MAN, 'second'),
-        requires: w => has_said(w, 'object that there is no fire') && !has_said(w, 'object that the fireplace is too abstract'),
+        requires: w => objections_open(w) && has_said(w, 'object that there is no fire') && !has_said(w, 'object that the fireplace is too abstract'),
         says: ['l477_abstract']
     },
     {
         command: 'object that the spark is the myth, not the death', scene: scene_of(WISE_MAN, 'second'),
-        requires: w => has_said(w, 'object that the fireplace is too abstract') && spark_is(12)(w) && !spark_said(w),
+        requires: w => objections_open(w) && has_said(w, 'object that the fireplace is too abstract') && spark_is(12)(w) && !spark_said(w),
         says: ['l477_spark']
     },
     {
         command: 'object that the spark is the death, not the myth', scene: scene_of(WISE_MAN, 'second'),
-        requires: w => has_said(w, 'object that the fireplace is too abstract') && spark_is(8)(w) && !spark_said(w),
+        requires: w => objections_open(w) && has_said(w, 'object that the fireplace is too abstract') && spark_is(8)(w) && !spark_said(w),
         says: ['l477_spark']
     },
     {
         command: 'object that the ash is still structured', scene: scene_of(WISE_MAN, 'second'),
-        requires: w => spark_said(w) && !has_said(w, 'object that the ash is still structured'),
+        requires: w => objections_open(w) && spark_said(w) && !has_said(w, 'object that the ash is still structured'),
         says: ['l477_ash', 'l479']
     },
     {
         command: 'say that you see it', scene: scene_of(WISE_MAN, 'second'),
-        requires: w => has_said(w, 'object that the ash is still structured'),
+        requires: w => objections_open(w) && has_said(w, 'object that the ash is still structured'),
         says: [], locked: true
     },
     {
         command: 'say Ok, I guess', scene: scene_of(WISE_MAN, 'second'),
-        requires: w => has_said(w, 'object that the ash is still structured'),
-        says: ['l481'], also: AUTHORED.coda, next: 'end',
+        requires: w => objections_open(w) && has_said(w, 'object that the ash is still structured'),
+        says: ['l481'], board: () => coda_ops(AUTHORED.coda), next: 'end',
         then: w => update(w, { ended: true })
     }
 ];
@@ -198,7 +198,7 @@ function is_offered(line: Line, w: FireWorld): boolean {
 // A Locked line keeps its verb Available, so that it shows up (dimmed) once the verb is typed.
 function line_spec(command: string, locked: boolean): ConsumeSpec {
     const [verb, ...rest] = command.split(' ');
-    if (verb === 'look' || verb === 'listen' || verb === 'pick' || verb === 'draw') {
+    if (verb === 'look' || verb === 'listen' || verb === 'pick' || verb === 'put' || verb === 'draw') {
         return { tokens: phrase(command), locked };
     }
     return [verb, GAP, { tokens: phrase(rest.join(' ')), locked }];

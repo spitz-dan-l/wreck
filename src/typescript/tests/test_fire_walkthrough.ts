@@ -17,7 +17,7 @@ import { applied_mapping, set_aside_mappings } from 'demo_worlds/fire/world';
 import { raw, traverse_thread } from 'parser';
 import { apply_story_updates_all, to_basic_text, Updates as S } from 'story';
 import { apply_command, make_update_thread } from 'world';
-import { document_text, normalise } from './test_fire_judge';
+import { document_text, normalise, unquote } from './test_fire_judge';
 
 const FIRE = VOICE_OF_FIRE;
 
@@ -57,8 +57,10 @@ function candidates_enumerable(story: StorySpec) {
 export const WALKTHROUGH: Step[] = [
     { cmd: 'look at the board', expect: AUTHORED.shelf, check: w => assert.ok(commands(w).includes('remember the Pillaging')) },
     { cmd: 'listen', expect: [...QUOTED.l162, 'The laying of the tinder', 'The ash left behind'] },
+    { cmd: 'remember the Voice of Fire', expect: ['The ash left behind'], check: w => assert.ok(!frame_text(w).includes('reduce to ash')) },
     { cmd: 'listen', expect: [...QUOTED.l182, 'lay the tinder', 'A pile of black ash is left behind in the hearth.'],
       check: w => assert.ok(commands(w).includes('remember the laying of the tinder')) },
+    { cmd: 'remember the Voice of Fire', expect: ['reduce to ash'] },
     { cmd: 'listen', expect: [...QUOTED.l218, CAMPFIRE.prose[0], CAMPFIRE.prose[11]] },
     { cmd: 'say that the Voice of Fire is contained in this one', expect: [...QUOTED.l244, ...QUOTED.l246] },
     { cmd: 'pick up the chalk', expect: QUOTED.l248, check: w => assert.deepEqual(commands(w).filter(c => !c.startsWith('remember') && !c.startsWith('collapse')), ['speak as the friends']) },
@@ -81,26 +83,39 @@ export const WALKTHROUGH: Step[] = [
     { cmd: 'draw a vertical line', expect: QUOTED.l309, check: candidates_enumerable(CAMPFIRE) },
     { cmd: map_cmd(CAMPFIRE, 8, 11), trap: 'The singing is not ash. What is left behind, afterward, when no one is tending?' },
     { cmd: map_cmd(CAMPFIRE, 1, 2), trap: FIRE.nudges.step[1]! },
-    { cmd: 'apply the Voice of Fire', trap: FIRE.nudges.L1 },
-    ...maps(CAMPFIRE, [[1, 4], [2, 5], [3, 6], [4, 8], [5, 8], [6, 8], [7, 10], [8, 12]]),
-    { cmd: 'apply the Voice of Fire', expect: [...CAMPFIRE.apply_text.first!, '> lay the tinder — the tinder', '— the ash'],
-      check: w => assert.deepEqual(w.roles.tinder, [{ role: 'tinder', what: 'the tinder', where: CAMPFIRE.title }]) },
+    { cmd: 'apply the Voice of Fire', trap: 'The Voice of Fire does not skip, my dear. The laying of the tinder is not on the board.' },
+    { cmd: map_cmd(CAMPFIRE, 1, 4), expect: ['→ the laying of the tinder in the pit'] },
+    ...maps(CAMPFIRE, [[2, 5], [3, 6], [4, 8], [5, 8], [6, 8], [7, 10], [8, 12]]),
+    { cmd: 'apply the Voice of Fire', expect: [...CAMPFIRE.apply_text.first!, '> lay the tinder — a patch of tinder', '— the ash'],
+      check: w => {
+          assert.deepEqual(w.roles.tinder, [{ role: 'tinder', what: 'a patch of tinder', where: CAMPFIRE.title }]);
+          // The rendition is grouped by event: the three steps on the touch share one consequence.
+          const frame = frame_text(w);
+          assert.equal(frame.split('The tinder burns quickly on contact with the flame.').length - 1, 1);
+      } },
     { cmd: 'set aside the mapping', check: w => {
         assert.deepEqual(w.roles.tinder, []);
-        assert.ok(!text(w).includes('> lay the tinder — the tinder'));
+        assert.ok(!text(w).includes('> lay the tinder — a patch of tinder'));
         assert.ok(!text(w).includes('— the ash'));
         assert.equal(applied_mapping(w, CAMPFIRE), undefined);
-        assert.ok(!commands(w).includes('say all set'));
+        // No second pass here: the mapping is open again with its placements kept.
+        const cmds = commands(w);
+        assert.ok(!cmds.includes('say all set') && cmds.includes('resume the mapping') && cmds.includes('apply the Voice of Fire'));
+        assert.ok(cmds.includes('erase the laying of the tinder') && cmds.includes(map_cmd(CAMPFIRE, 1, 4)));
     } },
     { cmd: 'resume the mapping', check: w => {
         assert.equal(w.roles.tinder.length, 1);
-        assert.ok(text(w).includes('> lay the tinder — the tinder'));
+        assert.ok(text(w).includes('> lay the tinder — a patch of tinder'));
         assert.equal(applied_mapping(w, CAMPFIRE)?.status, 'applied');
     } },
     { cmd: 'say all set', expect: [...QUOTED.l313, ...QUOTED.l315], check: w => assert.ok(commands(w).includes('remember the campfire story')) },
-    { cmd: 'remember the campfire story', expect: ['It felt:', '— a bit warm, because they sang', '— like the Voice of Fire, because the tinder was the tinder'] },
-    { cmd: 'remember the tinder', expect: ['The tinder has been: the tinder, in the campfire story.'] },
-    { cmd: 'remember the touching of the flame to the tinder', expect: ['— the ember, in the Voice of Fire', '— the blaze, in the Voice of Fire'] },
+    { cmd: 'remember the campfire story', expect: ['It went like this:', 'It felt:', '— a bit warm, because they sang', '— like the Voice of Fire, because the tinder was a patch of tinder'] },
+    { cmd: 'remember the tinder', expect: ['The tinder has been: a patch of tinder, in the campfire story.'] },
+    { cmd: 'remember the touching of the flame to the tinder', expect: ['It went like this:', 'It felt like the ember, and the flame, and the blaze, in the Voice of Fire.'],
+      check: w => assert.ok(!frame_text(w).includes('— the ember, in the Voice of Fire')) },
+    // l. 288 belongs to the touch alone, not to the match.
+    { cmd: 'remember the lighting of a match', expect: ['The match head flickers into a tiny flame.', 'It felt like nothing yet. It has not been read.'],
+      check: w => assert.ok(!frame_text(w).includes(normalise(CAMPFIRE.prose[7]))) },
     { cmd: 'listen', expect: [HOUSE.prose[0], HOUSE.prose[12]] },
     { cmd: 'say that it is a sad story', expect: [...QUOTED.l344, ...QUOTED.l346] },
     { cmd: 'pick up the chalk' },
@@ -117,9 +132,9 @@ export const WALKTHROUGH: Step[] = [
         assert.ok(!cmds.includes('speak as the children'));
     } },
     { cmd: 'light the rag', trap: 'You are still speaking as the family, my dear. Would the family light the rag? Change the voice, then command.' },
-    { cmd: 'ask what the right thing to do is', expect: [...QUOTED.l348, ...QUOTED.l350, ...AUTHORED.voice_switches],
+    { cmd: 'ask what the right thing to do is', expect: [...QUOTED.l348, ...QUOTED.l350, ...AUTHORED.voice_switches, ...QUOTED.l350b],
       check: w => assert.ok(commands(w).includes('speak as the children')) },
-    { cmd: 'speak as the children' },
+    { cmd: 'speak as the children', expect: ['— the children —'] },
     { cmd: 'light the rag', expect: ['one of you lights an oil-soaked rag'] },
     { cmd: 'hurl it onto the roof' },
     { cmd: 'scatter', expect: AUTHORED.burning_lines, check: w => assert.equal(w.cursor, 10) },
@@ -131,10 +146,19 @@ export const WALKTHROUGH: Step[] = [
     { cmd: map_cmd(HOUSE, 1, 11) },
     ...maps(HOUSE, [[2, 9], [3, 8], [4, 12], [5, 13], [6, 13], [7, 13], [8, 13]]),
     { cmd: 'apply the Voice of Fire', expect: HOUSE.apply_text.first!,
-      check: w => assert.deepEqual(w.roles.tinder.map(r => r.what), ['the tinder', 'the oil-soaked rag']) },
+      check: w => assert.deepEqual(w.roles.tinder.map(r => r.what), ['a patch of tinder', 'the oil-soaked rag']) },
+    // l. 336 belongs to the scattering alone, not to the lighting of the rag.
+    { cmd: 'remember the lighting of the rag', check: w => assert.ok(!frame_text(w).includes(normalise(HOUSE.prose[9]))) },
     { cmd: 'object that there is no clear tinder', expect: [...QUOTED.l385, ...QUOTED.l387] },
+    // A change of mind after apply (l. 140): the thatch as tinder instead of the rag.
+    { cmd: 'set aside the mapping', check: w => assert.ok(commands(w).includes(map_cmd(HOUSE, 2, 8))) },
+    // Each fuel line must be freed before another step takes it (L6): foundation, then frame, then thatch.
+    { cmd: map_cmd(HOUSE, 1, 9), trap: FIRE.nudges.L6 },
+    ...maps(HOUSE, [[3, 7], [2, 8], [1, 9]]),
+    { cmd: 'apply the Voice of Fire', check: w => assert.deepEqual(w.roles.tinder.map(r => r.what), ['a patch of tinder', 'the thatch']) },
+    { cmd: 'remember the tinder', expect: ['the thatch, in the house in the woods'] },
     { cmd: 'say that it knows nothing of the morality of the burning either', expect: [...QUOTED.l389, ...QUOTED.l391] },
-    { cmd: 'say all set', expect: QUOTED.l393 },
+    { cmd: 'put down the chalk', expect: QUOTED.l393, check: w => assert.equal(w.board, undefined) },
     { cmd: 'listen', expect: [FOREST.prose[0]] },
     { cmd: 'pick up the chalk', check: w => {
         assert.equal(w.voice, undefined);
@@ -142,9 +166,10 @@ export const WALKTHROUGH: Step[] = [
         assert.deepEqual(cmds.sort(), FOREST.voices.map(v => `speak as ${v}`).concat(['speak as the Voice of Fire']).sort());
     } },
     { cmd: 'speak as the Voice of Fire', trap: FOREST.traps[0].nudge },
-    { cmd: 'speak as the seed', expect: AUTHORED.disembodied },
+    { cmd: 'speak as the fire', trap: 'The fire has no line here, my dear. Who acts?' },
+    { cmd: 'speak as the seed', expect: ['— the seed —', ...AUTHORED.disembodied] },
     { cmd: 'take root' },
-    { cmd: 'speak as the season', expect: AUTHORED.abstract },
+    { cmd: 'speak as the season', expect: [...AUTHORED.abstract, ...QUOTED.l419b] },
     { cmd: 'turn' },
     { cmd: 'speak as the tree', check: w => assert.ok(!text(w).endsWith(normalise(AUTHORED.disembodied[2]))) },
     { cmd: 'grow' }, { cmd: 'sprout leaves and seeds' },
@@ -156,7 +181,7 @@ export const WALKTHROUGH: Step[] = [
     { cmd: 'draw a vertical line', expect: QUOTED.l419, check: candidates_enumerable(FOREST) },
     ...maps(FOREST, [[1, 7], [2, 7], [3, 5], [4, 8], [5, 9], [6, 9], [7, 10], [8, 12]]),
     { cmd: 'apply the Voice of Fire', expect: FOREST.apply_text.first! },
-    { cmd: 'say all set', expect: QUOTED.l421 },
+    { cmd: 'put down the chalk', expect: QUOTED.l421 },
     { cmd: 'listen', expect: [WISE_MAN.prose[0], WISE_MAN.prose[13]] },
     { cmd: 'pick up the chalk' },
     { cmd: 'speak as the boy' }, { cmd: 'be born' }, { cmd: 'grow up and acquire wisdom' },
@@ -176,8 +201,15 @@ export const WALKTHROUGH: Step[] = [
     { cmd: map_cmd(WISE_MAN, 1, 2), trap: WISE_MAN.nudges[0].text },
     { cmd: map_cmd(WISE_MAN, 1, 11), trap: 'It burns here, my dear. Where was it built?' },
     ...maps(WISE_MAN, [[1, 9], [2, 9], [3, 9], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11]]),
-    { cmd: 'apply the Voice of Fire', expect: WISE_MAN.apply_text.first!,
-      check: w => { assert.ok(commands(w).includes('remember the two lines')); assert.ok(!commands(w).includes('set aside the first solution')); } },
+    { cmd: 'apply the Voice of Fire', expect: [...WISE_MAN.apply_text.first!, ...WISE_MAN.apply_after!.first!],
+      check: w => {
+          assert.ok(commands(w).includes('remember the two lines'));
+          assert.ok(!commands(w).includes('set aside the first solution'));
+          // l. 455–463, then the Fire's rendition, then l. 465.
+          const frame = frame_text(w);
+          const a = frame.indexOf('participate in the mapping.'), b = frame.indexOf("> lay the tinder — the pyre's tinder"), c = frame.indexOf(normalise(WISE_MAN.apply_after!.first![0]));
+          assert.ok(a >= 0 && a < b && b < c, `order: ${a} ${b} ${c}`);
+      } },
     { cmd: 'remember the two lines', expect: ['— contained, because everything else stood outside'] },
     { cmd: 'ask what she means', expect: [...QUOTED.l467, ...QUOTED.l469] },
     { cmd: 'set aside the first solution', check: w => {
@@ -188,7 +220,7 @@ export const WALKTHROUGH: Step[] = [
     { cmd: map_cmd(WISE_MAN, 8, 11), trap: FIRE.nudges.L7_step[8]! },
     { cmd: map_cmd(WISE_MAN, 1, 9), trap: FIRE.nudges.L7 },
     ...maps(WISE_MAN, [[1, 2], [2, 4], [3, 5]]),
-    { cmd: map_cmd(WISE_MAN, 4, 8), expect: ['His death. Very well. Hold that.'] },
+    { cmd: map_cmd(WISE_MAN, 4, 8), expect: ['"His death. Very well. Hold that," says Katya.'] },
     ...maps(WISE_MAN, [[4, 12], [5, 12], [6, 13], [7, 14], [8, 15]]),
     { cmd: 'apply the Voice of Fire', expect: WISE_MAN.apply_text.second!, check: w => {
         assert.ok(w.sequences.wise_man.finished);
@@ -197,6 +229,11 @@ export const WALKTHROUGH: Step[] = [
     } },
     { cmd: 'collapse the unmapped', expect: ['▸ 6 events not in the mapping'], check: w => assert.ok(w.collapsed.includes('wise_man:unmapped')) },
     { cmd: 'object that there is no fire', expect: [...QUOTED.l473, ...QUOTED.l475, ...QUOTED.l477_fire] },
+    // The objections belong to the second solution: under the first, none is offered.
+    { cmd: 'set aside the second solution', check: w => assert.ok(!commands(w).some(c => c.startsWith('object'))) },
+    { cmd: 'resume the first solution', check: w => assert.ok(!commands(w).some(c => c.startsWith('object'))) },
+    { cmd: 'set aside the first solution' },
+    { cmd: 'resume the second solution', check: w => assert.ok(commands(w).includes('object that the fireplace is too abstract')) },
     { cmd: 'object that the fireplace is too abstract', expect: QUOTED.l477_abstract },
     { cmd: 'object that the spark is the myth, not the death', expect: QUOTED.l477_spark },
     { cmd: 'object that the ash is still structured', expect: [...QUOTED.l477_ash, ...QUOTED.l479], check: w => {
@@ -208,16 +245,19 @@ export const WALKTHROUGH: Step[] = [
     { cmd: "remember the wise man's story", check: w => assert.ok(!text(w).includes("unconvincing, because you don't really see it")) },
     { cmd: 'say Ok, I guess', expect: [...QUOTED.l481, ...AUTHORED.coda], check: w => {
         assert.equal(w.scene, 'end');
+        // The coda is its own node after the frame, not part of what was said.
+        assert.ok(frame_text(w).endsWith("But you don't really see it."));
         const m = w.mappings.filter(m => m.sequence === 'wise_man');
         assert.deepEqual(m.map(x => [x.pass, x.status]), [['first', 'set aside'], ['second', 'applied']]);
-        assert.deepEqual(w.roles.tinder.map(r => r.what), ['the tinder', 'the oil-soaked rag', 'the dead brush', 'his wisdom']);
+        assert.deepEqual(w.roles.tinder.map(r => r.what), ['a patch of tinder', 'the thatch', 'the dead brush', 'his wisdom']);
         assert.deepEqual(w.roles.ash.map(r => r.what), ['a pile of ash', 'a field of ash', 'the forest, as ash', 'the distorted doctrine']);
         assert.deepEqual(w.roles.blaze.map(r => r.where), STORIES.map(s => s.title));
         assert.ok(commands(w).includes('remember the saying of Ok, I guess'));
         assert.ok(!commands(w).some(c => c.startsWith('map ') || c.startsWith('set aside') || c.startsWith('say ')));
     } },
     { cmd: "remember the wise man's story", expect: ["— unconvincing, because you don't really see it"] },
-    { cmd: 'remember the saying of Ok, I guess', expect: ['It felt a bit untrue, because it was.'] },
+    { cmd: 'remember the saying of Ok, I guess', expect: ['It went like this:', "But you don't really see it.", 'It felt a bit untrue, because it was.'],
+      check: w => { const f = frame_text(w); assert.ok(f.endsWith('It felt a bit untrue, because it was.') && !f.includes(normalise(AUTHORED.coda[0]))); } },
     { cmd: 'remember the second listening', expect: ['It felt like nothing in particular.'] }
 ];
 
@@ -253,7 +293,7 @@ describe('the Voice of Fire, played through', () => {
         const md = document_text();
         for (const [key, lines] of Object.entries(QUOTED)) {
             for (const line of lines) {
-                assert.ok(md.includes(normalise(line)), `${key} is not in the document verbatim: "${line}"`);
+                assert.ok(md.includes(unquote(normalise(line))), `${key} is not in the document verbatim: "${line}"`);
             }
         }
     });

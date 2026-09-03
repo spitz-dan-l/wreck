@@ -96,7 +96,7 @@ export const VOICE_OF_FIRE: AbstractSequence = {
             7: 'Look for the hearth burning bright and hot, for a time.',
             8: 'What is left behind, afterward, when no one is tending?'
         },
-        L1: 'The Voice of Fire does not skip, my dear. Something is missing from the board.',
+        L1: 'The Voice of Fire does not skip, my dear. {step} is not on the board.',
         L3: 'The Voice of Fire proceeds in order, my dear. It does not reach the firewood before the kindling has caught.',
         L6: 'One line cannot be two things at once, my dear. What was laid first, and what over it?',
         L7: 'That line is spoken for, my dear. It belongs to the first solution.',

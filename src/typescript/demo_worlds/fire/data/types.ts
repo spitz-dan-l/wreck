@@ -41,7 +41,7 @@ export interface AbstractSequence {
     // text for L1, L3, L6 and L7, and a default per step for L4.
     nudges: {
         step: { [s in StepIndex]?: string };
-        L1: string;
+        L1: string;                            // may name the first unplaced step with {step}
         L3: string;
         L6: string;
         L7: string;
@@ -101,6 +101,7 @@ export interface StorySpec {
     feelings: string[];                             // the "It felt:" list
     grafted_feeling?: string;                       // a last feeling, added only at the end of the lesson
     apply_text: { [pass in Pass]?: string[] };      // paragraphs; the .md's own sentences where it has them
+    apply_after?: { [pass in Pass]?: string[] };    // paragraphs printed after the Fire's rendition (l. 465)
 }
 
 // A named part of a story's sequence, rememberable on its own ("the two lines").
@@ -125,4 +126,5 @@ export interface Mapping {
     pass: Pass;
     placements: Placement[];
     status: MappingStatus;
+    reopened?: true;        // set aside in a story with no second pass: open again, placements kept
 }

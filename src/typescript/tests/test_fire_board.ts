@@ -164,9 +164,13 @@ describe('the board', function () {
             assert.ok(has(one(story, S.has_gist(exact(reference_gist('wise_man', s, 'first')))), 'hollow'));
             assert.equal(one(story, S.has_gist(exact(spoken_gist('wise_man', s)))).children.length, 1);
         }
-        // The last frame (l. 481 and the coda) is in the ledger; the hole stays there.
-        const ledger_path = S.has_gist(exact(ledger_gist('wise_man'))).query(story)[0][1];
+        // The last frame (l. 481) is in the ledger, the coda is its own node after it, and the hole stays there.
+        const [ledger, ledger_path] = S.has_gist(exact(ledger_gist('wise_man'))).query(story)[0];
         assert.deepEqual(hole_path(story).slice(0, ledger_path.length), ledger_path);
+        const children = (ledger as StoryNode).children;
+        const coda = children.findIndex(c => is_story_node(c) && has(c, 'coda'));
+        assert.ok(coda > 0 && is_story_node(children[coda - 1]) && (children[coda - 1] as StoryNode).data.frame_index !== undefined);
+        assert.ok(is_story_hole(children[coda + 1]));
         // The three earlier boards are chips; the unmapped rows of this one are folded.
         for (const seq of ['campfire', 'house', 'forest']) {
             assert.ok(has(one(story, S.has_gist(exact(board_gist(seq)))), 'chip'), `${seq} is a chip`);

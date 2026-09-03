@@ -14,7 +14,7 @@ import { StoryEventSpec, StorySpec, voice as voice_of, VoiceId, VOICE_OF_FIRE } 
 import { AUTHORED, LINE_TEXT, QUOTED } from '../data/katya';
 import { new_mapping } from '../judge';
 import {
-    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, slug, speak_as_ops
+    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, slug, speak_as_ops, voice_bar_text
 } from '../board';
 import { board_story, command_spec, converted, FireWorld, phrase, scene_of } from '../world';
 
@@ -53,15 +53,15 @@ function issue_event(w: FireWorld, story: StorySpec, e: StoryEventSpec): FireWor
     });
 }
 
-// `let it follow`: the cursor ¶ becomes a paragraph of the previous event.
+// `let it follow`: the cursor ¶ becomes a paragraph of the previous event
+// (in knowledge, see event_consequence); the frame shows what followed.
 function follow(w: FireWorld, story: StorySpec): FireWorld {
     const cursor = w.cursor!;
-    const previous = w.sequences[story.id].events[converted(w, story) - 1];
     return update(w, {
         cursor: cursor + 1,
         remainder: () => undefined,
         story_updates: story_updater(
-            S.frame(previous).consequence(<div className="follows">{story.prose[cursor - 1]}</div>),
+            S.consequence(<div className="follows">{'↳ ' + story.prose[cursor - 1]}</div>),
             reached(story, cursor, cursor + 1),
             follow_ops(story, cursor),
             advance_cursor_ops(story, cursor, cursor + 1)
@@ -76,15 +76,30 @@ export function nudge_frame(w: FireWorld, nudge: string): FireWorld {
     });
 }
 
-// `speak as`: sets the voice and draws its bar; the first disembodied and the first abstract voice bring Katya's speeches (SPEC §5.3).
+// Whether the voice has the cursor ¶'s line: the next event to issue is spoken by it.
+function has_line_here(w: FireWorld, story: StorySpec, v: VoiceId): boolean {
+    const next = story.events[converted(w, story)];
+    return next !== undefined && next.prose === w.cursor && next.voices.includes(v);
+}
+
+// `speak as`: sets the voice and draws its bar. A voice with no line at
+// the cursor is refused with a nudge (SPEC §10). The first disembodied and
+// the first abstract voice that have a line bring Katya's speeches
+// (SPEC §5.3), the abstract one followed by l. 419's last sentence.
 function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
-    const kind = voice_of(v).kind;
-    const speech = kind === 'disembodied' ? AUTHORED.disembodied : kind === 'abstract' ? AUTHORED.abstract : undefined;
+    const voice = voice_of(v);
+    if (!has_line_here(w, story, v)) {
+        const name = voice.name[0].toUpperCase() + voice.name.slice(1);
+        return nudge_frame(w, `${name} has no line here, my dear. Who acts?`);
+    }
+    const kind = voice.kind;
+    const speech = kind === 'disembodied' ? AUTHORED.disembodied : kind === 'abstract' ? [...AUTHORED.abstract, ...QUOTED.l419b] : undefined;
     const teach = speech !== undefined && !w.taught.includes(kind);
     return update(w, {
         voice: v,
         taught: _ => teach ? [..._, kind] : _,
         story_updates: story_updater(
+            S.consequence(paragraphs([voice_bar_text(v)])),
             teach ? S.consequence(paragraphs(speech!)) : [],
             speak_as_ops(story, w.index, v, w.voice)
         )

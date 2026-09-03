@@ -110,7 +110,7 @@ export const CAMPFIRE: StorySpec = {
     candidates: {
         'the Voice of Fire': {
             first: {
-                1: [{ event: 4, derives: 'the tinder' }],
+                1: [{ event: 4, derives: 'a patch of tinder' }],
                 2: [{ event: 5, derives: 'the kindling' }],
                 3: [{ event: 6, derives: 'the logs' }],
                 4: [{ event: 8, derives: 'the ember' }],
