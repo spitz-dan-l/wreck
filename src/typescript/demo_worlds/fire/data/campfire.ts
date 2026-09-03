@@ -7,6 +7,7 @@ import { StorySpec } from './types';
 
 export const CAMPFIRE: StorySpec = {
     id: 'campfire',
+    line_text: 'l309',
     title: 'the campfire story',
     voices: ['the friends'],
     prose: [

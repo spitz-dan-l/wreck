@@ -5,6 +5,7 @@
 
     Everything here is plain data, so that it can live inside world state.
 */
+import { QuotedKey } from './katya';
 
 export type VoiceKind = 'embodied' | 'disembodied' | 'abstract';
 export type VoiceId = string;   // 'the friends', 'the children', 'time', 'you', ...
@@ -13,22 +14,19 @@ export interface Voice {
     id: VoiceId;
     name: string;
     kind: VoiceKind;
-    plural?: true;      // "the friends have", not "has"
 }
-
-export type StepIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export type Pass = 'first' | 'second';
 
 // One step of an abstract sequence, in both of its forms.
 export interface Step {
-    index: StepIndex;
+    index: number;          // 1-based; a load-time lint checks the steps are numbered in order
     chalk: string;          // "The laying of the tinder"                (l. 166–180)
     name: string;           // authored short name used in commands: "the laying of the tinder"
     command: string;        // "lay the tinder"                          (l. 185–215)
     consequence: string;    // "A small patch of tinder is placed in the hearth."
     role: string;           // the role this step is about (one of the sequence's roles)
-    after: StepIndex[];     // partial order: the steps that must land no later than this one
+    after: number[];        // partial order: the steps that must land no later than this one
 }
 
 // An abstract sequence is a voice with steps (SPEC §2): the Voice of Fire, the Pillaging.
@@ -39,12 +37,12 @@ export interface AbstractSequence {
     // What Katya says when a placement fails (SPEC §10): the rule's own
     // text for L1, L3, L6 and L7, and a default per step for L4.
     nudges: {
-        step: { [s in StepIndex]?: string };
+        step: { [step: number]: string };
         L1: string;                            // may name the first unplaced step with {step}
         L3: string;
         L6: string;
         L7: string;
-        L7_step: { [s in StepIndex]?: string };   // L7 wording that differs for a step (the ash)
+        L7_step: { [step: number]: string };   // L7 wording that differs for a step (the ash)
     };
 }
 
@@ -57,7 +55,7 @@ export interface StoryEventSpec {
     consequence: string[];      // paragraphs; `let it follow` lines are added by event_consequence()
     prose: number;              // which prose line (¶) it converts (a ¶ may yield two events)
     remainder?: string;         // for the first event of a two-event ¶: the tail the second one converts
-    absorbs?: StepIndex[];      // may carry all of these steps at once (L6)
+    absorbs?: number[];         // may carry all of these steps at once (L6)
     authored?: true;            // the consequence was written by the implementer, not quoted from the .md
 }
 
@@ -68,12 +66,12 @@ export interface Candidate {
     mark?: string;      // said when this row is placed ("His death. Very well. Hold that.")
 }
 
-export type CandidateRows = { [s in StepIndex]?: Candidate[] };
+export type CandidateRows = { [step: number]: Candidate[] };
 export type CandidateTable = { [pass in Pass]?: CandidateRows };
 
 // An authored nudge for a placement that is not a candidate row (L4).
 export interface Nudge {
-    step: StepIndex;
+    step: number;
     event: number;
     text: string;
 }
@@ -92,10 +90,10 @@ export interface Trap {
 export interface Sequence {
     id: string;
     title: string;
-    events: { index: number, absorbs?: StepIndex[] }[];
+    events: { index: number, absorbs?: number[] }[];
     candidates: { [voice: VoiceId]: CandidateTable };  // keyed by the abstract sequence's voice id
     nudges: Nudge[];
-    step_nudges?: { [pass in Pass]?: { [s in StepIndex]?: string } };   // this sequence's own L4 defaults for a pass (the figurative wise man)
+    step_nudges?: { [pass in Pass]?: { [step: number]: string } };   // this sequence's own L4 defaults for a pass (the figurative wise man)
 }
 
 export interface StorySpec extends Sequence {
@@ -110,6 +108,8 @@ export interface StorySpec extends Sequence {
     apply_after?: { [pass in Pass]?: string[] };    // paragraphs printed after the Fire's rendition (l. 465)
     map_after?: string;                             // mapping is offered only once this classroom line is said
     set_aside_after?: string;                       // the first solution may be set aside only once this line is said
+    line_text?: QuotedKey;                          // what `draw a vertical line` prints: the .md's sentence where it has one
+    reached?: { [prose: number]: string[] };        // Katya's line when a ¶ is reached during transcription (the house's burning lines)
 }
 
 // A named part of a story's sequence, rememberable on its own ("the two lines").
@@ -123,7 +123,7 @@ export interface SubSequenceSpec {
 }
 
 export interface Placement {
-    step: StepIndex;
+    step: number;
     event: number;
 }
 
@@ -131,8 +131,8 @@ export type MappingStatus = 'open' | 'applied' | 'set aside';
 
 export interface Mapping {
     id: number;             // unique on the board: what the badges, references and renditions are keyed by
-    voice: VoiceId;         // the abstract sequence
-    sequence: string;       // the story id
+    voice: VoiceId;         // the pattern's voice (the abstract sequence)
+    story: string;          // the story id
     pass: Pass;
     placements: Placement[];
     status: MappingStatus;

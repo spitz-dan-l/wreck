@@ -548,3 +548,76 @@ right column set smaller; 16 hovering a badge lights its reference and a
 reference its badges (`:has()`, no JS, no state).
 
 **Engine.** No code change; one stylesheet token in `dist/global.css` (D9).
+
+## Phase B6a (the round-4 code review)
+
+`docs/lofty_demo/round4/critique_9_code_final.md` §2–§9 implemented.
+World 3379 → 3400 lines (`demo_worlds/fire/**`), tests 1217 → 1310,
+`board.css` 342 → 340; `npm test` 63 passing, 1 m 07 s → 34 s (the fire
+suite alone 66 s → 18 s). Headless transcript:
+`round2/transcript_b6_headless.txt` (202 commands, unchanged script);
+screenshots re-taken (no visible change).
+
+**D1 + D3 (chips as a mode).** "A chip is expanded while no board is open"
+is a world fact, `expanded_chip(w)` (a finished story not in `collapsed`
+with `board` undefined), and a mode: expanding a chip with no board open
+folds the chip expanded before it (`display.tsx: toggle`), so at most one
+is ever expanded; `close_board` folds every chip, so the invariant holds
+from the moment a board closes; while a chip is expanded the classroom
+puffer offers nothing (`listen`, `pick up the chalk`, `say …` gone), so no
+frame or board can be created inside a chip's ledger; `collapse` returns
+the hole to the root. The hole move stands ([C5 D3]). What the player does
+while a chip is expanded (`remember`, `expand`/`collapse`) is logged in
+that chip's ledger; a chip shows its `closing` frame (Katya's reply) rather
+than its last ledger frame, so the log never replaces l. 313–315. Tests:
+the critic's D1 sequence, two chips, a chip expanded during a board and
+folded by its close, and an invariant over every walkthrough world that no
+`.board` is nested in another (the structure `.board.chip .columns {
+display: none }` folds).
+
+**D2 + S3.** `Line.name` and `Line.feeling?`; the `classroom` gist carries
+them, and `classroom_events` reads gists only. `draw a vertical line`
+(the one player event outside the script) is `DRAW_LINE` in
+`transcription.tsx`. `StorySpec.line_text` and `StorySpec.reached` replace
+`LINE_TEXT` and `REACHED`; `CLASSROOM_EVENTS` is gone. A test checks every
+script line's name; the collision test takes the script's names. A fifth
+story is one data file plus its script lines.
+
+**S1.** `frames_with(w, tag)`: one WeakMap-cached walk of the history,
+grouped by gist tag; `classroom_commands`, `event_frames`, `voice_runs`
+and `readings` (itself cached) read it. **S2.** `sequences` is gone from
+the world: `event_frames(w, story)` is the `event` gists; `finished:
+string[]` holds the closed stories and the registered sub-sequences.
+**S4.** `rows_ops` takes the pattern and bands over its steps; `StepIndex`
+is `number` and the tables `{ [step: number]: … }`; the index lint stays.
+**S5.** Deleted: `Voice.plural`, `sequence_of`, `pass_for`,
+`Accepted.step/event/role`, the frame `voice-*` class, the third mapping
+literal (`new_mapping` in `do_set_aside`), `unmapped_count` (the display
+puffer calls `rows_of`), the second `has_line_here`, the two extra
+capitalisations, the second `steps_on`; `story(id)` is the one story
+lookup; `Notation` is a four-word union; `Line.beat` is one number with
+`through?` for `look at the board`. **S6.** `both_tinders` reads the
+house's first-pass candidates of the pattern's first step. **S7.**
+`Mapping.sequence → story`; the judge's and the board's `voice:
+AbstractSequence → pattern` (`pattern_of`, `pattern_for` in the world).
+**S8.** `light_ops`/`unlight_ops` return updates.
+
+**Tests.** `accepts(w, cmd)` (one non-submitting parse) replaces
+`commands(w).includes(x)` everywhere but the early whole-list
+`deepEqual`s; `verbs(w)` (one empty parse) replaces the "no command starts
+with" checks; `world_at(label)` with labels on the walkthrough's steps
+replaces n-th occurrence addressing in the board tests. New: the D1
+sequence and two chips, every line named, `remember <event>` on the wise
+man with both solutions held (the pyre, read by the set-aside first
+solution alone, feels like nothing yet; the wisdom feels like the tinder —
+the lit mapping's reading, as SPEC §7 has it).
+
+**§7, §8.** The two dead `board.css` rules removed (`.prose.done`, the
+repeated remainder rule); the chip rule now selects `.closing`. The
+critic's paragraph heads `index.ts`, with "pattern" for the abstract
+sequence and the script named as the one place a story is named.
+
+**Left undone.** The world grew by 21 lines rather than shrinking by 90:
+the chip mode, the closing frame and the fold-on-close cost about what S1–S5
+saved. `voice` and `taught` are still stored (derivable, not asked for).
+The `held` class is still emitted (a name for "neither solid nor hollow").

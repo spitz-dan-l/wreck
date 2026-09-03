@@ -7,6 +7,7 @@ import { StorySpec } from './types';
 
 export const FOREST: StorySpec = {
     id: 'forest',
+    line_text: 'l419',
     title: 'the forest fire',
     voices: ['the seed', 'the tree', 'the forest', 'the weather', 'the fire', 'the season', 'time'],
     prose: [

@@ -5,9 +5,12 @@
     Voices: the family, then the children.
 */
 import { StorySpec } from './types';
+import { AUTHORED } from './katya';
 
 export const HOUSE: StorySpec = {
     id: 'house',
+    line_text: 'l383',
+    reached: { 10: AUTHORED.burning_lines },     // Katya on the burning lines, when ¶10 is reached (SPEC §5.2)
     title: 'the house in the woods',
     voices: ['the family', 'the children'],
     prose: [

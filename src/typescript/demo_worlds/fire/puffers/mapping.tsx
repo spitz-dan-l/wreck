@@ -1,6 +1,6 @@
 /*
     Mapping (SPEC §4, §6, §7): with the vertical line drawn, the player maps
-    steps of the board's voice onto its events, erases placements, applies
+    steps of the board's pattern onto its events, erases placements, applies
     the mapping, and sets it aside or resumes it. A placement puts a badge
     on the row and a reference under the step; applying prints the apply
     text (the first time), lets the Fire speak under each step and
@@ -17,13 +17,13 @@ import { GAP, ParserThread } from 'parser';
 import { Puffer } from 'puffer';
 import { graft, remove_gists, story_updater, StoryUpdaterSpec, Updates as S } from 'story';
 import { update } from 'lib/utils';
-import { EVENT_NAMES, Mapping, Pass, passes, StepIndex, StorySpec, SUB_SEQUENCES } from '../data';
+import { EVENT_NAMES, Mapping, Pass, passes, StorySpec, SUB_SEQUENCES } from '../data';
 import { annotation_node, apply_ops, applied_gist, erase_ops, event_gist, paragraphs, place_ops, reference_text, rendition_text, rows_ops, unapply_ops } from '../board';
 import { capitalised } from '../names';
-import { apply as judge_apply, erase, participants, place, placed, violations } from '../judge';
+import { apply as judge_apply, erase, new_mapping, participants, place, placed, step_of, violations } from '../judge';
 import {
-    applied_mapping, board_story, ended, event_frame, FireWorld, has_said, has_said_applied, mappings_on, open_mapping, phase, phrase,
-    replace_mapping, set_aside_mappings, voice_for, voice_of_mapping, voice_runs
+    applied_mapping, board_story, converted, ended, event_frame, FireWorld, has_said, has_said_applied, mappings_on, open_mapping, pattern_for, pattern_of,
+    phase, phrase, replace_mapping, set_aside_mappings, voice_runs
 } from '../world';
 import { nudge_frame } from './transcription';
 import { exact } from 'gist';
@@ -33,14 +33,16 @@ function label(story: StorySpec, m: Mapping): string {
     return passes(story, m.voice).length > 1 ? `the ${m.pass} solution` : 'the mapping';
 }
 
-function rows(w: FireWorld, story: StorySpec, mappings: Mapping[]): StoryUpdaterSpec[] {
+// The board's rows as the story's mappings make them (bands, the unmapped bar, the empty voice runs).
+export function rows_of(w: FireWorld, story: StorySpec, mappings: Mapping[] = w.mappings): StoryUpdaterSpec[] {
     return rows_ops(
-        story, mappings.filter(m => m.sequence === story.id), e => event_frame(w, story.id, e), w.collapsed.includes(`${story.id}:unmapped`), voice_runs(w, story)
+        story, pattern_for(story), mappings.filter(m => m.story === story.id), e => event_frame(w, story, e),
+        w.collapsed.includes(`${story.id}:unmapped`), voice_runs(w, story)
     );
 }
 
-function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepIndex, event: number): FireWorld {
-    const verdict = place(story, voice_of_mapping(mapping), mapping, step, event, set_aside_mappings(w, story));
+function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: number, event: number): FireWorld {
+    const verdict = place(story, pattern_of(mapping), mapping, step, event, set_aside_mappings(w, story));
     if (!verdict.ok) {
         return nudge_frame(w, verdict.nudge);
     }
@@ -50,83 +52,80 @@ function do_map(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepInde
         mappings: () => mappings,
         story_updates: story_updater(
             S.consequence(paragraphs([reference_text(name), ...(verdict.mark === undefined ? [] : [verdict.mark])])),
-            place_ops(story, mapping, step, event, event_frame(w, story.id, event)!, name, placed(mapping, step)),
-            rows(w, story, mappings)
+            place_ops(story, mapping, step, event, event_frame(w, story, event)!, name, placed(mapping, step)),
+            rows_of(w, story, mappings)
         )
     });
 }
 
-function do_erase(w: FireWorld, story: StorySpec, mapping: Mapping, step: StepIndex): FireWorld {
+function do_erase(w: FireWorld, story: StorySpec, mapping: Mapping, step: number): FireWorld {
     const mappings = replace_mapping(w.mappings, mapping, erase(mapping, step));
     return update(w, {
         mappings: () => mappings,
         story_updates: story_updater(
-            S.consequence(paragraphs([`${capitalised(voice_of_mapping(mapping).steps[step - 1].name)} is erased.`])),
+            S.consequence(paragraphs([`${capitalised(step_of(pattern_of(mapping), step).name)} is erased.`])),
             erase_ops(story, mapping, step, placed(mapping, step)!),
-            rows(w, story, mappings)
+            rows_of(w, story, mappings)
         )
     });
 }
 
-// The consequences of an applied mapping (SPEC §7.2–3), added to the world; `undo` takes them away again.
-function consequences(w: FireWorld, story: StorySpec, m: Mapping, undo: boolean): FireWorld {
-    const voice = voice_of_mapping(m);
-    const parts = participants(story, voice, m);
-    if (undo) {
-        return update(w, {
-            knowledge: k => remove_gists(k, { tag: 'annotation', params: { seq: story.id, id: m.id } }),
-            story_updates: story_updater(unapply_ops(story, m))
-        });
-    }
-    return update(w, {
-        knowledge: k => parts.reduce((acc, p) =>
+// The consequences of an applied mapping (SPEC §7.2–3): the Fire's rendition
+// as the frame's description and under the steps, the annotations on the
+// rows and in knowledge; `unlight` takes them away again.
+function light_ops(w: FireWorld, story: StorySpec, m: Mapping) {
+    const pattern = pattern_of(m);
+    const parts = participants(story, pattern, m);
+    return {
+        knowledge: (k: FireWorld['knowledge']) => parts.reduce((acc, p) =>
             graft(acc, exact(event_gist(story.id, p.event)), annotation_node(story.id, p.event, m.id, p.role)), k),
         story_updates: story_updater(
-            S.description(rendition_text(story, voice, parts, m.id)),
-            apply_ops(story, voice, m, parts, e => event_frame(w, story.id, e))
+            S.description(rendition_text(story, pattern, parts, m.id)),
+            apply_ops(story, pattern, m, parts, e => event_frame(w, story, e))
         )
-    });
+    };
+}
+
+function unlight_ops(story: StorySpec, m: Mapping) {
+    return {
+        knowledge: (k: FireWorld['knowledge']) => remove_gists(k, { tag: 'annotation', params: { seq: story.id, id: m.id } }),
+        story_updates: story_updater(unapply_ops(story, m))
+    };
 }
 
 // Applying a mapping (or resuming one): its consequences, and what the pass
 // brings with it. The apply text and `apply_after` print on the first apply
 // of the pass (SPEC §7.1); a resume says so in one line; a later apply
-// prints the rendition alone.
+// prints the rendition alone. The literal solution registers "the two
+// lines" as a sequence of its own, and the last of two solutions finishes
+// and titles the story's sequence (SPEC §5.4).
 function light(w: FireWorld, story: StorySpec, m: Mapping, how: 'first' | 'again' | 'resume'): FireWorld {
     const lit: Mapping = { ...m, status: 'applied' };
     const after = how === 'first' ? story.apply_after?.[m.pass] ?? [] : [];
     const consequence = how === 'first' ? story.apply_text[m.pass] ?? []
         : how === 'resume' ? [`${capitalised(label(story, m))} is resumed; the badges solid.`]
         : [];
+    const all_passes = passes(story, m.voice);
+    const now_finished = [
+        ...SUB_SEQUENCES.filter(sub => sub.story === story.id && sub.pass === m.pass).map(sub => sub.id),
+        ...(all_passes.length > 1 && m.pass === all_passes[all_passes.length - 1] ? [story.id] : [])
+    ].filter(id => !w.finished.includes(id));
     let next = update(w, {
         gist: () => applied_gist(story.id, m.pass),
         mappings: _ => replace_mapping(_, m, lit),
+        finished: _ => [..._, ...now_finished],
         story_updates: story_updater(
             consequence.length > 0 ? S.consequence(paragraphs(consequence)) : [],
             // l. 465 comes after the Fire's rendition (SPEC §5.4): the prompt category prints last.
             after.length > 0 ? S.prompt(paragraphs(after)) : []
         )
     });
-    next = consequences(next, story, lit, false);
-    next = update(next, { story_updates: story_updater(rows(next, story, next.mappings)) });
-    for (const sub of SUB_SEQUENCES) {
-        // The literal solution registers "the two lines" as a sequence of its own (SPEC §5.4).
-        if (sub.story === story.id && sub.pass === m.pass && next.sequences[sub.id] === undefined) {
-            next = update(next, {
-                sequences: { [sub.id]: () => ({ events: sub.events.map(e => event_frame(w, story.id, e)!), finished: true }) }
-            });
-        }
-    }
-    const all_passes = passes(story, m.voice);
-    if (all_passes.length > 1 && m.pass === all_passes[all_passes.length - 1]) {
-        // The last solution's apply finishes and titles the sequence (SPEC §5.4).
-        next = update(next, { sequences: { [story.id]: { finished: true } } });
-    }
-    return next;
+    next = update(next, light_ops(next, story, lit));
+    return update(next, { story_updates: story_updater(rows_of(next, story)) });
 }
 
 function do_apply(w: FireWorld, story: StorySpec, mapping: Mapping): FireWorld {
-    const result = judge_apply(story, voice_of_mapping(mapping), mapping, set_aside_mappings(w, story));
+    const result = judge_apply(story, pattern_of(mapping), mapping, set_aside_mappings(w, story));
     if (!result.ok) {
         return nudge_frame(w, result.nudge);
     }
@@ -141,7 +140,7 @@ function do_set_aside(w: FireWorld, story: StorySpec, mapping: Mapping): FireWor
     let next = update(w, {
         story_updates: story_updater(S.consequence(paragraphs([`${capitalised(label(story, mapping))} is set aside; the badges hollow.`])))
     });
-    next = consequences(next, story, mapping, true);
+    next = update(next, unlight_ops(story, mapping));
     const all_passes = passes(story, mapping.voice);
     const next_pass: Pass | undefined = all_passes[all_passes.indexOf(mapping.pass) + 1];
     if (next_pass === undefined) {
@@ -149,11 +148,12 @@ function do_set_aside(w: FireWorld, story: StorySpec, mapping: Mapping): FireWor
     }
     next = update(next, { mappings: _ => replace_mapping(_, mapping, { ...mapping, status: 'set aside' }) });
     const held = mappings_on(next, story).find(m => m.pass === next_pass);
-    const opened: Mapping = held ?? { id: w.index, voice: mapping.voice, sequence: story.id, pass: next_pass, placements: [], status: 'open' };
     next = update(next, {
-        mappings: _ => held === undefined ? [..._, opened] : replace_mapping(_, held, { ...held, status: 'open' })
+        mappings: _ => held === undefined
+            ? [..._, new_mapping(story, pattern_of(mapping), next_pass, w.index)]
+            : replace_mapping(_, held, { ...held, status: 'open' })
     });
-    return update(next, { story_updates: story_updater(rows(next, story, next.mappings)) });
+    return update(next, { story_updates: story_updater(rows_of(next, story)) });
 }
 
 // `resume` a set-aside mapping: it is lit again; the mapping open meanwhile keeps its placements, set aside.
@@ -185,14 +185,14 @@ export const mapping_puffer: Puffer<FireWorld> = {
             return parser.eliminate();
         }
         const threads: ParserThread<FireWorld>[] = [];
-        const voice = voice_for(story);
+        const pattern = pattern_for(story);
         const open = open_mapping(world, story);
         const applied = applied_mapping(world, story);
         const names = EVENT_NAMES[story.id];
-        const transcribed = world.sequences[story.id]?.events.length ?? 0;
+        const transcribed = converted(world, story);
 
         if (open !== undefined) {
-            for (const step of voice.steps) {
+            for (const step of pattern.steps) {
                 for (let n = 1; n <= transcribed; n++) {
                     threads.push(p =>
                         p.consume(['map', GAP, phrase(step.name), GAP, 'to', GAP, phrase(names[n - 1])], () =>
@@ -200,13 +200,12 @@ export const mapping_puffer: Puffer<FireWorld> = {
                 }
             }
             for (const placement of open.placements) {
-                const step = voice.steps[placement.step - 1];
                 threads.push(p =>
-                    p.consume(['erase', GAP, phrase(step.name)], () =>
+                    p.consume(['erase', GAP, phrase(step_of(pattern, placement.step).name)], () =>
                     p.submit(() => do_erase(world, story, open, placement.step))));
             }
             threads.push(p =>
-                p.consume(['apply', GAP, phrase(voice.voice.name)], () =>
+                p.consume(['apply', GAP, phrase(pattern.voice.name)], () =>
                 p.submit(() => do_apply(world, story, open))));
         }
         if (applied !== undefined && may_set_aside(world, story, applied)) {
@@ -221,7 +220,7 @@ export const mapping_puffer: Puffer<FireWorld> = {
                     p.submit(() => do_resume(world, story, m))));
             }
             // A complete open mapping can be resumed as it stands: the no-edit shortcut for apply.
-            if (open !== undefined && violations(story, voice, open, set_aside_mappings(world, story)).length === 0) {
+            if (open !== undefined && violations(story, pattern, open, set_aside_mappings(world, story)).length === 0) {
                 threads.push(p =>
                     p.consume(['resume', GAP, phrase(label(story, open))], () =>
                     p.submit(() => light(world, story, open, has_said_applied(world, story, open.pass) ? 'resume' : 'first'))));

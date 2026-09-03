@@ -16,7 +16,8 @@
     and at apply, L1 (every step placed) before all of the above. L2 (one
     target per step) holds by construction: placing a placed step moves it.
 */
-import { AbstractSequence, CandidateRows, Mapping, Pass, Placement, Sequence, StepIndex, StorySpec } from './data/types';
+import { AbstractSequence, CandidateRows, Mapping, Pass, Placement, Sequence, StorySpec } from './data/types';
+import { capitalised } from './names';
 
 export type Rule = 'L1' | 'L3' | 'L4' | 'L6' | 'L7';
 type PlacementRule = Exclude<Rule, 'L1'>;
@@ -24,9 +25,6 @@ type PlacementRule = Exclude<Rule, 'L1'>;
 export interface Accepted {
     ok: true;
     mapping: Mapping;
-    step: StepIndex;
-    event: number;
-    role: string;
     derives: string;
     mark?: string;
 }
@@ -34,7 +32,7 @@ export interface Accepted {
 export interface Rejected {
     ok: false;
     rule: Rule;
-    step?: StepIndex;
+    step?: number;
     event?: number;
     nudge: string;
 }
@@ -43,7 +41,7 @@ export type Verdict = Accepted | Rejected;
 
 // What a step's role turned out to be, once a mapping is applied.
 export interface Participant {
-    step: StepIndex;
+    step: number;
     event: number;
     role: string;
     derives: string;
@@ -57,41 +55,36 @@ export interface Applied {
 
 // LOOKUPS
 
-export function step_of(voice: AbstractSequence, index: StepIndex) {
-    const step = voice.steps.find(s => s.index === index);
+export function step_of(pattern: AbstractSequence, index: number) {
+    const step = pattern.steps.find(s => s.index === index);
     if (step === undefined) {
-        throw new Error(`${voice.voice.name} has no step ${index}.`);
+        throw new Error(`${pattern.voice.name} has no step ${index}.`);
     }
     return step;
 }
 
-function step_name(voice: AbstractSequence, index: StepIndex): string {
-    const name = step_of(voice, index).name;
-    return name[0].toUpperCase() + name.slice(1);
-}
-
-function absorbs(seq: Sequence, event: number): StepIndex[] {
+function absorbs(seq: Sequence, event: number): number[] {
     return seq.events.find(e => e.index === event)?.absorbs ?? [];
 }
 
-export function placed(mapping: Mapping, step: StepIndex): number | undefined {
+export function placed(mapping: Mapping, step: number): number | undefined {
     return mapping.placements.find(p => p.step === step)?.event;
 }
 
 // The candidate table for a pass, as authored.
-function raw_rows(seq: Sequence, voice: AbstractSequence, pass: Pass): CandidateRows {
-    return seq.candidates[voice.voice.id]?.[pass] ?? {};
+function raw_rows(seq: Sequence, pattern: AbstractSequence, pass: Pass): CandidateRows {
+    return seq.candidates[pattern.voice.id]?.[pass] ?? {};
 }
 
-function is_set_aside_here(seq: Sequence, voice: AbstractSequence, m: Mapping): boolean {
-    return m.status === 'set aside' && m.sequence === seq.id && m.voice === voice.voice.id;
+function is_set_aside_here(seq: Sequence, pattern: AbstractSequence, m: Mapping): boolean {
+    return m.status === 'set aside' && m.story === seq.id && m.voice === pattern.voice.id;
 }
 
 // The events that a set-aside mapping of this voice onto this sequence has taken (L7).
-export function spoken_for(seq: Sequence, voice: AbstractSequence, set_aside: Mapping[]): number[] {
+export function spoken_for(seq: Sequence, pattern: AbstractSequence, set_aside: Mapping[]): number[] {
     const events = new Set<number>();
     for (const m of set_aside) {
-        if (is_set_aside_here(seq, voice, m)) {
+        if (is_set_aside_here(seq, pattern, m)) {
             for (const p of m.placements) {
                 events.add(p.event);
             }
@@ -100,33 +93,28 @@ export function spoken_for(seq: Sequence, voice: AbstractSequence, set_aside: Ma
     return [...events].sort((a, b) => a - b);
 }
 
-// Which pass the next mapping of this voice onto this sequence is (SPEC §2).
-export function pass_for(seq: Sequence, voice: AbstractSequence, mappings: Mapping[]): Pass {
-    return mappings.some(m => is_set_aside_here(seq, voice, m)) ? 'second' : 'first';
-}
-
 // The candidate table for this pass, with the spoken-for events removed (L7).
-export function candidates_for(seq: Sequence, voice: AbstractSequence, pass: Pass, set_aside: Mapping[]): CandidateRows {
-    const taken = spoken_for(seq, voice, set_aside);
-    const rows = raw_rows(seq, voice, pass);
+export function candidates_for(seq: Sequence, pattern: AbstractSequence, pass: Pass, set_aside: Mapping[]): CandidateRows {
+    const taken = spoken_for(seq, pattern, set_aside);
+    const rows = raw_rows(seq, pattern, pass);
     const result: CandidateRows = {};
-    for (const step of voice.steps) {
+    for (const step of pattern.steps) {
         result[step.index] = (rows[step.index] ?? []).filter(c => !taken.includes(c.event));
     }
     return result;
 }
 
-export function new_mapping(seq: Sequence, voice: AbstractSequence, pass: Pass, id: number): Mapping {
-    return { id, voice: voice.voice.id, sequence: seq.id, pass, placements: [], status: 'open' };
+export function new_mapping(seq: Sequence, pattern: AbstractSequence, pass: Pass, id: number): Mapping {
+    return { id, voice: pattern.voice.id, story: seq.id, pass, placements: [], status: 'open' };
 }
 
-function with_placement(mapping: Mapping, step: StepIndex, event: number): Mapping {
+function with_placement(mapping: Mapping, step: number, event: number): Mapping {
     const placements: Placement[] = [...mapping.placements.filter(p => p.step !== step), { step, event }];
     placements.sort((a, b) => a.step - b.step);
     return { ...mapping, placements };
 }
 
-export function erase(mapping: Mapping, step: StepIndex): Mapping {
+export function erase(mapping: Mapping, step: number): Mapping {
     return { ...mapping, placements: mapping.placements.filter(p => p.step !== step) };
 }
 
@@ -135,21 +123,21 @@ export function erase(mapping: Mapping, step: StepIndex): Mapping {
 // The nudge for a failed placement (SPEC §4): the rule's own text for L3,
 // L6 and L7; for L4, the authored (sequence, step, event) nudge if there is
 // one, else the sequence's default for this pass, else the step's default.
-function nudge_for(seq: Sequence, voice: AbstractSequence, rule: PlacementRule, step: StepIndex, event: number, pass: Pass): string {
-    const nudges = voice.nudges;
+function nudge_for(seq: Sequence, pattern: AbstractSequence, rule: PlacementRule, step: number, event: number, pass: Pass): string {
+    const nudges = pattern.nudges;
     switch (rule) {
         case 'L3': return nudges.L3;
         case 'L6': return nudges.L6;
         case 'L7': return nudges.L7_step[step] ?? nudges.L7;
         case 'L4': {
             const authored = seq.nudges.find(n => n.step === step && n.event === event);
-            return authored?.text ?? seq.step_nudges?.[pass]?.[step] ?? nudges.step[step] ?? l1_nudge(voice, step);
+            return authored?.text ?? seq.step_nudges?.[pass]?.[step] ?? nudges.step[step] ?? l1_nudge(pattern, step);
         }
     }
 }
 
-function l1_nudge(voice: AbstractSequence, step: StepIndex): string {
-    return voice.nudges.L1.replace('{step}', step_name(voice, step));
+function l1_nudge(pattern: AbstractSequence, step: number): string {
+    return pattern.nudges.L1.replace('{step}', capitalised(step_of(pattern, step).name));
 }
 
 // THE RULES
@@ -157,7 +145,7 @@ function l1_nudge(voice: AbstractSequence, step: StepIndex): string {
 // Every rule that the placement of `step` within `mapping` (which already
 // contains it) breaks, in the order the rules are checked; [] if none.
 function check_placement(
-    seq: Sequence, voice: AbstractSequence, mapping: Mapping, step: StepIndex, set_aside: Mapping[]
+    seq: Sequence, pattern: AbstractSequence, mapping: Mapping, step: number, set_aside: Mapping[]
 ): Rejected[] {
     const event = placed(mapping, step);
     if (event === undefined) {
@@ -165,15 +153,15 @@ function check_placement(
     }
     const broken: Rejected[] = [];
     const reject = (rule: PlacementRule) =>
-        broken.push({ ok: false, rule, step, event, nudge: nudge_for(seq, voice, rule, step, event, mapping.pass) });
+        broken.push({ ok: false, rule, step, event, nudge: nudge_for(seq, pattern, rule, step, event, mapping.pass) });
 
     // L3: every placed step this one follows lands no later than it, and it
     // lands no later than every placed step that follows it.
-    const before = step_of(voice, step).after.some(earlier => {
+    const before = step_of(pattern, step).after.some(earlier => {
         const e = placed(mapping, earlier);
         return e !== undefined && e > event;
     });
-    const after = voice.steps.some(later => {
+    const after = pattern.steps.some(later => {
         const e = placed(mapping, later.index);
         return later.after.includes(step) && e !== undefined && event > e;
     });
@@ -182,8 +170,8 @@ function check_placement(
     }
 
     // L7, L4
-    const rows = candidates_for(seq, voice, mapping.pass, set_aside);
-    if (spoken_for(seq, voice, set_aside).includes(event)) {
+    const rows = candidates_for(seq, pattern, mapping.pass, set_aside);
+    if (spoken_for(seq, pattern, set_aside).includes(event)) {
         reject('L7');
     } else if (!rows[step]!.some(c => c.event === event)) {
         reject('L4');
@@ -202,38 +190,30 @@ function check_placement(
 
 // Place a step on an event; the mapping is unchanged if the placement is rejected.
 export function place(
-    seq: Sequence, voice: AbstractSequence, mapping: Mapping, step: StepIndex, event: number, set_aside: Mapping[] = []
+    seq: Sequence, pattern: AbstractSequence, mapping: Mapping, step: number, event: number, set_aside: Mapping[] = []
 ): Verdict {
     if (!seq.events.some(e => e.index === event)) {
         throw new Error(`${seq.title} has no event ${event}.`);
     }
     const next = with_placement(mapping, step, event);
-    const broken = check_placement(seq, voice, next, step, set_aside);
+    const broken = check_placement(seq, pattern, next, step, set_aside);
     if (broken.length > 0) {
         return broken[0];
     }
-    const row = raw_rows(seq, voice, mapping.pass)[step]!.find(c => c.event === event)!;
-    return {
-        ok: true,
-        mapping: next,
-        step,
-        event,
-        role: step_of(voice, step).role,
-        derives: row.derives,
-        ...(row.mark === undefined ? {} : { mark: row.mark })
-    };
+    const row = raw_rows(seq, pattern, mapping.pass)[step]!.find(c => c.event === event)!;
+    return { ok: true, mapping: next, derives: row.derives, ...(row.mark === undefined ? {} : { mark: row.mark }) };
 }
 
 // Every rule the whole mapping breaks, L1 first, then by step.
-export function violations(seq: Sequence, voice: AbstractSequence, mapping: Mapping, set_aside: Mapping[] = []): Rejected[] {
+export function violations(seq: Sequence, pattern: AbstractSequence, mapping: Mapping, set_aside: Mapping[] = []): Rejected[] {
     const result: Rejected[] = [];
-    for (const step of voice.steps) {
+    for (const step of pattern.steps) {
         if (placed(mapping, step.index) === undefined) {
-            result.push({ ok: false, rule: 'L1', step: step.index, nudge: l1_nudge(voice, step.index) });
+            result.push({ ok: false, rule: 'L1', step: step.index, nudge: l1_nudge(pattern, step.index) });
         }
     }
     for (const p of mapping.placements) {
-        result.push(...check_placement(seq, voice, mapping, p.step, set_aside));
+        result.push(...check_placement(seq, pattern, mapping, p.step, set_aside));
     }
     return result;
 }
@@ -241,27 +221,27 @@ export function violations(seq: Sequence, voice: AbstractSequence, mapping: Mapp
 // What each step's role has become: the participant its own table row derives.
 // (Reads only the mapping's own pass, never other mappings: a placement's
 // participant does not change when a sibling is set aside.)
-export function participants(seq: Sequence, voice: AbstractSequence, mapping: Mapping): Participant[] {
-    const rows = raw_rows(seq, voice, mapping.pass);
+export function participants(seq: Sequence, pattern: AbstractSequence, mapping: Mapping): Participant[] {
+    const rows = raw_rows(seq, pattern, mapping.pass);
     return mapping.placements.map(p => {
         const row = rows[p.step]?.find(c => c.event === p.event);
         if (row === undefined) {
             throw new Error(`Step ${p.step} on event ${p.event} is not a candidate row.`);
         }
-        return { step: p.step, event: p.event, role: step_of(voice, p.step).role, derives: row.derives };
+        return { step: p.step, event: p.event, role: step_of(pattern, p.step).role, derives: row.derives };
     });
 }
 
 // Apply the mapping: every rule must hold for the whole of it (L1 included).
-export function apply(seq: Sequence, voice: AbstractSequence, mapping: Mapping, set_aside: Mapping[] = []): Applied | Rejected {
-    const broken = violations(seq, voice, mapping, set_aside);
+export function apply(seq: Sequence, pattern: AbstractSequence, mapping: Mapping, set_aside: Mapping[] = []): Applied | Rejected {
+    const broken = violations(seq, pattern, mapping, set_aside);
     if (broken.length > 0) {
         return broken[0];
     }
     return {
         ok: true,
         mapping: { ...mapping, status: 'applied' },
-        participants: participants(seq, voice, mapping)
+        participants: participants(seq, pattern, mapping)
     };
 }
 
@@ -300,26 +280,26 @@ export function role_entries(parts: Participant[], where: string): RoleEntry[] {
 // LOAD-TIME LINTS
 // Each returns the problems found, or [] if the data is clean.
 
-export function lint_sequence(voice: AbstractSequence): string[] {
+export function lint_sequence(pattern: AbstractSequence): string[] {
     const problems: string[] = [];
-    const name = voice.voice.name;
-    voice.steps.forEach((step, i) => {
+    const name = pattern.voice.name;
+    pattern.steps.forEach((step, i) => {
         if (step.index !== i + 1) {
             problems.push(`${name}: step ${i + 1} has index ${step.index}.`);
         }
         for (const a of step.after) {
-            if (a === step.index || !voice.steps.some(s => s.index === a)) {
+            if (a === step.index || !pattern.steps.some(s => s.index === a)) {
                 problems.push(`${name}: step ${step.index} follows a step ${a} that does not exist.`);
             }
         }
-        if (!voice.roles.includes(step.role)) {
+        if (!pattern.roles.includes(step.role)) {
             problems.push(`${name}: step ${step.index} has the role "${step.role}", which the sequence does not have.`);
         }
-        if (voice.nudges.step[step.index] === undefined) {
+        if (pattern.nudges.step[step.index] === undefined) {
             problems.push(`${name}: step ${step.index} has no default nudge.`);
         }
     });
-    if (!voice.nudges.L1.includes('{step}')) {
+    if (!pattern.nudges.L1.includes('{step}')) {
         problems.push(`${name}: the L1 nudge does not name the missing step.`);
     }
     return problems;
@@ -394,18 +374,18 @@ function lint_prose(story: StorySpec): string[] {
 // The candidate tables for a voice: every step has rows on real events, once
 // each; an apply text per pass; an absorbed step is a candidate somewhere;
 // an authored nudge is not a row in every pass.
-function lint_tables(story: StorySpec, voice: AbstractSequence): string[] {
+function lint_tables(story: StorySpec, pattern: AbstractSequence): string[] {
     const problems: string[] = [];
     const title = story.title;
     const has_event = (e: number) => story.events.some(ev => ev.index === e);
-    const table = story.candidates[voice.voice.id];
+    const table = story.candidates[pattern.voice.id];
     if (table === undefined) {
         return problems;
     }
     const passes = Object.keys(table) as Pass[];
     for (const pass of passes) {
         const rows = table[pass]!;
-        for (const step of voice.steps) {
+        for (const step of pattern.steps) {
             const cands = rows[step.index];
             if (cands === undefined || cands.length === 0) {
                 problems.push(`${title}, ${pass} pass: step ${step.index} has no candidates.`);
@@ -428,8 +408,8 @@ function lint_tables(story: StorySpec, voice: AbstractSequence): string[] {
     }
     for (const e of story.events) {
         for (const s of e.absorbs ?? []) {
-            if (!voice.steps.some(step => step.index === s)) {
-                problems.push(`${title}: event ${e.index} absorbs a step ${s} that ${voice.voice.name} does not have.`);
+            if (!pattern.steps.some(step => step.index === s)) {
+                problems.push(`${title}: event ${e.index} absorbs a step ${s} that ${pattern.voice.name} does not have.`);
                 continue;
             }
             if (!passes.some(pass => table[pass]![s]?.some(c => c.event === e.index))) {
@@ -448,6 +428,6 @@ function lint_tables(story: StorySpec, voice: AbstractSequence): string[] {
     return problems;
 }
 
-export function lint_story(story: StorySpec, voice: AbstractSequence): string[] {
-    return [...lint_events(story), ...lint_prose(story), ...lint_tables(story, voice)];
+export function lint_story(story: StorySpec, pattern: AbstractSequence): string[] {
+    return [...lint_events(story), ...lint_prose(story), ...lint_tables(story, pattern)];
 }

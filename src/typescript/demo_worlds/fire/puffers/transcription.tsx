@@ -11,21 +11,24 @@ import { Puffer } from 'puffer';
 import { createElement, story_updater, Updates as S } from 'story';
 import { update } from 'lib/utils';
 import { StoryEventSpec, StorySpec, voice as voice_of, VoiceId } from '../data';
-import { AUTHORED, LINE_TEXT, QUOTED } from '../data/katya';
+import { AUTHORED, QUOTED } from '../data/katya';
 import { new_mapping } from '../judge';
 import {
-    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, slug, speak_as_gist, speak_as_ops,
+    advance_cursor_ops, classroom_gist, draw_line_ops, event_gist, follow_ops, light_remainder_ops, paragraphs, speak_as_gist, speak_as_ops,
     voice_mark_node
 } from '../board';
-import { board_story, command_spec, converted, FireWorld, phase, phrase, voice_for } from '../world';
+import { board_story, command_spec, converted, FireWorld, pattern_for, phase, phrase } from '../world';
 
-// Katya's line when a ¶ is reached during transcription (the house's burning lines, SPEC §5.2).
-const REACHED: { [story: string]: { [prose: number]: string[] } } = {
-    house: { 10: AUTHORED.burning_lines }
+// `draw a vertical line` is the player's own event too (SPEC §10), like the classroom lines.
+export const DRAW_LINE = {
+    command: 'draw a vertical line',
+    name: 'the drawing of the vertical line',
+    feeling: 'It felt a bit decisive, because there was no line, and then there was.'
 };
 
+// Katya's line when a ¶ is reached during transcription (the house's burning lines, SPEC §5.2).
 function reached(story: StorySpec, from: number, to: number) {
-    const text = REACHED[story.id]?.[to];
+    const text = story.reached?.[to];
     return from !== to && text !== undefined ? S.consequence(paragraphs(text)) : [];
 }
 
@@ -39,11 +42,10 @@ function issue_event(w: FireWorld, story: StorySpec, e: StoryEventSpec): FireWor
     const piece = story.events.filter(o => o.prose === e.prose && o.index < e.index).length;
     return update(w, {
         gist: () => event_gist(story.id, e.index),
-        sequences: { [story.id]: { events: _ => [..._, w.index] } },
         cursor: new_cursor,
         story_updates: story_updater(
             S.consequence(paragraphs(e.consequence)),
-            S.frame().css({ event: true, [`voice-${slug(w.voice!)}`]: true }),
+            S.frame().css({ event: true }),
             reached(story, cursor, new_cursor),
             same_line ? light_remainder_ops(story, e.prose, piece + 1) : [],
             advance_cursor_ops(story, cursor, new_cursor)
@@ -74,10 +76,15 @@ export function nudge_frame(w: FireWorld, nudge: string): FireWorld {
     });
 }
 
-// Whether the voice has the cursor ¶'s line: the next event to issue is spoken by it.
-function has_line_here(w: FireWorld, story: StorySpec, v: VoiceId): boolean {
+// The next event to issue, if the cursor ¶ still has one.
+function next_event(w: FireWorld, story: StorySpec): StoryEventSpec | undefined {
     const next = story.events[converted(w, story)];
-    return next !== undefined && next.prose === w.cursor && next.voices.includes(v);
+    return next !== undefined && next.prose === w.cursor ? next : undefined;
+}
+
+// Whether the voice has the cursor ¶'s line: the next event to issue is spoken by it.
+function has_line_here(w: FireWorld, story: StorySpec, v: VoiceId | undefined): boolean {
+    return v !== undefined && (next_event(w, story)?.voices.includes(v) ?? false);
 }
 
 // `speak as`: sets the voice and draws its bar (in the text form too, once
@@ -117,12 +124,11 @@ function speakable_voices(w: FireWorld, story: StorySpec): VoiceId[] {
 
 // `draw a vertical line`: the rule and the right column appear, the hole moves to the ledger, and the mapping opens.
 function draw_line(w: FireWorld, story: StorySpec): FireWorld {
-    const key = LINE_TEXT[story.id];
     return update(w, {
-        gist: () => classroom_gist('draw a vertical line', w.lesson),
-        mappings: _ => [..._, new_mapping(story, voice_for(story), 'first', w.index)],
+        gist: () => classroom_gist(DRAW_LINE.command, w.lesson, DRAW_LINE.name, DRAW_LINE.feeling),
+        mappings: _ => [..._, new_mapping(story, pattern_for(story), 'first', w.index)],
         story_updates: story_updater(
-            key === undefined ? [] : S.consequence(paragraphs(QUOTED[key])),
+            story.line_text === undefined ? [] : S.consequence(paragraphs(QUOTED[story.line_text])),
             draw_line_ops(story)
         )
     });
@@ -139,12 +145,12 @@ export const transcription_puffer: Puffer<FireWorld> = {
         const cursor = world.cursor!;
 
         if (at === 'converted') {
-            threads.push(p => p.consume('draw_a_vertical_line', () => p.submit(() => draw_line(world, story))));
+            threads.push(p => p.consume(phrase(DRAW_LINE.command), () => p.submit(() => draw_line(world, story))));
             return parser.split(threads);
         }
 
-        const next = story.events[converted(world, story)];
-        if (next !== undefined && next.prose === cursor && world.voice !== undefined && next.voices.includes(world.voice)) {
+        const next = next_event(world, story);
+        if (next !== undefined && has_line_here(world, story, world.voice)) {
             threads.push(p => p.consume(phrase(next.command), () => p.submit(() => issue_event(world, story, next))));
         }
         if (story.follows.includes(cursor)) {

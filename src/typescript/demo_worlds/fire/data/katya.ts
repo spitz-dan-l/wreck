@@ -1,8 +1,7 @@
 /*
     Every line of the lesson that is not a story or a step: Katya's and the
     player character's lines verbatim from the .md (QUOTED, keyed by line),
-    and the prose SPEC §10 authors where the .md has none (AUTHORED). Also
-    the names and feelings of the player's own classroom events.
+    and the prose SPEC §10 authors where the .md has none (AUTHORED).
 */
 
 // Each value is a list of paragraphs. Every paragraph here appears verbatim in the document.
@@ -75,36 +74,3 @@ export const AUTHORED = {
     went_like_this: ['It went like this:'],
     nothing_in_particular: ['It felt like nothing in particular.']
 };
-
-// What each board's vertical line prints (SPEC §9): the .md's sentence where it has one.
-export const LINE_TEXT: { [story: string]: QuotedKey | undefined } = {
-    campfire: 'l309',
-    house: 'l383',
-    forest: 'l419',
-    wise_man: undefined
-};
-
-// The player's classroom commands, as names for `remember`, with their feelings (SPEC §10).
-export const CLASSROOM_EVENTS: { [command: string]: { name: string, feeling?: string } } = {
-    'look at the board': { name: 'the looking at the board' },
-    'listen': { name: 'the listening' },
-    'pick up the chalk': { name: 'the picking up of the chalk', feeling: 'It felt a bit ordinary, because it was chalk.' },
-    'draw a vertical line': { name: 'the drawing of the vertical line', feeling: 'It felt a bit decisive, because there was no line, and then there was.' },
-    'put down the chalk': { name: 'the putting down of the chalk' },
-    'say all set': { name: 'the saying of all set' },
-    'say that the Voice of Fire is contained in this one': { name: 'the saying that the Voice of Fire is contained in this one' },
-    'say that it is a sad story': { name: 'the saying that it is a sad story' },
-    'ask what the right thing to do is': { name: 'the asking what the right thing to do is' },
-    'object that there is no clear tinder': { name: 'the objecting that there is no clear tinder' },
-    'say that it knows nothing of the morality of the burning either': { name: 'the saying that it knows nothing of the morality of the burning either' },
-    'say that the Voice of Fire is contained in just two lines': { name: 'the saying that the Voice of Fire is contained in just two lines' },
-    'ask what she means': { name: 'the asking what she means' },
-    'object that there is no fire': { name: 'the objecting that there is no fire' },
-    'object that the fireplace is too abstract': { name: 'the objecting that the fireplace is too abstract' },
-    'object that the spark is the myth, not the death': { name: 'the objecting that the spark is the myth, not the death' },
-    'object that the spark is the death, not the myth': { name: 'the objecting that the spark is the death, not the myth' },
-    'object that the ash is still structured': { name: 'the objecting that the ash is still structured' },
-    'say Ok, I guess': { name: 'the saying of Ok, I guess', feeling: 'It felt a bit untrue, because it was.' }
-};
-
-export const CLASSROOM_EVENT_NAMES: string[] = Object.values(CLASSROOM_EVENTS).map(e => e.name);

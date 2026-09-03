@@ -11,11 +11,12 @@ import * as path from 'path';
 import 'mocha';
 import {
     ABSTRACT_SEQUENCES, AbstractSequence, CAMPFIRE, event_consequence, EVENT_NAMES, FOREST, HOUSE, Mapping, PILLAGING,
-    StepIndex, STORIES, StorySpec, SUB_SEQUENCES, TODAYS_LESSON, TWO_LINES, VOICE_OF_FIRE, VOICES, WISE_MAN
+    STORIES, StorySpec, SUB_SEQUENCES, TODAYS_LESSON, TWO_LINES, VOICE_OF_FIRE, VOICES, WISE_MAN
 } from 'demo_worlds/fire/data';
-import { CLASSROOM_EVENT_NAMES } from 'demo_worlds/fire/data/katya';
+import { SCRIPT } from 'demo_worlds/fire/puffers/classroom';
+import { DRAW_LINE } from 'demo_worlds/fire/puffers/transcription';
 import {
-    apply, candidates_for, erase, group_by_event, lint_sequence, lint_story, new_mapping, participants, pass_for, place, Rejected, role_entries, violations
+    apply, candidates_for, erase, group_by_event, lint_sequence, lint_story, new_mapping, participants, place, Rejected, role_entries, violations
 } from 'demo_worlds/fire/judge';
 import { event_names, name_collisions, role_name, with_ordinal } from 'demo_worlds/fire/names';
 
@@ -23,7 +24,7 @@ const FIRE = VOICE_OF_FIRE;
 const NUDGE = FIRE.nudges;
 
 // Place each step in turn, asserting that every placement is admitted.
-function chain(story: StorySpec, placements: [StepIndex, number][], mapping = new_mapping(story, FIRE, 'first', 1), set_aside: Mapping[] = []): Mapping {
+function chain(story: StorySpec, placements: [number, number][], mapping = new_mapping(story, FIRE, 'first', 1), set_aside: Mapping[] = []): Mapping {
     for (const [step, event] of placements) {
         const verdict = place(story, FIRE, mapping, step, event, set_aside);
         assert.ok(verdict.ok, `step ${step} on event ${event} of ${story.title} was rejected: ${(verdict as Rejected).rule} "${(verdict as Rejected).nudge}"`);
@@ -32,7 +33,7 @@ function chain(story: StorySpec, placements: [StepIndex, number][], mapping = ne
     return mapping;
 }
 
-function rejected(story: StorySpec, mapping: Mapping, step: StepIndex, event: number, set_aside: Mapping[] = []): Rejected {
+function rejected(story: StorySpec, mapping: Mapping, step: number, event: number, set_aside: Mapping[] = []): Rejected {
     const verdict = place(story, FIRE, mapping, step, event, set_aside);
     assert.ok(!verdict.ok, `step ${step} on event ${event} of ${story.title} was admitted, deriving "${verdict.ok && verdict.derives}"`);
     return verdict as Rejected;
@@ -44,9 +45,9 @@ function applied(story: StorySpec, mapping: Mapping, set_aside: Mapping[] = []) 
     return result;
 }
 
-const CAMPFIRE_MAPPING: [StepIndex, number][] = [[1, 4], [2, 5], [3, 6], [4, 8], [5, 8], [6, 8], [7, 10], [8, 12]];
-const LITERAL: [StepIndex, number][] = [[1, 9], [2, 9], [3, 9], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11]];
-const FIGURATIVE: [StepIndex, number][] = [[1, 2], [2, 4], [3, 5], [4, 12], [5, 12], [6, 13], [7, 14], [8, 15]];
+const CAMPFIRE_MAPPING: [number, number][] = [[1, 4], [2, 5], [3, 6], [4, 8], [5, 8], [6, 8], [7, 10], [8, 12]];
+const LITERAL: [number, number][] = [[1, 9], [2, 9], [3, 9], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11]];
+const FIGURATIVE: [number, number][] = [[1, 2], [2, 4], [3, 5], [4, 12], [5, 12], [6, 13], [7, 14], [8, 15]];
 
 export function normalise(s: string): string {
     return s.replace(/\s+/g, ' ').trim();
@@ -164,7 +165,7 @@ describe('fire names', () => {
     });
 
     it('collide with nothing, as one global set', () => {
-        const extra = [...SUB_SEQUENCES.map(s => s.title), TODAYS_LESSON, ...CLASSROOM_EVENT_NAMES];
+        const extra = [...SUB_SEQUENCES.map(s => s.title), TODAYS_LESSON, ...new Set([...SCRIPT.map(l => l.name), DRAW_LINE.name])];
         assert.deepEqual(name_collisions(STORIES, ABSTRACT_SEQUENCES, extra), []);
         // A step named like an event, or a title named like a role, would be caught.
         const clash: AbstractSequence = { ...FIRE, steps: [{ ...FIRE.steps[0], name: 'the first singing' }, ...FIRE.steps.slice(1)] };
@@ -284,10 +285,10 @@ describe('the judge: the campfire', () => {
 });
 
 describe('the judge: the house in the woods', () => {
-    const burning: [StepIndex, number][] = [[5, 13], [6, 13], [7, 13], [8, 13]];
+    const burning: [number, number][] = [[5, 13], [6, 13], [7, 13], [8, 13]];
 
     it('admits all four legal mappings, with the spark on the stick', () => {
-        const fuels: [[StepIndex, number], [StepIndex, number], [StepIndex, number]][] = [
+        const fuels: [[number, number], [number, number], [number, number]][] = [
             [[1, 11], [2, 9], [3, 8]],
             [[1, 11], [2, 9], [3, 7]],
             [[1, 11], [2, 8], [3, 7]],
@@ -368,7 +369,7 @@ describe("the judge: the wise man's story", () => {
     it('rejects all eight steps on the lighting of the pyre (L4 for 1–3; L6)', () => {
         const empty = new_mapping(WISE_MAN, FIRE, 'first', 1);
         const burning = chain(WISE_MAN, LITERAL.slice(3));
-        for (const step of [1, 2, 3] as StepIndex[]) {
+        for (const step of [1, 2, 3]) {
             assert.equal(rejected(WISE_MAN, empty, step, 11).rule, 'L4');
             const r = rejected(WISE_MAN, burning, step, 11);
             assert.equal(r.rule, 'L4');
@@ -383,7 +384,7 @@ describe("the judge: the wise man's story", () => {
 
     it('sends the fuel steps to the wood in the first pass', () => {
         const empty = new_mapping(WISE_MAN, FIRE, 'first', 1);
-        for (const step of [1, 2, 3] as StepIndex[]) {
+        for (const step of [1, 2, 3]) {
             for (const event of [2, 4, 5]) {
                 assert.equal(rejected(WISE_MAN, empty, step, event).nudge, 'Wood, my dear. You are looking for wood. There are only two lines in which anything burns. Find them; the rest will keep.');
             }
@@ -392,8 +393,6 @@ describe("the judge: the wise man's story", () => {
 
     it('opens the second pass once the first solution is set aside (L7)', () => {
         const first = literal_set_aside();
-        assert.equal(pass_for(WISE_MAN, FIRE, []), 'first');
-        assert.equal(pass_for(WISE_MAN, FIRE, [first]), 'second');
         const rows = candidates_for(WISE_MAN, FIRE, 'second', [first]);
         for (const step of FIRE.steps) {
             assert.ok(rows[step.index]!.every(c => c.event !== 9 && c.event !== 11));

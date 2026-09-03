@@ -9,12 +9,13 @@
 import * as assert from 'assert';
 import 'mocha';
 import { exact } from 'gist';
-import { FireWorld, HOUSE } from 'demo_worlds/fire';
+import { CAMPFIRE, FireWorld, HOUSE, STORIES, WISE_MAN } from 'demo_worlds/fire';
 import {
     board_gist, ledger_gist, left_gist, lesson_board_gist, reference_gist, right_gist, spoken_gist, targets_gist
 } from 'demo_worlds/fire/board';
 import { find_all_nodes, FoundNode, Fragment, is_story_hole, is_story_node, Story, StoryNode, Updates as S } from 'story';
-import { commands, frame_text, map_cmd, play, story_of, text, world_after } from './test_fire_walkthrough';
+import { accepts, frame_text, play, play_walkthrough, story_of, text, world_at } from './test_fire_walkthrough';
+import { event_frame } from 'demo_worlds/fire/world';
 
 function tree(w: FireWorld): Story {
     return story_of(w);
@@ -50,7 +51,7 @@ describe('the board', function () {
     this.timeout(120000);
 
     it('has the lesson board, then the campfire board with the frames in its left column and the hole moving through it', () => {
-        const w = world_after('touch the flame to the tinder');
+        const w = world_at('campfire touched');
         const story = tree(w);
         assert.ok(has(one(story, S.has_gist(exact(lesson_board_gist()))), 'chip'), 'the lesson board is a chip once the campfire board opens');
         const board = one(story, S.has_gist(exact(board_gist('campfire'))));
@@ -72,8 +73,8 @@ describe('the board', function () {
     });
 
     it('starts with the notation folded, offers expand first, shows it on later boards, and leaves reprints alone', () => {
-        const w = world_after('remember the Voice of Fire', 2);
-        assert.ok(commands(w).includes('expand the steps'));
+        const w = world_at('notation remembered');
+        assert.ok(accepts(w, 'expand the steps'));
         const folded = S.has_gist({ tag: 'right' }).has_class('notation').query(tree(w)).map(([n]) => n as StoryNode);
         assert.equal(folded.length, 8);
         assert.ok(folded.every(n => has(n, 'collapsed') && !has(n, 'absent')));
@@ -87,7 +88,7 @@ describe('the board', function () {
         assert.equal(on_board.length, 8);
         assert.ok(on_board.every(n => !has(n, 'collapsed')));
         assert.ok(notation(story).every(n => !has(n, 'collapsed')));
-        assert.ok(commands(expanded).includes('collapse the steps'));
+        assert.ok(accepts(expanded, 'collapse the steps'));
         // A board opened afterwards shows its notation too.
         const opened = tree(play(expanded, ['listen', 'say that the Voice of Fire is contained in this one', 'pick up the chalk']));
         const campfire = S.has_gist(exact(right_gist('campfire'))).has_class('notation').query(opened).map(([n]) => n as StoryNode);
@@ -99,21 +100,21 @@ describe('the board', function () {
     });
 
     it('badges the rows on map, bands them from the mapping, and folds to a chip on say all set', () => {
-        const after_line = tree(world_after('draw a vertical line'));
+        const after_line = tree(world_at('campfire lined'));
         assert.ok(!has(one(after_line, S.has_gist(exact(right_gist('campfire')))), 'hidden'));
         assert.deepEqual(hole_path(after_line).slice(0, -1), S.has_gist(exact(ledger_gist('campfire'))).query(after_line)[0][1]);
 
         // A placed then erased step leaves no badge, no reference and no band.
-        const e4 = world_after('map the laying of the tinder to the laying of the tinder in the pit');
+        const e4 = world_at('campfire first map');
         const placed = tree(e4);
-        const row = e4.sequences.campfire.events[3];
+        const row = event_frame(e4, CAMPFIRE, 4)!;
         assert.ok(has(frame(placed, row), 'band-1') && has(frame(placed, row), 'mapped'));
-        const erased = tree(world_after('erase the laying of the tinder'));
+        const erased = tree(world_at('campfire erased'));
         assert.equal(badges(erased, 'campfire').length, 0);
         assert.ok(!has(frame(erased, row), 'band-1') && !has(frame(erased, row), 'mapped'));
         assert.equal(one(erased, S.has_gist(exact(targets_gist('campfire', 1)))).children.length, 0);
 
-        const after_maps = tree(world_after('apply the Voice of Fire', 4));
+        const after_maps = tree(world_at('campfire applied'));
         assert.equal(badges(after_maps, 'campfire').length, 8);
         assert.ok(badges(after_maps, 'campfire').every(b => has(b, 'solid')));
         for (let s = 1; s <= 8; s++) {
@@ -121,43 +122,43 @@ describe('the board', function () {
             assert.equal(one(after_maps, S.has_gist(exact(spoken_gist('campfire', s)))).children.length, 1, `the Fire speaks under step ${s}`);
         }
         // Steps 4, 5, 6 share the touch: three renditions, one consequence; three annotations, one per role.
-        const touch = e4.sequences.campfire.events[7];
+        const touch = event_frame(e4, CAMPFIRE, 8)!;
         const touched = frame(after_maps, touch);
         assert.ok(has(touched, 'band-4') && has(touched, 'band-5') && has(touched, 'band-6') && !has(touched, 'band-1'));
         assert.equal(S.frame(touch).has_gist({ tag: 'annotation' }).query(after_maps).length, 3);
         assert.equal(S.has_gist({ tag: 'annotation', params: { seq: 'campfire' } }).query(after_maps).length, 8);
 
         // Set aside: badges hollow, rendition and annotations gone; resume: back.
-        const after_aside = tree(world_after('set aside the mapping'));
+        const after_aside = tree(world_at('campfire set aside'));
         assert.ok(badges(after_aside, 'campfire').every(b => has(b, 'hollow') && !has(b, 'solid')));
         assert.equal(S.has_gist({ tag: 'rendition', params: { seq: 'campfire' } }).query(after_aside).length, 0);
         assert.equal(S.has_gist({ tag: 'annotation', params: { seq: 'campfire' } }).query(after_aside).length, 0);
-        const after_resume = tree(world_after('resume the mapping'));
+        const after_resume = tree(world_at('campfire resumed'));
         assert.equal(S.has_gist({ tag: 'rendition', params: { seq: 'campfire' } }).query(after_resume).length, 8);
         assert.ok(badges(after_resume, 'campfire').every(b => has(b, 'solid')));
 
         // Say all set: the board is a chip with a barcode, and the hole is back at the root; expand reopens it.
-        const chipped = tree(world_after('say all set'));
+        const chipped = tree(world_at('campfire closed'));
         const board = one(chipped, S.has_gist(exact(board_gist('campfire'))));
         assert.ok(has(board, 'chip'));
         const title = board.children[0] as StoryNode;
         assert.ok(has(title, 'board-title') && title.children.some(c => is_story_node(c) && has(c, 'barcode')));
         assert.equal(hole_path(chipped).length, 1);
         // Expand takes the hole into the reopened board's ledger, so it is in view; collapse takes it back to the root.
-        const reopened = tree(world_after('expand the campfire story'));
+        const reopened = tree(world_at('campfire chip expanded'));
         assert.ok(!has(one(reopened, S.has_gist(exact(board_gist('campfire')))), 'chip'));
         const ledger_path = S.has_gist(exact(ledger_gist('campfire'))).query(reopened)[0][1];
         assert.deepEqual(hole_path(reopened).slice(0, ledger_path.length), ledger_path);
-        assert.ok(frame_text(world_after('expand the campfire story')).endsWith('The campfire story unfolds.'));
-        const refolded = tree(world_after('collapse the campfire story'));
+        assert.ok(frame_text(world_at('campfire chip expanded')).endsWith('The campfire story unfolds.'));
+        const refolded = tree(world_at('campfire chip collapsed'));
         assert.ok(has(one(refolded, S.has_gist(exact(board_gist('campfire')))), 'chip'));
         assert.equal(hole_path(refolded).length, 1);
     });
 
     it('draws the voice bars and the You marks at l. 350', () => {
-        const story = tree(world_after('speak as the children'));
+        const story = tree(world_at('children speaking'));
         assert.ok(has(story, 'voices-taught'));
-        const before = tree(world_after('let it follow', 4));
+        const before = tree(world_at('house second follow'));
         assert.ok(!has(before, 'voices-taught'));
         // One YOU bar at the head of the transcript, after the opening, once the notation is taught.
         assert.equal(S.has_gist({ tag: 'you_bar' }).query(before).length, 0);
@@ -168,9 +169,9 @@ describe('the board', function () {
         // The frames are classed for the CSS to place the marks: speak as, traps, followed lines.
         const speak = S.frame().query(story)[0][0] as StoryNode;
         assert.ok(has(speak, 'speak-as') && has(speak, 'you'));
-        const trap = world_after('spread to the thatch');
+        const trap = world_at('thatch trap');
         assert.ok(has(frame(tree(trap), trap.index), 'nudge') && has(frame(tree(trap), trap.index), 'you'));
-        assert.ok(has(frame(story, world_after('let it follow', 4).index), 'follows'));
+        assert.ok(has(frame(story, world_at('house second follow').index), 'follows'));
         // Two bars on the house board: the family, then the children; one on the campfire chip.
         const house_bars = S.has_gist(exact(left_gist('house'))).has_gist({ tag: 'voice_bar' }).query(story);
         assert.equal(house_bars.length, 2);
@@ -184,17 +185,17 @@ describe('the board', function () {
     });
 
     it('annotates a row once per role, folds the unmapped rows, and makes a chip of the house when the chalk is put down', () => {
-        const applied = world_after('apply the Voice of Fire', 5);
+        const applied = world_at('house applied');
         const story = tree(applied);
-        const scatter = applied.sequences.house.events[12];
+        const scatter = event_frame(applied, HOUSE, 13)!;
         assert.deepEqual(S.frame(scatter).has_gist({ tag: 'annotation' }).query(story).map(([n]) => (n as StoryNode).data.gist!.params!.role), ['flame', 'blaze', 'ash']);
         // The unmapped bar's count follows the mapping.
-        const folded = world_after('collapse the unmapped');
+        const folded = world_at('house unmapped folded');
         assert.ok(text(folded).includes('▸ 9 events not in the mapping'));
-        const remapped = world_after(map_cmd(HOUSE, 4, 11));
+        const remapped = world_at('house spark on the stick');
         assert.ok(text(remapped).includes('▸ 8 events not in the mapping'));
         // Folding the unmapped rows marks the voice runs that hold none of the mapping (the set-aside literal solution's rows count).
-        const wise = tree(world_after('collapse the unmapped', 3));
+        const wise = tree(world_at('wise man unmapped folded'));
         const bars = S.has_gist(exact(left_gist('wise_man'))).has_gist({ tag: 'voice_bar' }).query(wise).map(([n]) => n as StoryNode);
         assert.equal(bars.length, 11);
         assert.deepEqual(bars.map(b => has(b, 'empty')), [false, false, false, true, true, true, false, true, false, false, false]);
@@ -202,7 +203,7 @@ describe('the board', function () {
         assert.equal(switches.length, 11);
         assert.deepEqual(switches.map(f => has(f, 'empty')), bars.map(b => has(b, 'empty')));
         // Put down: a chip; the ledger's last frame is the put-down frame.
-        const down = tree(world_after('put down the chalk'));
+        const down = tree(world_at('house closed'));
         assert.ok(has(one(down, S.has_gist(exact(board_gist('house')))), 'chip'));
         const ledger = one(down, S.has_gist(exact(ledger_gist('house'))));
         const last = ledger.children[ledger.children.length - 1] as StoryNode;
@@ -211,11 +212,11 @@ describe('the board', function () {
     });
 
     it('ends with both solutions on the wise man\'s board', () => {
-        const w = world_after('say Ok, I guess');
+        const w = world_at('the end');
         const story = tree(w);
         const board = one(story, S.has_gist(exact(board_gist('wise_man'))));
         assert.ok(!has(board, 'chip'));
-        const [first, second] = w.mappings.filter(m => m.sequence === 'wise_man').map(m => m.id);
+        const [first, second] = w.mappings.filter(m => m.story === WISE_MAN.id).map(m => m.id);
         const of = (id: number) => S.has_gist({ tag: 'badge', params: { seq: 'wise_man', id } }).query(story).map(([b]) => b as StoryNode);
         assert.equal(of(first).length, 8);
         assert.equal(of(second).length, 8);
@@ -238,5 +239,28 @@ describe('the board', function () {
             assert.ok(has(one(story, S.has_gist(exact(board_gist(seq)))), 'chip'), `${seq} is a chip`);
         }
         assert.ok(has(board, 'unmapped-collapsed'));
+    });
+
+    it('never builds a board or a frame inside a chip', () => {
+        // The structure board.css folds: a `.board.chip` hides every `.columns` beneath it, so no board may ever be nested in another.
+        const boards = (story: Story) => S.has_class('board').query(story).map(([n, path]) => ({ node: n as StoryNode, path }));
+        for (const w of [play_walkthrough().initial, ...play_walkthrough().worlds]) {
+            const found = boards(tree(w));
+            for (const a of found) {
+                for (const b of found) {
+                    const nested = a !== b && b.path.length > a.path.length && a.path.every((x, i) => b.path[i] === x);
+                    assert.ok(!nested, `a board is nested in another at world ${w.index}`);
+                }
+            }
+        }
+        // What is done while a chip is expanded is logged in its ledger; folded, the chip shows its closing frame (l. 313–315), not the log.
+        const reopened = world_at('campfire chip expanded');
+        const folded = play(reopened, ['remember the campfire story', 'collapse the campfire story']);
+        const ledger = one(tree(folded), S.has_gist(exact(ledger_gist(CAMPFIRE.id))));
+        const logged = frames_in(ledger);
+        assert.ok(logged.some(f => f.data.frame_index === folded.index));
+        assert.deepEqual(logged.filter(f => has(f, 'closing')).map(f => f.data.frame_index), [world_at('campfire closed').index]);
+        assert.equal(hole_path(tree(folded)).length, 1);
+        assert.equal(STORIES.length, 4);
     });
 });

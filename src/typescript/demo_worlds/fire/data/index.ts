@@ -47,15 +47,6 @@ export function event(story: StorySpec, index: number): StoryEventSpec {
     return e;
 }
 
-// The abstract sequence with this voice id.
-export function sequence_of(voice: string): AbstractSequence {
-    const s = ABSTRACT_SEQUENCES.find(s => s.voice.id === voice);
-    if (s === undefined) {
-        throw new Error(`There is no abstract sequence with the voice ${voice}.`);
-    }
-    return s;
-}
-
 // The passes a story's table has for a voice: one, or two where a second solution exists.
 export function passes(story: StorySpec, voice: string): Pass[] {
     const table = story.candidates[voice] ?? {};

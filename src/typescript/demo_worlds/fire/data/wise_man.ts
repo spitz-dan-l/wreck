@@ -5,14 +5,14 @@
     figurative one, found once the first has been set aside. Also "the two
     lines", the sub-sequence the literal solution registers.
 */
-import { Nudge, StepIndex, StorySpec, SubSequenceSpec } from './types';
+import { Nudge, StorySpec, SubSequenceSpec } from './types';
 
 const WOOD_MY_DEAR = 'Wood, my dear. You are looking for wood. There are only two lines in which anything burns. Find them; the rest will keep.';
 const IT_BURNS_HERE = 'It burns here, my dear. Where was it built?';
 
 // The fuel steps on the lines the second solution will use, and on the burning itself.
 const fuel_nudges: Nudge[] = [];
-for (const step of [1, 2, 3] as StepIndex[]) {
+for (const step of [1, 2, 3]) {
     for (const event of [2, 4, 5]) {
         fuel_nudges.push({ step, event, text: WOOD_MY_DEAR });
     }
