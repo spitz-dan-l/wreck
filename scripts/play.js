@@ -1,15 +1,22 @@
-// Usage: [PLAY_FULL=1] node scripts/play.js "cmd1" "cmd2" ...   (after `npm run compile`)
-// Applies commands to a fresh narrascope world, printing each frame's text and the commands available afterwards.
+// Usage: [PLAY_WORLD=fire] [PLAY_FULL=1] node scripts/play.js "cmd1" "cmd2" ...   (after `npm run compile`)
+// Applies commands to a fresh world (narrascope by default; PLAY_WORLD=fire for the Voice of Fire demo),
+// printing each frame's text and the commands available afterwards.
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 require('tsconfig-paths').register({ baseUrl: path.join(ROOT, 'build'), paths: {} });
 const { JSDOM } = require('jsdom');
 const dom = new JSDOM();
 globalThis.window = dom.window; globalThis.document = dom.window.document;
-const { new_venience_world, venience_world_spec } = require('demo_worlds/narrascope');
 const { raw, traverse_thread } = require('parser');
 const { make_update_thread } = require('world');
 const { to_basic_text, apply_story_updates_all, Updates: S } = require('story');
+
+let new_world, world_spec;
+if (process.env.PLAY_WORLD === 'fire') {
+    ({ new_fire_world: new_world, fire_world_spec: world_spec } = require('demo_worlds/fire'));
+} else {
+    ({ new_venience_world: new_world, venience_world_spec: world_spec } = require('demo_worlds/narrascope'));
+}
 
 function frame_text(world, index) {
     const story = apply_story_updates_all(world.story, world.story_updates);
@@ -17,10 +24,10 @@ function frame_text(world, index) {
     return full;
 }
 function available(world) {
-    const cmds = traverse_thread(make_update_thread(venience_world_spec, world));
+    const cmds = traverse_thread(make_update_thread(world_spec, world));
     return Object.keys(cmds);
 }
-let { initial_result, update } = new_venience_world();
+let { initial_result, update } = new_world();
 let result = initial_result;
 const cmds = process.argv.slice(2);
 let prev_past = '';

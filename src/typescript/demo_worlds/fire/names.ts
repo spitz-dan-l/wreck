@@ -29,12 +29,23 @@ export function ordinal_names(names: string[]): string[] {
 
 // The names of a story's events, in order: with ordinals within the story,
 // and qualified by the story's title where another story has the same name.
+// (Computed once per story: the parser asks for them on every keystroke.)
+const names_cache = new Map<StorySpec, string[]>();
+
 export function event_names(story: StorySpec, stories: StorySpec[]): string[] {
+    const cached = names_cache.get(story);
+    if (cached !== undefined) {
+        return cached;
+    }
     const own = ordinal_names(story.events.map(e => e.name));
     const elsewhere = new Set(stories
         .filter(s => s.id !== story.id)
         .flatMap(s => ordinal_names(s.events.map(e => e.name))));
-    return own.map(name => elsewhere.has(name) ? `${name}, in ${story.title}` : name);
+    const result = own.map(name => elsewhere.has(name) ? `${name}, in ${story.title}` : name);
+    if (stories.length > 1) {
+        names_cache.set(story, result);
+    }
+    return result;
 }
 
 export function event_name(story: StorySpec, index: number, stories: StorySpec[]): string {

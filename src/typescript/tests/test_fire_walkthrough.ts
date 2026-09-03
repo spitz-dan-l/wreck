@@ -1,0 +1,305 @@
+/*
+    The whole demo, played by commands (SPEC §11.4–5): at each beat the
+    expected .md line appears; every trap is enumerable and Available and,
+    issued, prints its nudge and advances nothing; wrong maps print the
+    right nudge; `set aside` reverses an apply; `say that you see it` is
+    Locked; the end state has both wise-man mappings and the roles as
+    expected; and at the scripted states every candidate placement is
+    enumerable. WALKTHROUGH is also the acceptance script for play.js.
+*/
+import * as assert from 'assert';
+import 'mocha';
+import { candidates_for, place } from 'demo_worlds/fire/judge';
+import { event_name } from 'demo_worlds/fire/names';
+import { fire_world_spec, FireWorld, new_fire_world, STORIES, StorySpec, VOICE_OF_FIRE, WISE_MAN } from 'demo_worlds/fire';
+import { AUTHORED, QUOTED } from 'demo_worlds/fire/data/katya';
+import { applied_mapping, set_aside_mappings } from 'demo_worlds/fire/world';
+import { raw, traverse_thread } from 'parser';
+import { apply_story_updates_all, to_basic_text } from 'story';
+import { apply_command, make_update_thread } from 'world';
+import { document_text, normalise } from './test_fire_judge';
+
+const FIRE = VOICE_OF_FIRE;
+
+// One step of the walkthrough: a command, and what must be true after it.
+interface Step {
+    cmd: string;
+    expect?: string[];                  // text that must appear in the transcript afterwards
+    trap?: string;                      // if set, the command is a trap: prints this nudge and changes nothing
+    check?: (w: FireWorld) => void;
+}
+
+const step_name = (n: number) => FIRE.steps[n - 1].name;
+const ev = (story: StorySpec, n: number) => event_name(story, n, STORIES);
+const map_cmd = (story: StorySpec, s: number, e: number) => `map ${step_name(s)} to ${ev(story, e)}`;
+const [CAMPFIRE, HOUSE, FOREST] = STORIES;
+
+function maps(story: StorySpec, placements: [number, number][]): Step[] {
+    return placements.map(([s, e]) => ({ cmd: map_cmd(story, s, e) }));
+}
+
+// Every candidate placement of the current pass is a command the parser enumerates.
+function candidates_enumerable(story: StorySpec) {
+    return (w: FireWorld) => {
+        const cmds = commands(w);
+        const aside = set_aside_mappings(w, story);
+        const pass = aside.length > 0 ? 'second' : 'first';
+        const rows = candidates_for(story, FIRE, pass, aside);
+        for (const step of FIRE.steps) {
+            for (const c of rows[step.index]!) {
+                assert.ok(cmds.includes(map_cmd(story, step.index, c.event)), `${map_cmd(story, step.index, c.event)} is not enumerable`);
+            }
+        }
+        assert.ok(cmds.includes('apply the Voice of Fire'));
+    };
+}
+
+export const WALKTHROUGH: Step[] = [
+    { cmd: 'look at the board', expect: AUTHORED.shelf, check: w => assert.ok(commands(w).includes('remember the Pillaging')) },
+    { cmd: 'listen', expect: [...QUOTED.l162, 'The laying of the tinder', 'The ash left behind'] },
+    { cmd: 'listen', expect: [...QUOTED.l182, 'lay the tinder', 'A pile of black ash is left behind in the hearth.'],
+      check: w => assert.ok(commands(w).includes('remember the laying of the tinder')) },
+    { cmd: 'listen', expect: [...QUOTED.l218, CAMPFIRE.prose[0], CAMPFIRE.prose[11]] },
+    { cmd: 'say that the Voice of Fire is contained in this one', expect: [...QUOTED.l244, ...QUOTED.l246] },
+    { cmd: 'pick up the chalk', expect: QUOTED.l248, check: w => assert.deepEqual(commands(w).filter(c => !c.startsWith('remember') && !c.startsWith('collapse')), ['speak as the friends']) },
+    { cmd: 'speak as the friends', check: w => assert.equal(w.voice, 'the friends') },
+    { cmd: 'travel to the woods', expect: ['You arrive at the campground in the woods.'] },
+    { cmd: 'gather tinder, kindling and firewood' },
+    { cmd: 'dig a pit in the ground' },
+    { cmd: 'lay the tinder in the pit' },
+    { cmd: 'pile the kindling over the tinder' },
+    { cmd: 'stack the logs over the kindling' },
+    { cmd: 'light a match', check: w => { assert.equal(w.cursor, 7); assert.equal(w.remainder, 'and carefully touches its flame to the tinder.'); } },
+    { cmd: 'touch the flame to the tinder', check: w => assert.equal(w.cursor, 8) },
+    { cmd: 'spread to the kindling', trap: 'The friends do not command the fire, my dear.' },
+    { cmd: 'let it follow', expect: ['The fire starts, spreading first to the kindling and then the logs.'] },
+    { cmd: 'sing' },
+    { cmd: 'add logs to the fire' },
+    { cmd: 'sing' },
+    { cmd: 'sleep in tents' },
+    { cmd: 'let it follow', check: w => assert.equal(w.cursor, 13) },
+    { cmd: 'draw a vertical line', expect: QUOTED.l309, check: candidates_enumerable(CAMPFIRE) },
+    { cmd: map_cmd(CAMPFIRE, 8, 11), trap: 'The singing is not ash. What is left behind, afterward, when no one is tending?' },
+    { cmd: map_cmd(CAMPFIRE, 1, 2), trap: FIRE.nudges.step[1]! },
+    { cmd: 'apply the Voice of Fire', trap: FIRE.nudges.L1 },
+    ...maps(CAMPFIRE, [[1, 4], [2, 5], [3, 6], [4, 8], [5, 8], [6, 8], [7, 10], [8, 12]]),
+    { cmd: 'apply the Voice of Fire', expect: [...CAMPFIRE.apply_text.first!, '> lay the tinder — the tinder', '— the ash'],
+      check: w => assert.deepEqual(w.roles.tinder, [{ role: 'tinder', what: 'the tinder', where: CAMPFIRE.title }]) },
+    { cmd: 'set aside the mapping', check: w => {
+        assert.deepEqual(w.roles.tinder, []);
+        assert.ok(!text(w).includes('> lay the tinder — the tinder'));
+        assert.ok(!text(w).includes('— the ash'));
+        assert.equal(applied_mapping(w, CAMPFIRE), undefined);
+        assert.ok(!commands(w).includes('say all set'));
+    } },
+    { cmd: 'resume the mapping', check: w => {
+        assert.equal(w.roles.tinder.length, 1);
+        assert.ok(text(w).includes('> lay the tinder — the tinder'));
+        assert.equal(applied_mapping(w, CAMPFIRE)?.status, 'applied');
+    } },
+    { cmd: 'say all set', expect: [...QUOTED.l313, ...QUOTED.l315], check: w => assert.ok(commands(w).includes('remember the campfire story')) },
+    { cmd: 'remember the campfire story', expect: ['It felt:', '— a bit warm, because they sang', '— like the Voice of Fire, because the tinder was the tinder'] },
+    { cmd: 'remember the tinder', expect: ['The tinder has been: the tinder, in the campfire story.'] },
+    { cmd: 'remember the touching of the flame to the tinder', expect: ['— the ember, in the Voice of Fire', '— the blaze, in the Voice of Fire'] },
+    { cmd: 'listen', expect: [HOUSE.prose[0], HOUSE.prose[12]] },
+    { cmd: 'say that it is a sad story', expect: [...QUOTED.l344, ...QUOTED.l346] },
+    { cmd: 'pick up the chalk' },
+    { cmd: 'speak as the family' },
+    { cmd: 'pack' }, { cmd: 'travel' }, { cmd: 'travel' }, { cmd: 'travel' },
+    { cmd: 'cut wood' }, { cmd: 'dig a hole' }, { cmd: 'build the foundation' }, { cmd: 'raise the frame' },
+    { cmd: 'lay walls and a roof', expect: ['thatch'] },
+    { cmd: 'move in' },
+    { cmd: 'let it follow' },
+    { cmd: 'let it follow', check: w => {
+        assert.equal(w.cursor, 9);
+        const cmds = commands(w);
+        assert.ok(cmds.includes('light the rag') && cmds.includes('ask what the right thing to do is'));
+        assert.ok(!cmds.includes('speak as the children'));
+    } },
+    { cmd: 'light the rag', trap: 'You are still speaking as the family, my dear. Would the family light the rag? Change the voice, then command.' },
+    { cmd: 'ask what the right thing to do is', expect: [...QUOTED.l348, ...QUOTED.l350, ...AUTHORED.voice_switches],
+      check: w => assert.ok(commands(w).includes('speak as the children')) },
+    { cmd: 'speak as the children' },
+    { cmd: 'light the rag', expect: ['one of you lights an oil-soaked rag'] },
+    { cmd: 'hurl it onto the roof' },
+    { cmd: 'scatter', expect: AUTHORED.burning_lines, check: w => assert.equal(w.cursor, 10) },
+    { cmd: 'spread to the thatch', trap: 'The children have run, my dear.' },
+    { cmd: 'let it follow' }, { cmd: 'let it follow' }, { cmd: 'let it follow' }, { cmd: 'let it follow' },
+    { cmd: 'draw a vertical line', expect: QUOTED.l383, check: candidates_enumerable(HOUSE) },
+    { cmd: map_cmd(HOUSE, 1, 9) },
+    { cmd: map_cmd(HOUSE, 2, 9), trap: FIRE.nudges.L6 },
+    { cmd: map_cmd(HOUSE, 1, 11) },
+    ...maps(HOUSE, [[2, 9], [3, 8], [4, 12], [5, 13], [6, 13], [7, 13], [8, 13]]),
+    { cmd: 'apply the Voice of Fire', expect: HOUSE.apply_text.first!,
+      check: w => assert.deepEqual(w.roles.tinder.map(r => r.what), ['the tinder', 'the oil-soaked rag']) },
+    { cmd: 'object that there is no clear tinder', expect: [...QUOTED.l385, ...QUOTED.l387] },
+    { cmd: 'say that it knows nothing of the morality of the burning either', expect: [...QUOTED.l389, ...QUOTED.l391] },
+    { cmd: 'say all set', expect: QUOTED.l393 },
+    { cmd: 'listen', expect: [FOREST.prose[0]] },
+    { cmd: 'pick up the chalk', check: w => {
+        assert.equal(w.voice, undefined);
+        const cmds = commands(w).filter(c => !c.startsWith('remember') && !c.startsWith('collapse') && !c.startsWith('expand'));
+        assert.deepEqual(cmds.sort(), FOREST.voices.map(v => `speak as ${v}`).concat(['speak as the Voice of Fire']).sort());
+    } },
+    { cmd: 'speak as the Voice of Fire', trap: FOREST.traps[0].nudge },
+    { cmd: 'speak as the seed', expect: AUTHORED.disembodied },
+    { cmd: 'take root' },
+    { cmd: 'speak as the season', expect: AUTHORED.abstract },
+    { cmd: 'turn' },
+    { cmd: 'speak as the tree', check: w => assert.ok(!text(w).endsWith(normalise(AUTHORED.disembodied[2]))) },
+    { cmd: 'grow' }, { cmd: 'sprout leaves and seeds' },
+    { cmd: 'speak as the forest' }, { cmd: 'spread' },
+    { cmd: 'speak as time' }, { cmd: 'pass' },
+    { cmd: 'speak as the weather' }, { cmd: 'turn dry and hot' }, { cmd: 'bring a thunderstorm' },
+    { cmd: 'speak as the fire' }, { cmd: 'spread to the dead brush' }, { cmd: 'burn in a growing circle' },
+    { cmd: 'consume the forest' }, { cmd: 'stop at the rivers' },
+    { cmd: 'draw a vertical line', expect: QUOTED.l419, check: candidates_enumerable(FOREST) },
+    ...maps(FOREST, [[1, 7], [2, 7], [3, 5], [4, 8], [5, 9], [6, 9], [7, 10], [8, 12]]),
+    { cmd: 'apply the Voice of Fire', expect: FOREST.apply_text.first! },
+    { cmd: 'say all set', expect: QUOTED.l421 },
+    { cmd: 'listen', expect: [WISE_MAN.prose[0], WISE_MAN.prose[13]] },
+    { cmd: 'pick up the chalk' },
+    { cmd: 'speak as the boy' }, { cmd: 'be born' }, { cmd: 'grow up and acquire wisdom' },
+    { cmd: 'speak as the man' }, { cmd: 'seek answers to old questions' }, { cmd: 'gain a small circle of seekers' },
+    { cmd: 'speak as the followers' }, { cmd: 'grow in number' },
+    { cmd: 'speak as the man' }, { cmd: 'give speeches' },
+    { cmd: 'speak as the followers' }, { cmd: 'write down his teachings' },
+    { cmd: 'speak as the man' }, { cmd: 'die unexpectedly' },
+    { cmd: 'speak as the closest followers' }, { cmd: 'construct a pyre and lay his body on it' },
+    { cmd: 'speak as the followers' }, { cmd: 'attend the funeral' },
+    { cmd: 'speak as the closest followers' }, { cmd: 'light the pyre', expect: [WISE_MAN.prose[10]] },
+    { cmd: 'adjust and embellish his words' },
+    { cmd: 'speak as the books' }, { cmd: 'spread across the land' }, { cmd: 'be read and repeated and reprinted' },
+    { cmd: 'speak as time' }, { cmd: 'pass' },
+    { cmd: 'draw a vertical line', check: w => assert.ok(!commands(w).some(c => c.startsWith('map '))) },
+    { cmd: 'say that the Voice of Fire is contained in just two lines', expect: [...QUOTED.l451, ...QUOTED.l453], check: candidates_enumerable(WISE_MAN) },
+    { cmd: map_cmd(WISE_MAN, 1, 2), trap: WISE_MAN.nudges[0].text },
+    { cmd: map_cmd(WISE_MAN, 1, 11), trap: 'It burns here, my dear. Where was it built?' },
+    ...maps(WISE_MAN, [[1, 9], [2, 9], [3, 9], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11]]),
+    { cmd: 'apply the Voice of Fire', expect: WISE_MAN.apply_text.first!,
+      check: w => { assert.ok(commands(w).includes('remember the two lines')); assert.ok(!commands(w).includes('set aside the first solution')); } },
+    { cmd: 'remember the two lines', expect: ['— contained, because everything else stood outside'] },
+    { cmd: 'ask what she means', expect: [...QUOTED.l467, ...QUOTED.l469] },
+    { cmd: 'set aside the first solution', check: w => {
+        assert.equal(set_aside_mappings(w, WISE_MAN).length, 1);
+        assert.deepEqual(w.roles.tinder.map(r => r.where), [CAMPFIRE.title, HOUSE.title, FOREST.title]);
+        candidates_enumerable(WISE_MAN)(w);
+    } },
+    { cmd: map_cmd(WISE_MAN, 8, 11), trap: FIRE.nudges.L7_step[8]! },
+    { cmd: map_cmd(WISE_MAN, 1, 9), trap: FIRE.nudges.L7 },
+    ...maps(WISE_MAN, [[1, 2], [2, 4], [3, 5]]),
+    { cmd: map_cmd(WISE_MAN, 4, 8), expect: ['His death. Very well. Hold that.'] },
+    ...maps(WISE_MAN, [[4, 12], [5, 12], [6, 13], [7, 14], [8, 15]]),
+    { cmd: 'apply the Voice of Fire', expect: WISE_MAN.apply_text.second!, check: w => {
+        assert.ok(w.sequences.wise_man.finished);
+        assert.ok(commands(w).includes('object that there is no fire'));
+        assert.ok(!commands(w).includes('object that the fireplace is too abstract'));
+    } },
+    { cmd: 'object that there is no fire', expect: [...QUOTED.l473, ...QUOTED.l475, ...QUOTED.l477_fire] },
+    { cmd: 'object that the fireplace is too abstract', expect: QUOTED.l477_abstract },
+    { cmd: 'object that the spark is the myth, not the death', expect: QUOTED.l477_spark },
+    { cmd: 'object that the ash is still structured', expect: [...QUOTED.l477_ash, ...QUOTED.l479], check: w => {
+        const options = typeahead(w, 'say');
+        assert.ok(options.some(o => o.availability === 'Locked' && o.tokens.join(' ') === 'that you see it'), JSON.stringify(options));
+        assert.ok(commands(w).includes('say Ok, I guess'));
+        assert.ok(!commands(w).includes('say that you see it'));
+    } },
+    { cmd: "remember the wise man's story", check: w => assert.ok(!text(w).includes("unconvincing, because you don't really see it")) },
+    { cmd: 'say Ok, I guess', expect: [...QUOTED.l481, ...AUTHORED.coda], check: w => {
+        assert.equal(w.scene, 'end');
+        const m = w.mappings.filter(m => m.sequence === 'wise_man');
+        assert.deepEqual(m.map(x => [x.pass, x.status]), [['first', 'set aside'], ['second', 'applied']]);
+        assert.deepEqual(w.roles.tinder.map(r => r.what), ['the tinder', 'the oil-soaked rag', 'the dead brush', 'his wisdom']);
+        assert.deepEqual(w.roles.ash.map(r => r.what), ['a pile of ash', 'a field of ash', 'the forest, as ash', 'the distorted doctrine']);
+        assert.deepEqual(w.roles.blaze.map(r => r.where), STORIES.map(s => s.title));
+        assert.ok(commands(w).includes('remember the saying of Ok, I guess'));
+        assert.ok(!commands(w).some(c => c.startsWith('map ') || c.startsWith('set aside') || c.startsWith('say ')));
+    } },
+    { cmd: "remember the wise man's story", expect: ["— unconvincing, because you don't really see it"] },
+    { cmd: 'remember the saying of Ok, I guess', expect: ['It felt a bit untrue, because it was.'] },
+    { cmd: 'remember the second listening', expect: ['It felt like nothing in particular.'] }
+];
+
+export const ACCEPTANCE_SCRIPT: string[] = WALKTHROUGH.filter(s => s.trap === undefined).map(s => s.cmd);
+
+function text(w: FireWorld): string {
+    return normalise(to_basic_text(apply_story_updates_all(w.story, w.story_updates)));
+}
+
+function commands(w: FireWorld): string[] {
+    return Object.keys(traverse_thread(make_update_thread(fire_world_spec, w)));
+}
+
+function typeahead(w: FireWorld, input: string): { tokens: string[], availability: string }[] {
+    return apply_command(fire_world_spec, w, raw(input, false)).parsing.view.typeahead_grid.map(o => ({
+        availability: o.availability,
+        tokens: o.option.filter(m => m !== undefined).map(m => String(m!.expected.token))
+    }));
+}
+
+function state_snapshot(w: FireWorld) {
+    return JSON.stringify({ scene: w.scene, voice: w.voice, board: w.board, cursor: w.cursor, sequences: w.sequences, mappings: w.mappings, roles: w.roles, said: w.said });
+}
+
+describe('the Voice of Fire, played through', () => {
+    it('quotes every Katya and character line verbatim', () => {
+        const md = document_text();
+        for (const [key, lines] of Object.entries(QUOTED)) {
+            for (const line of lines) {
+                assert.ok(md.includes(normalise(line)), `${key} is not in the document verbatim: "${line}"`);
+            }
+        }
+    });
+
+    it('starts in the classroom', () => {
+        const { initial_result } = new_fire_world();
+        assert.ok(text(initial_result.world).includes(normalise(QUOTED.l160[0])));
+        assert.deepEqual(commands(initial_result.world).sort(), ['listen', 'look at the board']);
+    });
+
+    it('reaches "But you don\'t really see it."', function () {
+        this.timeout(120000);
+        const { initial_result, update } = new_fire_world();
+        let world = initial_result.world;
+        for (const step of WALKTHROUGH) {
+            const before = world;
+            const result = update(world, raw(step.cmd));
+            if (result.world === before) {
+                assert.fail(`"${step.cmd}" was not accepted. Available: ${commands(before).join(' | ')}`);
+            }
+            world = result.world;
+            const after = text(world);
+            if (step.trap !== undefined) {
+                assert.ok(commands(before).includes(step.cmd), `the trap "${step.cmd}" is not enumerable`);
+                assert.ok(after.endsWith(normalise(step.trap) + ' >'), `"${step.cmd}" did not print its nudge; the frame ends: ${after.slice(-200)}`);
+                assert.equal(state_snapshot(world), state_snapshot(before), `"${step.cmd}" changed the state`);
+            }
+            for (const expected of step.expect ?? []) {
+                assert.ok(after.includes(normalise(expected)), `after "${step.cmd}", expected: "${expected}"; the transcript ends: ${after.slice(-300)}`);
+            }
+            if (step.check !== undefined) {
+                step.check(world);
+            }
+        }
+        assert.ok(text(world).includes("But you don't really see it."));
+    });
+
+    it('measures the keystroke parse time at the wise man\'s mapping state', function () {
+        this.timeout(120000);
+        const { initial_result, update } = new_fire_world();
+        let world = initial_result.world;
+        const until = WALKTHROUGH.findIndex(s => s.cmd === 'set aside the first solution');
+        for (const step of WALKTHROUGH.slice(0, until + 1)) {
+            world = update(world, raw(step.cmd)).world;
+        }
+        const started = Date.now();
+        for (const input of ['', 'm', 'map', 'map the', 'map the laying of the tinder to', 'r', 'remember the']) {
+            apply_command(fire_world_spec, world, raw(input, false));
+        }
+        const per_keystroke = (Date.now() - started) / 7;
+        assert.ok(per_keystroke < 500, `a keystroke took ${per_keystroke} ms`);
+        // The judge agrees with the parser about what is placeable here.
+        const aside = set_aside_mappings(world, WISE_MAN);
+        assert.ok(place(WISE_MAN, FIRE, { voice: FIRE.voice.id, sequence: 'wise_man', pass: 'second', placements: [], status: 'open' }, 1, 2, aside).ok);
+    });
+});

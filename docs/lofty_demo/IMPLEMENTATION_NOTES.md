@@ -55,3 +55,83 @@ ambiguities were resolved. Bare line numbers cite `dist/posts/puzzle_lofty.md`;
   The judge admits it; the test records it.
 - **Trap data** has an optional `prose` (the forest's `speak as the Voice
   of Fire` is at any ¶) and an optional `voice`.
+
+## Phase B1 (the playable world, headless)
+
+Play it with `PLAY_WORLD=fire node scripts/play.js "look at the board" "listen" …`;
+the full command list is `ACCEPTANCE_SCRIPT` in `tests/test_fire_walkthrough.ts`.
+
+**Engine.** No engine changes. No lock is used: the scene (`world.scene`)
+gates every puffer directly (`classroom`, `chalk`, `notation`, then
+`<story>:told|ready|transcribing|lined|mapping|second|done`, then `end`).
+Multi-word names are one parser chunk (`the_laying_of_the_tinder`), so the
+typeahead lists whole phrases after the verb. A Locked line (`say that you
+see it`) keeps its verb Available and locks only the rest, so it shows
+dimmed after `say` (a fully Locked spec dies as soon as the verb is typed).
+Keystroke parse time at the wise man's mapping state: ~5 ms
+(`event_names` is cached; it was 300 ms without). `traverse_thread` there:
+~2.5 s (tests only).
+
+**State beyond §3.** `collapsed` and `taught` are arrays, not Sets
+(`update()` treats a Set as an opaque value; arrays are plainer).
+`frame_voices` records who spoke each event frame. `said` holds the
+classroom lines said; `ended` marks l. 481. `sequences[id].events` are frame
+indices as in §3; "the two lines" is registered there on the literal apply.
+
+**Story-tree shape (B1 only).** Every frame is at the root and the hole
+stays at the root. The board at open prints its title and ¶s as a
+description; `draw a vertical line` prints the eight chalk statements; the
+Fire's rendition (`> <step command> — <derived>` and the event's whole
+consequence) is the apply frame's description with gist `spoken(seq, pass)`;
+annotations (`— the <role>`, gist `annotation(seq, n, pass, role)`) are added
+into each mapped event frame's input line and grafted into knowledge.
+`set aside` removes both by gist and drops the roles entries; `resume`
+re-adds the rendition into its own frame. `board.tsx` holds all of these
+nodes and gists for B2 to relocate.
+
+**Resolved ambiguities.**
+- What `draw a vertical line` prints: l. 309–311 (campfire), l. 383's first
+  two sentences (house), "You repeat the exercise." (forest), only the right
+  column for the wise man (the .md narrates that line inside l. 451, which
+  the player's next command prints).
+- l. 350: `"Indeed," says Katya.` then the voice-switch speech; the .md's
+  "She shows you how to indicate voice switches using visual notation." is
+  not printed — the speech is that showing.
+- Wise man ordering (§9): `map` is offered only after `say that … just two
+  lines`; `set aside the first solution` only after `ask what she means`;
+  the objections only while the second solution is applied; no mapping
+  commands after `say Ok, I guess`. In the house, `say all set` needs both
+  l. 385 and l. 389 said first.
+- `resume` is offered only while no mapping on the board is applied
+  (§13: never both lit). `set aside` on a story with no second-pass table
+  opens no new mapping (L7 would empty it anyway): only `resume the mapping`
+  advances, and `say all set` still needs an applied mapping. Setting aside
+  the wise man's second solution opens an empty second-pass mapping that L7
+  has emptied; the way on is `resume` either solution.
+- Katya's forest speeches trigger on the first `speak as` of a voice of
+  each *kind* (disembodied, abstract), which with §5.3's order is the seed
+  and the season.
+- `speak as` offers only the story's first voice until l. 350 is said, then
+  every voice of the story except the current one, at any ¶ of the board.
+- Objection 3's wording follows the spark's placement in the applied
+  figurative mapping (e12 → "the myth, not the death"; e8 → the reverse).
+- `remember <event>` reprints the knowledge passage (`> command` and the
+  whole consequence, followed lines included, plus annotations) then the
+  feeling, one line per role the event carries. Classroom events reprint
+  their frame (command and consequence) with gists stripped, then the
+  feeling; their names are authored in `data/katya.ts` and get ordinals over
+  the whole lesson ("the second listening"). Frames for `map`, `erase`,
+  `apply`, `set aside`, `resume`, `speak as`, `let it follow`, traps,
+  `expand`/`collapse` and `remember` itself carry no name and are not
+  rememberable.
+- `remember today's lesson` is not offered in B1: §2 lists it as a
+  sequence, but its verbatim replay would be the whole transcript. Deferred.
+- `remember the Voice of Fire` from the first `listen`; the steps and the
+  roles from the second (the notation); the Pillaging from `look at the
+  board`; `look at the board` is offered once, anywhere in beat 0.
+- `expand`/`collapse` are toggles on `collapsed` that print nothing: the
+  steps, the open board's story, its events and (from the line on) its
+  unmapped rows, and finished stories' chips.
+- Knowledge holds every event of a story from board open (gist
+  `event(seq, n)`) and the two abstract sequences (`abstract sequence`,
+  `step(voice, n)`).
