@@ -128,7 +128,7 @@ export class StaticMap<T extends {}> implements Sealable {
         }
 
         if (name in this.resources) {
-            throw new Error('Tried to create resource with duplicate name: '+name);
+            throw new Error('Tried to create resource with duplicate name: '+String(name));
         }
         let resource = new StaticResource<T[K]>(<string>name);
         this.resources[name] = resource;
@@ -141,7 +141,7 @@ export class StaticMap<T extends {}> implements Sealable {
         }
 
         if (!(name in this.resources)) {
-            throw new Error('Tried to initialize uncreated resource: '+name);
+            throw new Error('Tried to initialize uncreated resource: '+String(name));
         }
         let resource = this.get(name);
         let processed = this.mappers.reduce((acc, f) => f(acc), value);
@@ -189,14 +189,14 @@ export class StaticMap<T extends {}> implements Sealable {
     //         throw new Error(`Tried to get resource value for ${name} before registry was sealed.`);
     //     }
     //     if (this.resources[name] === undefined) {
-    //         throw new Error('Tried to get unrecognized resource: '+name);
+    //         throw new Error('Tried to get unrecognized resource: '+String(name));
     //     }
     //     return (this.resources[name] as StaticResource<T[K]>).get(assert_sealed)
     // }
 
     get<K extends keyof T>(name: K): StaticResource<T[K]> {
         if (this.resources[name] === undefined) {
-            throw new Error('Tried to get unrecognized resource: '+name);
+            throw new Error('Tried to get unrecognized resource: '+String(name));
         }
         return (this.resources[name] as StaticResource<T[K]>)
     }

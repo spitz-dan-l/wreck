@@ -50,10 +50,10 @@ export function make_adt<Spec extends ADTSpec>(
     tag_name: Spec[TagName],
     check: ADTTypeErrors<Spec> extends never ? null : ADTTypeErrors<Spec>
 ): ADTConstructors<Spec> {
-    return new Proxy({} as ADTConstructors<Spec>, {
-        get: <K extends keyof Spec>(x: unknown, tag: K) =>
-            (props: OptionalArg<Spec[K]>) =>
-                ({ [tag_name]: tag, ...props }) as unknown as ADT<Spec>
+    return new Proxy<ADTConstructors<Spec>>({} as ADTConstructors<Spec>, {
+        get: (_target, tag: string | symbol) =>
+            (props: object | void) =>
+                ({ [tag_name]: tag, ...(props ?? {}) }) as unknown as ADT<Spec>
     });
 }
 

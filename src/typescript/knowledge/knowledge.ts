@@ -1,12 +1,11 @@
 import { StoryNode, StoryUpdateCompilationOp, UpdatesBuilder, StoryUpdaterSpec, Updates as S, story_updater, apply_story_updates_all, Story, sort_targets, is_story_node, Fragment, StoryUpdatePlan, compile_story_update_group_ops, apply_story_update_compilation_op, StoryUpdateGroup, apply_story_updates_stage, structurally_equal,  } from "story";
 import { AssocList } from "../lib/assoc";
-import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, GistRenderer, GistPattern, UNION, FIND_DEEP, EMPTY, EXACT } from "gist";
+import { Gist, gists_equal, gist_to_string, gist, ValidTags, Gists, match, match_loose, GistRenderer, GistPattern, UNION, FIND_DEEP, EMPTY, EXACT } from "gist";
 import { update } from "../lib/update";
 import { World } from "../world";
 import { Puffer } from "../puffer";
 import { stages, stage_values, merge_keys } from "../lib/stages";
 import { compute_const, map_values, is_shallow_equal, append } from "../lib/utils";
-import { P } from "Object/_api";
 import { zip } from "iterative";
 
 declare module 'gist' {
@@ -84,7 +83,7 @@ export class Knowledge {
 
     get_entries(p: GistPattern): KnowledgeAssoc {
         const kp = convert_to_knowledge_pattern(p);
-        return this.knowledge.filter(k => match(k)(kp));
+        return this.knowledge.filter(k => !!match_loose(k, kp));
     }
 
     get_entry(p: GistPattern): KnowledgeEntry | undefined {

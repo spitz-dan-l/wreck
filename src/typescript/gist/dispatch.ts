@@ -2,7 +2,7 @@ import { Gists, gist_to_string } from "./gist";
 
 import { Stages, stages, stage_values } from "lib/stages";
 import { Sealable, IsSealed, Seal, OnSealedCallback, OnSealed } from "lib/static_resources";
-import { GistPattern, match, PositiveMatchResult } from "./pattern";
+import { GistPattern, match_loose, PositiveMatchResult } from "./pattern";
 import { ValidTags } from "./static_gist_types";
 
 /*
@@ -86,7 +86,7 @@ export class GistPatternDispatcher<V, Tags extends ValidTags=ValidTags> implemen
         }
         for (const rules of stage_values(this.index)) {
             for (const rule of rules) {
-                if (match(g)(rule.pattern)) {
+                if (match_loose(g, rule.pattern)) {
                     return rule.impl;
                 }
             }
@@ -108,7 +108,7 @@ export class GistPatternDispatcher<V, Tags extends ValidTags=ValidTags> implemen
                 break;
             }
             for (const rule of rules) {
-                if (match(g)(rule.pattern)) {
+                if (match_loose(g, rule.pattern)) {
                     result.push(rule.impl);
                     if (has_hit_fallthrough(stage)) {
                         break outer;

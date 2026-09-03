@@ -31,7 +31,7 @@ export function createElement<P extends Props>(type: Renderer<P>, props: P, ...c
 export function createElement(type: string, props: MergeWithHTMLProps<Props>, ...children: CreateElementChildDeep[]): HTMLElement;
 export function createElement<P extends Props>(type: Renderer<P> | string, props: MergeWithHTMLProps<P>, ...children_deep: CreateElementChildDeep[]): HTMLElement {
 	const children: CreateElementChild[] = flat_deep(children_deep); //.flat(Infinity);
-	const all_props: P & BaseProps = {...props, children};
+	const all_props = {...props, children} as unknown as P & BaseProps;
 	
 	if (typeof type === 'string') {
 		return intrinsic_element_renderer(type, all_props);

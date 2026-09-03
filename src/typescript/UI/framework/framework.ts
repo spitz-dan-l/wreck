@@ -101,7 +101,7 @@ export function child_declarator_for<C1 extends Component<Props>>() {
     return child_declarator_for_inner;
 }
 
-export type UI<State, Action> = {
+export type UI<State extends Props, Action> = {
     initialize: (init_state: State) => Component<State>,
     dispatch: (action: Action) => void,
     effect: (f: () => void) => void,
@@ -116,7 +116,7 @@ declare module 'devtools' {
     }
 }
 
-export function make_ui<State, Action>(
+export function make_ui<State extends Props, Action>(
     renderer: Renderer<State>,
     reducer: (state: State, action: Action) => State,
     debug: boolean=false
@@ -134,7 +134,7 @@ export function make_ui<State, Action>(
         return render();
     }
 
-    let render_task: number | undefined = undefined;
+    let render_task: ReturnType<typeof setTimeout> | undefined = undefined;
     
     const action_queue: Action[] = [];
     const effect_queue: (() => void)[] = [];
