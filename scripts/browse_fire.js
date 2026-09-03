@@ -16,8 +16,10 @@
 //   report.md   per command: the scroll before and after, the page height, the
 //               text visible in the viewport (prompt and typeahead lines marked,
 //               the pinned steps column marked), the DOM changes the command
-//               caused and whether each is in view, the typeahead options, and
-//               a WARNINGS line.
+//               caused and whether each is in view, the options as they are
+//               after the command and the phrases each offers next (options
+//               come one phrase at a time: `speak as` then `the friends`),
+//               and a WARNINGS line.
 //
 // --acceptance plays docs/lofty_demo/round2/acceptance_script.json (the given
 // commands follow it); --script FILE plays a JSON list; --skip N plays the first
@@ -196,11 +198,14 @@ function instrument() {
         };
     }
     function options() {
+        // The engine's grid says whether an option continues what is typed (its first token already matched) or is an alternative to it.
+        const grid = (window.devtools && window.devtools.ui_state) ? window.devtools.ui_state.command_result.parsing.view.typeahead_grid : [];
         return [...document.querySelectorAll('#story-hole .typeahead li.option')].map((li, i) => {
             const v = view();
             const r = li.getBoundingClientRect();
             return {
                 index: i,
+                continues: grid[i] !== undefined && grid[i].option[0] === undefined,
                 text: collapse(li.textContent.replace(/[↵⃐⊘]/g, ' ')),
                 submits: li.textContent.includes('↵'),
                 locked: li.classList.contains('locked'),
@@ -209,6 +214,51 @@ function instrument() {
         });
     }
     function prompt_text() { const i = document.querySelector('#story-hole input'); return i ? i.value : ''; }
+    // The options are offered one phrase at a time; typing an option shows the next phrases. For each
+    // option in view, type it (no Enter), read the next level, and put the prompt back; for the first
+    // `map` step, one level more (`to` and the events). Lists longer than `limit` are not expanded.
+    const EXPAND_LIMIT = 30;
+    const tick = () => new Promise(r => setTimeout(r, 40));
+    async function next_level(text) {
+        set_prompt_text(text);
+        await tick();
+        const prefix = collapse(text);
+        return options().map(o => ({ text: o.text.startsWith(prefix) ? collapse(o.text.slice(prefix.length)) : o.text, submits: o.submits, locked: o.locked }));
+    }
+    async function expand_options() {
+        const original = prompt_text();
+        const scroll = terminal.scrollTop;
+        const top = options();
+        const out = { chains: [], skipped: null };
+        if (top.length > EXPAND_LIMIT) { out.skipped = `${top.length} options offered, more than ${EXPAND_LIMIT}: not expanded`; return out; }
+        for (const o of top) {
+            if (o.locked) { out.chains.push({ head: o.text, next: [], locked: true }); continue; }
+            if (o.submits) { out.chains.push({ head: o.text, next: [], complete: true }); continue; }
+            const next = await next_level(o.text);
+            const chain = { head: o.text, next: next.map(n => n.text + (n.locked ? ' [locked]' : '')), more: next.length > EXPAND_LIMIT };
+            if (chain.more) { chain.next = chain.next.slice(0, EXPAND_LIMIT); }
+            // The shape of a `map`: the first step's own next phrases.
+            if (/^map$/i.test(o.text) && next.length > 0 && !next[0].locked) {
+                let text = o.text + ' ' + next[0].text;
+                const deeper = [];
+                for (let depth = 0; depth < 2; depth++) {
+                    const level = await next_level(text);
+                    if (level.length === 0) { break; }
+                    deeper.push({ after: collapse(text), next: level.slice(0, EXPAND_LIMIT).map(n => n.text), more: level.length > EXPAND_LIMIT });
+                    if (level.length !== 1 || level[0].submits) { break; }
+                    text += ' ' + level[0].text;
+                }
+                chain.deeper = deeper;
+            }
+            out.chains.push(chain);
+        }
+        set_prompt_text(original);
+        await tick();
+        if (terminal.scrollTop !== scroll) { terminal.scrollTop = scroll; }
+        await tick();
+        st.stopped_at = now();
+        return out;
+    }
     function set_prompt_text(text) {
         const i = document.querySelector('#story-hole input');
         i.value = text;
@@ -365,7 +415,7 @@ function instrument() {
         const f = document.querySelector('.typeahead .footer');
         if (f) { f.scrollIntoView({ behavior: 'instant', block: 'end' }); }
     }
-    window.__vf = { start, stop, status, idle_scrolls, options, prompt_text, set_prompt_text, enter_control, observe, scroll_to_prompt, world_index, locked, prompt_position };
+    window.__vf = { start, stop, status, idle_scrolls, expand_options, options, prompt_text, set_prompt_text, enter_control, observe, scroll_to_prompt, world_index, locked, prompt_position };
 }
 
 async function open({ phone = false, hires = false } = {}) {
@@ -421,24 +471,38 @@ async function enter(session, cmd) {
         } catch (e) { return false; }
     };
     const target = norm(cmd);
+    // Why a submit did not take: the text is a prefix of an offered chain, or nothing offered matches it.
+    const why = async (state) => {
+        const typed = state ? state.typed : norm(await page.evaluate(() => window.__vf.prompt_text()));
+        const options = state ? state.options : await page.evaluate(() => window.__vf.options());
+        // The options that continue what is typed are the phrases that may follow it.
+        const next = options.filter(o => o.continues);
+        if (typed !== '' && next.length > 0) { return `not a complete command from the options (after "${typed}" the options are: ${next.map(o => o.text).join(' | ')})`; }
+        return `"${typed}" matches nothing offered (the options were: ${offered.map(o => o.text).join(' | ') || 'none'})`;
+    };
+    const offered = await page.evaluate(() => window.__vf.options());
     if (session.phone) {
         const taps = [];
         for (let attempt = 0; attempt < 16; attempt++) {
             const options = await page.evaluate(() => window.__vf.options());
             const typed = norm(await page.evaluate(() => window.__vf.prompt_text()));
-            // The option that is the whole command, else the longest one that is a prefix of it.
+            // The options show the phrases that follow what is typed (the typed part is blanked);
+            // the one that is the rest of the command, else the longest that is a prefix of the rest.
+            if (typed !== '' && typed !== target && !target.startsWith(typed + ' ')) { break; }
+            const rest = typed === '' ? target : norm(target.slice(typed.length));
+            if (rest === '') { break; }
             let best = null;
             for (const o of options) {
                 if (o.locked) { continue; }
-                if (o.text === target || target.startsWith(o.text + ' ')) {
+                if (o.text === rest || rest.startsWith(o.text + ' ')) {
                     if (best === null || o.text.length > best.text.length) { best = o; }
                 }
             }
-            if (best === null || best.text.length <= typed.length) { break; }
+            if (best === null) { break; }
             taps.push(best.text);
             await page.tap(`#story-hole .typeahead li.option >> nth=${best.index}`);
             const submitted_at = Date.now();
-            if (best.submits && best.text === target) {
+            if (best.submits && best.text === rest) {
                 if (await accepted(1500)) { return { accepted: true, how: `tapped ${taps.length} option(s)`, submitted_at }; }
                 break;
             }
@@ -451,6 +515,7 @@ async function enter(session, cmd) {
             await page.keyboard.type(cmd);
         }
         const control = await page.evaluate(() => window.__vf.enter_control());
+        const at_submit = { typed: norm(await page.evaluate(() => window.__vf.prompt_text())), options: await page.evaluate(() => window.__vf.options()) };
         let submitted_at;
         if (control === 'enabled') {
             await page.tap('#story-hole .prompt-controls .enter');
@@ -460,13 +525,14 @@ async function enter(session, cmd) {
             submitted_at = Date.now();
         }
         const ok = await accepted(2000);
-        return { accepted: ok, how: (taps.length ? `tapped ${taps.length} option(s), then ` : '') + (typed !== target ? 'typed' : 'kept the text') + (control === 'enabled' ? ' and tapped Enter' : ' and pressed Enter'), submitted_at };
+        return { accepted: ok, how: (taps.length ? `tapped ${taps.length} option(s), then ` : '') + (typed !== target ? 'typed' : 'kept the text') + (control === 'enabled' ? ' and tapped Enter' : ' and pressed Enter'), submitted_at, why: ok ? undefined : await why(at_submit) };
     }
     await page.keyboard.type(cmd);
+    const at_submit = { typed: norm(await page.evaluate(() => window.__vf.prompt_text())), options: await page.evaluate(() => window.__vf.options()) };
     await page.keyboard.press('Enter');
     const submitted_at = Date.now();
     const ok = await accepted(2000);
-    return { accepted: ok, how: 'typed and pressed Enter', submitted_at };
+    return { accepted: ok, how: 'typed and pressed Enter', submitted_at, why: ok ? undefined : await why(at_submit) };
 }
 
 // Play one command, record it, and return the observation.
@@ -488,6 +554,7 @@ async function play(session, cmd, record) {
     const settled = await settle(session);
     await page.evaluate(() => window.__vf.stop());
     const obs = await page.evaluate(() => window.__vf.observe());
+    obs.chains = entered.accepted || obs.options.length > 0 ? await page.evaluate(() => window.__vf.expand_options()) : { chains: [], skipped: null };
     if (record) {
         await page.screenshot({ path: path.join(record.dir, record.name + '.png'), ...session.screenshot_options });
     }
@@ -532,7 +599,7 @@ function motion(result) {
 function warnings(result) {
     const a = result.after;
     const out = [];
-    if (!result.entered.accepted) { out.push(`NOT ACCEPTED: the command was not taken (${result.entered.how})`); }
+    if (!result.entered.accepted) { out.push(`NOT ACCEPTED: ${result.entered.why || 'the command was not taken'} (${result.entered.how})`); }
     if (!result.settled.settled) { out.push(`NOT SETTLED after ${result.settled.ms} ms`); }
     const outside = a.changes.filter(c => !c.in_hole);
     for (const c of outside) {
@@ -577,7 +644,19 @@ function report_block(index, result, name) {
         lines.push(`- containers whose height changed:`);
         for (const r of folds) { lines.push(`  - ${r.selector} ${r.height_before} → ${r.height_after} px, ${r.where} at ${r.top}–${r.bottom}: ${r.description}`); }
     }
-    lines.push(`- typeahead: ${a.options.length ? a.options.map(o => (o.in_view ? '' : '(off screen) ') + o.text + (o.locked ? ' [locked]' : '')).join(' | ') : 'none'}`);
+    lines.push(`- options now: ${a.options.length ? a.options.map(o => (o.in_view ? '' : '(off screen) ') + o.text + (o.locked ? ' [locked]' : '')).join(' | ') : 'none'}`);
+    const ch = a.chains || { chains: [], skipped: null };
+    if (ch.skipped) {
+        lines.push(`- full commands: ${ch.skipped}`);
+    } else if (ch.chains.length) {
+        lines.push('- full commands (each option, then the phrases it offers next):');
+        for (const c of ch.chains) {
+            if (c.locked) { lines.push(`  - ${c.head} [locked]`); continue; }
+            if (c.complete) { lines.push(`  - ${c.head} (complete)`); continue; }
+            lines.push(`  - ${c.head} ▸ ${c.next.join(' | ') || '(nothing)'}${c.more ? ' | …' : ''}`);
+            for (const d of c.deeper || []) { lines.push(`    - ${d.after} ▸ ${d.next.join(' | ')}${d.more ? ' | …' : ''}`); }
+        }
+    }
     lines.push('- visible text:');
     lines.push('```');
     for (const t of a.text) {
@@ -622,7 +701,7 @@ async function main() {
     const out = opts.out || path.join(ROOT, 'browse', device);
     fs.mkdirSync(out, { recursive: true });
     const report = path.join(out, 'report.md');
-    fs.writeFileSync(report, `# What a person sees: ${device}\n\n${commands.length} command(s); viewport-only screenshots beside this file.\n\n`);
+    fs.writeFileSync(report, `# What a person sees: ${device}\n\n${commands.length} command(s); viewport-only screenshots beside this file.\n\nOptions are offered one phrase at a time; a full command is a chain of phrases, e.g. \`speak as the friends\`. After each command the report lists the options as they then are ("options now") and, under "full commands", what each option offers next.\n\n`);
     const session = await open({ phone: opts.phone, hires: opts.hires });
     const started = Date.now();
     const total_warnings = [];
