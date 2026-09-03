@@ -475,8 +475,12 @@ export function steps_ops(collapsed: boolean): StoryUpdaterSpec[] {
     return [in_right_columns().has_class('notation').css({ collapsed })];
 }
 
+// The ¶s fold one by one (each is marked, so the page animates each and scrolls to the first), the board with them.
 export function story_ops(story: StorySpec, collapsed: boolean): StoryUpdaterSpec[] {
-    return [at(board_gist(story.id)).css({ 'story-collapsed': collapsed })];
+    return [
+        at(board_gist(story.id)).css({ 'story-collapsed': collapsed }),
+        ...story.prose.map((_, i) => at(prose_gist(story.id, i + 1)).css({ folded: collapsed }))
+    ];
 }
 
 export function unmapped_ops(story: StorySpec, collapsed: boolean, count: number, two: boolean): StoryUpdaterSpec[] {

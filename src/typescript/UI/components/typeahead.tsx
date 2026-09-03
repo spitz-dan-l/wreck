@@ -111,10 +111,26 @@ export const Typeahead: Renderer<TypeaheadProps> = ({parsing, typeahead_index, u
             grid(old.old_props.parsing).forEach((t, i) => {
             old.old_root.children[i].className = get_option_class(t, i, typeahead_index, undo_selected);
         });
+        keep_selection_in_view(old.old_root, typeahead_index);
     }
 
     return old.old_root;
 };
+
+// The list scrolls on its own when it is taller than its cap; the selected
+// option stays inside it. (Not scrollIntoView: that would scroll the page too.)
+function keep_selection_in_view(list: HTMLElement, index: number) {
+    const selected = list.children[index] as HTMLElement | undefined;
+    if (selected === undefined || list.scrollHeight <= list.clientHeight) {
+        return;
+    }
+    const top = selected.offsetTop - list.offsetTop;
+    if (top < list.scrollTop) {
+        list.scrollTop = top;
+    } else if (top + selected.offsetHeight > list.scrollTop + list.clientHeight) {
+        list.scrollTop = top + selected.offsetHeight - list.clientHeight;
+    }
+}
 
 const Lock = () => <span className="token lock">
     {' ' + String.fromCharCode(8416)}

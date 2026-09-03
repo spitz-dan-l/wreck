@@ -91,7 +91,8 @@ function instrument() {
         }
     });
     observer.observe(terminal, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
-    terminal.addEventListener('scroll', () => { st.last_scroll = now(); });
+    st.scroll_log = [];
+    terminal.addEventListener('scroll', () => { st.last_scroll = now(); st.scroll_log.push([Math.round(now()), Math.round(terminal.scrollTop)]); if (st.scroll_log.length > 400) { st.scroll_log.shift(); } });
 
     const view = () => terminal.getBoundingClientRect();
     const locked = () => { const s = window.devtools && window.devtools.ui_state; return s === undefined || s.animation_state.lock_input; };
@@ -168,6 +169,7 @@ function instrument() {
         }
     }
     function start() {
+        st.idle_scrolls = st.scroll_log.filter(([t]) => t > (st.stopped_at || 0));
         st.changes = new Map();
         st.samples = [];
         st.t0 = now();
@@ -180,7 +182,9 @@ function instrument() {
     function stop() {
         if (st.sampler !== null) { clearInterval(st.sampler); st.sampler = null; }
         sample();
+        st.stopped_at = now();
     }
+    function idle_scrolls() { return st.idle_scrolls || []; }
     function status() {
         const t = now();
         return {
@@ -260,6 +264,20 @@ function instrument() {
         }
         return lines.map(l => ({ tag: l.tag, under: l.under, text: l.text + l.cut, top: l.top }));
     }
+    // Does a class change show? Compare the computed look with the change undone.
+    const LOOKS = ['display', 'visibility', 'opacity', 'color', 'background-color', 'border-left-color', 'border-top-color', 'border-bottom-color', 'text-decoration-line', 'font-weight', 'font-style'];
+    function looks(el) { const cs = getComputedStyle(el); return LOOKS.map(p => cs.getPropertyValue(p)).join('|') + '|' + el.offsetHeight; }
+    function class_change_shows(el, added, removed) {
+        const scroll = terminal.scrollTop;
+        const after = looks(el);
+        for (const c of added) { el.classList.remove(c); }
+        for (const c of removed) { el.classList.add(c); }
+        const before = looks(el);
+        for (const c of added) { el.classList.add(c); }
+        for (const c of removed) { el.classList.remove(c); }
+        if (terminal.scrollTop !== scroll) { terminal.scrollTop = scroll; }
+        return before !== after;
+    }
     // What changed during the command, where it stands now, and how tall it was before.
     function changes() {
         const v = view();
@@ -278,6 +296,7 @@ function instrument() {
                     e.kinds.delete('class');
                 } else {
                     e.class_diff = [...added.map(c => '+' + c), ...removed.map(c => '-' + c)].join(' ');
+                    e.shows = e.kinds.has('added') || class_change_shows(el, added, removed);
                 }
             }
             if (e.kinds.size === 0) { continue; }
@@ -293,6 +312,7 @@ function instrument() {
                 description: el === hole ? 'the prompt (#story-hole)' : describe(el),
                 kinds: [...e.kinds],
                 class_diff: e.class_diff,
+                visible: e.shows !== false,
                 in_hole,
                 where: pos.where,
                 px: pos.px,
@@ -345,7 +365,7 @@ function instrument() {
         const f = document.querySelector('.typeahead .footer');
         if (f) { f.scrollIntoView({ behavior: 'instant', block: 'end' }); }
     }
-    window.__vf = { start, stop, status, options, prompt_text, set_prompt_text, enter_control, observe, scroll_to_prompt, world_index, locked, prompt_position };
+    window.__vf = { start, stop, status, idle_scrolls, options, prompt_text, set_prompt_text, enter_control, observe, scroll_to_prompt, world_index, locked, prompt_position };
 }
 
 async function open({ phone = false, hires = false } = {}) {
@@ -455,6 +475,8 @@ async function play(session, cmd, record) {
     const { page } = session;
     await page.evaluate(() => window.__vf.start());
     const before = await page.evaluate(() => window.__vf.status());
+    // Scroll events between the previous command's settling and this one: nothing should move the page while a person is reading.
+    const idle = await page.evaluate(() => window.__vf.idle_scrolls());
     const entered = await enter(session, cmd);
     let mid = null;
     if (record) {
@@ -473,7 +495,7 @@ async function play(session, cmd, record) {
         await page.evaluate(() => window.__vf.set_prompt_text(''));
         await settle(session, 2000);
     }
-    return { cmd, entered, mid, settled, before: { scrollTop: Math.round(before.scrollTop) }, after: obs, device: session.device };
+    return { cmd, entered, mid, settled, before: { scrollTop: Math.round(before.scrollTop), idle_scrolls: idle }, after: obs, device: session.device };
 }
 
 // Take the last command back (Left toggles the undo selection, Enter takes it), clear the prompt, and stand at the prompt.
@@ -514,9 +536,13 @@ function warnings(result) {
     if (!result.settled.settled) { out.push(`NOT SETTLED after ${result.settled.ms} ms`); }
     const outside = a.changes.filter(c => !c.in_hole);
     for (const c of outside) {
-        if (c.where !== 'IN VIEW' && c.where !== 'HIDDEN') { out.push(`OUT OF VIEW: ${c.where}${c.px ? ' (' + c.px + ' px)' : ''} ${c.description}`); }
+        if (c.where !== 'IN VIEW' && c.where !== 'HIDDEN' && c.visible) { out.push(`OUT OF VIEW: ${c.where}${c.px ? ' (' + c.px + ' px)' : ''} ${c.description}`); }
     }
     const m = motion(result);
+    if (result.before.idle_scrolls && result.before.idle_scrolls.length > 0) {
+        const s = result.before.idle_scrolls;
+        out.push(`THE PAGE MOVED BEFORE THIS COMMAND: ${s.length} scroll event(s) while idle, ending at ${s[s.length - 1][1]} px`);
+    }
     if (outside.length === 0 && a.changes.length > 0 && m.net !== 0 && a.prompt.where !== 'IN VIEW') {
         out.push(`SCROLLED AWAY FROM THE PROMPT (${m.net > 0 ? '+' : ''}${m.net} px) while only the prompt changed`);
     }
@@ -535,6 +561,8 @@ function report_block(index, result, name) {
     lines.push(`- entered: ${result.entered.how}${result.entered.accepted ? '' : ' — NOT ACCEPTED'}; settled in ${result.settled.ms} ms${result.settled.settled ? '' : ' (TIMED OUT)'}`);
     lines.push(`- scroll: ${result.before.scrollTop} → ${a.scrollTop} (net ${m.net > 0 ? '+' : ''}${m.net} px; ${m.motions} motion(s), largest step ${m.largest} px); page ${a.scrollHeight} px, viewport ${a.viewport} px`);
     lines.push(`- prompt: ${a.prompt.where}${a.prompt.rect ? ` at ${a.prompt.rect.top}–${a.prompt.rect.bottom} px` : ''}; pinned steps panel: ${a.sticky.length ? a.sticky.map(s => `${s.top}–${s.bottom} px`).join(', ') : 'none'}`);
+    const traj = a.samples.filter((s, i) => i % 2 === 0 || i === a.samples.length - 1).map(s => `${s.t}:${s.scrollTop}${s.locked ? '' : '*'}`).join(' ');
+    lines.push(`- scroll over time (ms:px, * once unlocked): ${traj}`);
     if (name) { lines.push(`- screenshots: ${name}.png (settled), ${name}a.png (${result.mid ? result.mid.at : MID_ANIMATION_MS} ms after submit)`); }
     const outside = a.changes.filter(c => !c.in_hole);
     const inside = a.changes.filter(c => c.in_hole);
@@ -542,7 +570,7 @@ function report_block(index, result, name) {
     for (const c of outside) {
         const where = c.where + (c.px ? ` (${c.px} px)` : '') + (c.rect ? ` at ${c.rect.top}–${c.rect.bottom}` : '');
         const h = c.height_before !== null && c.height_before !== c.height_after ? `; height ${c.height_before} → ${c.height_after}` : '';
-        lines.push(`  - ${where}: ${c.description} [${c.kinds.join(', ')}${c.class_diff ? ': ' + c.class_diff : ''}${h}]`);
+        lines.push(`  - ${where}: ${c.description} [${c.kinds.join(', ')}${c.class_diff ? ': ' + c.class_diff : ''}${h}]${c.visible ? '' : ' (no visible effect)'}`);
     }
     const folds = a.regions.filter(r => r.height_before !== null && r.height_before !== r.height_after);
     if (folds.length) {

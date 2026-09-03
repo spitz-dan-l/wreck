@@ -4,6 +4,14 @@ import { update } from "lib/utils";
 import { apply_story_updates_all, Story, StoryUpdatePlan, StoryUpdateSpec, compile_story_update_group_ops } from "story";
 import { World } from "world";
 import { eph_new, animation_pre_compute, animation_start, animation_active } from './styles';
+import { GLOBAL_DEV_TOOLS } from 'devtools';
+
+declare module 'devtools' {
+    interface GlobalDevTools {
+        // The last scroll decision, for the browser harness (scripts/browse_fire.js).
+        last_scroll?: unknown;
+    }
+}
 
 export type AnimationState = {
     update_plan: StoryUpdatePlan['effects'],
@@ -81,79 +89,93 @@ export function animate(comp_elt: HTMLElement) {
         // to accurately measure the target maxHeight
         // and check for the custom --is-collapsing property
         // (This is basically an abomination and I am sorry.)
-        
-        // comp_elt.classList.add('animation-pre-compute');
+        //
         comp_elt.classList.add(animation_pre_compute);
 
         walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
 
-        comp_elt.dataset.isCollapsing = parseInt(getComputedStyle(comp_elt).getPropertyValue('--is-collapsing')) || 0 as any;
+        // A node that is about to be hidden (a fold: --is-collapsing set on it
+        // by the stylesheet while it is still displayed) gets its measured
+        // max-height at the start of the animation, so that the transition to
+        // 0 has somewhere to start from; every other node gets it a frame
+        // later, so that a new node's transition from 0 has somewhere to go.
+        for (const marked of comp_elt.querySelectorAll<HTMLElement>('[class*="eph_adding_"], [class*="eph_removing_"]')) {
+            walkElt(marked, e => {
+                if (getComputedStyle(e).getPropertyValue('--is-collapsing').trim() === '1') {
+                    e.dataset.isCollapsing = '1';
+                }
+            });
+        }
+        // Where each changed node stands before the folds close (a folded node
+        // has no box afterwards, but its top does not move).
+        const natural_tops = natural_positions(changed_elements(comp_elt));
 
-        // comp_elt.classList.remove('animation-pre-compute');
-
-        // comp_elt.classList.add('animation-start');
         comp_elt.classList.remove(animation_pre_compute);
+
+        // The page is now laid out as it will be when the animation ends (the
+        // folds closed, the new nodes at full size): decide where the view
+        // goes and start moving, so the motion and the change are one.
+        const target = scroll_target_after(comp_elt, natural_tops);
+        scroll_to_target(target);
+        const terminal = terminal_elt();
+        const final_height = terminal === null ? 0 : terminal.scrollHeight;
+
+        // A change that will not be in view is made at once: a fold closed, a
+        // node at its full size, nothing in transition (history.css .eph-unseen).
+        const unseen = target === undefined ? [] : target.unseen;
+        for (const e of unseen) {
+            walkElt(e, d => {
+                d.classList.add('eph-unseen');
+                d.dataset.unseen = has_box(d) ? 'grown' : 'folded';
+            });
+        }
 
         comp_elt.classList.add(animation_start);
 
-        // If --is-collapsing was set by the animation-pre-compute class,
-        // then apply the maxHeight update at the end of this animation frame
-        // rather than the beginning of the next one.
-        // I have no idea why this works/is necessary, but it does/is.
-        if (comp_elt.dataset.isCollapsing == 1 as any) {
-            walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
+        walkElt(comp_elt, (e) => {
+            if (e.dataset.unseen === 'folded') {
+                e.style.maxHeight = '0px';
+            } else if (e.dataset.isCollapsing === '1' || e.dataset.unseen === 'grown') {
+                e.style.maxHeight = e.dataset.maxHeight as any;
+            }
+        });
+        // The new nodes start from nothing, which makes the page shorter than
+        // it will be; hold its final height so the motion is not cut short.
+        if (terminal !== null) {
+            const shrunk = final_height - terminal.scrollHeight;
+            if (shrunk > 0) {
+                comp_elt.style.paddingBottom = `${shrunk}px`;
+            }
         }
         requestAnimationFrame(() => {
-            // If --is-collapsing wasn't set in the animation-pre-compute class,
-            // then apply the maxHeight update now.
-            // Websites technology keyboard mouse.
-            if (comp_elt.dataset.isCollapsing != 1 as any) {
-                walkElt(comp_elt, (e) => e.style.maxHeight = e.dataset.maxHeight as any);
-            }
+            walkElt(comp_elt, (e) => {
+                if (e.dataset.isCollapsing !== '1' && e.dataset.unseen === undefined) {
+                    e.style.maxHeight = e.dataset.maxHeight as any;
+                }
+            });
 
-            // comp_elt.classList.add('animation-active');
             comp_elt.classList.add(animation_active);
 
             setTimeout(() => {
-                // comp_elt.classList.remove(
-                //     'animation-start',
-                //     'animation-active');
-                comp_elt.classList.remove(
-                    animation_start,
-                    animation_active);
+                comp_elt.classList.remove(animation_start, animation_active);
 
                 walkElt(comp_elt, (e) => {
                     e.style.maxHeight = '';
                     delete e.dataset.maxHeight;
                     delete e.dataset.isCollapsing;
+                    delete e.dataset.unseen;
+                    e.classList.remove('eph-unseen');
                 });
 
-                // Retroactive changes (a class added or removed on a node that is not
-                // the newest frame, or a node added somewhere earlier in the story)
-                // happen above the prompt. Scroll so that the topmost of them is
-                // in view when it would otherwise be off-screen; otherwise, as
-                // always, scroll to the prompt.
-                let anything_new = false;
-                let topmost_change: HTMLElement | undefined = undefined;
-                walkElt(comp_elt, e => {
-                    if (e.classList.contains(eph_new)) {
-                        anything_new = true;
-                    }
-                    if (is_retroactive_change(e) && (topmost_change === undefined || e.offsetTop < topmost_change.offsetTop)) {
-                        topmost_change = e;
-                    }
-                });
-                if (topmost_change !== undefined) {
-                    scroll_to_change(topmost_change);
-                } else if (anything_new) {
-                    scroll_down();
-                }
+                comp_elt.style.paddingBottom = '';
+                // Finish the motion if anything cut it short.
+                scroll_to_target(target);
                 resolve();
             }, 700)
         });
     });
 }
-  
+
 function walkElt(elt: HTMLElement, f: (e: HTMLElement) => void){
     let children = elt.children;
     for (let i = 0; i < children.length; i++) {
@@ -162,44 +184,382 @@ function walkElt(elt: HTMLElement, f: (e: HTMLElement) => void){
     }
     f(elt);
 }
-  
-export function scroll_down() {
-    let bottom = document.querySelector('.typeahead .footer')!;
-    bottom.scrollIntoView({behavior: "smooth", block: "end", inline: "end"});
+
+/*
+    SCROLLING (Phase B10). One rule, after the animation, in one smooth motion:
+
+    - Nothing changed outside the prompt: scroll so the prompt is at the bottom
+      (`scroll_down`), the new frame above it.
+    - Something changed above (a badge, a fold, the notation revealed): if the
+      topmost such change and the prompt fit in the view together, scroll so
+      the prompt is at the bottom and the change is above it. If they do not
+      fit, and the response at the prompt is short (a line or two: the change
+      above is the response), scroll so the topmost change is at the top of
+      the view, under any pinned panel; the prompt, pinned at the bottom of
+      the view by the stylesheet (`#story-hole { position: sticky }`), stays in
+      sight. If the response at the prompt is itself long (a new board, an
+      apply text, a reprint), it wins and the prompt scrolls to the bottom.
+    - Never past the change: the change's top is never above the view's top.
+    - A class change that shows nothing (a bookkeeping class) is not a change.
+
+    The target is decided on the final layout before the animation starts and
+    the motion runs with it (one motion, the change and the view arriving
+    together); if the page was shorter while new nodes grew, the motion is
+    finished when they have.
+
+    "In view" is what is painted: a change under the pinned steps column or
+    the pinned prompt is not in view, and a change inside a column that
+    scrolls on its own is scrolled into that column's view.
+
+    Chromium and Safari both apply sticky offsets to getBoundingClientRect,
+    so natural positions are read with the sticky elements made static for a
+    moment (`#terminal.measuring`).
+*/
+const SCROLL_MARGIN_PX = 8;
+const SHORT_RESPONSE_EM = 9;
+const PROMPT_LINE_EM = 4;   // the prompt's own line and its first option: what must stay in view of the pinned prompt
+
+function terminal_elt(): HTMLElement | null {
+    return document.getElementById('terminal');
 }
 
-// A node changed by a css op (eph_adding_*/eph_removing_* markers) or added
-// (eph_new) outside the frame that holds the prompt.
-function is_retroactive_change(e: HTMLElement): boolean {
+function measuring<T>(f: () => T): T {
+    const t = terminal_elt();
+    if (t === null) {
+        return f();
+    }
+    t.classList.add('measuring');
+    try {
+        return f();
+    } finally {
+        t.classList.remove('measuring');
+    }
+}
+
+function doc_top(e: HTMLElement, t: HTMLElement): number {
+    return e.getBoundingClientRect().top - t.getBoundingClientRect().top + t.scrollTop;
+}
+
+// The classes this command added to and removed from a node, by its markers.
+function class_changes(e: HTMLElement): { added: string[], removed: string[] } {
+    const added: string[] = [], removed: string[] = [];
+    e.classList.forEach(c => {
+        if (c.startsWith('eph_adding_')) { added.push(c.slice('eph_adding_'.length)); }
+        if (c.startsWith('eph_removing_')) { removed.push(c.slice('eph_removing_'.length)); }
+    });
+    return { added, removed };
+}
+
+const LOOKS = ['display', 'visibility', 'opacity', 'color', 'background-color', 'border-left-color', 'border-top-color', 'border-bottom-color', 'text-decoration-line', 'font-weight', 'font-style'];
+
+function looks(e: HTMLElement): string {
+    const cs = getComputedStyle(e);
+    return LOOKS.map(p => cs.getPropertyValue(p)).join('|') + '|' + e.offsetHeight;
+}
+
+// Does the class change on this node show? (A voice class on a column, a
+// bookkeeping class on a frame: the same to the eye, so not a place to look.)
+function class_change_shows(e: HTMLElement): boolean {
+    const { added, removed } = class_changes(e);
+    if (added.length === 0 && removed.length === 0) {
+        return true;
+    }
+    // Undoing a fold for a moment can make the page shorter and clamp the scroll: keep it.
+    const t = terminal_elt();
+    const scroll = t === null ? 0 : t.scrollTop;
+    const after = looks(e);
+    for (const c of added) { e.classList.remove(c); }
+    for (const c of removed) { e.classList.add(c); }
+    const before = looks(e);
+    for (const c of added) { e.classList.add(c); }
+    for (const c of removed) { e.classList.remove(c); }
+    if (t !== null && t.scrollTop !== scroll) {
+        t.scrollTop = scroll;
+    }
+    return before !== after;
+}
+
+function has_change_marker(e: HTMLElement): boolean {
     let changed = false;
     e.classList.forEach(c => {
         if (c.startsWith('eph_adding_') || c.startsWith('eph_removing_') || c === eph_new) {
             changed = true;
         }
     });
-    if (!changed) {
-        return false;
-    }
-    const hole = document.getElementById('story-hole');
-    const latest = hole !== null ? hole.previousElementSibling : null;
-    return latest === null || (e !== latest && !latest.contains(e));
+    return changed;
 }
 
-// Show the change and the prompt together when they fit; otherwise the change,
-// at the top of the view.
-export function scroll_to_change(change: HTMLElement) {
-    const terminal = document.getElementById('terminal');
-    const footer = document.querySelector('.typeahead .footer');
-    if (terminal === null || footer === null) {
-        scroll_down();
+// The nodes this command changed, outside the prompt, outermost only. A node
+// that holds the prompt counts only when it is new (a board opened around the
+// prompt): a class on the board is not a place to look.
+function changed_elements(comp_elt: HTMLElement): HTMLElement[] {
+    const hole = document.getElementById('story-hole');
+    const all: HTMLElement[] = [];
+    walkElt(comp_elt, e => {
+        if (e === comp_elt || (hole !== null && (e === hole || hole.contains(e)))) {
+            return;
+        }
+        if (hole !== null && e.contains(hole) && !e.classList.contains(eph_new)) {
+            return;
+        }
+        if (has_change_marker(e) && (e.classList.contains(eph_new) || class_change_shows(e))) {
+            all.push(e);
+        }
+    });
+    return all.filter(e => !all.some(o => o !== e && o.contains(e)));
+}
+
+function has_box(e: HTMLElement): boolean {
+    const r = e.getBoundingClientRect();
+    return r.width > 0 || r.height > 0;
+}
+
+// The natural tops of the nodes that have a box (a node hidden by the
+// stylesheet is not a place a person can look).
+function natural_positions(elts: HTMLElement[]): Map<HTMLElement, number> {
+    const t = terminal_elt();
+    const result = new Map<HTMLElement, number>();
+    if (t === null) {
+        return result;
+    }
+    measuring(() => {
+        for (const e of elts) {
+            if (has_box(e)) {
+                result.set(e, doc_top(e, t));
+            }
+        }
+    });
+    return result;
+}
+
+function clamp_scroll(t: HTMLElement, top: number): number {
+    return Math.max(0, Math.min(top, t.scrollHeight - t.clientHeight));
+}
+
+// The scroll at which the prompt's bottom is at the bottom of the view.
+function scroll_down_target(t: HTMLElement): number {
+    const hole = document.getElementById('story-hole');
+    const bottom = hole === null ? document.querySelector('.typeahead .footer') as HTMLElement | null : hole;
+    if (bottom === null) {
+        return t.scrollHeight;
+    }
+    return measuring(() => clamp_scroll(t, t.scrollTop + bottom.getBoundingClientRect().bottom - t.getBoundingClientRect().bottom));
+}
+
+function scroll_terminal_to(t: HTMLElement, top: number) {
+    if (Math.abs(top - t.scrollTop) < 2) {
         return;
     }
-    const top = change.getBoundingClientRect().top;
-    const bottom = footer.getBoundingClientRect().bottom;
-    const view = terminal.getBoundingClientRect();
-    if (bottom - top <= view.height) {
-        scroll_down();
-    } else {
-        terminal.scrollTo({ top: terminal.scrollTop + (top - view.top) - 8, behavior: 'smooth' });
+    t.scrollTo({ top, behavior: 'smooth' });
+}
+
+// Where the view goes, and what will not be in view when it gets there:
+// those changes have no reason to animate, and if none of the changes above
+// will be shown the view has no reason to move visibly either — it is
+// re-set at once, so that what is in view stays put while the page changes
+// above it.
+export type ScrollTarget = { top: number, reveal?: [HTMLElement, HTMLElement], unseen: HTMLElement[], instant: boolean } | undefined;
+
+function scroll_to_target(target: ScrollTarget) {
+    const t = terminal_elt();
+    if (t === null || target === undefined) {
+        return;
     }
+    const top = clamp_scroll(t, target.top);
+    if (target.instant) {
+        if (Math.abs(top - t.scrollTop) >= 2) {
+            t.scrollTo({ top, behavior: 'auto' });
+        }
+        return;
+    }
+    scroll_terminal_to(t, top);
+}
+
+export function scroll_down() {
+    const t = terminal_elt();
+    if (t === null) {
+        return;
+    }
+    scroll_terminal_to(t, scroll_down_target(t));
+}
+
+function sticky_panel_of(e: HTMLElement): HTMLElement | null {
+    let p: HTMLElement | null = e.parentElement;
+    while (p !== null && p.id !== 'terminal') {
+        if (getComputedStyle(p).position === 'sticky') {
+            return p;
+        }
+        p = p.parentElement;
+    }
+    return null;
+}
+
+// Is the element painted in the view at the current scroll? A box that is
+// covered (the pinned steps column, the pinned prompt, a column's own
+// scrolling) is not.
+function painted_in_view(e: HTMLElement, top_if_boxless: number, t: HTMLElement): boolean {
+    const v = t.getBoundingClientRect();
+    const r = e.getBoundingClientRect();
+    const hole = document.getElementById('story-hole');
+    const covers = (hit: Element | null) =>
+        hit !== null && !e.contains(hit) && !hit.contains(e)
+        && ((hole !== null && hole.contains(hit)) || hit.closest('.columns .right') !== null || sticky_panel_of(e) !== null);
+    if (r.width === 0 && r.height === 0) {
+        // Folded: its top is where it was; look at what is painted there.
+        const y = top_if_boxless - t.scrollTop + v.top;
+        if (y < v.top || y > v.bottom - SCROLL_MARGIN_PX) {
+            return false;
+        }
+        const parent = e.parentElement;
+        const x = parent === null ? v.left + 40 : Math.min(v.right - 1, parent.getBoundingClientRect().left + 20);
+        const hit = document.elementFromPoint(x, Math.min(v.bottom - 1, y + 4));
+        return !(hit !== null && ((hole !== null && hole.contains(hit)) || (hit.closest('.columns .right') !== null && !hit.contains(e))));
+    }
+    const top = Math.max(r.top, v.top), bottom = Math.min(r.bottom, v.bottom);
+    const visible = bottom - top;
+    if (visible < Math.min(r.height, 24)) {
+        return false;
+    }
+    const x = Math.min(Math.max(r.left + Math.min(r.width / 2, 40), v.left + 1), v.right - 1);
+    const hit = document.elementFromPoint(x, (top + bottom) / 2);
+    return !covers(hit);
+}
+
+// Scroll a column that scrolls on its own so that the element is inside the
+// part of the column that is in the view.
+function reveal_in_panel(e: HTMLElement, panel: HTMLElement, t: HTMLElement) {
+    const v = t.getBoundingClientRect();
+    const pr = panel.getBoundingClientRect();
+    const top = Math.max(pr.top, v.top), bottom = Math.min(pr.bottom, v.bottom);
+    const r = e.getBoundingClientRect();
+    if (r.top < top + SCROLL_MARGIN_PX) {
+        panel.scrollTop += r.top - top - SCROLL_MARGIN_PX;
+    } else if (r.bottom > bottom - SCROLL_MARGIN_PX) {
+        panel.scrollTop += Math.min(r.bottom - bottom + SCROLL_MARGIN_PX, r.top - top - SCROLL_MARGIN_PX);
+    }
+}
+
+export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTMLElement, number>): ScrollTarget {
+    const t = terminal_elt();
+    const hole = document.getElementById('story-hole');
+    if (t === null || hole === null) {
+        return undefined;
+    }
+    // What changed and can be seen: a box now, or a box before it folded.
+    const changed = changed_elements(comp_elt).filter(e => e.isConnected && (has_box(e) || natural_tops.has(e)));
+    if (changed.length === 0) {
+        return { top: scroll_down_target(t), unseen: [], instant: false };
+    }
+    const s0 = t.scrollTop;
+    const s_down = scroll_down_target(t);
+    const view_height = t.clientHeight;
+    const em = parseFloat(getComputedStyle(t).fontSize) || 12;
+
+    // Natural positions now (the folds closed): what was measured at the start
+    // for nodes that no longer have a box.
+    const tops = measuring(() => new Map(changed.map(e =>
+        [e, has_box(e) ? doc_top(e, t) : natural_tops.get(e)!] as const)));
+    const hole_bottom = measuring(() => doc_top(hole, t) + hole.offsetHeight);
+
+    // What is in view when the prompt is at the bottom.
+    t.scrollTop = s_down;
+    const far = changed.filter(e => !painted_in_view(e, tops.get(e)!, t));
+    const near = changed.filter(e => !far.includes(e));
+
+    let target = s_down;
+    let panel_reveal: [HTMLElement, HTMLElement] | undefined = undefined;
+    // The scroll that puts the change at the top of the view, under any pinned panel.
+    const scroll_to_top_of = (change: HTMLElement): number => {
+        const panel = sticky_panel_of(change);
+        let s: number;
+        if (panel !== null) {
+            // A change inside a pinned column: the column fully in view, as
+            // near the prompt as its pinning allows, and the change inside it.
+            const [panel_top, columns_bottom] = measuring(() => {
+                const parent = panel.parentElement || panel;
+                return [doc_top(panel, t), doc_top(parent, t) + parent.offsetHeight];
+            });
+            s = Math.max(panel_top - SCROLL_MARGIN_PX, Math.min(s_down, columns_bottom - panel.offsetHeight));
+            panel_reveal = [change, panel];
+        } else {
+            s = tops.get(change)! - SCROLL_MARGIN_PX;
+            // Under a pinned panel at that scroll? Then below the panel.
+            t.scrollTop = clamp_scroll(t, s);
+            const v = t.getBoundingClientRect();
+            const r = change.getBoundingClientRect();
+            const x = Math.min(v.right - 1, (r.width > 0 ? r.left : (change.parentElement || t).getBoundingClientRect().left) + 20);
+            const hit = document.elementFromPoint(x, v.top + SCROLL_MARGIN_PX + 4);
+            const cover = hit === null ? null : hit.closest('.columns .right');
+            if (cover !== null && !cover.contains(change) && getComputedStyle(cover).position === 'sticky') {
+                s -= cover.getBoundingClientRect().bottom - v.top;
+            }
+        }
+        return clamp_scroll(t, s);
+    };
+    // The pinned prompt cannot leave the column or ledger that holds it: the
+    // scroll must keep that container's top high enough for the prompt's
+    // line to sit at the bottom of the view (its options may be cut).
+    const container = hole.parentElement || hole;
+    const s_min_for_prompt = measuring(() => doc_top(container, t)) + Math.min(hole.offsetHeight, PROMPT_LINE_EM * em) - view_height + SCROLL_MARGIN_PX;
+    const with_prompt = (s: number, change: HTMLElement): number => {
+        if (s >= s_min_for_prompt) {
+            return s;
+        }
+        // Lower the view until the prompt can pin, if the change stays in view.
+        const panel = sticky_panel_of(change);
+        if (panel !== null) {
+            // Inside a pinned column: enough of the column left in view to scroll the change into.
+            t.scrollTop = clamp_scroll(t, s_min_for_prompt);
+            const v = t.getBoundingClientRect();
+            const pr = panel.getBoundingClientRect();
+            const room = Math.min(pr.bottom, v.bottom) - Math.max(pr.top, v.top);
+            return room >= change.getBoundingClientRect().height + SCROLL_MARGIN_PX * 3 ? clamp_scroll(t, s_min_for_prompt) : s_down;
+        }
+        const bottom = tops.get(change)! + change.getBoundingClientRect().height;
+        return bottom > s_min_for_prompt + SCROLL_MARGIN_PX * 3 ? clamp_scroll(t, s_min_for_prompt) : s_down;
+    };
+
+    if (far.length > 0) {
+        far.sort((a, b) => tops.get(a)! - tops.get(b)!);
+        const s_change = scroll_to_top_of(far[0]);
+        const fits = hole_bottom - s_change <= view_height;
+        const short_response = near.every(e => e.getBoundingClientRect().height <= SHORT_RESPONSE_EM * em);
+        if (fits) {
+            target = s_down;
+        } else if (short_response) {
+            target = with_prompt(s_change, far[0]);
+        } else {
+            panel_reveal = undefined;
+            target = s_down;
+        }
+    }
+    if (target === s_down && near.length > 0) {
+        // A long response (a reprint, an apply text, a board opened) is read
+        // from its top, the prompt pinned below it.
+        near.sort((a, b) => tops.get(a)! - tops.get(b)!);
+        const s_top = scroll_to_top_of(near[0]);
+        if (hole_bottom - s_top > view_height) {
+            target = with_prompt(s_top, near[0]);
+        } else {
+            panel_reveal = undefined;
+        }
+    }
+    // At the target: the change inside its column scrolled into view, and
+    // what will not be in view where the view is going.
+    t.scrollTop = clamp_scroll(t, target);
+    if (panel_reveal !== undefined) {
+        reveal_in_panel(panel_reveal[0], panel_reveal[1], t);
+    }
+    const unseen = changed.filter(e => !painted_in_view(e, tops.get(e)!, t));
+    const instant = far.length > 0 && far.every(e => unseen.includes(e));
+    t.scrollTop = s0;
+    if (GLOBAL_DEV_TOOLS.DEBUG) {
+        const describe = (e: HTMLElement) => `${e.tagName.toLowerCase()}.${[...e.classList].filter(c => !c.startsWith('eph_')).slice(0, 3).join('.')} "${(e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40)}"${tops.has(e) ? ' @' + Math.round(tops.get(e)!) : ''}`;
+        GLOBAL_DEV_TOOLS.last_scroll = {
+            from: s0, to: target, s_down, hole_bottom, view_height, s_min_for_prompt,
+            far: far.map(describe), near: near.map(describe), unseen: unseen.map(describe), instant,
+            panel: panel_reveal === undefined ? undefined : describe(panel_reveal[1])
+        };
+    }
+    return { top: target, reveal: panel_reveal, unseen, instant };
 }

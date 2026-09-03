@@ -916,3 +916,149 @@ kept equal to `ACCEPTANCE_SCRIPT`.
 is cut, as §12's cut order allows (6); §7's "It felt like nothing yet. It
 has not been read." is reworded (7); `speak as` prints a line of its own
 alongside the mark (4).
+
+## Phase B10: what a person sees
+
+Reported (iPhone Safari and desktop): "animations and scrolling are
+confusing (scrolls to weird position); can't visually discern the effect of
+expanding and collapsing steps and story while in the middle of mapping."
+Every earlier tester drove the headless world; nothing measured the page.
+
+**The browser harness** (`scripts/browse_fire.js`; `node
+scripts/browse_fire.js [--phone] [--out DIR] [--skip N] [--acceptance |
+--script FILE] "cmd" ...`). Headless Chromium, desktop 1280×800 or an
+iPhone 16 Pro (402×874, DPR 3, touch). It enters each command as a person
+does — on the phone by tapping the typeahead options and the Enter control,
+else typing — waits until the animation lock is released and the page has
+been still for 300 ms, and records the viewport (`NN.png`), a frame ~150 ms
+after submit (`NNa.png`), and to `report.md`: the scroll before and after
+and over time, the page height, the text visible in the viewport in
+document order (prompt, options and the pinned steps column marked, text
+painted under a pinned panel dropped), every DOM change the command caused
+with IN VIEW / ABOVE VIEW (N px) / BELOW VIEW / UNDER <what covers it>, the
+heights before and after of the containers a fold changed, the options, and
+a WARNINGS line. "In view" is what is painted (`elementFromPoint`), so a
+change under the pinned steps panel or the pinned prompt is not in view.
+The whole acceptance script takes about five minutes per device.
+
+**The visibility scan** (`scripts/visibility_scan.js`, report in
+`round6/visibility_scan.md` with the failing screenshots under
+`round6/shots/`) plays the script on both devices and, at nine mapping
+states (after `draw a vertical line`, three steps placed, after `apply`, on
+the campfire, the house and the wise man), the display deviations —
+collapse/expand the steps, the story, the unmapped, a chip, `remember`,
+`set aside`/`resume`, `erase` — taking each back with Undo (which the app
+does without an animation). It asserts after every command: (a) the prompt
+is in view; (b) the topmost change is in view with the prompt, or at the
+top of the view when they cannot both fit; (c) a fold changed a height in
+view; (d) no overshoot past the topmost change; (e) no mid-animation frame
+with the prompt off-screen that settles somewhere very different.
+
+**Before fixing**: desktop 174 of 286 commands failing, phone 164 of 286;
+the prompt out of view after 107 (desktop) / 93 (phone) commands. The worst
+were the chips: `expand the campfire story` at the wise man's board scrolled
+8,600 px (desktop) / 13,000 px (phone) away from the change; `pick up the
+chalk` on the phone scrolled 2,000 px up to the lesson board folding into
+its chip and left the prompt and the new board 1,300 px below; `put down
+the chalk` left the prompt 7,000 px below. The mechanism was Phase B8's
+rule, "scroll to the topmost retroactive change when it and the prompt do
+not fit": a fold far above (a chip, a class on a column) was the topmost
+change, so the view went there and the prompt went away; and on every
+keystroke the browser then scrolled the focused input back into view (a
+second motion, a jump). Folds were instant, so a person had nothing to see:
+`collapse the steps` on the phone changed the pinned panel's contents under
+its own scrollbar, `expand the story` unfolded rows above the view.
+
+**The prompt is pinned.** Weighed: the alternative (never pin; scroll to the
+change and let the player scroll back) is the state the author found
+confusing, and every check in (a)–(e) has the prompt in view as its first
+term. `#story-hole { position: sticky; bottom: 0 }` (board.css): the prompt,
+its options and its controls stay at the bottom of the view whenever their
+place in the transcript is below it, and the page scrolls the transcript to
+show the change above them. Sticky, not fixed, so the prompt keeps its place
+in the flow (at the cursor ¶ during transcription, in the ledger during
+mapping, SPEC §8) and is pinned only from below: the constraint is the
+container that holds it (`.left`, `.ledger`, the story), which must have its
+top in the view for the prompt to pin — the scroll rule keeps it so. The
+typeahead is in the flow and capped (40vh, 24vh on the phone; it scrolls on
+its own, the selection kept inside it), the hole has a minimum height so
+the page's end does not shift as the options change, and its indent is
+padding so the pinned prompt covers what it stands over. On the phone the
+pinned steps panel is 36vh (was 45), leaving a band for the story between
+the two pinned things.
+
+**One scroll rule** (`UI/animation.ts`, `scroll_target_after`), decided on
+the final layout before the animation starts and run as one smooth motion
+with it:
+
+- nothing changed outside the prompt: the prompt at the bottom
+  (`scroll_down`), the new frame above it;
+- something changed above (a badge, a fold, the notation revealed): if the
+  topmost such change and the prompt fit, the prompt at the bottom with the
+  change above it; if they do not fit and the response at the prompt is
+  short (a line or two — the change above *is* the response), the topmost
+  change at the top of the view, under any pinned panel, the prompt pinned
+  at the bottom; if the response is itself long (a board opened, an apply
+  text, a reprint) it is read from its top, the prompt pinned below;
+- the prompt's line wins when even it cannot stay in view with the change
+  (its options may be cut; a change inside the pinned column has the column
+  fully in view instead, scrolled inside);
+- never past the change; a class change that shows nothing (a voice class
+  on a column, a bookkeeping class on a frame) is not a change; a change
+  that will not be in view where the view goes is made at once, with no
+  transition, and if none of the changes above will be shown the view is
+  re-set at once so that what is in view stays put.
+
+"In view" is measured by trying: the scroll is set to the candidate for a
+moment and `elementFromPoint` asked (sticky panels and the pinned prompt
+count as covering; a column that scrolls on its own is scrolled). Natural
+positions are read with the sticky things made static for a moment
+(`#terminal.measuring`). The input is focused with `preventScroll`, an undo
+stands at the prompt, and the page is held at its final height while new
+nodes grow so the motion is not cut short.
+
+**Folds animate** (board.css, `FOLDS ANIMATE`): what a fold hides shrinks
+over 300 ms before it is hidden and what an unfold shows grows from
+nothing — the notation, the ¶s (each now marked `folded` by `story_ops`, so
+the page animates each and scrolls to the first), a chip's columns and
+ledger, the unmapped rows, the column drawn by `draw a vertical line`. The
+engine gives a node marked `--is-collapsing` its measured height at the
+start of the animation (per node now, not per story). So `collapse the
+steps` visibly shrinks the pinned panel and `expand the steps` visibly grows
+it, and the column comes fully into view when it and the prompt cannot both
+fit.
+
+**A production-build bug found on the way.** esbuild's `--minify` defines
+`NODE_ENV=production`, under which typestyle drops debug names and hashes a
+style's properties only: the three empty marker styles
+(`animation_pre_compute`, `animation_start`, `animation_active`) were one
+and the same class in every production build, so the appear animation's
+"start at 0, then transition" never ran as written, and the fold animation
+could not either. The markers are plain class names now
+(`animation-pre-compute`, `-start`, `-active`, and `eph-new`, whose rules
+history.css already carried); venience.html gets the same, checked.
+
+**After** (`round6/after/visibility_scan.md`): desktop 14 of 286, phone 25
+of 286, all of them (e) — the prompt leaving the bottom of the view for
+the length of a transition while rows fold or unfold in view or a chip
+2,000 px above reopens with the prompt far below, and returning; (a)–(d)
+are clean on both devices: the prompt is in view after every command, the
+change with it or at the top, every fold visible, no overshoot. The harness
+also confirms one smooth motion per command (the typeahead shrinking at
+submit was the second; the hole's minimum height stops it) and no motion
+while the page is idle (a first cut of the visibility probe itself clamped
+the scroll by undoing a fold for a moment; both probes now keep the scroll).
+
+**Tests**: `tests/test_visibility.ts` runs the scan sampled — the campfire
+to `draw a vertical line` with the steps and story folds there on the
+desktop, the opening on the phone — in about 50 s, skipped with a message
+when Playwright's Chromium or dist/fire.js is missing. The screenshots under
+`screenshots/` and `screenshots/phone/` are regenerated.
+
+**Known costs of the rule**, by design: when a change far above is shown
+with the prompt pinned, the command's own one-line response sits under the
+pinned prompt (the scan counts this as seen); a long reprint or apply text
+moves the view by more than a screen (the harness warns JUMP); while
+content grows or folds in view, the prompt may leave the bottom for the
+length of the transition and return (check (e)) — pinning from above as
+well would float the prompt over unconverted rows, so it was not done.

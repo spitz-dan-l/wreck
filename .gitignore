@@ -8,3 +8,4 @@ profiles/
 *.tsbuildinfo
 dist/venience.js.map
 browse/
+dist/fire.js.map

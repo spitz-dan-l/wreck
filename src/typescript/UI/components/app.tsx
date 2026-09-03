@@ -76,7 +76,8 @@ export const App: Renderer<AppState> = (state, old?) => {
             let input_elt = document.querySelector('input')!;
 
             if (!event.ctrlKey && !event.metaKey) {
-                input_elt.focus();
+                // Not a scroll: the page scrolls after a command, nowhere else (UI/animation.ts).
+                input_elt.focus({ preventScroll: true });
             }
 
             if (event.keyCode === keys.left || event.keyCode === keys.right) {

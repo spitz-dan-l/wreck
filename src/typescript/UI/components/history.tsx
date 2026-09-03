@@ -3,7 +3,7 @@ import { Effects } from "../../lib/effect_utils";
 import { array_last } from "../../lib/utils";
 import { apply_story_updates_stage, remove_eph, Story, story_to_dom } from "../../story";
 import { World } from "../../world";
-import { animate, AnimationState, compute_possible_effects, final_story } from "../animation";
+import { animate, AnimationState, compute_possible_effects, final_story, scroll_down } from "../animation";
 import { Component, Renderer } from "../framework";
 import { ui } from '../prelude';
 import { stage_keys } from "lib/stages";
@@ -80,6 +80,10 @@ export const History: Renderer<HistoryProps> = (props, old?) => {
     
     if (!old || props.world.index < old.old_props.world.index) {
         root = set_history_view_from_scratch(story, root) as History;
+        if (old) {
+            // An undo rebuilds the page without an animation; stand at the prompt.
+            ui().effect(scroll_down);
+        }
     }
 
     // if (would_effects.length > 0) {

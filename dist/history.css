@@ -70,6 +70,12 @@
     transition-delay: 0ms, 400ms;
 }
 
+/* A change that will not be in view when the animation ends is made at once (UI/animation.ts). */
+.story .eph-unseen,
+.story.animation-start.animation-active .eph-unseen {
+    transition: none !important;
+}
+
 .story .focused {
     --alpha-color: 1;
 }
