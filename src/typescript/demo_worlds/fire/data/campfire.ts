@@ -25,69 +25,81 @@ export const CAMPFIRE: StorySpec = {
     ],
     events: [
         {
-            index: 1, voice: 'the friends', prose: 1,
+            index: 1, voices: ['the friends'], prose: 1,
             command: 'travel to the woods',
+            name: 'the traveling to the woods',
             consequence: [
                 'You all make your way out of town, in cars piled full of food, tents and musical instruments.',
                 'You arrive at the campground in the woods.'
             ]
         },
         {
-            index: 2, voice: 'the friends', prose: 2,
+            index: 2, voices: ['the friends'], prose: 2,
             command: 'gather tinder, kindling and firewood',
+            name: 'the gathering of tinder, kindling and firewood',
             consequence: ['As it begins to grow dark, your group searches for and finds:\n  - tinder\n  - kindling\n  - firewood']
         },
         {
-            index: 3, voice: 'the friends', prose: 3,
+            index: 3, voices: ['the friends'], prose: 3,
             command: 'dig a pit in the ground',
+            name: 'the digging of a pit',
             consequence: ['You dig a pit, a foot deep and 3 feet in diameter.']
         },
         {
-            index: 4, voice: 'the friends', prose: 4,
+            index: 4, voices: ['the friends'], prose: 4,
             command: 'lay the tinder in the pit',
+            name: 'the laying of the tinder in the pit',
             consequence: ['You place a patch of fluffy tinder in the pit.']
         },
         {
-            index: 5, voice: 'the friends', prose: 5,
+            index: 5, voices: ['the friends'], prose: 5,
             command: 'pile the kindling over the tinder',
+            name: 'the piling of the kindling',
             consequence: ['You gently pile the thin, dry sticks of kindling over the tinder.']
         },
         {
-            index: 6, voice: 'the friends', prose: 6,
+            index: 6, voices: ['the friends'], prose: 6,
             command: 'stack the logs over the kindling',
+            name: 'the stacking of the logs',
             consequence: ['You stack several layers of logs, in square fashion, over the pile of kindling.']
         },
         {
-            index: 7, voice: 'the friends', prose: 7,
+            index: 7, voices: ['the friends'], prose: 7,
             command: 'light a match',
+            name: 'the lighting of a match',
             consequence: ['The match head flickers into a tiny flame.'],
             remainder: 'and carefully touches its flame to the tinder.'
         },
         {
-            index: 8, voice: 'the friends', prose: 7,
+            index: 8, voices: ['the friends'], prose: 7,
             command: 'touch the flame to the tinder',
+            name: 'the touching of the flame to the tinder',
             consequence: ['The tinder burns quickly on contact with the flame.'],
             absorbs: [4, 5, 6]
         },
         {
-            index: 9, voice: 'the friends', prose: 9,
+            index: 9, voices: ['the friends'], prose: 9,
             command: 'sing',
+            name: 'the singing',
             consequence: ['You all begin to sing an old song together.']
         },
         {
-            index: 10, voice: 'the friends', prose: 10,
+            index: 10, voices: ['the friends'], prose: 10,
             command: 'add logs to the fire',
+            name: 'the adding of logs to the fire',
             consequence: ['The fire burns brightly for awhile, and your group tends to it, adding more logs periodically, as you continue to sing and tell stories.']
         },
         {
-            index: 11, voice: 'the friends', prose: 11,
+            index: 11, voices: ['the friends'], prose: 11,
             command: 'sing',
+            name: 'the singing',
             consequence: ['As your group sings late into the night, you stop adding wood, and the flame dwindles.'],
             remainder: 'The friends retreat to their tents.'
         },
         {
-            index: 12, voice: 'the friends', prose: 11,
+            index: 12, voices: ['the friends'], prose: 11,
             command: 'sleep in tents',
+            name: 'the sleeping in tents',
             consequence: ['Your group, growing weary, crawl into their tents to sleep.']
         }
     ],
@@ -119,6 +131,6 @@ export const CAMPFIRE: StorySpec = {
         'a bit neat, because the fire was built to be burnt'
     ],
     apply_text: {
-        first: 'You step back. The evening in the woods and the hearth on the board are the same shape. It is pleasant, the way a rhyme is pleasant.'
+        first: ['The evening in the woods and the hearth on the board are the same shape.']
     }
 };

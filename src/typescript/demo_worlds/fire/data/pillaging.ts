@@ -38,14 +38,16 @@ export const PILLAGING: AbstractSequence = {
             after: [2]
         }
     ],
-    default_nudges: {
+    nudges: {
         step: {
             1: 'Someone lives here. Who?',
             2: 'They came upon it. Did they go in?',
             3: 'What did they take?'
         },
         L1: 'The Pillaging does not skip, my dear. Something is missing from the board.',
-        L3: 'Taken before anyone lived there? Nothing is taken from an empty house.',
-        L6: 'One line at a time, my dear. Who lives there, and who enters?'
+        L3: 'The Pillaging proceeds in order, my dear. Nothing is taken from a house no one has entered.',
+        L6: 'One line cannot be two things at once, my dear. Who lives there, and who enters?',
+        L7: 'That line is spoken for, my dear. It belongs to the first solution.',
+        L7_step: {}
     }
 };

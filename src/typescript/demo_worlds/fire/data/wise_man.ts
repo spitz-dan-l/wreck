@@ -2,19 +2,33 @@
     The wise man's story (SPEC §5.4): the prose (l. 423–449), its events
     (authored, except the lighting of the pyre, which is ¶ 11 verbatim), and
     two candidate tables: the literal solution on two lines, and the
-    figurative one, found once the first has been set aside.
+    figurative one, found once the first has been set aside. Also "the two
+    lines", the sub-sequence the literal solution registers.
 */
-import { Nudge, StepIndex, StorySpec } from './types';
+import { Nudge, StepIndex, StorySpec, SubSequenceSpec } from './types';
 
 const WOOD_MY_DEAR = 'Wood, my dear. You are looking for wood. There are only two lines in which anything burns. Find them; the rest will keep.';
+const IT_BURNS_HERE = 'It burns here, my dear. Where was it built?';
 
-// In the first pass, any fuel step on the lines that the second solution will use.
-const first_pass_nudges: Nudge[] = [];
+// The fuel steps on the lines the second solution will use, and on the burning itself.
+const fuel_nudges: Nudge[] = [];
 for (const step of [1, 2, 3] as StepIndex[]) {
     for (const event of [2, 4, 5]) {
-        first_pass_nudges.push({ step, event, pass: 'first', text: WOOD_MY_DEAR });
+        fuel_nudges.push({ step, event, text: WOOD_MY_DEAR });
     }
+    fuel_nudges.push({ step, event: 11, text: IT_BURNS_HERE });
 }
+
+const LITERAL_ROWS = {
+    1: [{ event: 9, derives: "the pyre's tinder" }],
+    2: [{ event: 9, derives: "the pyre's kindling" }],
+    3: [{ event: 9, derives: "the pyre's wood" }],
+    4: [{ event: 11, derives: 'the flame' }],
+    5: [{ event: 11, derives: 'the flame' }],
+    6: [{ event: 11, derives: 'the blaze' }],
+    7: [{ event: 11, derives: 'the blaze' }],
+    8: [{ event: 11, derives: 'his body, as ash' }]
+};
 
 export const WISE_MAN: StorySpec = {
     id: 'wise_man',
@@ -38,95 +52,110 @@ export const WISE_MAN: StorySpec = {
     ],
     events: [
         {
-            index: 1, voice: 'the boy', prose: 1,
+            index: 1, voices: ['the boy'], prose: 1,
             command: 'be born',
+            name: 'the being born',
             consequence: ['You are born to parents of no consequence.'],
             authored: true
         },
         {
-            index: 2, voice: 'the boy', prose: 2,
+            index: 2, voices: ['the boy'], prose: 2,
             command: 'grow up and acquire wisdom',
+            name: 'the growing up and acquiring of wisdom',
             consequence: ['You are curious, charismatic, intelligent. You grow up and acquire wisdom.'],
             authored: true
         },
         {
-            index: 3, voice: 'the man', prose: 3,
+            index: 3, voices: ['the man'], prose: 3,
             command: 'seek answers to old questions',
+            name: 'the seeking of answers',
             consequence: ['You seek answers to old questions. Questions of purpose, consciousness, the dynamics of reality.'],
             authored: true
         },
         {
-            index: 4, voice: 'the man', prose: 4,
+            index: 4, voices: ['the man'], prose: 4,
             command: 'gain a small circle of seekers',
+            name: 'the gaining of a small circle',
             consequence: ['You gain a small circle of like-minded seekers who listen to you, astounded by your ideas.'],
             authored: true
         },
         {
-            index: 5, voice: 'the followers', prose: 5,
+            index: 5, voices: ['the followers'], prose: 5,
             command: 'grow in number',
+            name: 'the growing in number',
             consequence: ['You grow in number. Word of his wisdom spreads, and more of you come.'],
             authored: true
         },
         {
-            index: 6, voice: 'the man', prose: 6,
+            index: 6, voices: ['the man'], prose: 6,
             command: 'give speeches',
+            name: 'the giving of speeches',
             consequence: ['You give speeches to more and more devoted followers. You begin to repeat yourself. Your words become ear-worms, ever more viral and convincing.'],
             authored: true
         },
         {
-            index: 7, voice: 'the followers', prose: 7,
+            index: 7, voices: ['the followers'], prose: 7,
             command: 'write down his teachings',
+            name: 'the writing down of his teachings',
             consequence: ["Some of you begin to write down the wise man's teachings."],
             authored: true
         },
         {
-            index: 8, voice: 'the man', prose: 8,
+            index: 8, voices: ['the man'], prose: 8,
             command: 'die unexpectedly',
+            name: 'the dying unexpectedly',
             consequence: ['You die unexpectedly.'],
             authored: true
         },
         {
-            index: 9, voice: 'the closest followers', prose: 9,
+            index: 9, voices: ['the closest followers'], prose: 9,
             command: 'construct a pyre and lay his body on it',
+            name: 'the constructing of the pyre',
             consequence: ['You construct a great funeral pyre, and lay his body on it.'],
             absorbs: [1, 2, 3],
             authored: true
         },
         {
-            index: 10, voice: 'the followers', prose: 10,
+            index: 10, voices: ['the followers'], prose: 10,
             command: 'attend the funeral',
+            name: 'the attending of the funeral',
             consequence: ["You attend the wise man's funeral in multitudes."],
             authored: true
         },
         {
-            index: 11, voice: 'the closest followers', prose: 11,
+            index: 11, voices: ['the closest followers'], prose: 11,
             command: 'light the pyre',
+            name: 'the lighting of the pyre',
             consequence: ["The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash."],
             absorbs: [4, 5, 6, 7, 8]
         },
         {
-            index: 12, voice: 'the closest followers', prose: 12,
+            index: 12, voices: ['the closest followers'], prose: 12,
             command: 'adjust and embellish his words',
+            name: 'the adjusting of his words',
             consequence: ["You continue to write the dead man's words, and in time you adjust his words, and embellish the stories about him, in the interest of reaching as many people as possible. His death becomes mythologized."],
             absorbs: [4, 5],
             authored: true
         },
         {
-            index: 13, voice: 'the books', prose: 13,
+            index: 13, voices: ['the books'], prose: 13,
             command: 'spread across the land',
+            name: 'the spreading across the land',
             consequence: ['Books spread across the land.'],
             remainder: "The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted.",
             authored: true
         },
         {
-            index: 14, voice: 'the books', prose: 13,
+            index: 14, voices: ['the books'], prose: 13,
             command: 'be read and repeated and reprinted',
+            name: 'the being read and repeated and reprinted',
             consequence: ["The words that are distorted echoes of the wise man's ideas are read and repeated and reprinted."],
             authored: true
         },
         {
-            index: 15, voice: 'time', prose: 14,
+            index: 15, voices: ['time'], prose: 14,
             command: 'pass',
+            name: 'the passing of time',
             consequence: ['Time passes. The words are interpreted and reinterpreted until they hardly resemble the original ideas at all.'],
             authored: true
         }
@@ -135,42 +164,50 @@ export const WISE_MAN: StorySpec = {
     traps: [],
     candidates: {
         'the Voice of Fire': {
-            first: {
-                1: [{ event: 9, derives: "the pyre's tinder" }],
-                2: [{ event: 9, derives: "the pyre's kindling" }],
-                3: [{ event: 9, derives: "the pyre's wood" }],
-                4: [{ event: 11, derives: 'the flame' }],
-                5: [{ event: 11, derives: 'the flame' }],
-                6: [{ event: 11, derives: 'the blaze' }],
-                7: [{ event: 11, derives: 'the blaze' }],
-                8: [{ event: 11, derives: 'his body, as ash' }]
-            },
+            first: LITERAL_ROWS,
+            // The literal rows are listed again so that L7, not the table, removes them (SPEC §4 L7).
             second: {
-                1: [{ event: 2, derives: 'his wisdom' }],
-                2: [{ event: 4, derives: 'his central followers' }],
-                3: [{ event: 5, derives: 'the wider community' }],
+                1: [...LITERAL_ROWS[1], { event: 2, derives: 'his wisdom' }],
+                2: [...LITERAL_ROWS[2], { event: 4, derives: 'his central followers' }],
+                3: [...LITERAL_ROWS[3], { event: 5, derives: 'the wider community' }],
                 4: [
+                    ...LITERAL_ROWS[4],
                     { event: 12, derives: 'the myth of his death' },
                     { event: 8, derives: 'his death', mark: 'His death. Very well. Hold that.' }
                 ],
-                5: [{ event: 12, derives: 'the distortions' }],
-                6: [{ event: 13, derives: 'the books' }],
-                7: [{ event: 14, derives: 'the echoes' }],
-                8: [{ event: 15, derives: 'the distorted doctrine' }]
+                5: [...LITERAL_ROWS[5], { event: 12, derives: 'the distortions' }],
+                6: [...LITERAL_ROWS[6], { event: 13, derives: 'the books' }],
+                7: [...LITERAL_ROWS[7], { event: 14, derives: 'the echoes' }],
+                8: [...LITERAL_ROWS[8], { event: 15, derives: 'the distorted doctrine' }]
             }
         }
     },
-    nudges: [
-        ...first_pass_nudges,
-        { step: 8, event: 11, pass: 'second', text: "That is the first solution's ash. It is spoken for. Where does the wisdom end up?" }
-    ],
+    nudges: fuel_nudges,
     feelings: [
         'a bit relieving, at first, because only two lines burned',
-        'then not, because all of them did',
-        "unconvincing, because you don't really see it"
+        'then not, because all of them did'
     ],
+    grafted_feeling: "unconvincing, because you don't really see it",
     apply_text: {
-        first: "Two lines, boxed. The rest of the man's life stands outside the box, unburnt. You are relieved, and you notice that you are relieved.",
-        second: "It locks. Wisdom, circle, community, myth, distortion, echo, ash. The whole man's life is in the box now, and nothing is outside it."
+        first: [
+            'You do. Just',
+            'His closest followers construct a great funeral pyre, and lay his body on it.',
+            'and',
+            "The pyre is lit. The flame spreads from tinder to kindling to wood, and consumes the dead man's body. His followers weep and cry out and sing. Eventually, the flame is gone. The wise man's body is reduced to ash.",
+            'participate in the mapping.',
+            '"Now, my dear, please find the second solution," says Katya.'
+        ],
+        second: [
+            "It takes you some time, but you gradually work it out. The construction of the fireplace is the replication of the man's wisdom within his mind (tinder), his initial and central followers (kindling), and the wider community of followers (firewood). The mythologizing of his death marks the spark, which yields ever increasing distortions to his ideology, which spread through his original community and beyond. At the end, his wisdom has become ash, spread far and wide across the adherents to the book."
+        ]
     }
+};
+
+// The literal solution's two lines, registered as a sequence of their own when it is applied.
+export const TWO_LINES: SubSequenceSpec = {
+    id: 'two_lines',
+    title: 'the two lines',
+    story: 'wise_man',
+    events: [9, 11],
+    feelings: ['contained, because everything else stood outside']
 };

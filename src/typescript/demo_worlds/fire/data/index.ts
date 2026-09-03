@@ -1,12 +1,13 @@
 /*
     All the data of the demo in one place: the voices, the two abstract
-    sequences, the four stories in lesson order, and small lookups over them.
+    sequences, the four stories in lesson order, the sub-sequence, and small
+    lookups over them.
 */
-import { StoryEventSpec, StorySpec } from './types';
+import { StoryEventSpec, StorySpec, SubSequenceSpec } from './types';
 import { CAMPFIRE } from './campfire';
 import { HOUSE } from './house';
 import { FOREST } from './forest';
-import { WISE_MAN } from './wise_man';
+import { TWO_LINES, WISE_MAN } from './wise_man';
 import { VOICE_OF_FIRE } from './voice_of_fire';
 import { PILLAGING } from './pillaging';
 
@@ -14,10 +15,14 @@ export * from './types';
 export * from './voices';
 export { VOICE_OF_FIRE, FIRE_ROLES } from './voice_of_fire';
 export { PILLAGING } from './pillaging';
-export { CAMPFIRE, HOUSE, FOREST, WISE_MAN };
+export { CAMPFIRE, HOUSE, FOREST, WISE_MAN, TWO_LINES };
 
 export const STORIES: StorySpec[] = [CAMPFIRE, HOUSE, FOREST, WISE_MAN];
+export const SUB_SEQUENCES: SubSequenceSpec[] = [TWO_LINES];
 export const ABSTRACT_SEQUENCES = [VOICE_OF_FIRE, PILLAGING];
+
+// The player's own frames, as a sequence (SPEC §2). Never mapped in the demo.
+export const TODAYS_LESSON = "today's lesson";
 
 export function story(id: string): StorySpec {
     const s = STORIES.find(s => s.id === id);

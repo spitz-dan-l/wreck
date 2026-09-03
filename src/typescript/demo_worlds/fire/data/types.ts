@@ -25,7 +25,7 @@ export const PASSES: Pass[] = ['first', 'second'];
 export interface Step {
     index: StepIndex;
     chalk: string;          // "The laying of the tinder"                (l. 166–180)
-    name: string;           // short name used in commands: "the laying of the tinder"
+    name: string;           // authored short name used in commands: "the laying of the tinder"
     command: string;        // "lay the tinder"                          (l. 185–215)
     consequence: string;    // "A small patch of tinder is placed in the hearth."
     role: string;           // the role this step is about (one of the sequence's roles)
@@ -37,25 +37,28 @@ export interface AbstractSequence {
     voice: Voice;
     steps: Step[];
     roles: string[];
-    // What Katya says when a placement fails and nothing more specific is authored (SPEC §10).
-    default_nudges: {
-        step: { [s in StepIndex]?: string };   // when the placement is not a candidate (L4, L7)
-        L1: string;                            // apply with a step unplaced
-        L3: string;                            // a step placed before a preparation step it must follow
-        L6: string;                            // two steps on one event that does not absorb both
+    // What Katya says when a placement fails (SPEC §10): the rule's own
+    // text for L1, L3, L6 and L7, and a default per step for L4.
+    nudges: {
+        step: { [s in StepIndex]?: string };
+        L1: string;
+        L3: string;
+        L6: string;
+        L7: string;
+        L7_step: { [s in StepIndex]?: string };   // L7 wording that differs for a step (the ash)
     };
 }
 
 // An event of a story, as authored: the imperative the player issues and what follows.
 export interface StoryEventSpec {
     index: number;              // 1-based position in the sequence
-    voice: VoiceId;             // who must speak it (transcription)
+    voices: VoiceId[];          // who may speak it (transcription); the demo authors one entry everywhere
     command: string;            // the imperative the player issues
+    name: string;               // authored nominalisation, without ordinal: "the laying of the tinder in the pit"
     consequence: string[];      // paragraphs; `let it follow` lines are added by event_consequence()
     prose: number;              // which prose line (¶) it converts (a ¶ may yield two events)
     remainder?: string;         // for the first event of a two-event ¶: the tail the second one converts
     absorbs?: StepIndex[];      // may carry all of these steps at once (L6)
-    name?: string;              // overrides the nominalised event name
     authored?: true;            // the consequence was written by the implementer, not quoted from the .md
 }
 
@@ -63,26 +66,25 @@ export interface StoryEventSpec {
 export interface Candidate {
     event: number;
     derives: string;    // the participant this placement makes the step's role: "the thatch"
-    nudge?: string;     // said if this row is chosen but another rule fails
     mark?: string;      // said when this row is placed ("His death. Very well. Hold that.")
 }
 
 export type CandidateRows = { [s in StepIndex]?: Candidate[] };
 export type CandidateTable = { [pass in Pass]?: CandidateRows };
 
-// An authored nudge for a placement that is not a candidate row.
+// An authored nudge for a placement that is not a candidate row (L4).
 export interface Nudge {
     step: StepIndex;
     event: number;
-    pass?: Pass;        // undefined: any pass
     text: string;
 }
 
-// An imperative offered Locked during transcription, with what Katya says about it.
+// A wrong option offered during transcription: Available, and issuing it
+// prints the nudge as the frame's consequence and changes nothing else.
 export interface Trap {
     command: string;
     prose?: number;     // undefined: at any ¶
-    voice?: VoiceId;    // the voice in which it is offered Locked; undefined: any
+    voice?: VoiceId;    // the voice in which it is offered; undefined: any
     nudge: string;
 }
 
@@ -91,14 +93,23 @@ export interface StorySpec {
     title: string;                                  // "the campfire story"
     prose: string[];                                // the ¶ lines, verbatim from the .md
     events: StoryEventSpec[];
-    voices: VoiceId[];                              // offered by `speak as`
+    voices: VoiceId[];                              // offered by `speak as`, in this order
     follows: number[];                              // prose lines that are consequence-only
     traps: Trap[];
     candidates: { [voice: VoiceId]: CandidateTable };  // keyed by the abstract sequence's voice id
     nudges: Nudge[];
     feelings: string[];                             // the "It felt:" list
-    apply_text: { [pass in Pass]?: string };
-    apply_reply?: { step: StepIndex, event: number, text: string }[];   // Katya's one line after apply, by placement
+    grafted_feeling?: string;                       // a last feeling, added only at the end of the lesson
+    apply_text: { [pass in Pass]?: string[] };      // paragraphs; the .md's own sentences where it has them
+}
+
+// A named part of a story's sequence, rememberable on its own ("the two lines").
+export interface SubSequenceSpec {
+    id: string;
+    title: string;
+    story: string;
+    events: number[];
+    feelings: string[];
 }
 
 export interface Placement {

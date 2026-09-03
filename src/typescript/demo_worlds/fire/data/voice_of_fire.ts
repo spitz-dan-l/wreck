@@ -1,7 +1,7 @@
 /*
     The Voice of Fire: the eight steps in chalk form (l. 166–180) and in the
     standard notation (l. 185–215), their roles, the partial order, and the
-    default nudges Katya gives when a placement fails (SPEC §10).
+    nudges Katya gives when a placement fails (SPEC §10).
 */
 import { AbstractSequence } from './types';
 import { voice } from './voices';
@@ -85,19 +85,23 @@ export const VOICE_OF_FIRE: AbstractSequence = {
             after: [7]
         }
     ],
-    default_nudges: {
+    nudges: {
         step: {
             1: 'The tinder is the first thing to catch. Nothing here catches.',
             2: 'Wood, my dear. You are looking for what will be fuel.',
             3: 'Wood, my dear. You are looking for what will be fuel.',
             4: 'What was touched to the tinder? Find the touch.',
-            5: 'The Voice of Fire proceeds in order. It does not reach the firewood before the kindling has caught.',
-            6: 'The Voice of Fire proceeds in order. It does not reach the firewood before the kindling has caught.',
+            5: 'The fire spreads from what has caught to what has not. Find the catching.',
+            6: 'The fire spreads from what has caught to what has not. Find the catching.',
             7: 'Look for the hearth burning bright and hot, for a time.',
             8: 'What is left behind, afterward, when no one is tending?'
         },
         L1: 'The Voice of Fire does not skip, my dear. Something is missing from the board.',
-        L3: 'A spark before the fuel is laid? Fire is patient. It waits for the preparation. It will wait for you.',
-        L6: 'Gathered is not laid. What is laid first, and what over it?'
+        L3: 'The Voice of Fire proceeds in order, my dear. It does not reach the firewood before the kindling has caught.',
+        L6: 'One line cannot be two things at once, my dear. What was laid first, and what over it?',
+        L7: 'That line is spoken for, my dear. It belongs to the first solution.',
+        L7_step: {
+            8: "That is the first solution's ash. It is spoken for. Where does the wisdom end up?"
+        }
     }
 };

@@ -1,6 +1,6 @@
 /*
     Tests for the settled core of the Voice of Fire demo: the data lints
-    clean and quotes the document verbatim, event names are well formed and
+    clean and quotes the document verbatim, the names are well formed and
     collide with nothing, and the judge admits every mapping the document
     draws and rejects every placement SPEC §4 says it must, with the right
     rule and nudge.
@@ -11,13 +11,16 @@ import * as path from 'path';
 import 'mocha';
 import {
     ABSTRACT_SEQUENCES, AbstractSequence, CAMPFIRE, event_consequence, FOREST, HOUSE, Mapping, PILLAGING,
-    StepIndex, STORIES, StorySpec, VOICE_OF_FIRE, VOICES, WISE_MAN
+    StepIndex, STORIES, StorySpec, SUB_SEQUENCES, TODAYS_LESSON, TWO_LINES, VOICE_OF_FIRE, VOICES, WISE_MAN
 } from 'demo_worlds/fire/data';
-import { apply, candidates_for, erase, lint_sequence, lint_story, new_mapping, pass_for, place, Rejected, violations } from 'demo_worlds/fire/judge';
-import { event_names, name_collisions, nominalise } from 'demo_worlds/fire/names';
+import { CLASSROOM_EVENT_NAMES } from 'demo_worlds/fire/data/katya';
+import {
+    apply, candidates_for, erase, lint_sequence, lint_story, new_mapping, pass_for, place, Rejected, role_entries, violations
+} from 'demo_worlds/fire/judge';
+import { event_name, event_names, name_collisions } from 'demo_worlds/fire/names';
 
 const FIRE = VOICE_OF_FIRE;
-const NUDGE = FIRE.default_nudges;
+const NUDGE = FIRE.nudges;
 
 // Place each step in turn, asserting that every placement is admitted.
 function chain(story: StorySpec, placements: [StepIndex, number][], mapping = new_mapping(story, FIRE, 'first'), set_aside: Mapping[] = []): Mapping {
@@ -45,6 +48,16 @@ const CAMPFIRE_MAPPING: [StepIndex, number][] = [[1, 4], [2, 5], [3, 6], [4, 8],
 const LITERAL: [StepIndex, number][] = [[1, 9], [2, 9], [3, 9], [4, 11], [5, 11], [6, 11], [7, 11], [8, 11]];
 const FIGURATIVE: [StepIndex, number][] = [[1, 2], [2, 4], [3, 5], [4, 12], [5, 12], [6, 13], [7, 14], [8, 15]];
 
+export function normalise(s: string): string {
+    return s.replace(/\s+/g, ' ').trim();
+}
+
+// The document, whitespace-normalised, without its footnote markers.
+export function document_text(): string {
+    const raw = fs.readFileSync(path.join(__dirname, '..', '..', 'dist', 'posts', 'puzzle_lofty.md'), 'utf8');
+    return normalise(raw.replace(/\[\d\]/g, ''));
+}
+
 describe('fire data', () => {
     it('lints clean', () => {
         for (const seq of ABSTRACT_SEQUENCES) {
@@ -56,6 +69,10 @@ describe('fire data', () => {
             for (const v of story.voices) {
                 assert.ok(VOICES.some(voice => voice.id === v), `${story.title} offers the voice ${v}, which does not exist.`);
             }
+        }
+        for (const sub of SUB_SEQUENCES) {
+            const story = STORIES.find(s => s.id === sub.story)!;
+            assert.ok(sub.events.every(e => story.events.some(ev => ev.index === e)));
         }
     });
 
@@ -72,10 +89,11 @@ describe('fire data', () => {
         // The house's burning lines all follow from the scattering.
         assert.equal(event_consequence(HOUSE, 13).length, 5);
         assert.equal(event_consequence(HOUSE, 10).length, 3);
+        assert.deepEqual(TWO_LINES.events, [9, 11]);
     });
 
     it('quotes the document verbatim', () => {
-        const md = normalise(fs.readFileSync(path.join(__dirname, '..', '..', 'dist', 'posts', 'puzzle_lofty.md'), 'utf8'));
+        const md = document_text();
         const check = (text: string, what: string) =>
             assert.ok(md.includes(normalise(text)), `${what} is not in the document verbatim: "${text}"`);
 
@@ -94,6 +112,9 @@ describe('fire data', () => {
         for (const story of STORIES) {
             story.prose.forEach((line, i) => check(line, `${story.title} ¶ ${i + 1}`));
             for (const e of story.events) {
+                if (e.remainder !== undefined) {
+                    check(e.remainder, `${story.title} event ${e.index}'s remainder`);
+                }
                 if (e.authored) {
                     continue;
                 }
@@ -103,8 +124,13 @@ describe('fire data', () => {
                 for (const paragraph of e.consequence) {
                     check(paragraph, `${story.title} event ${e.index}'s consequence`);
                 }
-                if (e.remainder !== undefined) {
-                    check(e.remainder, `${story.title} event ${e.index}'s remainder`);
+            }
+            // The apply texts are the document's own sentences, except the campfire's.
+            if (story !== CAMPFIRE) {
+                for (const paragraphs of Object.values(story.apply_text)) {
+                    for (const p of paragraphs) {
+                        check(p, `${story.title}'s apply text`);
+                    }
                 }
             }
         }
@@ -112,39 +138,25 @@ describe('fire data', () => {
 });
 
 describe('fire names', () => {
-    it('nominalises commands', () => {
-        assert.equal(nominalise('lay the tinder in the pit'), 'the laying of the tinder in the pit');
-        assert.equal(nominalise('sing'), 'the singing');
-        assert.equal(nominalise('be born'), 'the being born');
-        assert.equal(nominalise('let it follow'), undefined);
-        assert.equal(nominalise('travel'), 'the traveling');
-        assert.equal(nominalise('dig a hole'), 'the digging of a hole');
-        assert.equal(nominalise('light a match'), 'the lighting of a match');
-        assert.equal(nominalise('die unexpectedly'), 'the dying unexpectedly');
-        assert.equal(nominalise('write down his teachings'), 'the writing down of his teachings');
-        assert.equal(nominalise('move in'), 'the moving in');
-        assert.equal(nominalise('grow up and acquire wisdom'), 'the growing up and acquiring of wisdom');
-        assert.equal(nominalise('gather tinder, kindling and firewood'), 'the gathering of tinder, kindling and firewood');
-        assert.equal(nominalise('turn dry and hot'), 'the turning dry and hot');
-        assert.equal(nominalise('stop at the rivers'), 'the stopping at the rivers');
-    });
-
-    it('numbers repeats within a sequence', () => {
-        const campfire = event_names(CAMPFIRE);
+    it('numbers repeats within a sequence and qualifies repeats across sequences', () => {
+        const campfire = event_names(CAMPFIRE, STORIES);
         assert.equal(campfire[8], 'the first singing');
         assert.equal(campfire[10], 'the second singing');
         assert.equal(campfire[3], 'the laying of the tinder in the pit');
-        const house = event_names(HOUSE);
+        const house = event_names(HOUSE, STORIES);
         assert.deepEqual(house.slice(0, 4), ['the packing', 'the first traveling', 'the second traveling', 'the third traveling']);
-        assert.equal(event_names(FOREST)[0], 'the taking root');
-        assert.equal(event_names(WISE_MAN)[8], 'the constructing of a pyre and laying of his body on it');
+        assert.equal(event_name(FOREST, 6, STORIES), 'the passing of time, in the forest fire');
+        assert.equal(event_name(WISE_MAN, 15, STORIES), "the passing of time, in the wise man's story");
+        assert.equal(event_name(WISE_MAN, 1, STORIES), 'the being born');
     });
 
-    it('collide with nothing', () => {
-        assert.deepEqual(name_collisions(STORIES, ABSTRACT_SEQUENCES), []);
-        // A step named like an event would be caught.
+    it('collide with nothing, as one global set', () => {
+        const extra = [...SUB_SEQUENCES.map(s => s.title), TODAYS_LESSON, ...CLASSROOM_EVENT_NAMES];
+        assert.deepEqual(name_collisions(STORIES, ABSTRACT_SEQUENCES, extra), []);
+        // A step named like an event, or a title named like a role, would be caught.
         const clash: AbstractSequence = { ...FIRE, steps: [{ ...FIRE.steps[0], name: 'the first singing' }, ...FIRE.steps.slice(1)] };
         assert.equal(name_collisions(STORIES, [clash]).length, 1);
+        assert.equal(name_collisions(STORIES, ABSTRACT_SEQUENCES, ['the ash']).length, 1);
     });
 });
 
@@ -158,6 +170,9 @@ describe('the judge: the campfire', () => {
             ['ember', 'the ember'], ['flame', 'the flame'], ['blaze', 'the blaze'],
             ['blaze', 'the blaze'], ['ash', 'a pile of ash']
         ]);
+        // The roles gain one entry per (role, sequence): the blaze only once.
+        assert.deepEqual(role_entries(result.participants, CAMPFIRE.title).map(r => r.role),
+            ['tinder', 'kindling', 'firewood', 'ember', 'flame', 'blaze', 'ash']);
     });
 
     it('rejects the laying of the tinder on the gathering (L4)', () => {
@@ -181,30 +196,28 @@ describe('the judge: the campfire', () => {
         const empty = new_mapping(CAMPFIRE, FIRE, 'first');
         assert.equal(rejected(CAMPFIRE, empty, 7, 7).nudge, 'The match is a small thing. Look for the hearth burning bright and hot, for a time.');
         assert.equal(rejected(CAMPFIRE, empty, 4, 7).nudge, 'Lit, but not yet touched to anything. Find the touch.');
-        // The authored nudge wins even when the order rule is the one that fails.
-        const with_blaze = chain(CAMPFIRE, [[6, 8]]);
-        const r = rejected(CAMPFIRE, with_blaze, 7, 7);
-        assert.equal(r.rule, 'L3');
-        assert.equal(r.nudge, 'The match is a small thing. Look for the hearth burning bright and hot, for a time.');
+        // The spark on the match with nothing laid: no order failure, just not a candidate.
+        assert.equal(rejected(CAMPFIRE, empty, 4, 7).rule, 'L4');
     });
 
-    it('rejects spreading to the firewood above spreading to the kindling (L3)', () => {
+    it('rejects spreading to the firewood on the stacking after spreading to the kindling on the touch (L3)', () => {
         const mapping = chain(CAMPFIRE, [[5, 8]]);
-        const r = rejected(CAMPFIRE, mapping, 6, 7);
+        const r = rejected(CAMPFIRE, mapping, 6, 6);
         assert.equal(r.rule, 'L3');
-        assert.equal(r.nudge, NUDGE.step[6]);
+        assert.equal(r.nudge, NUDGE.L3);
+        // The order rule is checked first, even where a candidate row exists elsewhere.
+        assert.equal(rejected(CAMPFIRE, chain(CAMPFIRE, [[6, 8]]), 7, 7).rule, 'L3');
     });
 
-    it('rejects a spark before the fuel (L3)', () => {
+    it('rejects a spark before the fuel (L3), but not before an unplaced prerequisite', () => {
         const mapping = chain(CAMPFIRE, [[4, 8]]);
         const r = rejected(CAMPFIRE, mapping, 1, 10);
         assert.equal(r.rule, 'L3');
         assert.equal(r.nudge, NUDGE.L3);
-        // And the fuel placed first, then the spark above it.
-        const fuel_late = { ...new_mapping(CAMPFIRE, FIRE, 'first'), placements: [{ step: 1 as StepIndex, event: 10 }] };
-        const r2 = rejected(CAMPFIRE, fuel_late, 4, 8);
-        assert.equal(r2.rule, 'L3');
-        assert.equal(r2.nudge, NUDGE.L3);
+        // Spark first, nothing laid: fine at placement; apply then fails L1.
+        const spark_only = chain(CAMPFIRE, [[4, 8]]);
+        const result = apply(CAMPFIRE, FIRE, spark_only);
+        assert.ok(!result.ok && result.rule === 'L1');
     });
 
     it('rejects two fuel steps on one plain event (L6)', () => {
@@ -237,11 +250,11 @@ describe('the judge: the campfire', () => {
         assert.deepEqual(mapping.placements, [{ step: 1, event: 9 }]);
     });
 
-    it('never reads the voice of an event (L5)', () => {
+    it('never reads the voices of an event (L5)', () => {
         const revoiced: StorySpec = {
             ...CAMPFIRE,
             voices: [...CAMPFIRE.voices, 'the Voice of Fire'],
-            events: CAMPFIRE.events.map(e => ({ ...e, voice: 'the Voice of Fire' }))
+            events: CAMPFIRE.events.map(e => ({ ...e, voices: ['the Voice of Fire'] }))
         };
         const a = applied(CAMPFIRE, chain(CAMPFIRE, CAMPFIRE_MAPPING));
         const b = applied(revoiced, chain(revoiced, CAMPFIRE_MAPPING));
@@ -251,26 +264,40 @@ describe('the judge: the campfire', () => {
 });
 
 describe('the judge: the house in the woods', () => {
-    const burning: [StepIndex, number][] = [[4, 12], [5, 13], [6, 13], [7, 13], [8, 13]];
+    const burning: [StepIndex, number][] = [[5, 13], [6, 13], [7, 13], [8, 13]];
 
-    it('admits the rag as tinder, with either thatch and frame or frame and foundation beneath', () => {
-        const a = applied(HOUSE, chain(HOUSE, [[1, 11], [2, 9], [3, 8], ...burning]));
-        assert.deepEqual(a.participants.slice(0, 3).map(p => p.derives), ['the oil-soaked rag', 'the thatch', 'the frame']);
-        const b = applied(HOUSE, chain(HOUSE, [[1, 11], [2, 8], [3, 7], ...burning]));
-        assert.deepEqual(b.participants.slice(0, 3).map(p => p.derives), ['the oil-soaked rag', 'the frame', 'the foundation']);
-        assert.equal(a.participants[7].derives, 'a field of ash');
+    it('admits all four legal mappings, with the spark on the stick', () => {
+        const fuels: [[StepIndex, number], [StepIndex, number], [StepIndex, number]][] = [
+            [[1, 11], [2, 9], [3, 8]],
+            [[1, 11], [2, 9], [3, 7]],
+            [[1, 11], [2, 8], [3, 7]],
+            [[1, 9], [2, 8], [3, 7]]
+        ];
+        const derived = fuels.map(fuel =>
+            applied(HOUSE, chain(HOUSE, [...fuel, [4, 12], ...burning])).participants.slice(0, 3).map(p => p.derives));
+        assert.deepEqual(derived, [
+            ['the oil-soaked rag', 'the thatch', 'the frame'],
+            ['the oil-soaked rag', 'the thatch', 'the foundation'],
+            ['the oil-soaked rag', 'the frame', 'the foundation'],
+            ['the thatch', 'the frame', 'the foundation']
+        ]);
     });
 
-    it('admits the thatch as tinder, which forces the frame and the foundation', () => {
+    it('admits the rag as both tinder and spark', () => {
+        const result = applied(HOUSE, chain(HOUSE, [[1, 11], [2, 9], [3, 8], [4, 11], ...burning]));
+        assert.deepEqual(result.participants.slice(0, 4).map(p => p.derives), ['the oil-soaked rag', 'the thatch', 'the frame', 'the lit rag']);
+        // With the thatch as tinder, the lit rag still comes after it, so the rules admit that spark as well (a fifth legal mapping).
+        applied(HOUSE, chain(HOUSE, [[1, 9], [2, 8], [3, 7], [4, 11], ...burning]));
+    });
+
+    it('keeps the fuel lines distinct (L6)', () => {
         const thatch = chain(HOUSE, [[1, 9]]);
         const r = rejected(HOUSE, thatch, 2, 9);
         assert.equal(r.rule, 'L6');
         assert.equal(r.nudge, NUDGE.L6);
         const frame = chain(HOUSE, [[2, 8]], thatch);
         assert.equal(rejected(HOUSE, frame, 3, 8).rule, 'L6');
-        const full = chain(HOUSE, [[3, 7], ...burning], frame);
-        const result = applied(HOUSE, full);
-        assert.deepEqual(result.participants.slice(0, 3).map(p => p.derives), ['the thatch', 'the frame', 'the foundation']);
+        chain(HOUSE, [[3, 7]], frame);
     });
 
     it('does not mind that the fuel is laid in reverse order', () => {
@@ -278,10 +305,9 @@ describe('the judge: the house in the woods', () => {
         chain(HOUSE, [[3, 7], [2, 8], [1, 9]]);
     });
 
-    it('says the authored nudges', () => {
+    it('says the authored nudge for the cutting of wood', () => {
         const empty = new_mapping(HOUSE, FIRE, 'first');
         assert.equal(rejected(HOUSE, empty, 1, 5).nudge, 'Wood that is cut is not yet laid.');
-        assert.equal(rejected(HOUSE, empty, 4, 11).nudge, 'Lit, but not yet touched to anything. What does it fall upon?');
         assert.equal(rejected(HOUSE, empty, 2, 1).nudge, NUDGE.step[2]);
     });
 });
@@ -324,7 +350,9 @@ describe("the judge: the wise man's story", () => {
         const burning = chain(WISE_MAN, LITERAL.slice(3));
         for (const step of [1, 2, 3] as StepIndex[]) {
             assert.equal(rejected(WISE_MAN, empty, step, 11).rule, 'L4');
-            assert.equal(rejected(WISE_MAN, burning, step, 11).rule, 'L4');
+            const r = rejected(WISE_MAN, burning, step, 11);
+            assert.equal(r.rule, 'L4');
+            assert.equal(r.nudge, 'It burns here, my dear. Where was it built?');
         }
         const all_on_pyre: Mapping = { ...empty, placements: FIRE.steps.map(s => ({ step: s.index, event: 11 })) };
         const broken = violations(WISE_MAN, FIRE, all_on_pyre);
@@ -350,6 +378,9 @@ describe("the judge: the wise man's story", () => {
         for (const step of FIRE.steps) {
             assert.ok(rows[step.index]!.every(c => c.event !== 9 && c.event !== 11));
         }
+        // It is L7 that removes them: the table itself still lists the literal rows.
+        const unpruned = candidates_for(WISE_MAN, FIRE, 'second', []);
+        assert.ok(unpruned[1]!.some(c => c.event === 9) && unpruned[8]!.some(c => c.event === 11));
         // The first pass loses its rows too, if it were somehow asked for.
         assert.deepEqual(candidates_for(WISE_MAN, FIRE, 'first', [first])[1], []);
     });
@@ -371,18 +402,17 @@ describe("the judge: the wise man's story", () => {
         assert.ok(first.placements.every(p => !death.mapping.placements.some(q => q.event === p.event)));
     });
 
-    it('rejects the literal ash in the second pass (L7)', () => {
+    it('rejects the literal lines in the second pass (L7), and fails without L7', () => {
         const first = literal_set_aside();
         const second = new_mapping(WISE_MAN, FIRE, 'second');
         const r = rejected(WISE_MAN, second, 8, 11, [first]);
         assert.equal(r.rule, 'L7');
         assert.equal(r.nudge, "That is the first solution's ash. It is spoken for. Where does the wisdom end up?");
-        assert.equal(rejected(WISE_MAN, second, 1, 9, [first]).rule, 'L7');
-        // Without a set-aside mapping, the lines are simply not candidates.
-        assert.equal(rejected(WISE_MAN, second, 8, 11).rule, 'L4');
+        const r2 = rejected(WISE_MAN, second, 1, 9, [first]);
+        assert.equal(r2.rule, 'L7');
+        assert.equal(r2.nudge, NUDGE.L7);
+        // With the set-aside mapping withheld from the judge (as if L7 were deleted), the literal lines are admitted again.
+        assert.ok(place(WISE_MAN, FIRE, second, 8, 11, []).ok);
+        assert.ok(place(WISE_MAN, FIRE, second, 1, 9, []).ok);
     });
 });
-
-function normalise(s: string): string {
-    return s.replace(/\s+/g, ' ').trim();
-}
