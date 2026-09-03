@@ -31,20 +31,16 @@ function initial_knowledge(): Knowledge {
 
 const initial_world: FireWorld = {
     ...get_initial_world<FireWorld>(),
-    scene: 'classroom',
+    lesson: 0,
     gist: undefined,
     voice: undefined,
     board: undefined,
     cursor: undefined,
-    remainder: undefined,
     sequences: {},
-    frame_voices: {},
     mappings: [],
     roles: {},
-    collapsed: [],
+    collapsed: ['steps'],       // the steps' notation is folded until `expand the steps`
     taught: [],
-    said: [],
-    ended: false,
     knowledge: initial_knowledge()
 };
 

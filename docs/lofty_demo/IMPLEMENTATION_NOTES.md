@@ -299,3 +299,116 @@ particulars:
   set aside; the barcode follows the mapping's status.
 - The house's `say all set` frame in the chip: the chip CSS shows the
   ledger's last frame, which is now `put down the chalk` (l. 393).
+
+## Phase B4 (the round-3 code review, SPEC v1.3)
+
+`docs/lofty_demo/round3/critique_7_code.md` implemented. World code
+3174 → 3230 lines (`demo_worlds/fire/**`), tests 963 → 1137
+(`tests/test_fire_*.ts`); `npm test` 58 passing in ~55 s (the fire tests
+alone ~45 s, one cached replay of the 216-step walkthrough).
+
+**Defects.**
+- **D1.** Every badge, reference, rendition and annotation gist carries the
+  mapping's `id` (the frame index at which the mapping was created); `set
+  aside`/`resume` address one mapping's nodes and never touch another's.
+  There is no third mapping any more: setting aside the last (or only)
+  pass reopens that mapping with its placements kept; an earlier pass is
+  set aside and the next pass opens, reusing a held mapping of that pass
+  if there is one. (This is the [C6] rule of SPEC v1.3, folded in ahead of
+  B5a.) `resume` of a set-aside mapping puts the mapping open meanwhile
+  into `set aside`, placements kept; two mappings are never lit.
+- **D2.** One annotation per (event, role): `apply_ops` groups the
+  participants by event and annotates each role once (`role_entries`).
+- **D3.** Bands are no longer placed per map: `rows_ops` derives `mapped`
+  and `band-n` for every row from the story's mappings after each map,
+  erase, apply, set aside and resume, and re-adds the folded bar with the
+  derived count (**D6**).
+- **D4.** The remainder underline is scoped to `.prose.cursor .piece` and
+  `advance_cursor_ops` clears the class from the pieces it leaves.
+- **D5.** The initial world has `collapsed: ['steps']`, so `expand the
+  steps` is what is offered first; every display op is addressed through
+  the board's `right` gist (`in_right_columns()`), so a `remember` reprint
+  (gists stripped) is never expanded or collapsed.
+- **D7.** "The family have no line here, my dear. Who acts?": `Voice.plural`
+  on the friends, the family, the children, the followers, the closest
+  followers, you, the books.
+- **D8.** `role_name` no longer prefixes phrases that are not single
+  words; `with_ordinal` falls back to a numeric ordinal ("11th") instead
+  of `undefined`; the L1 nudge is built by `l1_nudge`, and `lint_sequence`
+  checks that the template contains `{step}`.
+- **D9.** `participants` reads the mapping's own rows only.
+
+**Simplifications.** `frame_voices`, `remainder`, `said`, `ended`,
+`reopened` and `scene` are gone from the world: `phase(w, story)` ∈
+{closed, transcribing, converted, lined, mapping} is derived from the
+board, cursor, mappings and history; `remainder(w, story)` from the
+sequence; `has_said` and `classroom_commands` from the `classroom` gists
+in the history (the gist now records the beat, so `listen` is once per
+beat); `ended` is `lesson === BEAT.end`. `lesson` is one integer beat
+(`BEAT`), and the classroom script is an ordered list of `Line`s over the
+beats (first unsaid line offered, optional lines whenever unsaid).
+`Mapping.id` replaces every positional lookup. `EVENT_NAMES` is computed
+once at load. One `group_by_event`. `lint_story` is `lint_events` +
+`lint_prose` + `lint_tables`. Dead code (`STEP_INDICES`, `PASSES`, the
+name cache, the per-map band ops, the third-mapping path) deleted.
+**S10** (the carat span) is left as it is: the hole moves at every
+conversion, so a sibling carat node would need two extra ops per move
+(remove and re-add) for no fewer CSS rules.
+
+**Extensibility.** The judge takes a `Sequence` (`id`, `title`, `events`,
+`candidates`, `nudges`) rather than a `StorySpec`; a mapping carries its
+`voice`, and the puffers read `Mapping.voice` / `voice_for(story)` instead
+of the `VOICE_OF_FIRE` constant (`LESSON_VOICE` is the one place the
+lesson's voice is named). The wise man's two-solution behaviour is data:
+`map_after` (l. 451 must be said before `map` is offered — phase `lined`)
+and `set_aside_after` (l. 467 before the first solution can be set aside),
+so a second two-solution story needs no code.
+
+**Tests.** Walkthrough expectations are scoped to the frame's text
+(`expect`) or to the board (`expect_tree`); one cached replay, per-beat
+`it`s; the two vacuous asserts removed. New: erase then remap
+(campfire and house), set aside → map → resume on the wise man (both
+directions, placements kept, never both lit), annotations for two steps
+of one role (the scattering: flame/blaze/ash once each), initial folded
+notation and reprint isolation, the unmapped count after a later map
+(9 → 8), `expand the campfire story` on a chip, `remember the tinder`
+before anything, `remember the Pillaging`, the forest set aside and
+re-applied (ash gets its third entry), the fifth house mapping played
+(the thatch as tinder), the wise man's `apply` twice, the board after
+`put down the chalk`. Test helpers cache the applied story and the
+command enumeration per world (`story_of`, `commands`); `traverse_thread`
+reruns the parser once per prefix, which is where the remaining time goes.
+
+**Engine change.** `story/knowledge.ts`: `remove_gists(root, pattern)`,
+the inverse of `graft`, moved next to it from `board.tsx`. Nothing else
+outside `demo_worlds/fire` and the tests.
+
+**Left undone / disagreements.**
+- The critic's D2 example sequence (free lines in order s3→e7, s2→e8,
+  s1→e9 without erasing) is blocked by L6 as specified: each fuel line must
+  be freed before another step takes it; the walkthrough asserts the nudge.
+- S10 as above.
+- The world did not shrink: the [C6] mapping rule, the data-driven wise
+  man, the plural voices and the derived rows cost about what the dead
+  code and the removed fields saved.
+
+### Engine recommendations (not done; noted for the engine)
+
+- `lib/utils.update` treats `Set` as opaque: a Set-aware updater (or
+  documenting that sets must be arrays) would remove the array-of-strings
+  workarounds (`collapsed`, `taught`).
+- A `set_attr` / `data` story op: the board keys state in class names
+  (`band-3`, `voices-taught`) for want of a way to set a data attribute.
+- A "move frame" op: moving the hole is `remove` + `insert_after(<Hole/>)`;
+  moving any node is the same two ops with a query in between.
+- `ingest_if_absent` / `lookup` returning undefined without throwing:
+  `lookup_or_throw` forces a `find_gists` before every conditional ingest.
+- A reprint marker: `strip_gists` copies a node without gists or frame
+  index so later ops miss it; a `reprint` flag honoured by the queries
+  would be cheaper and clearer.
+- Typeahead slot grouping: with 200+ `map X to Y` threads the typeahead
+  lists every event under every step; grouping options by their spec's
+  chunk would let the UI show "map <step> to <event>" once.
+- `traverse_thread` reruns the whole thread per prefix (O(commands ×
+  chunks) parses); an enumerator that keeps the parser's partial state
+  would make command enumeration cheap enough to use in the UI.

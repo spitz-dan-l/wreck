@@ -6,21 +6,21 @@
 import { Voice, VoiceId } from './types';
 
 export const VOICES: Voice[] = [
-    { id: 'the friends', name: 'the friends', kind: 'embodied' },
-    { id: 'the family', name: 'the family', kind: 'embodied' },
-    { id: 'the children', name: 'the children', kind: 'embodied' },
+    { id: 'the friends', name: 'the friends', kind: 'embodied', plural: true },
+    { id: 'the family', name: 'the family', kind: 'embodied', plural: true },
+    { id: 'the children', name: 'the children', kind: 'embodied', plural: true },
     { id: 'the boy', name: 'the boy', kind: 'embodied' },
     { id: 'the man', name: 'the man', kind: 'embodied' },
-    { id: 'the followers', name: 'the followers', kind: 'embodied' },
-    { id: 'the closest followers', name: 'the closest followers', kind: 'embodied' },
-    { id: 'you', name: 'You', kind: 'embodied' },
+    { id: 'the followers', name: 'the followers', kind: 'embodied', plural: true },
+    { id: 'the closest followers', name: 'the closest followers', kind: 'embodied', plural: true },
+    { id: 'you', name: 'You', kind: 'embodied', plural: true },
 
     { id: 'the seed', name: 'the seed', kind: 'disembodied' },
     { id: 'the tree', name: 'the tree', kind: 'disembodied' },
     { id: 'the forest', name: 'the forest', kind: 'disembodied' },
     { id: 'the weather', name: 'the weather', kind: 'disembodied' },
     { id: 'the fire', name: 'the fire', kind: 'disembodied' },
-    { id: 'the books', name: 'the books', kind: 'disembodied' },
+    { id: 'the books', name: 'the books', kind: 'disembodied', plural: true },
 
     { id: 'the season', name: 'the season', kind: 'abstract' },
     { id: 'time', name: 'time', kind: 'abstract' },

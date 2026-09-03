@@ -82,7 +82,7 @@
 .prose.done { --alpha-color: 0.55; }
 .prose.followed { --alpha-color: 0.7; }
 .prose.followed::before { content: '\21B3  '; }
-.prose .piece.remainder {
+.prose.cursor .piece.remainder {
     --alpha-color: 1;
     text-decoration: underline;
     text-decoration-color: rgba(255, 255, 240, 0.6);

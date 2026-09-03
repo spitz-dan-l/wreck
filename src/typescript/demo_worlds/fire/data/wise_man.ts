@@ -162,6 +162,9 @@ export const WISE_MAN: StorySpec = {
     ],
     follows: [],
     traps: [],
+    // Two solutions (SPEC §9 beats 4–5): mapping begins after l. 451, and the first may be set aside after l. 467.
+    map_after: 'say that the Voice of Fire is contained in just two lines',
+    set_aside_after: 'ask what she means',
     candidates: {
         'the Voice of Fire': {
             first: LITERAL_ROWS,
@@ -210,6 +213,7 @@ export const TWO_LINES: SubSequenceSpec = {
     id: 'two_lines',
     title: 'the two lines',
     story: 'wise_man',
+    pass: 'first',
     events: [9, 11],
     feelings: ['contained, because everything else stood outside']
 };

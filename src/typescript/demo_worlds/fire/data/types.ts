@@ -13,13 +13,12 @@ export interface Voice {
     id: VoiceId;
     name: string;
     kind: VoiceKind;
+    plural?: true;      // "the friends have", not "has"
 }
 
 export type StepIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-export const STEP_INDICES: StepIndex[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export type Pass = 'first' | 'second';
-export const PASSES: Pass[] = ['first', 'second'];
 
 // One step of an abstract sequence, in both of its forms.
 export interface Step {
@@ -88,20 +87,28 @@ export interface Trap {
     nudge: string;
 }
 
-export interface StorySpec {
+// What the judge reads of a sequence: its events (and what they absorb),
+// the candidate tables, and the authored nudges.
+export interface Sequence {
     id: string;
-    title: string;                                  // "the campfire story"
+    title: string;
+    events: { index: number, absorbs?: StepIndex[] }[];
+    candidates: { [voice: VoiceId]: CandidateTable };  // keyed by the abstract sequence's voice id
+    nudges: Nudge[];
+}
+
+export interface StorySpec extends Sequence {
     prose: string[];                                // the ¶ lines, verbatim from the .md
     events: StoryEventSpec[];
     voices: VoiceId[];                              // offered by `speak as`, in this order
     follows: number[];                              // prose lines that are consequence-only
     traps: Trap[];
-    candidates: { [voice: VoiceId]: CandidateTable };  // keyed by the abstract sequence's voice id
-    nudges: Nudge[];
     feelings: string[];                             // the "It felt:" list
     grafted_feeling?: string;                       // a last feeling, added only at the end of the lesson
     apply_text: { [pass in Pass]?: string[] };      // paragraphs; the .md's own sentences where it has them
     apply_after?: { [pass in Pass]?: string[] };    // paragraphs printed after the Fire's rendition (l. 465)
+    map_after?: string;                             // mapping is offered only once this classroom line is said
+    set_aside_after?: string;                       // the first solution may be set aside only once this line is said
 }
 
 // A named part of a story's sequence, rememberable on its own ("the two lines").
@@ -109,6 +116,7 @@ export interface SubSequenceSpec {
     id: string;
     title: string;
     story: string;
+    pass: Pass;             // registered when this pass of the story is applied
     events: number[];
     feelings: string[];
 }
@@ -121,10 +129,10 @@ export interface Placement {
 export type MappingStatus = 'open' | 'applied' | 'set aside';
 
 export interface Mapping {
+    id: number;             // unique on the board: what the badges, references and renditions are keyed by
     voice: VoiceId;         // the abstract sequence
     sequence: string;       // the story id
     pass: Pass;
     placements: Placement[];
     status: MappingStatus;
-    reopened?: true;        // set aside in a story with no second pass: open again, placements kept
 }

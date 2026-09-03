@@ -10,20 +10,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 import 'mocha';
 import {
-    ABSTRACT_SEQUENCES, AbstractSequence, CAMPFIRE, event_consequence, FOREST, HOUSE, Mapping, PILLAGING,
+    ABSTRACT_SEQUENCES, AbstractSequence, CAMPFIRE, event_consequence, EVENT_NAMES, FOREST, HOUSE, Mapping, PILLAGING,
     StepIndex, STORIES, StorySpec, SUB_SEQUENCES, TODAYS_LESSON, TWO_LINES, VOICE_OF_FIRE, VOICES, WISE_MAN
 } from 'demo_worlds/fire/data';
 import { CLASSROOM_EVENT_NAMES } from 'demo_worlds/fire/data/katya';
 import {
-    apply, candidates_for, erase, lint_sequence, lint_story, new_mapping, pass_for, place, Rejected, role_entries, violations
+    apply, candidates_for, erase, group_by_event, lint_sequence, lint_story, new_mapping, participants, pass_for, place, Rejected, role_entries, violations
 } from 'demo_worlds/fire/judge';
-import { event_name, event_names, name_collisions } from 'demo_worlds/fire/names';
+import { event_names, name_collisions, role_name, with_ordinal } from 'demo_worlds/fire/names';
 
 const FIRE = VOICE_OF_FIRE;
 const NUDGE = FIRE.nudges;
 
 // Place each step in turn, asserting that every placement is admitted.
-function chain(story: StorySpec, placements: [StepIndex, number][], mapping = new_mapping(story, FIRE, 'first'), set_aside: Mapping[] = []): Mapping {
+function chain(story: StorySpec, placements: [StepIndex, number][], mapping = new_mapping(story, FIRE, 'first', 1), set_aside: Mapping[] = []): Mapping {
     for (const [step, event] of placements) {
         const verdict = place(story, FIRE, mapping, step, event, set_aside);
         assert.ok(verdict.ok, `step ${step} on event ${event} of ${story.title} was rejected: ${(verdict as Rejected).rule} "${(verdict as Rejected).nudge}"`);
@@ -157,9 +157,10 @@ describe('fire names', () => {
         assert.equal(campfire[3], 'the laying of the tinder in the pit');
         const house = event_names(HOUSE, STORIES);
         assert.deepEqual(house.slice(0, 4), ['the packing', 'the first traveling', 'the second traveling', 'the third traveling']);
-        assert.equal(event_name(FOREST, 6, STORIES), 'the passing of time, in the forest fire');
-        assert.equal(event_name(WISE_MAN, 15, STORIES), "the passing of time, in the wise man's story");
-        assert.equal(event_name(WISE_MAN, 1, STORIES), 'the being born');
+        assert.equal(EVENT_NAMES.forest[5], 'the passing of time, in the forest fire');
+        assert.equal(EVENT_NAMES.wise_man[14], "the passing of time, in the wise man's story");
+        assert.equal(EVENT_NAMES.wise_man[0], 'the being born');
+        assert.deepEqual(EVENT_NAMES.forest, event_names(FOREST, STORIES));
     });
 
     it('collide with nothing, as one global set', () => {
@@ -169,6 +170,11 @@ describe('fire names', () => {
         const clash: AbstractSequence = { ...FIRE, steps: [{ ...FIRE.steps[0], name: 'the first singing' }, ...FIRE.steps.slice(1)] };
         assert.equal(name_collisions(STORIES, [clash]).length, 1);
         assert.equal(name_collisions(STORIES, ABSTRACT_SEQUENCES, ['the ash']).length, 1);
+        // Roles that already read as phrases are named as written; a repeat past the tenth still has a name.
+        assert.equal(role_name('their home'), 'their home');
+        assert.equal(role_name('Someone'), 'Someone');
+        assert.equal(role_name('tinder'), 'the tinder');
+        assert.equal(with_ordinal('the listening', 10), 'the 11th listening');
     });
 });
 
@@ -185,16 +191,18 @@ describe('the judge: the campfire', () => {
         // The roles gain one entry per (role, sequence): the blaze only once.
         assert.deepEqual(role_entries(result.participants, CAMPFIRE.title).map(r => r.role),
             ['tinder', 'kindling', 'firewood', 'ember', 'flame', 'blaze', 'ash']);
+        // The rendition groups the steps that share an event.
+        assert.deepEqual(group_by_event(result.participants).map(g => [g[0].event, g.length]), [[4, 1], [5, 1], [6, 1], [8, 3], [10, 1], [12, 1]]);
     });
 
     it('rejects the laying of the tinder on the gathering (L4)', () => {
-        const r = rejected(CAMPFIRE, new_mapping(CAMPFIRE, FIRE, 'first'), 1, 2);
+        const r = rejected(CAMPFIRE, new_mapping(CAMPFIRE, FIRE, 'first', 1), 1, 2);
         assert.equal(r.rule, 'L4');
         assert.equal(r.nudge, NUDGE.step[1]);
     });
 
     it('rejects anything on either singing (L4)', () => {
-        const empty = new_mapping(CAMPFIRE, FIRE, 'first');
+        const empty = new_mapping(CAMPFIRE, FIRE, 'first', 1);
         for (const step of FIRE.steps) {
             for (const sing of [9, 11]) {
                 assert.equal(rejected(CAMPFIRE, empty, step.index, sing).rule, 'L4');
@@ -205,7 +213,7 @@ describe('the judge: the campfire', () => {
     });
 
     it('says the authored nudges for the match', () => {
-        const empty = new_mapping(CAMPFIRE, FIRE, 'first');
+        const empty = new_mapping(CAMPFIRE, FIRE, 'first', 1);
         assert.equal(rejected(CAMPFIRE, empty, 7, 7).nudge, 'The match is a small thing. Look for the hearth burning bright and hot, for a time.');
         assert.equal(rejected(CAMPFIRE, empty, 4, 7).nudge, 'Lit, but not yet touched to anything. Find the touch.');
         // The spark on the match with nothing laid: no order failure, just not a candidate.
@@ -234,12 +242,12 @@ describe('the judge: the campfire', () => {
 
     it('rejects two fuel steps on one plain event (L6)', () => {
         // The tinder and the kindling both on the gathering: neither is a candidate there, and the gathering absorbs nothing.
-        const gathered: Mapping = { ...new_mapping(CAMPFIRE, FIRE, 'first'), placements: [{ step: 1, event: 2 }, { step: 2, event: 2 }] };
+        const gathered: Mapping = { ...new_mapping(CAMPFIRE, FIRE, 'first', 1), placements: [{ step: 1, event: 2 }, { step: 2, event: 2 }] };
         const broken = violations(CAMPFIRE, FIRE, gathered).filter(v => v.rule !== 'L1');
         assert.deepEqual(broken.map(v => [v.rule, v.step]), [['L4', 1], ['L6', 1], ['L4', 2], ['L6', 2]]);
         assert.equal(broken[1].nudge, NUDGE.L6);
         // Reached one placement at a time, the first of the two is refused as not a candidate.
-        assert.equal(rejected(CAMPFIRE, new_mapping(CAMPFIRE, FIRE, 'first'), 2, 2).rule, 'L4');
+        assert.equal(rejected(CAMPFIRE, new_mapping(CAMPFIRE, FIRE, 'first', 1), 2, 2).rule, 'L4');
         // Sharing is fine where the event absorbs the steps.
         const shared = chain(CAMPFIRE, [[4, 8], [5, 8], [6, 8]]);
         assert.equal(shared.placements.length, 3);
@@ -271,7 +279,7 @@ describe('the judge: the campfire', () => {
         const a = applied(CAMPFIRE, chain(CAMPFIRE, CAMPFIRE_MAPPING));
         const b = applied(revoiced, chain(revoiced, CAMPFIRE_MAPPING));
         assert.deepEqual(a.participants, b.participants);
-        assert.deepEqual(rejected(revoiced, new_mapping(revoiced, FIRE, 'first'), 8, 11), rejected(CAMPFIRE, new_mapping(CAMPFIRE, FIRE, 'first'), 8, 11));
+        assert.deepEqual(rejected(revoiced, new_mapping(revoiced, FIRE, 'first', 1), 8, 11), rejected(CAMPFIRE, new_mapping(CAMPFIRE, FIRE, 'first', 1), 8, 11));
     });
 });
 
@@ -318,7 +326,7 @@ describe('the judge: the house in the woods', () => {
     });
 
     it('says the authored nudge for the cutting of wood', () => {
-        const empty = new_mapping(HOUSE, FIRE, 'first');
+        const empty = new_mapping(HOUSE, FIRE, 'first', 1);
         assert.equal(rejected(HOUSE, empty, 1, 5).nudge, 'Wood that is cut is not yet laid.');
         assert.equal(rejected(HOUSE, empty, 2, 1).nudge, NUDGE.step[2]);
     });
@@ -340,7 +348,7 @@ describe('the judge: the forest fire', () => {
     });
 
     it('says the authored nudges', () => {
-        const empty = new_mapping(FOREST, FIRE, 'first');
+        const empty = new_mapping(FOREST, FIRE, 'first', 1);
         assert.equal(rejected(FOREST, empty, 1, 1).nudge, 'A seed is not laid to burn. What here is dry?');
         assert.equal(rejected(FOREST, chain(FOREST, [[1, 7]]), 4, 7).nudge, 'Dry is not lit. What strikes?');
     });
@@ -358,7 +366,7 @@ describe("the judge: the wise man's story", () => {
     });
 
     it('rejects all eight steps on the lighting of the pyre (L4 for 1–3; L6)', () => {
-        const empty = new_mapping(WISE_MAN, FIRE, 'first');
+        const empty = new_mapping(WISE_MAN, FIRE, 'first', 1);
         const burning = chain(WISE_MAN, LITERAL.slice(3));
         for (const step of [1, 2, 3] as StepIndex[]) {
             assert.equal(rejected(WISE_MAN, empty, step, 11).rule, 'L4');
@@ -374,7 +382,7 @@ describe("the judge: the wise man's story", () => {
     });
 
     it('sends the fuel steps to the wood in the first pass', () => {
-        const empty = new_mapping(WISE_MAN, FIRE, 'first');
+        const empty = new_mapping(WISE_MAN, FIRE, 'first', 1);
         for (const step of [1, 2, 3] as StepIndex[]) {
             for (const event of [2, 4, 5]) {
                 assert.equal(rejected(WISE_MAN, empty, step, event).nudge, 'Wood, my dear. You are looking for wood. There are only two lines in which anything burns. Find them; the rest will keep.');
@@ -399,7 +407,7 @@ describe("the judge: the wise man's story", () => {
 
     it('admits the figurative solution, with either spark', () => {
         const first = literal_set_aside();
-        const second = new_mapping(WISE_MAN, FIRE, 'second');
+        const second = new_mapping(WISE_MAN, FIRE, 'second', 2);
         const myth = applied(WISE_MAN, chain(WISE_MAN, FIGURATIVE, second, [first]), [first]);
         assert.deepEqual(myth.participants.map(p => p.derives), [
             'his wisdom', 'his central followers', 'the wider community', 'the myth of his death', 'the distortions', 'the books', 'the echoes', 'the distorted doctrine'
@@ -412,11 +420,14 @@ describe("the judge: the wise man's story", () => {
         assert.equal(death.participants[3].event, 8);
         // Both solutions can be held at once: one applied, one set aside, on different events.
         assert.ok(first.placements.every(p => !death.mapping.placements.some(q => q.event === p.event)));
+        // A placement's participant depends on its own table alone, not on what else is set aside.
+        assert.deepEqual(participants(WISE_MAN, FIRE, death.mapping), death.participants);
+        assert.deepEqual(participants(WISE_MAN, FIRE, first).map(p => p.derives)[0], "the pyre's tinder");
     });
 
     it('rejects the literal lines in the second pass (L7), and fails without L7', () => {
         const first = literal_set_aside();
-        const second = new_mapping(WISE_MAN, FIRE, 'second');
+        const second = new_mapping(WISE_MAN, FIRE, 'second', 2);
         const r = rejected(WISE_MAN, second, 8, 11, [first]);
         assert.equal(r.rule, 'L7');
         assert.equal(r.nudge, "That is the first solution's ash. It is spoken for. Where does the wisdom end up?");

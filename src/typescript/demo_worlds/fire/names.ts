@@ -9,12 +9,10 @@ import { AbstractSequence, StorySpec } from './data/types';
 
 const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
 
-// "the singing" -> "the second singing".
+// "the singing" -> "the second singing"; past the tenth, "the 11th singing".
 export function with_ordinal(name: string, nth: number): string {
-    if (nth >= ORDINALS.length) {
-        throw new Error(`Too many things named "${name}".`);
-    }
-    return `the ${ORDINALS[nth]} ${name.replace(/^the /, '')}`;
+    const ordinal = ORDINALS[nth] ?? `${nth + 1}th`;
+    return `the ${ordinal} ${name.replace(/^the /, '')}`;
 }
 
 // Give ordinals to the names that repeat within one list.
@@ -29,32 +27,18 @@ export function ordinal_names(names: string[]): string[] {
 
 // The names of a story's events, in order: with ordinals within the story,
 // and qualified by the story's title where another story has the same name.
-// (Computed once per story: the parser asks for them on every keystroke.)
-const names_cache = new Map<StorySpec, string[]>();
-
 export function event_names(story: StorySpec, stories: StorySpec[]): string[] {
-    const cached = names_cache.get(story);
-    if (cached !== undefined) {
-        return cached;
-    }
     const own = ordinal_names(story.events.map(e => e.name));
     const elsewhere = new Set(stories
         .filter(s => s.id !== story.id)
         .flatMap(s => ordinal_names(s.events.map(e => e.name))));
-    const result = own.map(name => elsewhere.has(name) ? `${name}, in ${story.title}` : name);
-    if (stories.length > 1) {
-        names_cache.set(story, result);
-    }
-    return result;
+    return own.map(name => elsewhere.has(name) ? `${name}, in ${story.title}` : name);
 }
 
-export function event_name(story: StorySpec, index: number, stories: StorySpec[]): string {
-    return event_names(story, stories)[index - 1];
-}
-
-// "tinder" -> "the tinder": how a role is named in the grammar.
+// "tinder" -> "the tinder": how a role is named in the grammar. A role that
+// already reads as a phrase ("their home", "Someone") is left as written.
 export function role_name(role: string): string {
-    return role.startsWith('the ') || /^[A-Z]/.test(role) ? role : `the ${role}`;
+    return /^[a-z]+$/.test(role) ? `the ${role}` : role;
 }
 
 // Load-time check (SPEC §6): one global set of names, with no duplicates.

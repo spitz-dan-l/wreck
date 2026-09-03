@@ -1,18 +1,30 @@
 /*
-    The world state of the Voice of Fire demo (SPEC §3): where in the lesson
-    we are, the open board and the cursor on it, the sequences transcribed
-    so far, the mappings and what applying them has made the roles, and the
-    knowledge tree. Plus small lookups over it and the grammar helpers the
-    puffers share.
+    The world state of the Voice of Fire demo (SPEC §3): which beat of the
+    lesson we are in, the open board and the cursor on it, the sequences
+    transcribed so far, the mappings and what applying them has made the
+    roles, and the knowledge tree. Everything else — the board's phase, the
+    remainder of a two-event ¶, which lines have been said — is derived.
+    Plus the grammar helpers the puffers share.
 */
 import { Gist } from 'gist';
 import { ConsumeSpec, GAP } from 'parser';
 import { Knowledge } from 'story';
 import { World } from 'world';
-import { Mapping, STORIES, StorySpec, VoiceId, VOICE_OF_FIRE } from './data';
+import { AbstractSequence, ABSTRACT_SEQUENCES, Mapping, STORIES, StorySpec, VoiceId, VOICE_OF_FIRE } from './data';
 import { RoleEntry } from './judge';
 
-export type SceneId = string;
+// The beats of the lesson (SPEC §9), in order. `lesson` is the index of the current one.
+export const BEAT = {
+    classroom: 0, chalk: 1, notation: 2,
+    campfire_told: 3, campfire_ready: 4, campfire: 5, campfire_done: 6,
+    house_told: 7, house_ready: 8, house: 9, house_done: 10,
+    forest_ready: 11, forest: 12, forest_done: 13,
+    wise_man_ready: 14, wise_man: 15,
+    end: 16
+};
+
+// The voice on the lesson board: the one whose steps Katya writes in beat 0.
+export const LESSON_VOICE = VOICE_OF_FIRE;
 
 export interface SequenceState {
     events: number[];       // the frame index of each event, in order
@@ -20,39 +32,60 @@ export interface SequenceState {
 }
 
 export interface FireWorld extends World {
-    readonly scene: SceneId;                        // where in the lesson we are (gates the typeahead)
+    readonly lesson: number;                        // the current beat (BEAT)
     readonly gist: Gist | undefined;                // what the player just did; labels the frame
     readonly voice: VoiceId | undefined;            // current speaking voice at the board
     readonly board: string | undefined;             // the open story id
     readonly cursor: number | undefined;            // next unconverted ¶ (1-based)
-    readonly remainder: string | undefined;         // unconverted tail of the cursor ¶ (two-event lines)
     readonly sequences: { [id: string]: SequenceState };
-    readonly frame_voices: { [frame: number]: VoiceId };   // who spoke each story event
     readonly mappings: Mapping[];
     readonly roles: { [role: string]: RoleEntry[] };       // accumulated on apply
     readonly collapsed: string[];                   // ids of collapsed things (display only)
     readonly taught: string[];                      // 'voice' | 'disembodied' | 'abstract'
-    readonly said: string[];                        // the classroom lines said so far
-    readonly ended: boolean;                        // l. 481 has been said
     readonly knowledge: Knowledge;
 }
 
-// LOOKUPS
+// DERIVED STATE
+
+export function ended(w: FireWorld): boolean {
+    return w.lesson === BEAT.end;
+}
 
 export function board_story(w: FireWorld): StorySpec | undefined {
     return w.board === undefined ? undefined : STORIES.find(s => s.id === w.board);
 }
 
-export function scene_of(story: StorySpec, phase: 'told' | 'ready' | 'transcribing' | 'lined' | 'mapping' | 'second' | 'done'): SceneId {
-    return `${story.id}:${phase}`;
-}
+// Where a story's board is: closed; converting its ¶s; converted, awaiting
+// the vertical line; lined, awaiting the line that opens the mapping (the
+// wise man's l. 451); or mapping.
+export type Phase = 'closed' | 'transcribing' | 'converted' | 'lined' | 'mapping';
 
-export function has_said(w: FireWorld, command: string): boolean {
-    return w.said.includes(command);
+export function phase(w: FireWorld, story: StorySpec): Phase {
+    if (w.board !== story.id || w.cursor === undefined) {
+        return 'closed';
+    }
+    if (w.cursor <= story.prose.length) {
+        return 'transcribing';
+    }
+    if (mappings_on(w, story).length === 0) {
+        return 'converted';
+    }
+    if (story.map_after !== undefined && !has_said(w, story.map_after)) {
+        return 'lined';
+    }
+    return 'mapping';
 }
 
 export function converted(w: FireWorld, story: StorySpec): number {
     return w.sequences[story.id]?.events.length ?? 0;
+}
+
+// The unconverted tail of the cursor ¶, once its first event has been issued.
+export function remainder(w: FireWorld, story: StorySpec): string | undefined {
+    const n = converted(w, story);
+    const last = story.events[n - 1];
+    const next = story.events[n];
+    return last !== undefined && next !== undefined && next.prose === last.prose ? last.remainder : undefined;
 }
 
 // The frame index of a transcribed story event, or undefined if it has not been issued yet.
@@ -60,8 +93,37 @@ export function event_frame(w: FireWorld, story_id: string, n: number): number |
     return w.sequences[story_id]?.events[n - 1];
 }
 
-function mappings_on(w: FireWorld, story: StorySpec): Mapping[] {
-    return w.mappings.filter(m => m.sequence === story.id && m.voice === VOICE_OF_FIRE.voice.id);
+// The classroom commands said so far, oldest first: the frames labelled with a `classroom` gist.
+export interface ClassroomCommand { frame: number; command: string; beat: number; }
+
+// Worlds are immutable, and the parser asks many times per keystroke: the walk is done once per world.
+const classroom_cache = new WeakMap<FireWorld, ClassroomCommand[]>();
+
+export function classroom_commands(w: FireWorld): ClassroomCommand[] {
+    const cached = classroom_cache.get(w);
+    if (cached !== undefined) {
+        return cached;
+    }
+    const found: ClassroomCommand[] = [];
+    for (let h: FireWorld | undefined = w.previous; h !== undefined; h = h.previous) {
+        const g = h.gist;
+        if (g !== undefined && g.tag === 'classroom') {
+            found.push({ frame: h.index, command: g.params!.command as string, beat: g.params!.beat as number });
+        }
+    }
+    found.reverse();
+    classroom_cache.set(w, found);
+    return found;
+}
+
+export function has_said(w: FireWorld, command: string): boolean {
+    return classroom_commands(w).some(c => c.command === command);
+}
+
+// MAPPINGS
+
+export function mappings_on(w: FireWorld, story: StorySpec): Mapping[] {
+    return w.mappings.filter(m => m.sequence === story.id);
 }
 
 export function open_mapping(w: FireWorld, story: StorySpec): Mapping | undefined {
@@ -74,6 +136,16 @@ export function applied_mapping(w: FireWorld, story: StorySpec): Mapping | undef
 
 export function set_aside_mappings(w: FireWorld, story: StorySpec): Mapping[] {
     return mappings_on(w, story).filter(m => m.status === 'set aside');
+}
+
+// The abstract sequence a mapping is of.
+export function voice_of_mapping(m: Mapping): AbstractSequence {
+    return ABSTRACT_SEQUENCES.find(s => s.voice.id === m.voice)!;
+}
+
+// The voice a story's board maps: the one whose candidate table it has (one voice per board).
+export function voice_for(story: StorySpec): AbstractSequence {
+    return ABSTRACT_SEQUENCES.find(s => story.candidates[s.voice.id] !== undefined) ?? LESSON_VOICE;
 }
 
 // Replace the mapping that `is` (by identity) with `replacement`.

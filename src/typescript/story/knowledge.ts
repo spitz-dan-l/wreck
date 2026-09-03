@@ -96,6 +96,21 @@ export function has_revealed(knowledge: Knowledge, parent: GistPattern, child_gi
         gist_children(n).some(c => gists_equal(c.data.gist, child_gist)));
 }
 
+// Remove every node whose gist matches, anywhere beneath the root: the
+// inverse of graft() (a revealed passage taken back).
+export function remove_gists(root: Knowledge, pattern: GistPattern): Knowledge {
+    const visit = (n: Fragment): Fragment => {
+        if (!is_story_node(n)) {
+            return n;
+        }
+        const children = n.children
+            .filter(c => !(is_story_node(c) && match(c.data.gist, pattern)))
+            .map(visit);
+        return { ...n, children };
+    };
+    return visit(root) as Knowledge;
+}
+
 // Append `child` beneath every passage matching `parent` that doesn't have it
 // yet. Deliberately multi-target: a passage embedded in several places (such
 // as an action's description inside both the notes and the memory of it) is

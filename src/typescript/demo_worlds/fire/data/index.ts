@@ -1,15 +1,16 @@
 /*
     All the data of the demo in one place: the voices, the two abstract
-    sequences, the four stories in lesson order, the sub-sequence, and small
-    lookups over them.
+    sequences, the four stories in lesson order, the sub-sequence, the event
+    names computed once, and small lookups over them.
 */
-import { StoryEventSpec, StorySpec, SubSequenceSpec } from './types';
+import { AbstractSequence, Pass, StoryEventSpec, StorySpec, SubSequenceSpec } from './types';
 import { CAMPFIRE } from './campfire';
 import { HOUSE } from './house';
 import { FOREST } from './forest';
 import { TWO_LINES, WISE_MAN } from './wise_man';
 import { VOICE_OF_FIRE } from './voice_of_fire';
 import { PILLAGING } from './pillaging';
+import { event_names } from '../names';
 
 export * from './types';
 export * from './voices';
@@ -19,10 +20,16 @@ export { CAMPFIRE, HOUSE, FOREST, WISE_MAN, TWO_LINES };
 
 export const STORIES: StorySpec[] = [CAMPFIRE, HOUSE, FOREST, WISE_MAN];
 export const SUB_SEQUENCES: SubSequenceSpec[] = [TWO_LINES];
-export const ABSTRACT_SEQUENCES = [VOICE_OF_FIRE, PILLAGING];
+export const ABSTRACT_SEQUENCES: AbstractSequence[] = [VOICE_OF_FIRE, PILLAGING];
 
 // The player's own frames, as a sequence (SPEC §2). Never mapped in the demo.
 export const TODAYS_LESSON = "today's lesson";
+
+// Every event's name in the grammar, with ordinals and qualification (SPEC §6), computed once.
+export const EVENT_NAMES: { [story: string]: string[] } = {};
+for (const s of STORIES) {
+    EVENT_NAMES[s.id] = event_names(s, STORIES);
+}
 
 export function story(id: string): StorySpec {
     const s = STORIES.find(s => s.id === id);
@@ -38,6 +45,21 @@ export function event(story: StorySpec, index: number): StoryEventSpec {
         throw new Error(`${story.title} has no event ${index}.`);
     }
     return e;
+}
+
+// The abstract sequence with this voice id.
+export function sequence_of(voice: string): AbstractSequence {
+    const s = ABSTRACT_SEQUENCES.find(s => s.voice.id === voice);
+    if (s === undefined) {
+        throw new Error(`There is no abstract sequence with the voice ${voice}.`);
+    }
+    return s;
+}
+
+// The passes a story's table has for a voice: one, or two where a second solution exists.
+export function passes(story: StorySpec, voice: string): Pass[] {
+    const table = story.candidates[voice] ?? {};
+    return (['first', 'second'] as Pass[]).filter(p => table[p] !== undefined);
 }
 
 // The prose lines that `let it follow` appends to this event: a

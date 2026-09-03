@@ -21,7 +21,7 @@ const SHOTS = [
     { after: 'apply the Voice of Fire', nth: 1, file: '1_campfire_applied.png', target: '[data-gist="board[seq=\\"campfire\\"]"]' },
     { after: 'ask what the right thing to do is', nth: 1, file: '2_house_pause.png', target: '#story-hole', above: 900 },
     { after: 'speak as the fire', nth: 1, file: '3_forest_voices.png', target: '[data-gist="board[seq=\\"forest\\"]"]' },
-    { after: 'collapse the unmapped', nth: 1, file: '4_wise_man_both_solutions.png', target: '[data-gist="board[seq=\\"wise_man\\"]"]' },
+    { after: 'collapse the unmapped', nth: 3, file: '4_wise_man_both_solutions.png', target: '[data-gist="board[seq=\\"wise_man\\"]"]' },
     { after: 'say Ok, I guess', nth: 1, file: '5_the_end.png', target: '#story-hole', above: 1200 }
 ];
 

@@ -1,23 +1,23 @@
 /*
-    The board's story tree (SPEC §8), built through the walkthrough without
-    the UI: the board nodes exist with their gists, event frames are nested
-    in the left column, badges appear on map and go hollow on set aside, the
-    board becomes a chip on `say all set`, the voice bars and the You marks
-    appear at l. 350, and the wise man's board ends with both solutions.
+    The board's story tree (SPEC §8), taken from the walkthrough's recorded
+    worlds: the board nodes exist with their gists, event frames are nested
+    in the left column, badges appear on map and go hollow on set aside,
+    bands and annotations follow the mapping, the board becomes a chip when
+    it is put down, the voice bars and the You marks appear at l. 350, and
+    the wise man's board ends with both solutions.
 */
 import * as assert from 'assert';
 import 'mocha';
 import { exact } from 'gist';
-import { new_fire_world, FireWorld } from 'demo_worlds/fire';
+import { FireWorld, HOUSE } from 'demo_worlds/fire';
 import {
-    badge_gist, board_gist, ledger_gist, left_gist, lesson_board_gist, reference_gist, right_gist, spoken_gist, targets_gist
+    board_gist, ledger_gist, left_gist, lesson_board_gist, reference_gist, right_gist, spoken_gist, targets_gist
 } from 'demo_worlds/fire/board';
-import { raw } from 'parser';
-import { apply_story_updates_all, find_all_nodes, FoundNode, Fragment, is_story_hole, is_story_node, Story, StoryNode, Updates as S } from 'story';
-import { WALKTHROUGH } from './test_fire_walkthrough';
+import { find_all_nodes, FoundNode, Fragment, is_story_hole, is_story_node, Story, StoryNode, Updates as S } from 'story';
+import { commands, map_cmd, play, story_of, text, world_after } from './test_fire_walkthrough';
 
 function tree(w: FireWorld): Story {
-    return apply_story_updates_all(w.story, w.story_updates);
+    return story_of(w);
 }
 
 function one(story: Story, q: ReturnType<typeof S.has_gist>): StoryNode {
@@ -34,41 +34,25 @@ function frames_in(node: Fragment): StoryNode[] {
     return find_all_nodes(node, n => is_story_node(n) && n.data.frame_index !== undefined && n !== node).map(([n]) => n as StoryNode);
 }
 
+function frame(story: Story, index: number): StoryNode {
+    return S.frame(index).query(story)[0][0] as StoryNode;
+}
+
 function hole_path(story: Story): number[] {
     const found: FoundNode[] = find_all_nodes(story, n => is_story_hole(n));
     assert.equal(found.length, 1);
     return found[0][1];
 }
 
-// Play the walkthrough up to and including the nth occurrence of a command, running checks on the way.
-function play(until: (cmd: string, nth: number) => boolean, checks: { [cmd: string]: (w: FireWorld) => void } = {}) {
-    const { initial_result, update } = new_fire_world();
-    let world = initial_result.world;
-    const seen: { [cmd: string]: number } = {};
-    for (const step of WALKTHROUGH) {
-        if (step.trap !== undefined) {
-            continue;
-        }
-        world = update(world, raw(step.cmd)).world;
-        seen[step.cmd] = (seen[step.cmd] ?? 0) + 1;
-        if (checks[step.cmd] !== undefined) {
-            checks[step.cmd](world);
-        }
-        if (until(step.cmd, seen[step.cmd])) {
-            return world;
-        }
-    }
-    throw new Error('The walkthrough ended before the state was reached.');
-}
+const badges = (story: Story, seq: string) => S.has_gist({ tag: 'badge', params: { seq } }).query(story).map(([b]) => b as StoryNode);
 
 describe('the board', function () {
     this.timeout(120000);
 
     it('has the lesson board, then the campfire board with the frames in its left column and the hole moving through it', () => {
-        const w = play((c, n) => c === 'touch the flame to the tinder');
+        const w = world_after('touch the flame to the tinder');
         const story = tree(w);
-        const lesson = one(story, S.has_gist(exact(lesson_board_gist())));
-        assert.ok(has(lesson, 'chip'), 'the lesson board is a chip once the campfire board opens');
+        assert.ok(has(one(story, S.has_gist(exact(lesson_board_gist()))), 'chip'), 'the lesson board is a chip once the campfire board opens');
         const board = one(story, S.has_gist(exact(board_gist('campfire'))));
         assert.ok(has(board, 'board') && !has(board, 'chip'));
         const left = one(story, S.has_gist(exact(left_gist('campfire'))));
@@ -77,63 +61,82 @@ describe('the board', function () {
         assert.equal(nested.length, 9);
         assert.equal(nested.filter(f => has(f, 'event')).length, 8);
         assert.ok(nested.every(f => has(f, 'event') === !has(f, 'you')));
-        // The hole is inside the left column, after ¶ 7 (the two-event line).
-        const hole = hole_path(story);
+        // The hole is inside the left column; the right column and the rule are still hidden.
         const left_path = S.has_gist(exact(left_gist('campfire'))).query(story)[0][1];
-        assert.deepEqual(hole.slice(0, left_path.length), left_path);
-        // The right column and the rule are still hidden; the notation is present but collapsed.
+        assert.deepEqual(hole_path(story).slice(0, left_path.length), left_path);
         assert.ok(has(one(story, S.has_gist(exact(right_gist('campfire')))), 'hidden'));
-        assert.equal(w.remainder, undefined);
+        // The remainder of ¶ 7 is no longer lit once both events are issued.
+        const pieces = S.has_gist({ tag: 'prose', params: { seq: 'campfire', n: 7 } }).has_class('piece').query(story).map(([n]) => n as StoryNode);
+        assert.equal(pieces.length, 2);
+        assert.ok(pieces.every(p => !has(p, 'remainder')));
     });
 
-    it('reveals the right column on the line, badges the rows on map, and folds to a chip on say all set', () => {
-        let after_line: Story | undefined, after_maps: Story | undefined, after_aside: Story | undefined, after_resume: Story | undefined;
-        let maps = 0;
-        const w = play((c, n) => c === 'say all set' && n === 1, {
-            'draw a vertical line': w => { after_line = tree(w); },
-            'apply the Voice of Fire': w => { after_maps = tree(w); },
-            'set aside the mapping': w => { after_aside = tree(w); },
-            'resume the mapping': w => { after_resume = tree(w); }
-        });
-        assert.ok(!has(one(after_line!, S.has_gist(exact(right_gist('campfire')))), 'hidden'));
-        assert.deepEqual(hole_path(after_line!).slice(0, -1), S.has_gist(exact(ledger_gist('campfire'))).query(after_line!)[0][1]);
-        // Eight badges on the rows, in the input lines of the event frames; eight references under the steps.
-        const badges = S.has_gist({ tag: 'badge', params: { seq: 'campfire' } }).query(after_maps!);
-        assert.equal(badges.length, 8);
-        assert.ok(badges.every(([b]) => has(b as StoryNode, 'solid')));
-        assert.equal(one(after_maps!, S.has_gist(exact(badge_gist('campfire', 8, 4, 'first')))).classes['step-4'], true);
+    it('starts with the notation folded, offers expand first, and leaves reprints alone', () => {
+        const w = world_after('remember the Voice of Fire', 2);
+        assert.ok(commands(w).includes('expand the steps'));
+        const expanded = play(w, ['expand the steps']);
+        const story = tree(expanded);
+        // The lesson board's notation is unfolded; the reprint in the remember frame is untouched.
+        const on_board = S.has_gist({ tag: 'right' }).has_class('notation').query(story).map(([n]) => n as StoryNode);
+        assert.equal(on_board.length, 8);
+        assert.ok(on_board.every(n => !has(n, 'collapsed')));
+        const reprinted = S.has_class('steps-memory').has_class('notation').query(story).map(([n]) => n as StoryNode);
+        assert.ok(reprinted.length > 0 && reprinted.every(n => has(n, 'collapsed')));
+        assert.ok(commands(expanded).includes('collapse the steps'));
+    });
+
+    it('badges the rows on map, bands them from the mapping, and folds to a chip on say all set', () => {
+        const after_line = tree(world_after('draw a vertical line'));
+        assert.ok(!has(one(after_line, S.has_gist(exact(right_gist('campfire')))), 'hidden'));
+        assert.deepEqual(hole_path(after_line).slice(0, -1), S.has_gist(exact(ledger_gist('campfire'))).query(after_line)[0][1]);
+
+        // A placed then erased step leaves no badge, no reference and no band.
+        const e4 = world_after('map the laying of the tinder to the laying of the tinder in the pit');
+        const placed = tree(e4);
+        const row = e4.sequences.campfire.events[3];
+        assert.ok(has(frame(placed, row), 'band-1') && has(frame(placed, row), 'mapped'));
+        const erased = tree(world_after('erase the laying of the tinder'));
+        assert.equal(badges(erased, 'campfire').length, 0);
+        assert.ok(!has(frame(erased, row), 'band-1') && !has(frame(erased, row), 'mapped'));
+        assert.equal(one(erased, S.has_gist(exact(targets_gist('campfire', 1)))).children.length, 0);
+
+        const after_maps = tree(world_after('apply the Voice of Fire', 4));
+        assert.equal(badges(after_maps, 'campfire').length, 8);
+        assert.ok(badges(after_maps, 'campfire').every(b => has(b, 'solid')));
         for (let s = 1; s <= 8; s++) {
-            const targets = one(after_maps!, S.has_gist(exact(targets_gist('campfire', s))));
-            assert.equal(targets.children.length, 1, `step ${s} has one reference`);
-            assert.ok(one(after_maps!, S.has_gist(exact(spoken_gist('campfire', s)))).children.length === 1, `the Fire speaks under step ${s}`);
+            assert.equal(one(after_maps, S.has_gist(exact(targets_gist('campfire', s)))).children.length, 1, `step ${s} has one reference`);
+            assert.equal(one(after_maps, S.has_gist(exact(spoken_gist('campfire', s)))).children.length, 1, `the Fire speaks under step ${s}`);
         }
-        assert.equal(S.has_gist({ tag: 'annotation', params: { seq: 'campfire' } }).query(after_maps!).length, 8);
+        // Steps 4, 5, 6 share the touch: three renditions, one consequence; three annotations, one per role.
+        const touch = e4.sequences.campfire.events[7];
+        const touched = frame(after_maps, touch);
+        assert.ok(has(touched, 'band-4') && has(touched, 'band-5') && has(touched, 'band-6') && !has(touched, 'band-1'));
+        assert.equal(S.frame(touch).has_gist({ tag: 'annotation' }).query(after_maps).length, 3);
+        assert.equal(S.has_gist({ tag: 'annotation', params: { seq: 'campfire' } }).query(after_maps).length, 8);
+
         // Set aside: badges hollow, rendition and annotations gone; resume: back.
-        const aside = S.has_gist({ tag: 'badge', params: { seq: 'campfire' } }).query(after_aside!);
-        assert.ok(aside.every(([b]) => has(b as StoryNode, 'hollow') && !has(b as StoryNode, 'solid')));
-        assert.equal(S.has_gist({ tag: 'rendition', params: { seq: 'campfire' } }).query(after_aside!).length, 0);
-        assert.equal(S.has_gist({ tag: 'annotation', params: { seq: 'campfire' } }).query(after_aside!).length, 0);
-        assert.equal(S.has_gist({ tag: 'rendition', params: { seq: 'campfire' } }).query(after_resume!).length, 8);
-        assert.ok(S.has_gist({ tag: 'badge', params: { seq: 'campfire' } }).query(after_resume!).every(([b]) => has(b as StoryNode, 'solid')));
-        // Say all set: the board is a chip with a barcode, and the hole is back at the root.
-        const story = tree(w);
-        const board = one(story, S.has_gist(exact(board_gist('campfire'))));
+        const after_aside = tree(world_after('set aside the mapping'));
+        assert.ok(badges(after_aside, 'campfire').every(b => has(b, 'hollow') && !has(b, 'solid')));
+        assert.equal(S.has_gist({ tag: 'rendition', params: { seq: 'campfire' } }).query(after_aside).length, 0);
+        assert.equal(S.has_gist({ tag: 'annotation', params: { seq: 'campfire' } }).query(after_aside).length, 0);
+        const after_resume = tree(world_after('resume the mapping'));
+        assert.equal(S.has_gist({ tag: 'rendition', params: { seq: 'campfire' } }).query(after_resume).length, 8);
+        assert.ok(badges(after_resume, 'campfire').every(b => has(b, 'solid')));
+
+        // Say all set: the board is a chip with a barcode, and the hole is back at the root; expand reopens it.
+        const chipped = tree(world_after('say all set'));
+        const board = one(chipped, S.has_gist(exact(board_gist('campfire'))));
         assert.ok(has(board, 'chip'));
         const title = board.children[0] as StoryNode;
         assert.ok(has(title, 'board-title') && title.children.some(c => is_story_node(c) && has(c, 'barcode')));
-        assert.equal(hole_path(story).length, 1);
-        maps++;
-        assert.ok(maps > 0);
+        assert.equal(hole_path(chipped).length, 1);
+        assert.ok(!has(one(tree(world_after('expand the campfire story')), S.has_gist(exact(board_gist('campfire')))), 'chip'));
     });
 
     it('draws the voice bars and the You marks at l. 350', () => {
-        let before: Story | undefined;
-        const w = play((c, n) => c === 'speak as the children', {
-            'ask what the right thing to do is': w => { before = tree(w); }
-        });
-        assert.ok(!has(before!, 'voices-taught') || true);
-        const story = tree(w);
+        const story = tree(world_after('speak as the children'));
         assert.ok(has(story, 'voices-taught'));
+        assert.ok(!has(tree(world_after('let it follow', 4)), 'voices-taught'));
         // Two bars on the house board: the family, then the children; one on the campfire chip.
         const house_bars = S.has_gist(exact(left_gist('house'))).has_gist({ tag: 'voice_bar' }).query(story);
         assert.equal(house_bars.length, 2);
@@ -141,27 +144,45 @@ describe('the board', function () {
         assert.equal(S.has_gist(exact(left_gist('campfire'))).has_gist({ tag: 'voice_bar' }).query(story).length, 1);
         // The left column carries the current voice for the carat.
         assert.ok(has(one(story, S.has_gist(exact(left_gist('house')))), 'voice-the-children'));
-        // Frames before l. 350 already carry the You mark; the bars were there, hidden, all along.
-        const root_frames = frames_in(story).filter(f => !has(f, 'event') && f.data.frame_index !== 0);
-        assert.ok(root_frames.length > 10 && root_frames.every(f => has(f, 'you')));
-        assert.ok(S.has_gist({ tag: 'voice_bar' }).query(before!).length === 2);
+        // Every frame of the player's own carries the You mark (frame 0, the opening, has no command).
+        const own = frames_in(story).filter(f => !has(f, 'event') && f.data.frame_index !== 0);
+        assert.ok(own.length > 10 && own.every(f => has(f, 'you')));
     });
 
-    it('ends with both solutions on the wise man\'s board, the unmapped rows folded', () => {
-        const w = play((c, n) => c === 'say Ok, I guess');
+    it('annotates a row once per role, folds the unmapped rows, and makes a chip of the house when the chalk is put down', () => {
+        const applied = world_after('apply the Voice of Fire', 5);
+        const story = tree(applied);
+        const scatter = applied.sequences.house.events[12];
+        assert.deepEqual(S.frame(scatter).has_gist({ tag: 'annotation' }).query(story).map(([n]) => (n as StoryNode).data.gist!.params!.role), ['flame', 'blaze', 'ash']);
+        // The unmapped bar's count follows the mapping.
+        const folded = world_after('collapse the unmapped');
+        assert.ok(text(folded).includes('▸ 9 events not in the mapping'));
+        const remapped = world_after(map_cmd(HOUSE, 4, 11));
+        assert.ok(text(remapped).includes('▸ 8 events not in the mapping'));
+        // Put down: a chip; the ledger's last frame is the put-down frame.
+        const down = tree(world_after('put down the chalk'));
+        assert.ok(has(one(down, S.has_gist(exact(board_gist('house')))), 'chip'));
+        const ledger = one(down, S.has_gist(exact(ledger_gist('house'))));
+        const last = ledger.children[ledger.children.length - 1] as StoryNode;
+        assert.ok(is_story_node(last) && last.data.frame_index !== undefined && has(last, 'you'));
+        assert.equal(hole_path(down).length, 1);
+    });
+
+    it('ends with both solutions on the wise man\'s board', () => {
+        const w = world_after('say Ok, I guess');
         const story = tree(w);
         const board = one(story, S.has_gist(exact(board_gist('wise_man'))));
         assert.ok(!has(board, 'chip'));
-        const first = S.has_gist({ tag: 'badge', params: { seq: 'wise_man', pass: 'first' } }).query(story);
-        const second = S.has_gist({ tag: 'badge', params: { seq: 'wise_man', pass: 'second' } }).query(story);
-        assert.equal(first.length, 8);
-        assert.equal(second.length, 8);
-        assert.ok(first.every(([b]) => has(b as StoryNode, 'hollow')));
-        assert.ok(second.every(([b]) => has(b as StoryNode, 'solid')));
+        const [first, second] = w.mappings.filter(m => m.sequence === 'wise_man').map(m => m.id);
+        const of = (id: number) => S.has_gist({ tag: 'badge', params: { seq: 'wise_man', id } }).query(story).map(([b]) => b as StoryNode);
+        assert.equal(of(first).length, 8);
+        assert.equal(of(second).length, 8);
+        assert.ok(of(first).every(b => has(b, 'hollow')));
+        assert.ok(of(second).every(b => has(b, 'solid')));
         // Each step has both references, one hollow; the Fire speaks only for the applied solution.
         for (let s = 1; s <= 8; s++) {
             assert.equal(one(story, S.has_gist(exact(targets_gist('wise_man', s)))).children.length, 2);
-            assert.ok(has(one(story, S.has_gist(exact(reference_gist('wise_man', s, 'first')))), 'hollow'));
+            assert.ok(has(one(story, S.has_gist(exact(reference_gist('wise_man', s, first)))), 'hollow'));
             assert.equal(one(story, S.has_gist(exact(spoken_gist('wise_man', s)))).children.length, 1);
         }
         // The last frame (l. 481) is in the ledger, the coda is its own node after it, and the hole stays there.
@@ -171,10 +192,9 @@ describe('the board', function () {
         const coda = children.findIndex(c => is_story_node(c) && has(c, 'coda'));
         assert.ok(coda > 0 && is_story_node(children[coda - 1]) && (children[coda - 1] as StoryNode).data.frame_index !== undefined);
         assert.ok(is_story_hole(children[coda + 1]));
-        // The three earlier boards are chips; the unmapped rows of this one are folded.
         for (const seq of ['campfire', 'house', 'forest']) {
             assert.ok(has(one(story, S.has_gist(exact(board_gist(seq)))), 'chip'), `${seq} is a chip`);
         }
-        assert.ok(w.collapsed.includes('wise_man:unmapped') === has(board, 'unmapped-collapsed'));
+        assert.ok(has(board, 'unmapped-collapsed'));
     });
 });
