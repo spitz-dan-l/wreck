@@ -63,8 +63,9 @@ commands) is `round2/acceptance_script.json`; `round2/transcript_final_headless.
 is its transcript. The built demo is published at
 https://venienceworld.com/next/fire.html (the `next/` folder on `gh-pages`).
 
-Size: about 3,500 lines of TypeScript for the world (half of it data), 1,400
-of tests (65 tests, about 30 seconds), 350 of CSS; two small engine changes
+Size: about 3,800 lines of TypeScript for the world (half of it data), about
+1,700 of tests (79 tests, two to three minutes with the sampled browser
+scans), about 600 of CSS; two small engine changes
 (a prompt-clearing bug, and `remove_gists` beside `graft`) and one CSS token
 (a font fallback).
 
@@ -134,6 +135,31 @@ nudges that reveal when several steps share one line, and make the apply
 refusal name the unplaced steps. The scan runs as a test, sampled, on every
 `npm test`; two more naive players re-played the fixed build
 (`round5/player_{4,5}*.md`).
+
+**Round 6 — what a person sees.** The author, playing in a real browser,
+found the experience still confusing (scrolling to odd positions, folds
+whose effect could not be seen mid-mapping) although the headless
+transcript was clean: the testers had been reading the transcript, not the
+viewport. A browser harness was built (`scripts/browse_fire.js`: per
+command, the viewport screenshot after settle and a frame mid-animation,
+the text visible on screen, every DOM change tagged in or out of view, the
+options offered and the phrases each offers next) and a visibility scan on
+top of it (`scripts/visibility_scan.js`, `round6/visibility_scan.md`): the
+whole play-through on desktop and phone plus the fold deviations at every
+mapping state, checking that the prompt is in view, that what changed is in
+view or scrolled to, that folds change something on screen, and that no
+scroll overshoots or jumps. Before: 174 of 286 commands failing on desktop,
+164 on the phone. Three fix phases followed (B10, B11, B12): the prompt
+pinned at the bottom of the view and, after the browser critic
+(`round6/critique_10_browser.md`) found it could only pin inside the short
+ledger, over the whole board; one scroll rule (`scroll_target_after` in
+`UI/animation.ts`); animated folds; a production-build class-name bug; the
+phone's steps panel first and capped, the options as chips, Undo in the
+control row; and a `↳` cue on consequence-only lines after a naive tester
+never found `let it follow`. After: desktop 8 of 286, phone 0 of 155
+sampled. Naive browser testers (`round6/tester_*.md`) played through the
+harness on both devices; the first pair were stuck by a harness defect (a
+stale option list) that was fixed before the second pair.
 
 `SPEC.md` carries the rulings from every round, marked by critique
 (`[C3]` … `[C7]`), and §13 records what was disputed and why it was decided
