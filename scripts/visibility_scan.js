@@ -75,22 +75,25 @@ function check(result) {
     // The changes a person could see, outside the prompt; a class change with no visible effect is not one,
     // and the command's own echo under the pinned prompt is the known cost of showing a change far above.
     const own_echo = c => c.where.startsWith('UNDER') && /^div\.frame/.test(c.description) && c.description.includes('"> ' + result.cmd.slice(0, 24));
-    const outside = a.changes.filter(c => !c.in_hole && c.where !== 'HIDDEN' && c.visible && !own_echo(c));
+    // A class change on a container taller than half the view (a board folding its rows) is not a place: its rows are.
+    const container = c => !c.kinds.includes('added') && c.height_after > H / 2;
+    const outside = a.changes.filter(c => !c.in_hole && c.where !== 'HIDDEN' && c.visible && !own_echo(c) && !container(c));
     const topmost = outside[0];
     const prompt_in = a.prompt.where === 'IN VIEW';
-    // A node taller than half the view (a board whose class changed) is in view when any of it is.
-    const shown = c => c.where === 'IN VIEW' && (c.rect === null || c.rect.top >= -8 || c.height_after > H / 2);
+    // In view by its own box (a folded row: by the place it had), its top inside the view.
+    const shown = c => (c.where === 'IN VIEW' && (c.rect === null || c.rect.top >= -8)) || c.where === 'FOLDED IN VIEW';
     const all_in = outside.every(shown);
     const top_in = topmost !== undefined && shown(topmost);
     // When the response at the prompt is long (a board opened, a reprint), it is what the person asked for:
     // the topmost new node in view with the prompt will do, a fold far above being secondary.
-    const topmost_added = outside.find(c => c.kinds.includes('added') && c.height_after > 9 * 12);
+    // A board reopening around the prompt (a chip losing `chip`) is the response as much as a reprint is.
+    const topmost_added = outside.find(c => (c.kinds.includes('added') || (c.class_diff || '').includes('-chip')) && c.height_after > 9 * 12);
     const long_response = topmost_added !== undefined;
     const prompt_one_scroll = a.prompt.where === 'BELOW VIEW' && a.prompt.px <= H;
     const checks = {};
     checks.a = { ok: prompt_in, detail: prompt_in ? '' : `prompt ${a.prompt.where}${a.prompt.px ? ' by ' + a.prompt.px + ' px' : ''}` };
     // When the topmost change is too far above for even the prompt's line to stay in view with it, the prompt and the nearest of the changes.
-    const cannot_fit = topmost !== undefined && topmost.where === 'ABOVE VIEW' && a.prompt.rect !== null && topmost.px + a.prompt.rect.top > H - 40;
+    const cannot_fit = topmost !== undefined && (topmost.where === 'ABOVE VIEW' || topmost.where === 'FOLDED ABOVE VIEW') && a.prompt.rect !== null && topmost.px + a.prompt.rect.top > H - 40;
     const b_ok = outside.length === 0 || all_in || (top_in && (prompt_in || prompt_one_scroll)) || (long_response && shown(topmost_added) && prompt_in)
         || (cannot_fit && prompt_in);
     checks.b = { ok: b_ok, detail: b_ok ? '' : (topmost ? `topmost change ${topmost.where}${topmost.px ? ' by ' + topmost.px + ' px' : ''}: ${topmost.description}` : '') };
@@ -100,7 +103,7 @@ function check(result) {
         checks.c = { ok: moved.length > 0 && seen, detail: moved.length === 0 ? 'no height changed' : seen ? '' : `the region that changed height is ${moved[0].where}` };
     }
     const m = driver.motion(result);
-    const overshoot = topmost !== undefined && topmost.rect !== null && m.net > 0 && topmost.rect.top < -8 && topmost.height_after <= H / 2 && !(long_response && shown(topmost_added)) && !cannot_fit;
+    const overshoot = topmost !== undefined && topmost.rect !== null && m.net > 0 && topmost.rect.top < -8 && !(long_response && shown(topmost_added)) && !cannot_fit;
     checks.d = { ok: !overshoot, detail: overshoot ? `scrolled ${topmost.rect.top} px past the topmost change` : '' };
     const samples = a.samples;
     const final = samples[samples.length - 1];
@@ -197,7 +200,7 @@ function markdown(runs, opts) {
     lines.push('- **(d)** the scroll did not overshoot the topmost change;');
     lines.push('- **(e)** no mid-animation sample had the prompt off-screen while it settled on-screen somewhere very different.');
     lines.push('');
-    lines.push('"In view" counts what is painted: a change under the pinned steps panel is not in view. A class change with no visible effect (a bookkeeping class) is not a change; a node taller than half the view is in view when any of it is; when the response at the prompt is long (a board opened, a reprint) it may stand in for a fold far above it; and when the topmost change is too far above for even the prompt\'s line to stay in view with it, the prompt wins (and (d) does not apply). A command\'s own echo line under the pinned prompt is the known cost of showing a change far above it. Screenshots are the viewport after settling (`…a.png` is ~150 ms after submit); those listed here are copied under `shots/`, the rest are regenerated into `browse/scan/` by the scan.');
+    lines.push('"In view" counts what is painted: a change under the pinned steps panel is not in view. A class change with no visible effect (a bookkeeping class) is not a change; a class change on a container taller than half the view (a board folding its rows) is not a place, its rows are, and a folded row counts at the place it had; when the response at the prompt is long (a board opened, a reprint) it may stand in for a fold far above it; and when the topmost change is too far above for even the prompt\'s line to stay in view with it, the prompt wins (and (d) does not apply). A command\'s own echo line under the pinned prompt is the known cost of showing a change far above it. Screenshots are the viewport after settling (`…a.png` is ~150 ms after submit); those listed here are copied under `shots/`, the rest are regenerated into `browse/scan/` by the scan.');
     lines.push('');
     const sums = summarize(runs);
     lines.push('## Totals');

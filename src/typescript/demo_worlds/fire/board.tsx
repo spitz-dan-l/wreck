@@ -136,9 +136,12 @@ export function prose_pieces(story: StorySpec, n: number): string[] {
     return pieces;
 }
 
+// A consequence-only ¶ (one of the story's `follows`) carries the ↳ it will
+// have once attached from the start, and a caption while it is the cursor
+// (Phase B11: a phone tester never saw that `let it follow` was the way on).
 function prose_node(story: StorySpec, n: number): StoryNode {
     const pieces = prose_pieces(story, n);
-    return <div gist={prose_gist(story.id, n)} className={'prose' + (n === 1 ? ' cursor' : '')}>
+    return <div gist={prose_gist(story.id, n)} className={'prose' + (n === 1 ? ' cursor' : '') + (story.follows.includes(n) ? ' follows-line' : '')}>
         {pieces.flatMap((p, i) => [i === 0 ? [] : ' ', <span className={`piece piece-${i}`}>{p}</span>])}
     </div> as StoryNode;
 }
@@ -400,13 +403,16 @@ export function rows_ops(
     const ops = story.events.flatMap(e => {
         const frame = frame_of(e.index);
         const steps = steps_on(mappings, e.index).map(x => x.step);
-        const bands: { [cls: string]: boolean } = { mapped: steps.length > 0 };
+        // Each unmapped row is marked when the unmapped rows are folded (Phase B11):
+        // the page animates each row and scrolls to the first, as with the ¶s.
+        const bands: { [cls: string]: boolean } = { mapped: steps.length > 0, 'unmapped-folded': unmapped_folded && steps.length === 0 };
         for (const s of pattern.steps) {
             bands[`band-${s.index}`] = steps.includes(s.index);
         }
+        const prose_mapped = story.events.some(o => o.prose === e.prose && mapped.includes(o.index));
         return [
             ...(frame === undefined ? [] : [S.frame(frame).css(bands)]),
-            at(prose_gist(story.id, e.prose)).css({ mapped: story.events.some(o => o.prose === e.prose && mapped.includes(o.index)) })
+            at(prose_gist(story.id, e.prose)).css({ mapped: prose_mapped, 'unmapped-folded': unmapped_folded && !prose_mapped })
         ];
     });
     const transcribed = story.events.filter(e => frame_of(e.index) !== undefined).length;

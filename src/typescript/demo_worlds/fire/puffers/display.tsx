@@ -68,7 +68,9 @@ function things(w: FireWorld): Thing[] {
 
 function toggle(w: FireWorld, thing: Thing): FireWorld {
     const collapsed = !w.collapsed.includes(thing.id);
-    const line = `${capitalised(thing.subject)} ${collapsed ? 'fold' : 'unfold'}${thing.plural ? '' : 's'}.`;
+    // A chip folded or unfolded while a board is open stays where it is, above the board (Phase B11): the line says so.
+    const elsewhere = thing.id.endsWith(':chip') && w.board !== undefined && !ended(w);
+    const line = `${capitalised(thing.subject)} ${collapsed ? 'fold' : 'unfold'}${thing.plural ? '' : 's'}${elsewhere ? `, above ${board_story(w)!.title}` : ''}.`;
     // Expanding a chip with no board open folds the chip expanded before it.
     const other = !collapsed && thing.id.endsWith(':chip') ? expanded_chip(w) : undefined;
     const next = update(w, {

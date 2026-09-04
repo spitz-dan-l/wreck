@@ -27,7 +27,14 @@ export const empty_animation_state: AnimationState = {
     lock_input: false
 };
   
+// The changes of the command being animated, across its stages (each stage
+// animates and decides the scroll; the decision is over everything the
+// command changed so far, so that a later stage does not undo an earlier
+// stage's view). Element to its natural top when it was marked.
+let command_changes = new Map<HTMLElement, number>();
+
 export function new_animation_state(world: World, previous_world: World | undefined): AnimationState {
+    command_changes = new Map();
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
     const index_threshold = previous_world ? previous_world.index : -1;//world.index - 1;
     const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();
@@ -92,7 +99,7 @@ export function animate(comp_elt: HTMLElement) {
         //
         comp_elt.classList.add(animation_pre_compute);
 
-        walkElt(comp_elt, (e) => e.dataset.maxHeight = `${e.scrollHeight}px`);
+        walkElt(comp_elt, (e) => { if (!keeps_own_height(e)) { e.dataset.maxHeight = `${e.scrollHeight}px`; } });
 
         // A node that is about to be hidden (a fold: --is-collapsing set on it
         // by the stylesheet while it is still displayed) gets its measured
@@ -107,8 +114,10 @@ export function animate(comp_elt: HTMLElement) {
             });
         }
         // Where each changed node stands before the folds close (a folded node
-        // has no box afterwards, but its top does not move).
-        const natural_tops = natural_positions(changed_elements(comp_elt));
+        // has no box afterwards, but its top does not move). Every marked node:
+        // whether a class change shows is judged on the final layout, not here,
+        // where the stylesheet keeps the folding nodes displayed to measure them.
+        const natural_tops = natural_positions(marked_elements(comp_elt));
 
         comp_elt.classList.remove(animation_pre_compute);
 
@@ -133,6 +142,9 @@ export function animate(comp_elt: HTMLElement) {
         comp_elt.classList.add(animation_start);
 
         walkElt(comp_elt, (e) => {
+            if (e.dataset.maxHeight === undefined) {
+                return;
+            }
             if (e.dataset.unseen === 'folded') {
                 e.style.maxHeight = '0px';
             } else if (e.dataset.isCollapsing === '1' || e.dataset.unseen === 'grown') {
@@ -149,7 +161,7 @@ export function animate(comp_elt: HTMLElement) {
         }
         requestAnimationFrame(() => {
             walkElt(comp_elt, (e) => {
-                if (e.dataset.isCollapsing !== '1' && e.dataset.unseen === undefined) {
+                if (e.dataset.maxHeight !== undefined && e.dataset.isCollapsing !== '1' && e.dataset.unseen === undefined) {
                     e.style.maxHeight = e.dataset.maxHeight as any;
                 }
             });
@@ -174,6 +186,14 @@ export function animate(comp_elt: HTMLElement) {
             }, 700)
         });
     });
+}
+
+// A node that scrolls on its own or is pinned (the steps column, the prompt
+// and its typeahead) keeps the height its stylesheet gives it: an inline
+// max-height would let the phone's pinned panel balloon during every
+// animation (Phase B11).
+function keeps_own_height(e: HTMLElement): boolean {
+    return e.id === 'story-hole' || e.matches('#story-hole *, .columns .right, .columns .right *');
 }
 
 function walkElt(elt: HTMLElement, f: (e: HTMLElement) => void){
@@ -291,8 +311,10 @@ function has_change_marker(e: HTMLElement): boolean {
 
 // The nodes this command changed, outside the prompt, outermost only. A node
 // that holds the prompt counts only when it is new (a board opened around the
-// prompt): a class on the board is not a place to look.
-function changed_elements(comp_elt: HTMLElement): HTMLElement[] {
+// prompt): a class on the board is not a place to look. `shows` asks whether
+// a class change can be seen; the marked nodes are collected without that
+// question where the layout is not the final one.
+function marked_elements(comp_elt: HTMLElement, shows: boolean = false): HTMLElement[] {
     const hole = document.getElementById('story-hole');
     const all: HTMLElement[] = [];
     walkElt(comp_elt, e => {
@@ -302,11 +324,20 @@ function changed_elements(comp_elt: HTMLElement): HTMLElement[] {
         if (hole !== null && e.contains(hole) && !e.classList.contains(eph_new)) {
             return;
         }
-        if (has_change_marker(e) && (e.classList.contains(eph_new) || class_change_shows(e))) {
+        // A line (the rule beside the column) is not a place to look.
+        const r = e.getBoundingClientRect();
+        if ((r.width > 0 || r.height > 0) && (r.width <= 4 || r.height <= 4)) {
+            return;
+        }
+        if (has_change_marker(e) && (!shows || e.classList.contains(eph_new) || class_change_shows(e))) {
             all.push(e);
         }
     });
     return all.filter(e => !all.some(o => o !== e && o.contains(e)));
+}
+
+function changed_elements(comp_elt: HTMLElement): HTMLElement[] {
+    return marked_elements(comp_elt, true);
 }
 
 function has_box(e: HTMLElement): boolean {
@@ -358,7 +389,7 @@ function scroll_terminal_to(t: HTMLElement, top: number) {
 // will be shown the view has no reason to move visibly either — it is
 // re-set at once, so that what is in view stays put while the page changes
 // above it.
-export type ScrollTarget = { top: number, reveal?: [HTMLElement, HTMLElement], unseen: HTMLElement[], instant: boolean } | undefined;
+export type ScrollTarget = { top: number, unseen: HTMLElement[], instant: boolean } | undefined;
 
 function scroll_to_target(target: ScrollTarget) {
     const t = terminal_elt();
@@ -383,8 +414,9 @@ export function scroll_down() {
     scroll_terminal_to(t, scroll_down_target(t));
 }
 
+// The pinned, self-scrolling column an element is in (or is).
 function sticky_panel_of(e: HTMLElement): HTMLElement | null {
-    let p: HTMLElement | null = e.parentElement;
+    let p: HTMLElement | null = e;
     while (p !== null && p.id !== 'terminal') {
         if (getComputedStyle(p).position === 'sticky') {
             return p;
@@ -398,6 +430,11 @@ function sticky_panel_of(e: HTMLElement): HTMLElement | null {
 // covered (the pinned steps column, the pinned prompt, a column's own
 // scrolling) is not.
 function painted_in_view(e: HTMLElement, top_if_boxless: number, t: HTMLElement): boolean {
+    // A node folded inside a pinned column has no box, and its place in the
+    // flow says nothing under a sticky offset: its step stands for it.
+    if (!has_box(e) && sticky_panel_of(e) !== null && e.parentElement !== null && has_box(e.parentElement)) {
+        return painted_in_view(e.parentElement, top_if_boxless, t);
+    }
     const v = t.getBoundingClientRect();
     const r = e.getBoundingClientRect();
     const hole = document.getElementById('story-hole');
@@ -420,9 +457,15 @@ function painted_in_view(e: HTMLElement, top_if_boxless: number, t: HTMLElement)
     if (visible < Math.min(r.height, 24)) {
         return false;
     }
+    // Painted anywhere along its visible part: a tall node whose middle is
+    // under the pinned prompt still shows above it.
     const x = Math.min(Math.max(r.left + Math.min(r.width / 2, 40), v.left + 1), v.right - 1);
-    const hit = document.elementFromPoint(x, (top + bottom) / 2);
-    return !covers(hit);
+    for (const y of [top + Math.min(16, visible / 2), (top + bottom) / 2, bottom - Math.min(16, visible / 2)]) {
+        if (!covers(document.elementFromPoint(x, y))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Scroll a column that scrolls on its own so that the element is inside the
@@ -445,8 +488,14 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     if (t === null || hole === null) {
         return undefined;
     }
-    // What changed and can be seen: a box now, or a box before it folded.
-    const changed = changed_elements(comp_elt).filter(e => e.isConnected && (has_box(e) || natural_tops.has(e)));
+    // What changed and can be seen: a box now, or a box before it folded —
+    // in this stage, joined to the command's earlier stages.
+    for (const e of changed_elements(comp_elt)) {
+        if (e.isConnected && (has_box(e) || natural_tops.has(e))) {
+            command_changes.set(e, natural_tops.has(e) ? natural_tops.get(e)! : measuring(() => doc_top(e, t)));
+        }
+    }
+    const changed = [...command_changes.keys()].filter(e => e.isConnected);
     if (changed.length === 0) {
         return { top: scroll_down_target(t), unseen: [], instant: false };
     }
@@ -458,7 +507,7 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     // Natural positions now (the folds closed): what was measured at the start
     // for nodes that no longer have a box.
     const tops = measuring(() => new Map(changed.map(e =>
-        [e, has_box(e) ? doc_top(e, t) : natural_tops.get(e)!] as const)));
+        [e, has_box(e) ? doc_top(e, t) : command_changes.get(e)!] as const)));
     const hole_bottom = measuring(() => doc_top(hole, t) + hole.offsetHeight);
 
     // What is in view when the prompt is at the bottom.
@@ -467,7 +516,6 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     const near = changed.filter(e => !far.includes(e));
 
     let target = s_down;
-    let panel_reveal: [HTMLElement, HTMLElement] | undefined = undefined;
     // The scroll that puts the change at the top of the view, under any pinned panel.
     const scroll_to_top_of = (change: HTMLElement): number => {
         const panel = sticky_panel_of(change);
@@ -480,9 +528,17 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
                 return [doc_top(panel, t), doc_top(parent, t) + parent.offsetHeight];
             });
             s = Math.max(panel_top - SCROLL_MARGIN_PX, Math.min(s_down, columns_bottom - panel.offsetHeight));
-            panel_reveal = [change, panel];
         } else {
-            s = tops.get(change)! - SCROLL_MARGIN_PX;
+            // The command's own line belongs with the response under it: a change at the top of a frame is shown from the frame's top.
+            const frame = change.closest('.frame') as HTMLElement | null;
+            let top = tops.get(change)!;
+            if (frame !== null && frame !== change) {
+                const frame_top = measuring(() => doc_top(frame, t));
+                if (top - frame_top <= 6 * em) {
+                    top = frame_top;
+                }
+            }
+            s = top - SCROLL_MARGIN_PX;
             // Under a pinned panel at that scroll? Then below the panel.
             t.scrollTop = clamp_scroll(t, s);
             const v = t.getBoundingClientRect();
@@ -499,7 +555,10 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     // The pinned prompt cannot leave the column or ledger that holds it: the
     // scroll must keep that container's top high enough for the prompt's
     // line to sit at the bottom of the view (its options may be cut).
-    const container = hole.parentElement || hole;
+    let container = hole.parentElement || hole;
+    while (container.parentElement !== null && getComputedStyle(container).display === 'contents') {
+        container = container.parentElement;
+    }
     const s_min_for_prompt = measuring(() => doc_top(container, t)) + Math.min(hole.offsetHeight, PROMPT_LINE_EM * em) - view_height + SCROLL_MARGIN_PX;
     const with_prompt = (s: number, change: HTMLElement): number => {
         if (s >= s_min_for_prompt) {
@@ -519,36 +578,90 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
         return bottom > s_min_for_prompt + SCROLL_MARGIN_PX * 3 ? clamp_scroll(t, s_min_for_prompt) : s_down;
     };
 
-    if (far.length > 0) {
+    // A board reopening around the prompt (a chip expanded) is the response,
+    // however long: read from its top, the prompt pinned below.
+    const reopened = [...comp_elt.querySelectorAll<HTMLElement>('.board.eph_removing_chip')].find(b => b.contains(hole));
+    // Changes inside a pinned column never steer the page while another change
+    // is outside one: the column is in view wherever the page stops beside it,
+    // and scrolls on its own to show its change. It leads only when every
+    // change is inside it and the column is not in view at all.
+    const outside_panels = far.filter(e => sticky_panel_of(e) === null);
+    if (reopened !== undefined) {
+        tops.set(reopened, measuring(() => doc_top(reopened, t)));
+        target = with_prompt(scroll_to_top_of(reopened), reopened);
+    } else if (far.length > 0) {
         far.sort((a, b) => tops.get(a)! - tops.get(b)!);
-        const s_change = scroll_to_top_of(far[0]);
-        const fits = hole_bottom - s_change <= view_height;
-        const short_response = near.every(e => e.getBoundingClientRect().height <= SHORT_RESPONSE_EM * em);
-        if (fits) {
-            target = s_down;
-        } else if (short_response) {
-            target = with_prompt(s_change, far[0]);
-        } else {
-            panel_reveal = undefined;
-            target = s_down;
+        let lead: HTMLElement | undefined = outside_panels.sort((a, b) => tops.get(a)! - tops.get(b)!)[0];
+        if (lead === undefined) {
+            // Can the column show every far change at this scroll, by scrolling itself?
+            const revealable_at = (scroll: number) => {
+                t.scrollTop = scroll;
+                const v = t.getBoundingClientRect();
+                return far.every(e => {
+                    const panel = sticky_panel_of(e)!;
+                    if (panel === e) {
+                        // The column itself appearing: any fair part of it in view shows it.
+                        const pr = e.getBoundingClientRect();
+                        return Math.min(pr.bottom, v.bottom) - Math.max(pr.top, v.top) >= Math.min(pr.height, view_height / 4);
+                    }
+                    const pr = panel.getBoundingClientRect();
+                    const top = Math.max(pr.top, v.top), bottom = Math.min(pr.bottom, v.bottom);
+                    // A folded node has no box: its step's box stands for it.
+                    const r = (has_box(e) ? e : (e.parentElement || e)).getBoundingClientRect();
+                    if (bottom - top < Math.min(r.height, 3 * em) + 2 * SCROLL_MARGIN_PX) {
+                        return false;
+                    }
+                    if (r.top < top + SCROLL_MARGIN_PX) {
+                        return panel.scrollTop >= top + SCROLL_MARGIN_PX - r.top - 1;
+                    }
+                    if (r.bottom > bottom - SCROLL_MARGIN_PX) {
+                        return panel.scrollHeight - panel.scrollTop - panel.clientHeight >= r.bottom - bottom + SCROLL_MARGIN_PX - 1;
+                    }
+                    return true;
+                });
+            };
+            // The column changes in place: where it can show the change already the page need not move at all.
+            if (near.length === 0 || near.every(e => sticky_panel_of(e) !== null || e.getBoundingClientRect().height <= SHORT_RESPONSE_EM * em)) {
+                if (revealable_at(s0)) {
+                    target = s0;
+                } else if (!revealable_at(s_down)) {
+                    lead = far[0];
+                }
+            } else if (!revealable_at(s_down)) {
+                lead = far[0];
+            }
+        }
+        if (lead !== undefined) {
+            const s_change = scroll_to_top_of(lead);
+            const fits = hole_bottom - s_change <= view_height;
+            const short_response = near.every(e => e.getBoundingClientRect().height <= SHORT_RESPONSE_EM * em);
+            if (fits) {
+                target = s_down;
+            } else if (short_response) {
+                target = with_prompt(s_change, lead);
+            } else {
+                target = s_down;
+            }
         }
     }
-    if (target === s_down && near.length > 0) {
-        // A long response (a reprint, an apply text, a board opened) is read
-        // from its top, the prompt pinned below it.
-        near.sort((a, b) => tops.get(a)! - tops.get(b)!);
-        const s_top = scroll_to_top_of(near[0]);
+    // A long response (a reprint, an apply text, a board opened) is read from
+    // its top, the prompt pinned below it. (A column that scrolls on its own
+    // is not a response.)
+    const near_outside = near.filter(e => sticky_panel_of(e) === null).sort((a, b) => tops.get(a)! - tops.get(b)!);
+    if (reopened === undefined && target === s_down && near_outside.length > 0) {
+        const s_top = scroll_to_top_of(near_outside[0]);
         if (hole_bottom - s_top > view_height) {
-            target = with_prompt(s_top, near[0]);
-        } else {
-            panel_reveal = undefined;
+            target = with_prompt(s_top, near_outside[0]);
         }
     }
-    // At the target: the change inside its column scrolled into view, and
-    // what will not be in view where the view is going.
+    // At the target: every change inside a pinned column scrolled into the
+    // column's view, and what will not be in view where the view is going.
     t.scrollTop = clamp_scroll(t, target);
-    if (panel_reveal !== undefined) {
-        reveal_in_panel(panel_reveal[0], panel_reveal[1], t);
+    for (const e of changed) {
+        const panel = sticky_panel_of(e);
+        if (panel !== null) {
+            reveal_in_panel(e, panel, t);
+        }
     }
     const unseen = changed.filter(e => !painted_in_view(e, tops.get(e)!, t));
     const instant = far.length > 0 && far.every(e => unseen.includes(e));
@@ -558,8 +671,8 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
         GLOBAL_DEV_TOOLS.last_scroll = {
             from: s0, to: target, s_down, hole_bottom, view_height, s_min_for_prompt,
             far: far.map(describe), near: near.map(describe), unseen: unseen.map(describe), instant,
-            panel: panel_reveal === undefined ? undefined : describe(panel_reveal[1])
+            lead_outside_panels: outside_panels.length, reopened: reopened !== undefined
         };
     }
-    return { top: target, reveal: panel_reveal, unseen, instant };
+    return { top: target, unseen, instant };
 }

@@ -125,11 +125,12 @@ function instrument() {
     function position(el) {
         const v = view();
         const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) { return { where: 'HIDDEN', px: 0, rect: null }; }
+        if (r.height === 0) { return { where: 'HIDDEN', px: 0, rect: null }; }
         const top = Math.max(r.top, v.top), bottom = Math.min(r.bottom, v.bottom);
         const visible = Math.max(0, bottom - top);
         const rect = { top: Math.round(r.top - v.top), bottom: Math.round(r.bottom - v.top), height: Math.round(r.height) };
-        if (visible >= Math.min(r.height, 24) && visible > 0) {
+        // In view: its whole box, or a line's worth of it (a few pixels of a one-line box cut do not hide it).
+        if (visible >= Math.min(r.height - 4, 24) && visible > 0) {
             const x = Math.min(Math.max(r.left + Math.min(r.width / 2, 40), v.left + 1), v.right - 1);
             const y = (top + bottom) / 2;
             const under = occluder(el, x, y);
@@ -287,6 +288,7 @@ function instrument() {
         const walker = document.createTreeWalker(terminal, NodeFilter.SHOW_TEXT);
         let node;
         let current = null;
+        const pseudo_after = new Map();
         while ((node = walker.nextNode())) {
             if (node.nodeValue.trim() === '') { continue; }
             const el = node.parentElement;
@@ -304,14 +306,21 @@ function instrument() {
             const block = block_of(el);
             const tag = el.closest('.input-prompt') ? 'PROMPT' : el.closest('.typeahead') ? 'OPTION' : el.closest('.prompt-controls') ? 'CONTROL' : el.closest('.columns .right') ? 'STEPS' : el.closest('.undo-button') ? 'UNDO' : '';
             const cut = (r.top < v.top ? ' (cut at top)' : '') + (r.bottom > v.bottom ? ' (cut at bottom)' : '');
+            // Text the stylesheet draws before or after a block (the ↳ on a followed line, the cursor ¶'s caption) is text a person reads.
+            const pseudo = (which) => { const c = getComputedStyle(block, which).content; return c && c !== 'none' && c !== 'normal' ? collapse(c.replace(/^"|"$/g, '').replace(/\\21B3|\u21B3/g, '↳')) : ''; };
             if (current !== null && current.block === block && current.under === under && current.tag === tag) {
                 current.text += ' ' + collapse(node.nodeValue);
                 current.cut = current.cut || cut;
             } else {
-                current = { block, tag, under, text: collapse(node.nodeValue), cut, top: Math.round(r.top - v.top) };
+                if (current !== null && pseudo_after.has(current.block)) { current.text += ' ' + pseudo_after.get(current.block); }
+                const before = pseudo('::before');
+                current = { block, tag, under, text: (before ? before + ' ' : '') + collapse(node.nodeValue), cut, top: Math.round(r.top - v.top) };
+                const after = pseudo('::after');
+                if (after) { pseudo_after.set(block, after); }
                 lines.push(current);
             }
         }
+        if (current !== null && pseudo_after.has(current.block)) { current.text += ' ' + pseudo_after.get(current.block); }
         return lines.map(l => ({ tag: l.tag, under: l.under, text: l.text + l.cut, top: l.top }));
     }
     // Does a class change show? Compare the computed look with the change undone.
@@ -358,6 +367,24 @@ function instrument() {
             const pos = position(el);
             const before = st.before.get(el.dataset.vf);
             const r = el.getBoundingClientRect();
+            let doc_top = Math.round(r.top - v.top + terminal.scrollTop);
+            // A node folded away has no box now; its place is where it was, and that is where the eye looks for it.
+            // Inside the pinned steps column that place is the step's, which moves with the column.
+            if (pos.where === 'HIDDEN' && before && before.h > 0 && el.closest('.columns .right') !== null && el.parentElement !== null) {
+                const pp = position(el.parentElement);
+                if (pp.where !== 'HIDDEN') {
+                    pos.where = pp.where === 'IN VIEW' ? 'FOLDED IN VIEW' : 'FOLDED ' + pp.where;
+                    pos.px = pp.px; pos.rect = pp.rect;
+                    doc_top = Math.round(el.parentElement.getBoundingClientRect().top - v.top + terminal.scrollTop);
+                }
+            } else if (pos.where === 'HIDDEN' && before && before.h > 0) {
+                const rel = before.top - terminal.scrollTop;
+                doc_top = before.top;
+                pos.rect = { top: Math.round(rel), bottom: Math.round(rel), height: 0 };
+                if (rel >= -8 && rel <= v.height - 24) { pos.where = 'FOLDED IN VIEW'; }
+                else if (rel < 0) { pos.where = 'FOLDED ABOVE VIEW'; pos.px = Math.round(-rel); }
+                else { pos.where = 'FOLDED BELOW VIEW'; pos.px = Math.round(rel - v.height); }
+            }
             result.push({
                 description: el === hole ? 'the prompt (#story-hole)' : describe(el),
                 kinds: [...e.kinds],
@@ -367,7 +394,7 @@ function instrument() {
                 where: pos.where,
                 px: pos.px,
                 rect: pos.rect,
-                doc_top: Math.round(r.top - v.top + terminal.scrollTop),
+                doc_top,
                 height_before: before ? before.h : null,
                 height_after: Math.round(r.height)
             });
@@ -603,7 +630,7 @@ function warnings(result) {
     if (!result.settled.settled) { out.push(`NOT SETTLED after ${result.settled.ms} ms`); }
     const outside = a.changes.filter(c => !c.in_hole);
     for (const c of outside) {
-        if (c.where !== 'IN VIEW' && c.where !== 'HIDDEN' && c.visible) { out.push(`OUT OF VIEW: ${c.where}${c.px ? ' (' + c.px + ' px)' : ''} ${c.description}`); }
+        if (c.where !== 'IN VIEW' && c.where !== 'FOLDED IN VIEW' && c.where !== 'HIDDEN' && c.visible) { out.push(`OUT OF VIEW: ${c.where}${c.px ? ' (' + c.px + ' px)' : ''} ${c.description}`); }
     }
     const m = motion(result);
     if (result.before.idle_scrolls && result.before.idle_scrolls.length > 0) {

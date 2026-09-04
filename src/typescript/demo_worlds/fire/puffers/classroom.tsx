@@ -116,7 +116,8 @@ function fold_attempt(story: StorySpec, home: StorySpec) {
         board: home.id,
         cursor: () => undefined,
         collapsed: c => [...c, `${story.id}:chip`],
-        story_updates: story_updater(chip_ops(story, true, true, home.id))
+        // This frame prints in the board's ledger; as the chip's closing frame it stays in view (Phase B11).
+        story_updates: story_updater(S.frame().css({ closing: true }), chip_ops(story, true, true, home.id))
     });
 }
 

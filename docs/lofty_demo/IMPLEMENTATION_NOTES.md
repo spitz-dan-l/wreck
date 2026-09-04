@@ -1062,3 +1062,99 @@ moves the view by more than a screen (the harness warns JUMP); while
 content grows or folds in view, the prompt may leave the bottom for the
 length of the transition and return (check (e)) — pinning from above as
 well would float the prompt over unconverted rows, so it was not done.
+
+## Phase B11: the browser critique (round 6, critique 10)
+
+`round6/critique_10_browser.md` played the whole script on both devices and
+looked at the screenshots: the prompt stayed in view and the whooshes were
+gone, but what a mapping player most needs — the badge landing on a row,
+the rows unfolding — was still out of view in the moments the author was
+playing, and on the phone the pinned panel ballooned during every command.
+All eight defects taken, with the critic's own changes where given:
+
+1. **The prompt pins over the whole board.** `.board .ledger { display:
+   contents }`: the ledger makes no box, so the sticky prompt's containing
+   block is the board and it can pin over the rows above the ledger. The
+   engine finds the containing block by skipping `display: contents`
+   parents. This alone frees `expand the story`, `expand the unmapped`, the
+   first `map`s and `apply` to show their rows with the prompt pinned.
+2. **A change inside a pinned column never steers the page** while another
+   change is outside one (the reference's natural top is the column's top,
+   so it was always "the topmost change"); the lead is the topmost change
+   outside pinned columns, and every changed node inside a column is
+   scrolled into the column's own view at the target.
+3. **No inline max-height on nodes that keep their own height** (the steps
+   column, the prompt and its typeahead): `animate()` skips them in both
+   passes, so the phone panel no longer swells to 580 px and snaps back.
+4. The desktop `map` typeahead below the fold is cured by 1 (the hole pins
+   up into the board as the options grow).
+5. **A board reopening around the prompt** (`expand <sequence>` at the
+   root) is read from its top with the prompt pinned below, whatever its
+   height. Mid-mapping the hole stays with the open board (the mapping's
+   frames must print in that board's ledger, SPEC §8, so moving the hole
+   into the reopened chip's ledger was not done) and the line says where
+   the board is: "The campfire story unfolds, above the house in the
+   woods."
+6. **Phone: the steps first**, pinned over the rows and the ledger alike:
+   the board is a flex column (title, steps, rule, rows, then the ledger's
+   frames and the prompt, `.columns` and `.ledger` making no box), the
+   steps `order: -2`, so the panel's sticky range is the whole board and it
+   stays through a long ledger; `apply` and `set aside` show rows and panel,
+   not a bare ledger.
+7. **Desktop `expand the steps` moves nothing but the panel's inside**:
+   when every change is inside a column that is already in view, the page
+   keeps its scroll (or the prompt's, when the response at the prompt is
+   long) and the column scrolls itself; the page moves only when the column
+   is not in view at all.
+8. `put down the chalk` after the Pillaging: its frame gets the `closing`
+   class, so the house chip keeps it in view like `say all set`'s.
+
+Also: the unmapped rows are marked one by one (`unmapped-folded`, set by
+`rows_ops`, as `folded` on the ¶s; the board's `story-collapsed` and
+`unmapped-collapsed` no longer hide rows themselves, so that each row's own
+class change is one the eye can see), so `collapse the unmapped` animates
+each row and the view goes to the first; every marked node is measured
+before the folds close (whether a class change shows is judged on the final
+layout); a change at the top of a frame is shown from the frame's top (the
+reprints had their own `> remember …` line cut); a command's changes
+accumulate across its animation stages, so a later stage cannot undo an
+earlier stage's view; folds ease out over 350 ms; the chip barcode is one
+line on the phone; options are 3.4em tall on touch screens and Undo padded.
+
+Two things the visibility probe found because it asks whether a class
+change can be seen: the rows' coloured bands (`.frame.band-N`) had never
+shown, outranked by `.board .left .frame`'s transparent border — they show
+now; and the same probe in the harness marks such changes "(no visible
+effect)" in the reports.
+
+**The `let it follow` cue** (`round6/tester_3_phone.md`: a phone tester at
+the campfire's "The fire starts, spreading first to the kindling and then
+the logs." never saw that `let it follow` was the way on). A
+consequence-only ¶ (one of the story's `follows`) carries the ↳ it will
+have once attached from the start (dimmer until then), and while it is the
+cursor ¶ a caption under it in the board's register: "(a consequence of the
+last command)". Display only (`prose_node` adds `follows-line`; board.css
+draws both); the command stays `let it follow`. The harness reads the text a
+stylesheet draws before or after a block, so its reports show the ↳ and the
+caption.
+
+The scan's "in view" rule no longer passes a change because its tall
+container intersects the view: a class change on a container taller than
+half the view is not a place (its rows are), and a folded row counts at the
+place it had (`FOLDED IN VIEW` / `FOLDED ABOVE VIEW` in the harness).
+
+Looked at (the critic's deviation scripts at the campfire, the house and the
+wise man, both devices; `round6/critique_10_browser.md`'s acceptance
+criteria): `expand the story` shows the ¶s unfolding in view with the
+prompt pinned; the first `map` shows its badge at the top with the prompt
+pinned on both devices; `apply`/`set aside` on the phone show rows under the
+pinned panel; the panel stays 36vh through the animation; desktop `expand
+the steps` moves the page 0–20 px and unfolds inside the column.
+
+@@B11AFTER@@
+
+Left as they were: the command's own echo still lands under the pinned
+prompt when a change far above is shown (the critic's "shadow" suggestion —
+a placeholder line at the prompt — is a larger change to the prompt); the
+desktop column is still pushed up by the columns' end while the ledger is
+read; two scroll motions on the phone after a tap (the tap's own scroll).
