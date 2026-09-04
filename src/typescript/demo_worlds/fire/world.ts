@@ -33,6 +33,7 @@ export interface FireWorld extends World {
     readonly voice: VoiceId | undefined;            // current speaking voice at the board
     readonly board: string | undefined;             // the open story id
     readonly cursor: number | undefined;            // next unconverted ¶ (1-based)
+    readonly at_the_cursor: boolean;                // this command's frame belongs at the cursor ¶ (SPEC §8)
     readonly finished: string[];                    // ids of the sequences finished (stories closed, sub-sequences registered)
     readonly mappings: Mapping[];
     readonly collapsed: string[];                   // ids of collapsed things (display only)

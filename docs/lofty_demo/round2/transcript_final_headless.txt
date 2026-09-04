@@ -72,7 +72,7 @@ As the wooden fuel is spent, the blaze dies down, gradually dwindling to nothing
 ### > remember the kindling
 >  
 remember the kindling
-Nothing has been the kindling yet.
+Nothing has been the kindling yet: the Voice of Fire has not been applied to anything.
 
 ### > listen
 >  

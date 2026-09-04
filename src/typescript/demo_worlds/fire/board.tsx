@@ -19,7 +19,7 @@
       </div>
 */
 import { exact, gist, Gist } from 'gist';
-import { createElement, Fragment, Hole, is_story_node, StoryNode, StoryUpdaterSpec, Updates as S, UpdatesBuilder } from 'story';
+import { createElement, EmptyFrame, Fragment, Hole, is_story_node, StoryNode, StoryUpdaterSpec, Updates as S, UpdatesBuilder } from 'story';
 import { AbstractSequence, event_consequence, Mapping, Step, StoryEventSpec, StorySpec, voice as voice_of, VoiceId } from './data';
 import { group_by_event, Participant, role_entries, step_of } from './judge';
 
@@ -278,6 +278,21 @@ function move_hole_after(target: UpdatesBuilder): StoryUpdaterSpec[] {
 
 function move_hole_into(target: UpdatesBuilder): StoryUpdaterSpec[] {
     return [S.story_hole().remove(), target.add(<Hole />, true)];
+}
+
+// While a board is transcribing, the hole stands after the cursor ¶ so that
+// the next event's frame lands under it (SPEC §8). A frame that is not part
+// of the transcription — a `remember` reprint, an expand/collapse echo, a
+// classroom line — would come between the ¶ and its events and push them
+// apart, so it is moved down into the board's ledger, where the mapping's
+// frames go. The move joins the `init_frame` group, which runs before the
+// frame is given its input text and its output, so it moves an empty frame
+// and everything printed into it follows.
+export function aside_frame_ops(seq: string, index: number): StoryUpdaterSpec[] {
+    return [
+        S.group_name('init_frame').frame(index).remove(),
+        S.group_name('init_frame').has_gist(exact(ledger_gist(seq))).add(<EmptyFrame index={index} />, true)
+    ];
 }
 
 const at = (g: Gist) => S.has_gist(exact(g));

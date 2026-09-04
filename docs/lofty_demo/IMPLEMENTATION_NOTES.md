@@ -1266,3 +1266,133 @@ warning the fold commands raise); a long option list (the `map … to` events)
 still fills the typeahead's 24vh cap and scrolls inside it, without a fade of
 its own; the chips are not reordered by likelihood, so the option a player
 wants may be on the second row.
+
+## Phase B13: a ¶ and its events, and what leads the page
+
+A naive phone tester (`round6/tester_5_phone_b12.md`) stopped in the middle of
+the campfire and did about twenty `remember`s before finishing the story. Two
+of the three commands after that threw the page across the screen: at `sing`
+it scrolled −2,599 px and left the event frame it had just printed 2,514 px
+*below* the view; at `let it follow`, +2,836 px back. The report says why in
+its own change list, and both causes are general.
+
+**One: the asides stood between a ¶ and its events.** Every frame prints where
+the hole is, and during transcription the hole stands after the cursor ¶ (SPEC
+§8) — so each of those twenty reprints was printed there, one after another,
+2,600 px of them between ¶11 and the two events (`sing`, `sleep in tents`)
+that convert it. The board's shape says a ¶ is followed by the frames of its
+events; a player who looks something up in the middle should not change that.
+
+A frame that is not part of the transcription is now moved, at the moment it
+is made, into the board's `.ledger` — below the columns, where the mapping's
+frames go (`aside_frame_ops` in `board.tsx`, applied by `frames_puffer.post`).
+The move joins the `init_frame` group, which runs before the frame is given
+its input text and its output, so what moves is an empty frame and everything
+printed into it follows. The hole does not move: the prompt stays at the
+cursor ¶ and the next event still lands under it. What counts as part of the
+transcription is the world's `at_the_cursor`, set by the transcription puffer
+(the events, `speak as`, `let it follow`, the traps, `draw a vertical line`),
+plus the lesson's own scripted lines (the frames labelled `classroom`), so
+that l. 348–350 still sit at the house's pause where the .md puts them — the
+clause SPEC §8 gives as the reason for printing in `.left` holds as written.
+What §8 gains is the exception: "frames print wherever the hole is" is now
+"frames print wherever the hole is, except that an aside made while a board is
+transcribing prints in that board's ledger". What moves is the `remember`
+reprints and the expand/collapse echoes (nothing else is offered there).
+During mapping the hole is already in the ledger and nothing changes; the command that opens a board prints before
+it, at the root, so the test is the phase *before* the command.
+
+**The test** (`tests/test_fire_board.ts`): four `remember`s at each of three
+¶s of the campfire, and then each ¶'s event frame asserted to be the immediate
+next sibling of its ¶ — and, for the two-event ¶11, the second event the
+immediate next sibling of the first; the twelve reprints in the board's
+ledger, in the order they were made; the hole still in the left column. It
+fails on the old placement at the first assertion.
+
+**Two: a highlight far away led the page.** `sing` converts the first event of
+a two-event ¶, which lights the unconverted tail (`span.piece.remainder`) of
+that ¶. That was the only change outside the prompt that was not in view, so
+`scroll_target_after` took it as the lead and drove the view 2,599 px up to a
+highlight, leaving the frame the command had just printed off the bottom. The
+same at `let it follow` (the ¶'s `followed`, `done` and `cursor` marks).
+
+The rule now says explicitly what a change is worth. Each change the command
+made is one of three kinds:
+
+1. a node the command **added**;
+2. a **fold or unfold** of a node that was already there;
+3. a class that only **marks or highlights** one — `remainder`, `cursor`,
+   `done`, a `folded` mark cleared, a voice class.
+
+1 and 2 are new content and rank together; 3 ranks below them. The lead is the
+topmost change of the best rank present among the changes that are out of view
+and outside a pinned column, and a mark leads only while the prompt is within
+a screen of fitting in the view with it — showing a highlight is worth the
+command's own echo sliding under the prompt (B10's known cost), never worth
+putting what the command printed a screen and a half away. So `sing` keeps the
+view at the prompt, where its frame is; `erase` and `set aside` still go up to
+the row whose badge changed; and `collapse the story` still goes to the first
+¶ it folds.
+
+One detail the kinds needed. A node that holds something the command added
+counts as new content, whatever its own classes did: only the outermost marked
+node is kept, and a `map` marks the whole row (`mapped`, `band-4`) around the
+badge it adds — without this the row read as a mark and the first `map` no
+longer showed its badge. And whether a class change is a fold is asked the way
+`class_change_shows` already asked whether it shows: the changed classes are
+toggled back for a moment on the final layout and the node's `display` and
+height compared (`class_change_effect`).
+
+**And a change below the prompt.** With the asides in the ledger there is a
+case the rule had never met: the response is *under* the pinned prompt, not
+above it. `fits` (the prompt and the change in one view) was written for a
+change above and said yes to everything below, so the page did not move at all
+and the reprint was never seen. The page now goes down to such a change as far
+as it can while the prompt's own line stays in view under any pinned panel
+(`under_panels`, factored out of `scroll_to_top_of`). The first reprint after a
+long story is read whole; past a screenful of them the tail is reached by
+scrolling, which is the price of keeping the prompt.
+
+**Measured** (`browse_fire.js --script`, the tester's 44 commands): at 42
+`sing` the phone moves −653 px and the desktop −606 px (was −2,599), with the
+new event frame and the lit remainder both in view and the prompt pinned; at
+43 `sleep in tents` +145 / +101 px; at 44 `let it follow` 0 px on both (was
++2,836). No motion in those three passes a viewport. Commands 1–20 of the same
+script — the campfire told straight through — are warning-for-warning what
+they were.
+
+**The scan**, sampled (`visibility_scan.js --device both --sample 3`, 155
+commands each): **desktop 4 of 155 failing, phone 0 of 155** — the same counts
+as the build before this phase (measured the same way on the same machine:
+desktop 4, phone 0). All four desktop failures are (b), a change 25–100 px
+outside the view: `expand the steps` at the house's applied board and the two
+`draw a vertical line` frames, exactly as before, and one `erase` whose row
+sits 72 px above (before, it was a different `erase`, 96 px above). The phone
+run is clean on all five checks. `browse_fire.js --phone --acceptance`: 105
+commands with a warning of 213, against 103 for the build before, the
+differences being which of two out-of-view nodes a mapping command names.
+
+`npm test`: 80 passing, 1 pending (79 before: the new board test), including
+the sampled visibility test on both devices. `npm run build:fire` and `npm run
+build` are clean. `round2/transcript_final_headless.txt` is regenerated; its
+only change is one line of `remember the kindling` that had been stale since
+Phase B9 — no frame's text moved, because the acceptance script never stops to
+look something up in the middle of a story.
+
+**Two things tried and put back.** Making an added node outrank a fold sent
+`expand the campfire story` at another board's prompt to a badge left over
+from the command before it (the scan replays it after an Undo) instead of to
+the board that had just unfolded, and the echo landed 1,382 px below the view:
+added nodes and folds are both new content and rank together. And
+disqualifying a mark outright whenever the command added anything took the
+page off the row that `erase` and `set aside` change — a mark near the
+response is worth showing, which is why the rule is about what it costs.
+
+Left as they were: past a screenful of `remember` reprints in the ledger the
+newest is off the bottom of the view and reached by scrolling — the cost of
+keeping the prompt pinned while the response is below it, and the reason the
+page moves for the first ones and then stops; the command's own echo still
+lands under the pinned prompt when a change far above is shown (B10's known
+cost); `expand the campfire story` at another board's prompt still moves the
+page by more than a screen, and says where the board went.
+

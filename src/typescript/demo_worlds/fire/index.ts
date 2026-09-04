@@ -54,6 +54,7 @@ const initial_world: FireWorld = {
     voice: undefined,
     board: undefined,
     cursor: undefined,
+    at_the_cursor: false,
     finished: [],
     mappings: [],
     collapsed: ['steps'],       // the steps' notation is folded until Katya rewrites it (the second `listen`)

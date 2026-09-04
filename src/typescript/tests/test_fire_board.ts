@@ -316,4 +316,45 @@ describe('the board', function () {
         assert.equal(hole_path(tree(folded)).length, 1);
         assert.equal(STORIES.length, 4);
     });
+
+    // Phase B13: a player who stops mid-story to look things up must not push
+    // a ¶ away from the events that convert it.
+    it('keeps every ¶ next to its own events when the player stops to remember, and prints the asides in the ledger', () => {
+        const asides = [
+            'remember the Voice of Fire',
+            'remember the laying of the tinder',
+            'remember the traveling to the woods',
+            'remember the digging of a pit'
+        ];
+        const w = play(world_at('campfire touched'), [
+            'let it follow',            // ¶ 8
+            ...asides,
+            'sing',                     // ¶ 9
+            'add logs to the fire',     // ¶ 10
+            ...asides,
+            'sing',                     // ¶ 11, first of two
+            ...asides,
+            'sleep in tents'            // ¶ 11, second of two
+        ]);
+        const story = tree(w);
+        const kids = one(story, S.has_gist(exact(left_gist(CAMPFIRE.id)))).children;
+        const at = (pred: (n: StoryNode) => boolean) => kids.findIndex(n => is_story_node(n) && pred(n));
+        const prose = (n: number) => at(k => has(k, 'prose') && (k.data.gist?.params as { n?: number } | undefined)?.n === n);
+        const event = (n: number) => at(k => k.data.frame_index === event_frame(w, CAMPFIRE, n));
+        // Each ¶'s event frame is its immediate next sibling; a two-event ¶'s second event follows the first.
+        assert.equal(event(9), prose(9) + 1, 'the event of ¶ 9 is the next sibling of ¶ 9');
+        assert.equal(event(10), prose(10) + 1, 'the event of ¶ 10 is the next sibling of ¶ 10');
+        assert.equal(event(11), prose(11) + 1, 'the first event of ¶ 11 is the next sibling of ¶ 11');
+        assert.equal(event(12), prose(11) + 2, 'the second event of ¶ 11 is the next sibling of the first');
+        // The twelve reprints are in the board's ledger instead, in the order they were made.
+        const ledger = one(story, S.has_gist(exact(ledger_gist(CAMPFIRE.id))));
+        const logged = frames_in(ledger).map(f => f.data.frame_index as number);
+        assert.equal(logged.length, asides.length * 3);
+        assert.deepEqual(logged, [...logged].sort((a, b) => a - b));
+        // The hole did not move: it still stands after the cursor ¶'s events, in the left column.
+        const left_path = S.has_gist(exact(left_gist(CAMPFIRE.id))).query(story)[0][1];
+        assert.deepEqual(hole_path(story).slice(0, left_path.length), left_path);
+        // And the reprints are not in the left column at all.
+        assert.ok(frames_in(one(story, S.has_gist(exact(left_gist(CAMPFIRE.id))))).every(f => !logged.includes(f.data.frame_index as number)));
+    });
 });

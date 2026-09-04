@@ -33,8 +33,17 @@ export const empty_animation_state: AnimationState = {
 // stage's view). Element to its natural top when it was marked.
 let command_changes = new Map<HTMLElement, number>();
 
+// What kind of change each of them is (Phase B13), which says what may lead
+// the page: 0 a node the command ADDED and 1 a fold or unfold of a node that
+// was already there are both new content and rank together; 2 a class that
+// only marks or highlights one (`remainder`, `cursor`, `done`, a voice class)
+// ranks below them. Filled in as the changes are collected.
+const ADDED = 0, FOLD = 1, MARK = 2;
+let change_ranks = new Map<HTMLElement, number>();
+
 export function new_animation_state(world: World, previous_world: World | undefined): AnimationState {
     command_changes = new Map();
+    change_ranks = new Map();
     // produce a new AnimationState object according to the changes, with stage set to the lowest included stage
     const index_threshold = previous_world ? previous_world.index : -1;//world.index - 1;
     const new_frames = history_array(world).filter(w => w.index > index_threshold).reverse();
@@ -221,6 +230,16 @@ function walkElt(elt: HTMLElement, f: (e: HTMLElement) => void){
       apply text, a reprint), it wins and the prompt scrolls to the bottom.
     - Never past the change: the change's top is never above the view's top.
     - A class change that shows nothing (a bookkeeping class) is not a change.
+    - Which change leads, when several are out of view (Phase B13): the topmost
+      change that is new content — a node the command ADDED, or a fold or
+      unfold of one that was there. A class that only marks or highlights a
+      node (`remainder`, `cursor`, `done`, a voice class) leads only when
+      there is no such change, and then only while the prompt is within a
+      screen of fitting in the view with it. A mark near the response is worth
+      showing; one that costs the response a screen is not.
+    - A change BELOW the prompt (an aside printed in the board's ledger while
+      the hole stands at the cursor ¶, SPEC §8): the page goes down to it as
+      far as it can while the prompt's own line stays in view.
 
     The target is decided on the final layout before the animation starts and
     the motion runs with it (one motion, the change and the view arriving
@@ -277,26 +296,35 @@ function looks(e: HTMLElement): string {
     return LOOKS.map(p => cs.getPropertyValue(p)).join('|') + '|' + e.offsetHeight;
 }
 
-// Does the class change on this node show? (A voice class on a column, a
-// bookkeeping class on a frame: the same to the eye, so not a place to look.)
-function class_change_shows(e: HTMLElement): boolean {
+// Does the class change on this node show, and is it a fold? (A voice class on
+// a column, a bookkeeping class on a frame: the same to the eye, so not a
+// place to look. A `folded` mark set or cleared changes the node's box: that
+// is a fold, and it outranks a mark when the page picks what to look at.)
+function class_change_effect(e: HTMLElement): { shows: boolean, folds: boolean } {
     const { added, removed } = class_changes(e);
     if (added.length === 0 && removed.length === 0) {
-        return true;
+        return { shows: true, folds: false };
     }
     // Undoing a fold for a moment can make the page shorter and clamp the scroll: keep it.
     const t = terminal_elt();
     const scroll = t === null ? 0 : t.scrollTop;
-    const after = looks(e);
+    const after = looks(e), after_box = box_of(e);
     for (const c of added) { e.classList.remove(c); }
     for (const c of removed) { e.classList.add(c); }
-    const before = looks(e);
+    const before = looks(e), before_box = box_of(e);
     for (const c of added) { e.classList.add(c); }
     for (const c of removed) { e.classList.remove(c); }
     if (t !== null && t.scrollTop !== scroll) {
         t.scrollTop = scroll;
     }
-    return before !== after;
+    return {
+        shows: before !== after,
+        folds: before_box.display !== after_box.display || Math.abs(before_box.height - after_box.height) > 4
+    };
+}
+
+function box_of(e: HTMLElement): { display: string, height: number } {
+    return { display: getComputedStyle(e).display, height: e.offsetHeight };
 }
 
 function has_change_marker(e: HTMLElement): boolean {
@@ -329,7 +357,26 @@ function marked_elements(comp_elt: HTMLElement, shows: boolean = false): HTMLEle
         if ((r.width > 0 || r.height > 0) && (r.width <= 4 || r.height <= 4)) {
             return;
         }
-        if (has_change_marker(e) && (!shows || e.classList.contains(eph_new) || class_change_shows(e))) {
+        if (!has_change_marker(e)) {
+            return;
+        }
+        if (!shows) {
+            all.push(e);
+            return;
+        }
+        if (e.classList.contains(eph_new)) {
+            change_ranks.set(e, ADDED);
+            all.push(e);
+            return;
+        }
+        const effect = class_change_effect(e);
+        if (effect.shows) {
+            // A node that holds something the command added is where the new
+            // thing appeared, whatever else its own classes did: the row a
+            // badge lands on carries the mapping's colours too, and only the
+            // row is kept (the outermost marked node stands for what is
+            // inside it).
+            change_ranks.set(e, e.querySelector('.' + eph_new) !== null ? ADDED : effect.folds ? FOLD : MARK);
             all.push(e);
         }
     });
@@ -508,7 +555,8 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     // for nodes that no longer have a box.
     const tops = measuring(() => new Map(changed.map(e =>
         [e, has_box(e) ? doc_top(e, t) : command_changes.get(e)!] as const)));
-    const hole_bottom = measuring(() => doc_top(hole, t) + hole.offsetHeight);
+    const hole_top = measuring(() => doc_top(hole, t));
+    const hole_bottom = hole_top + hole.offsetHeight;
 
     // What is in view when the prompt is at the bottom.
     t.scrollTop = s_down;
@@ -516,8 +564,23 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     const near = changed.filter(e => !far.includes(e));
 
     let target = s_down;
+    // The scroll that puts a node's top at the top of the view, under any
+    // pinned panel that would cover it there.
+    const under_panels = (change: HTMLElement, top: number): number => {
+        let s = top - SCROLL_MARGIN_PX;
+        t.scrollTop = clamp_scroll(t, s);
+        const v = t.getBoundingClientRect();
+        const r = change.getBoundingClientRect();
+        const x = Math.min(v.right - 1, (r.width > 0 ? r.left : (change.parentElement || t).getBoundingClientRect().left) + 20);
+        const hit = document.elementFromPoint(x, v.top + SCROLL_MARGIN_PX + 4);
+        const cover = hit === null ? null : hit.closest('.columns .right');
+        if (cover !== null && !cover.contains(change) && getComputedStyle(cover).position === 'sticky') {
+            s -= cover.getBoundingClientRect().bottom - v.top;
+        }
+        return clamp_scroll(t, s);
+    };
     // The scroll that puts the change at the top of the view, under any pinned panel.
-    const scroll_to_top_of = (change: HTMLElement): number => {
+    const scroll_to_top_of = (change: HTMLElement, its_top?: number): number => {
         const panel = sticky_panel_of(change);
         let s: number;
         if (panel !== null) {
@@ -531,24 +594,15 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
         } else {
             // The command's own line belongs with the response under it: a change at the top of a frame is shown from the frame's top.
             const frame = change.closest('.frame') as HTMLElement | null;
-            let top = tops.get(change)!;
+            let top = its_top ?? tops.get(change)!;
             if (frame !== null && frame !== change) {
                 const frame_top = measuring(() => doc_top(frame, t));
                 if (top - frame_top <= 6 * em) {
                     top = frame_top;
                 }
             }
-            s = top - SCROLL_MARGIN_PX;
             // Under a pinned panel at that scroll? Then below the panel.
-            t.scrollTop = clamp_scroll(t, s);
-            const v = t.getBoundingClientRect();
-            const r = change.getBoundingClientRect();
-            const x = Math.min(v.right - 1, (r.width > 0 ? r.left : (change.parentElement || t).getBoundingClientRect().left) + 20);
-            const hit = document.elementFromPoint(x, v.top + SCROLL_MARGIN_PX + 4);
-            const cover = hit === null ? null : hit.closest('.columns .right');
-            if (cover !== null && !cover.contains(change) && getComputedStyle(cover).position === 'sticky') {
-                s -= cover.getBoundingClientRect().bottom - v.top;
-            }
+            return under_panels(change, top);
         }
         return clamp_scroll(t, s);
     };
@@ -593,13 +647,28 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     // would follow the prompt to the tail of the ledger for a fold that
     // happened inside the panel (Phase B12).
     const in_panels = changed.filter(e => sticky_panel_of(e) !== null);
+    // Which change leads the page (Phase B13). A node the command ADDED and a
+    // fold or unfold are both new content and rank together, topmost first; a
+    // class that only marks or highlights a node that was already there
+    // (`remainder`, `cursor`, `done`, a voice class) leads only when there is
+    // nothing else, and then only while the prompt is within a screen of
+    // fitting in the view with it: twenty `remember` reprints deep into the
+    // campfire, `sing` lit the unconverted tail of its ¶ 2,600 px above and
+    // the page followed the highlight, leaving the event it had just printed
+    // 2,500 px below the view.
+    const rank_of = (e: HTMLElement) => change_ranks.get(e) ?? MARK;
+    const pick_lead = (candidates: HTMLElement[]): HTMLElement | undefined => {
+        const real = candidates.filter(e => rank_of(e) < MARK);
+        const pool = real.length > 0 ? real : candidates;
+        return pool.sort((a, b) => tops.get(a)! - tops.get(b)!)[0];
+    };
     if (reopened !== undefined) {
         tops.set(reopened, measuring(() => doc_top(reopened, t)));
         target = with_prompt(scroll_to_top_of(reopened), reopened);
     } else if (far.length > 0 || in_panels.length > 0) {
         far.sort((a, b) => tops.get(a)! - tops.get(b)!);
-        let lead: HTMLElement | undefined = outside_panels.sort((a, b) => tops.get(a)! - tops.get(b)!)[0];
-        if (lead === undefined) {
+        let lead: HTMLElement | undefined = pick_lead(outside_panels);
+        if (lead === undefined && in_panels.length > 0) {
             // Can the column show every change of its own at this scroll, by scrolling itself?
             const revealable_at = (scroll: number) => {
                 t.scrollTop = scroll;
@@ -636,20 +705,31 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
             if (near.length === 0 || near.every(e => sticky_panel_of(e) !== null || e.getBoundingClientRect().height <= SHORT_RESPONSE_EM * em)) {
                 if (s0 >= s_min_for_prompt && revealable_at(s0)) {
                     target = s0;
-                } else if (!revealable_at(s_down) && far.length > 0) {
-                    lead = far[0];
+                } else if (!revealable_at(s_down)) {
+                    lead = pick_lead(far);
                 }
-            } else if (!revealable_at(s_down) && far.length > 0) {
-                lead = far[0];
+            } else if (!revealable_at(s_down)) {
+                lead = pick_lead(far);
             }
         }
         if (lead !== undefined) {
             const s_change = scroll_to_top_of(lead);
-            const fits = hole_bottom - s_change <= view_height;
             const short_response = near.every(e => e.getBoundingClientRect().height <= SHORT_RESPONSE_EM * em);
-            if (fits) {
+            if (tops.get(lead)! >= hole_top) {
+                // The change is BELOW the prompt: an aside printed in the
+                // board's ledger while the hole stands at the cursor ¶ (SPEC
+                // §8). The page goes down to it, as far as it can while the
+                // prompt's own line is still in view under any pinned panel;
+                // what is left over is read by scrolling.
+                const s_whole = tops.get(lead)! + lead.getBoundingClientRect().height - view_height + SCROLL_MARGIN_PX;
+                const s_last = under_panels(hole, hole_top);
+                target = clamp_scroll(t, Math.max(s_down, Math.min(s_whole, s_last)));
+            } else if (hole_bottom - s_change <= view_height) {
                 target = s_down;
-            } else if (short_response) {
+            } else if (short_response && !(rank_of(lead) === MARK && hole_bottom - s_change > 2 * view_height)) {
+                // A mark leads only while the prompt is within a screen of
+                // fitting with it: `sing` lit the tail of a ¶ 2,600 px above
+                // and would have left the event it printed 2,500 px below.
                 target = with_prompt(s_change, lead);
             } else {
                 target = s_down;
@@ -683,6 +763,7 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
         GLOBAL_DEV_TOOLS.last_scroll = {
             from: s0, to: target, s_down, hole_bottom, view_height, s_min_for_prompt,
             far: far.map(describe), near: near.map(describe), unseen: unseen.map(describe), instant,
+            ranks: changed.map(e => `${change_ranks.get(e) ?? MARK} ${describe(e)}`),
             lead_outside_panels: outside_panels.length, reopened: reopened !== undefined
         };
     }

@@ -42,6 +42,7 @@ function issue_event(w: FireWorld, story: StorySpec, e: StoryEventSpec): FireWor
     const piece = story.events.filter(o => o.prose === e.prose && o.index < e.index).length;
     return update(w, {
         gist: () => event_gist(story.id, e.index),
+        at_the_cursor: () => true,
         cursor: new_cursor,
         story_updates: story_updater(
             S.consequence(paragraphs(e.consequence)),
@@ -58,6 +59,7 @@ function issue_event(w: FireWorld, story: StorySpec, e: StoryEventSpec): FireWor
 function follow(w: FireWorld, story: StorySpec): FireWorld {
     const cursor = w.cursor!;
     return update(w, {
+        at_the_cursor: () => true,
         cursor: cursor + 1,
         story_updates: story_updater(
             S.frame().css({ follows: true }),
@@ -73,6 +75,7 @@ function follow(w: FireWorld, story: StorySpec): FireWorld {
 // that goes with it (the L1 list of what is still unplaced); nothing else changes.
 export function nudge_frame(w: FireWorld, nudge: string, ...also: string[]): FireWorld {
     return update(w, {
+        at_the_cursor: () => true,
         story_updates: story_updater(S.frame().css({ nudge: true }), S.consequence(paragraphs([nudge, ...also])))
     });
 }
@@ -108,6 +111,7 @@ function speak_as(w: FireWorld, story: StorySpec, v: VoiceId): FireWorld {
     const teach = speech !== undefined && !w.taught.includes(kind);
     return update(w, {
         gist: () => speak_as_gist(story.id, v),
+        at_the_cursor: () => true,
         voice: v,
         taught: _ => teach ? [..._, kind] : _,
         story_updates: story_updater(
@@ -134,6 +138,7 @@ const LINE_DRAWN = 'The rule goes up, and the steps beside it.';
 function draw_line(w: FireWorld, story: StorySpec): FireWorld {
     return update(w, {
         gist: () => classroom_gist(DRAW_LINE.command, w.lesson, DRAW_LINE.name, DRAW_LINE.feeling),
+        at_the_cursor: () => true,
         mappings: _ => [..._, new_mapping(story, pattern_for(story), 'first', w.index)],
         story_updates: story_updater(
             S.consequence(paragraphs(story.line_text === undefined ? [LINE_DRAWN] : QUOTED[story.line_text])),
