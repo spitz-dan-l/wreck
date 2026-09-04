@@ -1164,3 +1164,105 @@ prompt when a change far above is shown (the critic's "shadow" suggestion —
 a placeholder line at the prompt — is a larger change to the prompt); the
 desktop column is still pushed up by the columns' end while the ledger is
 read; two scroll motions on the phone after a tap (the tap's own scroll).
+
+## Phase B12: the phone's room to see
+
+Measured at the campfire, four commands past `draw a vertical line`, with the
+harness on `--phone` (402×874): the pinned steps panel took 320 px (36vh),
+the prompt block took 321 px (its line, five options one per line at 3.4em,
+an Undo row, and the ⌫ ✕ ↵ row), and the story was left a band of 233 px
+between the two — folds were visible but cramped. And `collapse the steps`,
+whose whole effect is inside the pinned panel, threw the page 1,794 px down
+to the tail of the ledger.
+
+**The prompt block is chips** (`prompt.css`, under `(pointer: coarse),
+(max-width: 700px)`; the desktop is untouched, its rules are all inside that
+query). The typeahead is a wrapping flex row and each option an inline-flex
+chip, 44 px tall and 44 px wide at least (the tap target grew: the old rows
+were 3.4em = 41 px, the old controls 2.8em = 34 px); the blanks an option
+carries to line itself up under the typed text are `display: none` in a chip
+(`li.option > span:not(.token)`), so a chip is the phrase it offers; the
+selected chip is lit by its border as well as its token. Undo and the tap
+controls are one row: `app.tsx` wraps them in a `.prompt-actions` div, which
+is `display: contents` by default — the desktop keeps the float it had — and
+becomes the flex row `⟲ Undo ⌫ ✕ ↵` on a narrow or touch screen. The hole's
+floor drops from 13em to 10em.
+
+**Heights, at that state, phone**: the prompt block 321 → 146 px with five
+options (196 px with six, two chip rows; 196 px with nine, which used to be
+nine lines capped and scrolling); the steps panel 320 → 285 px expanded
+(32vh, was 36) and 207 px with the notation folded, where it shrinks to its
+content as before; the story's band 233 → 444 px expanded, 471 px folded.
+The panel now leaves 67% of the view to the rows and the prompt, and the
+rows alone have 51% of it. The panel says it scrolls: a thin bar
+(`scrollbar-width`/`::-webkit-scrollbar`) and a fade at its foot — a sticky
+`::after` pulled back over the last line, `pointer-events: none` so it takes
+no room, no tap and no `elementFromPoint` probe, and drawn as black over
+black, so it shows only where there is text under it to scroll to.
+
+**Why the page jumped on `collapse the steps`.** Three things, all found by
+dumping `devtools.last_scroll` at the state:
+
+1. Phase B11's rule 7 (the page keeps its scroll when every change is inside
+   a column already in view) lived inside `scroll_target_after`'s `far.length
+   > 0` branch, and `far` is what is *not* painted when the page is at the
+   prompt. On the phone the steps panel is pinned over the whole board (B11
+   rule 6), so it is in view at every scroll — its changes were never far,
+   the branch never ran, and the default target (the prompt at the bottom)
+   pulled the page to the ledger's tail. The branch is now entered whenever
+   any change is inside a pinned column, far or near (`in_panels`), and it is
+   `in_panels` that the column is asked to show.
+2. Inside it, `revealable_at` counted a node flush with the column's visible
+   top edge as hidden (`r.top < top + 8 px` unless the column could scroll up
+   by that margin) — and the first step is exactly at the panel's top with
+   `scrollTop` 0, so the answer was "no" at every scroll and the page fell
+   back to the prompt. The test is now: inside the part of the column that is
+   in view it is shown as it stands; outside it, the column must have the
+   scroll to bring it in. The keep-the-scroll case also checks that the
+   prompt can still pin there (`s0 >= s_min_for_prompt`).
+3. At the house and the wise man the same command jumped 2,472 and 4,289 px
+   for a fourth reason: on the phone a *chip* still displayed its columns.
+   `.board:not(.lesson) .columns { display: contents }` (B11 rule 6) has the
+   same weight as `.board.chip .columns { display: none }` and stands later
+   in `board.css`, so every finished board kept its steps panel and its rows
+   — a second and third pinned column, 5,000 px above, whose notation
+   `collapse the steps` also folded; those changes were far, could not be
+   revealed, and led the page away. `.board.chip:not(.lesson) .columns {
+   display: none }` in the phone query restores the chip, and with it the
+   phone page at the wise man is 8,000 px shorter than it was.
+
+After: `collapse the steps` and `expand the steps` move the page 0 px at the
+campfire, the house and the wise man, on both devices, and the panel folds
+and unfolds in place under the eye.
+
+**Looked at** (`browse_fire.js --phone`, the settled screenshot after every
+command): the campfire four commands past the vertical line, the campfire
+after `apply` (`set aside the mapping`, `resume the mapping`), the house with
+five steps placed, the wise man after `apply` (`set aside the first
+solution`, a `map` on the second, `resume the first solution`, `apply`), each
+with collapse/expand of the story, the unmapped and the steps and with a
+right and a wrong `map`; the chip deviations (`expand`/`collapse the campfire
+story`) on both devices; and the desktop run of the same script. After every
+fold the folded or unfolded rows are in the band between panel and prompt,
+the prompt is pinned, the panel does not balloon (the mid-animation frames
+show it growing, not swelling), and the page does not move. The motions left
+that pass a viewport are the ones B10 named: a `map` whose badge lands
+2,000 px away, and `expand the campfire story` at another board's prompt,
+which reads the same on both devices now that chips fold on the phone (the
+line says where the board went).
+
+**The scan**, sampled (`node scripts/visibility_scan.js --device phone
+--sample 3`): 155 commands checked, **0 failing** — (a) 0, (b) 0, (c) 0,
+(d) 0, (e) 0; 22 deviations were not offered at their state; 611 s. (B11's
+full phone run was 2 of 286.) `npm test`: 79 passing, 1 pending, including
+the sampled visibility test on both devices; no test asserted where the Undo
+button sits, so none needed changing. `npm run build:fire` and `npm run
+build` are clean, and the phone screenshots under `screenshots/phone/` are
+regenerated from the production build.
+
+Left as they were: the command's own echo still lands under the pinned prompt
+when the change it reports is far above (B10's known cost, now the only
+warning the fold commands raise); a long option list (the `map … to` events)
+still fills the typeahead's 24vh cap and scrolls inside it, without a fade of
+its own; the chips are not reordered by likelihood, so the option a player
+wants may be on the second row.

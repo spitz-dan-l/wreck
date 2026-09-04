@@ -586,18 +586,25 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
     // and scrolls on its own to show its change. It leads only when every
     // change is inside it and the column is not in view at all.
     const outside_panels = far.filter(e => sticky_panel_of(e) === null);
+    // Every change this command made inside a pinned column. Whether such a
+    // change is in view at the bottom of the page says nothing: a column
+    // pinned over the whole board (the phone's steps panel, Phase B11 rule 6)
+    // is in view at every scroll, so its changes are never "far" and the page
+    // would follow the prompt to the tail of the ledger for a fold that
+    // happened inside the panel (Phase B12).
+    const in_panels = changed.filter(e => sticky_panel_of(e) !== null);
     if (reopened !== undefined) {
         tops.set(reopened, measuring(() => doc_top(reopened, t)));
         target = with_prompt(scroll_to_top_of(reopened), reopened);
-    } else if (far.length > 0) {
+    } else if (far.length > 0 || in_panels.length > 0) {
         far.sort((a, b) => tops.get(a)! - tops.get(b)!);
         let lead: HTMLElement | undefined = outside_panels.sort((a, b) => tops.get(a)! - tops.get(b)!)[0];
         if (lead === undefined) {
-            // Can the column show every far change at this scroll, by scrolling itself?
+            // Can the column show every change of its own at this scroll, by scrolling itself?
             const revealable_at = (scroll: number) => {
                 t.scrollTop = scroll;
                 const v = t.getBoundingClientRect();
-                return far.every(e => {
+                return in_panels.every(e => {
                     const panel = sticky_panel_of(e)!;
                     if (panel === e) {
                         // The column itself appearing: any fair part of it in view shows it.
@@ -611,23 +618,28 @@ export function scroll_target_after(comp_elt: HTMLElement, natural_tops: Map<HTM
                     if (bottom - top < Math.min(r.height, 3 * em) + 2 * SCROLL_MARGIN_PX) {
                         return false;
                     }
-                    if (r.top < top + SCROLL_MARGIN_PX) {
-                        return panel.scrollTop >= top + SCROLL_MARGIN_PX - r.top - 1;
+                    // Inside the part of the column that is in the view it is
+                    // shown as it stands (a node flush with the column's top
+                    // edge is shown, not hidden); outside it, the column must
+                    // have the scroll to bring it in.
+                    if (r.top < top - 1) {
+                        return panel.scrollTop >= top - r.top - 1;
                     }
-                    if (r.bottom > bottom - SCROLL_MARGIN_PX) {
-                        return panel.scrollHeight - panel.scrollTop - panel.clientHeight >= r.bottom - bottom + SCROLL_MARGIN_PX - 1;
+                    if (r.bottom > bottom + 1) {
+                        return panel.scrollHeight - panel.scrollTop - panel.clientHeight >= r.bottom - bottom - 1;
                     }
                     return true;
                 });
             };
-            // The column changes in place: where it can show the change already the page need not move at all.
+            // The column changes in place: where it can show the change already
+            // the page need not move at all (the prompt is pinned there too).
             if (near.length === 0 || near.every(e => sticky_panel_of(e) !== null || e.getBoundingClientRect().height <= SHORT_RESPONSE_EM * em)) {
-                if (revealable_at(s0)) {
+                if (s0 >= s_min_for_prompt && revealable_at(s0)) {
                     target = s0;
-                } else if (!revealable_at(s_down)) {
+                } else if (!revealable_at(s_down) && far.length > 0) {
                     lead = far[0];
                 }
-            } else if (!revealable_at(s_down)) {
+            } else if (!revealable_at(s_down) && far.length > 0) {
                 lead = far[0];
             }
         }

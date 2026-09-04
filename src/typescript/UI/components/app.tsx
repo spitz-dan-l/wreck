@@ -118,8 +118,12 @@ export const App: Renderer<AppState> = (state, old?) => {
 
         hole.appendChild(app_prompt.render(state));
         hole.appendChild(app_typeahead.render(state));
-        hole.appendChild(app_undo_button.render(state));
-        hole.appendChild(app_prompt_controls.render(state));
+        // Undo and the tap controls are one row on a narrow screen and float as
+        // before on the desktop (the wrapper makes no box there): prompt.css.
+        const actions = <div className="prompt-actions"></div> as HTMLElement;
+        actions.appendChild(app_undo_button.render(state));
+        actions.appendChild(app_prompt_controls.render(state));
+        hole.appendChild(actions);
         return root;
     } 
     
