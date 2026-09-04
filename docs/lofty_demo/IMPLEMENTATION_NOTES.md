@@ -1151,7 +1151,13 @@ pinned on both devices; `apply`/`set aside` on the phone show rows under the
 pinned panel; the panel stays 36vh through the animation; desktop `expand
 the steps` moves the page 0–20 px and unfolds inside the column.
 
-@@B11AFTER@@
+The scan after (`round6/after/visibility_scan.md`, both devices, the whole
+script plus the deviations): desktop 8 of 286 failing (7 of them (b), a
+change 26–100 px above the view: the step column's reference or rendition
+after `map`/`erase`/`set aside`, and `expand the campfire story` at the root
+whose echo lands 2,700 px below; 1 of them (e), the Pillaging attempt's
+reopening of the house); phone 2 of 286 (both (b), the same column
+references). Before B10 the counts were 174 and 164; after B10, 14 and 25.
 
 Left as they were: the command's own echo still lands under the pinned
 prompt when a change far above is shown (the critic's "shadow" suggestion —
