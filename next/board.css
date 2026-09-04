@@ -443,11 +443,22 @@
        and the prompt pins over all of it (Phase B11). */
     .board:not(.lesson) { display: flex; flex-direction: column; }
     .board:not(.lesson) .columns { display: contents; }
+    /* A chip is its title and barcode, here as everywhere: the rule above has
+       the same weight as `.board.chip .columns { display: none }` and stood
+       later, so on the phone a finished board kept its steps panel and its
+       rows — a second pinned panel, 5,000 px above, that the scroll rule then
+       had to reckon with (Phase B12). */
+    .board.chip:not(.lesson) .columns { display: none; }
     .board:not(.lesson) .board-title { order: -3; }
     .board:not(.lesson) .columns .right { order: -2; }
     .board:not(.lesson) .columns .rule { order: -1; }
     .board.lesson .columns { flex-direction: column; gap: 0.5em; }
     .columns .rule { flex: 0 0 1px; width: 100%; height: 1px; margin-bottom: 0.5em; }
+    /* The panel takes what its steps need and no more than 32vh (Phase B12):
+       with the notation folded it is the chalk lines only (about 200 px), and
+       with the notation open the cap leaves over half the view — better than
+       45% of it — to the rows and the prompt beneath. It scrolls on its own,
+       and says so: a thin bar and a fade at its foot. */
     .columns .right,
     .columns .right.second {
         flex: none;
@@ -455,12 +466,32 @@
         position: sticky;
         top: 0;
         z-index: 2;
-        max-height: 36vh;
+        max-height: 32vh;
         overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 240, 0.45) rgba(255, 255, 240, 0.08);
         background: black;
         border-bottom: 1px solid rgba(255, 255, 240, 0.35);
         padding-bottom: 0.4em;
         font-size: 0.85em;
+    }
+    .columns .right::-webkit-scrollbar { width: 5px; }
+    .columns .right::-webkit-scrollbar-thumb { background: rgba(255, 255, 240, 0.45); border-radius: 3px; }
+    .columns .right::-webkit-scrollbar-track { background: rgba(255, 255, 240, 0.08); }
+    /* The fade takes no room of its own (it is pulled back over the last line)
+       and nothing to a tap or to the engine's "is this painted?" probe; over
+       the page's black it shows only where there is text under it, which is
+       where there is more of the panel to scroll to. */
+    .board:not(.lesson) .columns .right::after {
+        content: '';
+        display: block;
+        position: sticky;
+        bottom: 0;
+        height: 1.6em;
+        margin-top: -1.6em;
+        pointer-events: none;
+        background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.95));
     }
     .board.lesson .columns .right { flex: none; position: static; max-height: none; border-bottom: none; font-size: 1em; }
     .columns .left { width: 100%; }
@@ -472,13 +503,14 @@
     .board .left #story-hole,
     .board .ledger #story-hole { padding-inline-start: 0.6em; }
     .step .chalk { line-height: 1.4em; }
-    /* The pinned prompt and the pinned steps leave the story a band between them. */
+    /* The pinned prompt and the pinned steps leave the story a band between
+       them; the prompt block is the chips of prompt.css, so its floor is one
+       row of options and the control row (Phase B12). */
     #story-hole ul.typeahead { max-height: 24vh; }
-    #story-hole { min-height: 13em; }
+    #story-hole { min-height: 10em; }
+    .board #story-hole { min-height: 10em; }
 }
 
-/* TOUCH: room for a finger on every tappable thing. */
-@media (pointer: coarse) {
-    .typeahead li.option { min-height: 3.4em; line-height: 3.4em; margin-top: 0; }
-    .undo-button { padding: 1em 0.8em; }
-}
+/* TOUCH: room for a finger on every tappable thing. The options, the Undo
+   button and the tap controls are 44 px chips in one wrapped block (prompt.css,
+   Phase B12); nothing more is needed here. */

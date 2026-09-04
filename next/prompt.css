@@ -159,3 +159,73 @@ ul.typeahead {
 .prompt-controls .control.disabled { --alpha-color: 0.3; }
 .prompt-controls .control:active { background: dimgray; }
 .undo-button { padding: 0.2em 0.4em; }
+
+/* The Undo button and the tap controls are siblings in one wrapper. It makes
+   no box on the desktop, so the Undo button floats at the prompt exactly as
+   it did; on a narrow or touch screen the wrapper becomes the single row that
+   holds them both (Phase B12). */
+.prompt-actions { display: contents; }
+
+/* THE PROMPT BLOCK ON A PHONE (Phase B12). The prompt, its options and its
+   controls are pinned over the board, so every pixel they take is a pixel the
+   story does not get: the options are chips, several to a row, and Undo joins
+   the control row. Tap targets stay at 44 px. */
+@media (pointer: coarse), (max-width: 700px) {
+      ul.typeahead {
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 0.4em;
+            white-space: normal;
+      }
+      .typeahead li.option {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+            margin-top: 0;
+            padding: 0 0.7em;
+            max-width: 100%;
+            white-space: pre-wrap;
+            border: 1px solid rgba(255, 255, 240, 0.35);
+            border-radius: 0.4em;
+            -webkit-tap-highlight-color: transparent;
+      }
+      /* An option is offered one phrase at a time: the part already typed is
+         rendered as blanks to line the option up under the prompt, which a
+         chip has no use for. */
+      .typeahead li.option > span:not(.token) { display: none; }
+      .typeahead li.option.selected {
+            background: rgba(255, 255, 240, 0.12);
+            border-color: rgba(255, 255, 240, 0.75);
+      }
+      .typeahead li.footer { flex-basis: 100%; height: 0; }
+
+      .prompt-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 0.5em;
+            margin-top: 0.5em;
+            clear: both;
+      }
+      .prompt-controls { float: none; clear: none; margin-top: 0; gap: 0.5em; }
+      .prompt-controls .control {
+            min-width: 44px;
+            min-height: 44px;
+            line-height: 44px;
+            padding: 0 0.5em;
+      }
+      /* Undo is the first control of that row (⟲ ⌫ ✕ ↵), not a line of its own. */
+      .undo-button {
+            float: none;
+            min-height: 44px;
+            line-height: 44px;
+            padding: 0 0.7em;
+            border: 1px solid rgba(255, 255, 240, 0.4);
+            border-radius: 0.3em;
+            -webkit-tap-highlight-color: transparent;
+      }
+}
