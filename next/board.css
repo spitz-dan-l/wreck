@@ -92,6 +92,16 @@
 .prose.cursor { --alpha-color: 1; }
 .prose.followed { --alpha-color: 0.7; }
 .prose.followed::before { content: '\21B3  '; }
+/* A consequence-only ¶ carries its ↳ from the start (dimmer until attached), and says what it is while it is the cursor. */
+.prose.follows-line:not(.followed)::before { content: '\21B3  '; --alpha-color: 0.45; }
+.prose.follows-line.cursor::after {
+    content: '(a consequence of the last command)';
+    display: block;
+    font-size: 0.85em;
+    letter-spacing: 0.05em;
+    --alpha-color: 0.5;
+    font-style: italic;
+}
 .prose.cursor .piece.remainder {
     --alpha-color: 1;
     text-decoration: underline;
@@ -131,9 +141,10 @@
     height: 1em;
 }
 .board .left .frame.collapsed .output-text { display: none; }
-.board.story-collapsed .prose, .prose.folded { display: none; }
-.board.unmapped-collapsed .left .frame.event:not(.mapped) { display: none; }
-.board.unmapped-collapsed .left .prose:not(.mapped) { display: none; }
+/* Each ¶ folds by its own class (the board's story-collapsed is bookkeeping): a fold a class change can be seen by. */
+.prose.folded { display: none; }
+.board .left .frame.unmapped-folded,
+.board .left .prose.unmapped-folded { display: none; }
 /* Folding the unmapped rows folds the voice runs that hold none of the mapping, the followed lines and the wrong attempts with them. */
 .board.unmapped-collapsed .left .voice-bar.empty,
 .board.unmapped-collapsed .left .frame.speak-as.empty,
@@ -151,15 +162,15 @@
 }
 .follows { --alpha-color: 0.85; }
 
-/* Bands: the row's left edge in the colour of the step it holds. */
-.frame.band-1 { border-left-color: rgb(227, 197, 101); }
-.frame.band-2 { border-left-color: rgb(210, 166, 121); }
-.frame.band-3 { border-left-color: rgb(160, 110, 60); }
-.frame.band-4 { border-left-color: rgb(255, 140, 0); }
-.frame.band-5 { border-left-color: rgb(224, 58, 58); }
-.frame.band-6 { border-left-color: rgb(178, 34, 34); }
-.frame.band-7 { border-left-color: rgb(220, 20, 60); }
-.frame.band-8 { border-left-color: rgb(154, 154, 154); }
+/* Bands: the row's left edge in the colour of the step it holds. (Under `.board .left .frame`, whose transparent border they must outrank — they never showed before Phase B11.) */
+.board .left .frame.band-1 { border-left-color: rgb(227, 197, 101); }
+.board .left .frame.band-2 { border-left-color: rgb(210, 166, 121); }
+.board .left .frame.band-3 { border-left-color: rgb(160, 110, 60); }
+.board .left .frame.band-4 { border-left-color: rgb(255, 140, 0); }
+.board .left .frame.band-5 { border-left-color: rgb(224, 58, 58); }
+.board .left .frame.band-6 { border-left-color: rgb(178, 34, 34); }
+.board .left .frame.band-7 { border-left-color: rgb(220, 20, 60); }
+.board .left .frame.band-8 { border-left-color: rgb(154, 154, 154); }
 
 /* Badges: numbered, in the step's colour; held (outlined) when placed, solid when applied, hollow when set aside. */
 .badge {
@@ -262,9 +273,11 @@
     --alpha-color: 0.8;
 }
 
-/* THE LEDGER */
-
-.ledger { margin-top: 0.5em; }
+/* THE LEDGER. It makes no box of its own (Phase B11): the pinned prompt's
+   containing block is then the board, so the prompt can pin over the rows
+   above the ledger, not only over the ledger. */
+.board .ledger { display: contents; }
+.board .ledger > :first-child { margin-top: 0.5em; }
 
 /* VOICES. A bar above the lines a voice speaks: solid for an embodied
    voice, dashed for a disembodied one, double-ruled for an abstract one.
@@ -369,7 +382,8 @@
     .notation.eph_adding_collapsed,
     .prose.eph_adding_folded,
     .board.eph_adding_chip .ledger > .frame:not(.closing),
-    .board.eph_adding_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge)
+    .left :is(.frame.eph_adding_unmapped-folded, .prose.eph_adding_unmapped-folded),
+    .board.eph_adding_unmapped-collapsed .left :is(.frame.speak-as.empty, .frame.follows, .frame.nudge)
 ) { display: block !important; overflow: hidden; --is-collapsing: 1; }
 .story:is(.animation-pre-compute, .animation-start) .board.eph_adding_chip .columns { display: flex !important; overflow: hidden; --is-collapsing: 1; }
 .story.animation-start.animation-active :is(
@@ -377,14 +391,16 @@
     .prose.eph_adding_folded,
     .board.eph_adding_chip .columns,
     .board.eph_adding_chip .ledger > .frame:not(.closing),
-    .board.eph_adding_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge)
-) { max-height: 0 !important; opacity: 0.01; transition: max-height 300ms ease-in, opacity 250ms ease-in; }
+    .left :is(.frame.eph_adding_unmapped-folded, .prose.eph_adding_unmapped-folded),
+    .board.eph_adding_unmapped-collapsed .left :is(.frame.speak-as.empty, .frame.follows, .frame.nudge)
+) { max-height: 0 !important; opacity: 0.01; transition: max-height 350ms ease-out, opacity 250ms ease-out; }
 .story.animation-start :is(
     .notation.eph_removing_collapsed,
     .prose.eph_removing_folded,
     .board.eph_removing_chip .columns,
     .board.eph_removing_chip .ledger > .frame:not(.closing),
-    .board.eph_removing_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge),
+    .left :is(.frame.eph_removing_unmapped-folded, .prose.eph_removing_unmapped-folded),
+    .board.eph_removing_unmapped-collapsed .left :is(.frame.speak-as.empty, .frame.follows, .frame.nudge),
     .columns .right.eph_removing_hidden,
     .columns .rule.eph_removing_hidden
 ) { max-height: 0; opacity: 0.01; overflow: hidden; }
@@ -393,10 +409,11 @@
     .prose.eph_removing_folded,
     .board.eph_removing_chip .columns,
     .board.eph_removing_chip .ledger > .frame:not(.closing),
-    .board.eph_removing_unmapped-collapsed .left :is(.frame.event:not(.mapped), .prose:not(.mapped), .frame.speak-as.empty, .frame.follows, .frame.nudge),
+    .left :is(.frame.eph_removing_unmapped-folded, .prose.eph_removing_unmapped-folded),
+    .board.eph_removing_unmapped-collapsed .left :is(.frame.speak-as.empty, .frame.follows, .frame.nudge),
     .columns .right.eph_removing_hidden,
     .columns .rule.eph_removing_hidden
-) { opacity: 1; transition: max-height 300ms ease-out, opacity 250ms ease-in 100ms; }
+) { opacity: 1; transition: max-height 350ms ease-out, opacity 250ms ease-in 100ms; }
 
 /* THE PROMPT */
 
@@ -420,8 +437,17 @@
    story while it scrolls, so the mapping stays in view as it is built. */
 @media (max-width: 700px) {
     #terminal > div { margin: 1em 0.8em 1em 0.8em; }
-    .columns { flex-direction: column; gap: 0.5em; }
-    .columns .rule { flex: 0 0 1px; width: 100%; }
+    /* The board is one column of its title, the steps, the rule, the rows, and
+       the ledger's frames and the prompt (columns and ledger make no box), so
+       that the steps come first and stay pinned over rows and ledger alike,
+       and the prompt pins over all of it (Phase B11). */
+    .board:not(.lesson) { display: flex; flex-direction: column; }
+    .board:not(.lesson) .columns { display: contents; }
+    .board:not(.lesson) .board-title { order: -3; }
+    .board:not(.lesson) .columns .right { order: -2; }
+    .board:not(.lesson) .columns .rule { order: -1; }
+    .board.lesson .columns { flex-direction: column; gap: 0.5em; }
+    .columns .rule { flex: 0 0 1px; width: 100%; height: 1px; margin-bottom: 0.5em; }
     .columns .right,
     .columns .right.second {
         flex: none;
@@ -438,6 +464,9 @@
     }
     .board.lesson .columns .right { flex: none; position: static; max-height: none; border-bottom: none; font-size: 1em; }
     .columns .left { width: 100%; }
+    /* The chip's barcode on one line. */
+    .barcode { white-space: nowrap; }
+    .barcode .badge { min-width: 0.9em; padding: 0 0.15em; margin-left: 0.2em; font-size: 0.85em; }
     .board .left .frame,
     .board .ledger .frame { margin-inline-start: 0.6em; }
     .board .left #story-hole,
@@ -450,6 +479,6 @@
 
 /* TOUCH: room for a finger on every tappable thing. */
 @media (pointer: coarse) {
-    .typeahead li.option { min-height: 2.6em; line-height: 2.6em; margin-top: 0; }
-    .undo-button { padding: 0.6em 0.8em; }
+    .typeahead li.option { min-height: 3.4em; line-height: 3.4em; margin-top: 0; }
+    .undo-button { padding: 1em 0.8em; }
 }
