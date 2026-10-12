@@ -1,0 +1,8 @@
+{
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "play": "node play.ts",
+        "test": "node --test test.ts"
+    }
+}
